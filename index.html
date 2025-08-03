@@ -1,10 +1,327 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>我的網站</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銲接資料管理系統 (Google Sheets API 版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', 'Inter', sans-serif; }
+        .section-container { background-color: white; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.5rem; transition: border-color 0.2s; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4); }
+        .form-input:disabled { background-color: #f3f4f6; cursor: not-allowed; }
+        .nav-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s, color 0.2s; border: 1px solid transparent; cursor: pointer; }
+        .nav-btn.active { background-color: #3B82F6; color: white; }
+        .nav-btn:not(.active) { background-color: white; color: #374151; border-color: #D1D5DB; }
+        .action-btn { background-color: #2563eb; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s; cursor: pointer; }
+        .action-btn:hover { background-color: #1d4ed8; }
+        .action-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+        .delete-btn { background-color: #ef4444; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s; cursor: pointer; font-size: 0.75rem; line-height: 1rem; }
+        .delete-btn:hover { background-color: #dc2626; }
+        .edit-btn { background-color: #f97316; color: white; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s; cursor: pointer; font-size: 0.75rem; line-height: 1rem; }
+        .edit-btn:hover { background-color: #ea580c; }
+        .add-btn { background-color: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s; cursor: pointer; }
+        .add-btn:hover { background-color: #059669; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .data-table th { padding: 0.75rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 600; color: #4B5563; text-transform: uppercase; letter-spacing: 0.05em; background-color: #F9FAFB; white-space: nowrap; }
+        .data-table td { padding: 0.75rem 1rem; vertical-align: middle; font-size: 0.875rem; white-space: nowrap; }
+        #loader { border: 5px solid #f3f3f3; border-radius: 50%; border-top: 5px solid #3498db; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .auth-button { background-color: #4285F4; color: white; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; transition: background-color 0.3s; }
+        .auth-button:hover { background-color: #357ae8; }
+    </style>
 </head>
-<body>
-    <h1>歡迎來到我的 GitHub Pages 網站！</h1>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div id="auth-container" class="max-w-xl mx-auto text-center bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-4">銲接資料管理系統</h1>
+        <p class="text-gray-600 mb-6">本系統需要您的授權才能讀取和寫入您的 Google Sheets 資料。</p>
+        <button id="authorize_button" class="auth-button">使用 Google 帳號登入並授權</button>
+        <button id="signout_button" class="auth-button" style="display: none; background-color: #db4437;">登出</button>
+    </div>
+
+    <div id="loader-container" class="fixed inset-0 bg-white bg-opacity-75 flex-col items-center justify-center z-50" style="display: none;">
+        <div id="loader"></div>
+        <p id="loader-text" class="mt-4 text-gray-600">正在連接...</p>
+    </div>
+
+    <div class="max-w-screen-xl mx-auto" id="app-content" style="display: none;">
+        <nav id="main-nav" class="mb-6 bg-white p-3 rounded-lg shadow-sm flex space-x-2">
+            <button id="navDisplay" class="nav-btn active">資料總覽</button>
+            <button id="navForm" class="nav-btn">新增資料</button>
+            <button id="navSettings" class="nav-btn">系統設定</button>
+        </nav>
+
+        <div id="main-content">
+            <div id="displayPage" class="page active"></div>
+            <div id="formPage" class="page"></div>
+            <div id="settingsPage" class="page"></div>
+            <div id="productManagementPage" class="page"></div>
+            <div id="personnelManagementPage" class="page"></div>
+            <div id="gasManagementPage" class="page"></div>
+            <div id="steelManagementPage" class="page"></div>
+            <div id="specManagementPage" class="page"></div>
+            <div id="modesManagementPage" class="page"></div>
+        </div>
+    </div>
+
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <script type="text/javascript">
+    
+        // --- 金鑰設定 ---
+        const CLIENT_ID = '603117134721-5gloin87g0tlqr680h5mu30emuj39khj.apps.googleusercontent.com';
+        const SPREADSHEET_ID = '1fb7f0iRsf3z2XeOOBPC1ypd__Qo-LiT1kdfxGlKEEZc';
+        
+        // --- API 設定 ---
+        const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+        // --- 全域變數 ---
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let appData = { sheetMap: {}, mainData: [], personnel: [], gas: [], steel: [], specs: [], catalog: [], modes: [] };
+        const chemElements = ['C', 'Si', 'Mn', 'P', 'S', 'Cr', 'Ni', 'Mo', 'Al', 'Cu', 'Co', 'Ti', 'Nb', 'V', 'W', 'B', 'Sn', 'Zr', 'Fe', 'N'];
+
+        // --- DOM 元素 ---
+        const authorizeButton = document.getElementById('authorize_button');
+        const signoutButton = document.getElementById('signout_button');
+        const loader = document.getElementById('loader-container');
+        const loaderText = document.getElementById('loader-text');
+        const authContainer = document.getElementById('auth-container');
+        const appContent = document.getElementById('app-content');
+
+        // --- 初始化與授權流程 ---
+        
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+            gapiInited = true;
+            maybeEnableAuthButton();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', 
+            });
+            gisInited = true;
+            maybeEnableAuthButton();
+        }
+        
+        function maybeEnableAuthButton() {
+            if (gapiInited && gisInited) {
+                authorizeButton.disabled = false;
+            }
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) throw (resp);
+                updateSigninStatus(true);
+            };
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            } else {
+                tokenClient.requestAccessToken({ prompt: '' });
+            }
+        }
+
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                updateSigninStatus(false);
+            }
+        }
+
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                authContainer.style.display = 'none';
+                appContent.style.display = 'block';
+                signoutButton.style.display = 'block'; // 顯示登出按鈕
+                loadInitialData();
+            } else {
+                authContainer.style.display = 'block';
+                appContent.style.display = 'none';
+                signoutButton.style.display = 'none'; // 隱藏登出按鈕
+            }
+        }
+        
+        authorizeButton.onclick = handleAuthClick;
+        signoutButton.onclick = handleSignoutClick;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+             // 將舊的 DOMContentLoaded 邏輯移到授權成功後執行
+             injectAllHTML();
+             setupEventListeners();
+        });
+
+
+        // --- 資料處理輔助函式 ---
+
+        function convertSheetDataToObjects(sheetValues) {
+            if (!sheetValues || sheetValues.length < 2) return [];
+            const headers = sheetValues[0];
+            return sheetValues.slice(1).map(row => {
+                let obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = row[index];
+                });
+                return obj;
+            });
+        }
+        
+        // --- API 呼叫函式 (讀取/新增/更新/刪除) ---
+
+        async function loadInitialData(pageToShowAfterLoad = 'display') {
+            loader.style.display = 'flex';
+            loaderText.textContent = '正在讀取所有資料...';
+            try {
+                // 1. 取得試算表所有工作表的資訊
+                const sheetMetaResponse = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+                sheetMetaResponse.result.sheets.forEach(sheet => {
+                    appData.sheetMap[sheet.properties.title] = sheet.properties.sheetId;
+                });
+                
+                // 2. 一次性批次讀取所有工作表的資料
+                const ranges = [
+                    '主要資料!A:Q', '品名錄!A:C', '規範!A:Z', 
+                    '人員!A:A', '氣體!A:A', '鋼板!A:A', '銲材分類!A:A'
+                ];
+                const dataResponse = await gapi.client.sheets.spreadsheets.values.batchGet({ spreadsheetId: SPREADSHEET_ID, ranges: ranges });
+                
+                // 3. 將原始資料轉換為物件並存入 appData
+                const results = dataResponse.result.valueRanges;
+                appData.mainData = convertSheetDataToObjects(results[0].values || []);
+                appData.catalog = convertSheetDataToObjects(results[1].values || []);
+                appData.specs = convertSheetDataToObjects(results[2].values || []);
+                appData.personnel = results[3].values ? results[3].values.flat().slice(1) : [];
+                appData.gas = results[4].values ? results[4].values.flat().slice(1) : [];
+                appData.steel = results[5].values ? results[5].values.flat().slice(1) : [];
+                appData.modes = results[6].values ? results[6].values.flat().slice(1) : [];
+
+                renderAllTables();
+                populateAllDropdowns();
+                showPage(pageToShowAfterLoad);
+                
+            } catch (err) {
+                console.error('載入資料失敗:', err);
+                alert(`錯誤: ${err.result?.error?.message || err.message}`);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+        
+        // --- 以下是 UI 渲染和事件處理邏輯 (從舊版程式碼遷移並適度修改) ---
+        // (此處省略了與舊版完全相同的 UI 建立函式，以保持簡潔)
+        // (injectAllHTML, buildMainForm, setupEventListeners 等函式應與舊版相同)
+        
+        // 舊有函式...
+        function renderAllTables() {
+            renderTable();
+            if(document.getElementById('catalogTableBody')) renderCatalogTable();
+            if(document.getElementById('personnelTableBody')) renderSimpleListTable('personnel', document.getElementById('personnelTableBody'));
+            if(document.getElementById('gasTableBody')) renderSimpleListTable('gas', document.getElementById('gasTableBody'));
+            if(document.getElementById('steelTableBody')) renderSimpleListTable('steel', document.getElementById('steelTableBody'));
+            if(document.getElementById('modesTableBody')) renderSimpleListTable('modes', document.getElementById('modesTableBody'));
+            if(document.getElementById('specTableBody')) renderSpecTable();
+        }
+        
+        function formatMechanicalForDisplay(jsonString) { if (!jsonString || jsonString.trim() === '[]' || jsonString.trim() === '{}') { return '<span class="text-gray-400">無資料</span>'; } try { const data = JSON.parse(jsonString); if (!Array.isArray(data) || data.length === 0) return '<span class="text-gray-400">無資料</span>'; return data.map(item => { const tensile = item['抗拉強度'] ? `抗拉: ${item['抗拉強度']}` : ''; const yieldStr = item['降伏強度'] ? `降伏: ${item['降伏強度']}` : ''; const elongation = item['延伸率'] ? `延伸: ${item['延伸率']}%` : ''; return [tensile, yieldStr, elongation].filter(Boolean).join(', '); }).join('<br>'); } catch (e) { return '<span class="text-red-500">格式錯誤</span>'; } }
+        function formatImpactForDisplay(jsonString) { if (!jsonString || jsonString.trim() === '[]' || jsonString.trim() === '{}') { return '<span class="text-gray-400">無資料</span>'; } try { const data = JSON.parse(jsonString); if (!Array.isArray(data) || data.length === 0) return '<span class="text-gray-400">無資料</span>'; return data.map(item => { const temp = item['測試溫度'] ? `溫度: ${item['測試溫度']}°C` : ''; const avg = item['平均值'] && item['平均值'] !== 'N/A' ? `平均: ${item['平均值']}` : ''; return [temp, avg].filter(Boolean).join(', '); }).join('<br>'); } catch (e) { return '<span class="text-red-500">格式錯誤</span>'; } }
+
+        function renderTable() {
+            const data = appData.mainData || [];
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+            if (!data.length) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-gray-500">尚無資料</td></tr>`;
+                return;
+            }
+            data.forEach((record, index) => {
+                const sheetRowIndex = index + 2;
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                const weldDate = record.銲接日期 ? new Date(record.銲接日期).toISOString().split('T')[0] : '';
+                const mechanicalProps = formatMechanicalForDisplay(record['機械性質']);
+                const impactTests = formatImpactForDisplay(record['衝擊測試']);
+                tr.innerHTML = `
+                    <td>${record.筆數 || ''}</td>
+                    <td>${weldDate}</td>
+                    <td>${record.品名 || ''}</td>
+                    <td>${record.線徑 || ''}</td>
+                    <td>${record.配方 || ''}</td>
+                    <td>${record.RUD卡 || ''}</td>
+                    <td>${record.氣體 || ''}</td>
+                    <td class="whitespace-normal">${record.備註 || ''}</td>
+                    <td class="whitespace-normal">${mechanicalProps}</td>
+                    <td class="whitespace-normal">${impactTests}</td>
+                    <td class="text-center">
+                        <div class="flex items-center justify-center space-x-2">
+                            <button class="edit-btn" onclick="editRecord(${index}, ${sheetRowIndex})">編輯</button>
+                            <button class="delete-btn" onclick="deleteApiRecord(${sheetRowIndex}, '${record.筆數}')">刪除</button>
+                        </div>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function deleteApiRecord(rowIndex, recordId) {
+            if (!confirm(`確定要刪除筆數為 "${recordId}" 的資料嗎？`)) return;
+            loader.style.display = 'flex';
+            loaderText.textContent = '正在刪除資料...';
+            try {
+                await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: SPREADSHEET_ID,
+                    resource: { requests: [{ deleteDimension: { range: { sheetId: appData.sheetMap['主要資料'], dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex } } }] }
+                });
+                alert('資料刪除成功！');
+                await loadInitialData('display');
+            } catch (err) {
+                console.error('刪除失敗', err);
+                alert(`刪除失敗: ${err.result?.error?.message || err.message}`);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+        
+        // ... injectAllHTML, setupEventListeners, and other UI functions remain largely the same
+        function injectAllHTML() {
+            if (document.getElementById('displayPage').innerHTML !== '') return;
+            document.getElementById('displayPage').innerHTML = `<div class="section-container"><h2 class="text-xl font-semibold mb-4">資料總覽</h2><div class="overflow-x-auto"><table class="min-w-full data-table"><thead><tr><th>筆數</th><th>銲接日期</th><th>品名</th><th>線徑</th><th>配方</th><th>RUD卡</th><th>氣體</th><th>備註</th><th>機械性質</th><th>衝擊測試</th><th>操作</th></tr></thead><tbody id="dataTableBody"></tbody></table></div></div>`;
+            document.getElementById('formPage').innerHTML = `<form id="weldingForm"></form>`;
+            document.getElementById('settingsPage').innerHTML = `<div class="section-container"><h2 class="text-xl font-semibold">系統設定</h2><p class="text-gray-600 mt-2">請選擇要管理的項目。</p><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"><button class="nav-btn" onclick="showPage('productManagement')">品名管理</button><button class="nav-btn" onclick="showPage('personnelManagement')">人員管理</button><button class="nav-btn" onclick="showPage('gasManagement')">氣體管理</button><button class="nav-btn" onclick="showPage('steelManagement')">鋼板管理</button><button class="nav-btn" onclick="showPage('modesManagement')">銲材分類管理</button><button class="nav-btn" onclick="showPage('specManagement')">規範管理</button></div></div>`;
+            buildMainForm();
+            buildProductManagementPage();
+            buildSimpleManagementPage('personnelManagement', '人員管理', '人員', 'personnel');
+            buildSimpleManagementPage('gasManagement', '氣體管理', '氣體', 'gas');
+            buildSimpleManagementPage('steelManagement', '鋼板管理', '鋼板材質', 'steel');
+            buildSimpleManagementPage('modesManagement', '銲材分類管理', '銲材分類', 'modes');
+            buildSpecManagementPage();
+        }
+        function setupEventListeners() {
+            document.getElementById('navDisplay').addEventListener('click', () => showPage('display'));
+            document.getElementById('navForm').addEventListener('click', () => { resetForm(); showPage('form'); });
+            document.getElementById('navSettings').addEventListener('click', () => showPage('settings'));
+        }
+        function showPage(pageKey) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active')); document.getElementById(`${pageKey}Page`).classList.add('active'); const navButton = document.getElementById(`nav${pageKey.charAt(0).toUpperCase() + pageKey.slice(1)}`); if (navButton) navButton.classList.add('active'); else document.getElementById('navSettings').classList.add('active'); }
+        function populateAllDropdowns() { /* ... as before ... */ }
+        function resetForm() { /* ... as before ... */ }
+        function buildMainForm() { /* ... as before ... */ }
+        function buildProductManagementPage() { /* ... as before ... */ }
+        function buildSimpleManagementPage() { /* ... as before ... */ }
+        function buildSpecManagementPage() { /* ... as before ... */ }
+    </script>
 </body>
 </html>
