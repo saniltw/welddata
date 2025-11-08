@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>常用工程計算工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        .calculator-container {
+            display: none;
+        }
+        .calculator-container.active {
+            display: block;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Mobile Header -->
+    <header class="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-md p-4 flex justify-between items-center z-30">
+        <h1 id="mobile-header-title" class="text-lg font-bold text-gray-900">單位換算</h1>
+        <button id="mobile-menu-button" class="p-2">
+            <svg id="menu-open-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            <svg id="menu-close-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    </header>
+
+    <div class="flex h-screen pt-16 lg:pt-0">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-md p-4 overflow-y-auto transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 lg:z-0 lg:h-auto">
+            <h1 class="text-xl font-bold text-gray-900 mb-6 px-4">計算工具選單</h1>
+            <nav>
+                <ul class="space-y-2">
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="unit-conversion">單位換算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="heat-input">入熱量計算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="carbon-equivalent">碳當量計算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="ferrite-number">肥粒鐵含量與 Tmd30 計算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="steel-plate">鋼板預估重</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="pren">孔蝕指數 (PREN)</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="sensitization">銳敏化計算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="current-density">電流密度計算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="weld-fillet">銲道預估 - 角銲</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="weld-butt">銲道預估 - 對接</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="gas-cylinder">鋼瓶氣體重量換算</a></li>
+                    <li><a href="#" class="nav-link block px-4 py-2 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors duration-200" data-target="welder-power">電銲機耗電量</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Overlay for mobile menu -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-30 lg:hidden"></div>
+
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <!-- Unit Conversion -->
+            <div id="unit-conversion" class="calculator-container active">
+                <h2 class="text-2xl font-bold mb-2">單位換算</h2>
+                <p class="text-sm text-gray-500 mb-6">提供常用工程單位的快速換算。</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                    <!-- Tensile Strength Conversion -->
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">抗拉強度換算</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">MPa (N/mm²)</label>
+                                <input type="number" id="uc-mpa" data-unit="mpa" class="uc-tensile mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">kgf/mm²</label>
+                                <input type="number" id="uc-kgf" data-unit="kgf" class="uc-tensile mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">psi</label>
+                                <input type="number" id="uc-psi" data-unit="psi" class="uc-tensile mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Conversion -->
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                         <h3 class="text-lg font-semibold mb-4 text-gray-800">溫度換算</h3>
+                         <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">攝氏 (°C)</label>
+                                <input type="number" id="uc-celsius" data-unit="c" class="uc-temp mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">華氏 (°F)</label>
+                                <input type="number" id="uc-fahrenheit" data-unit="f" class="uc-temp mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Impact Conversion -->
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                         <h3 class="text-lg font-semibold mb-4 text-gray-800">衝擊功換算</h3>
+                         <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">J (焦耳)</label>
+                                <input type="number" id="uc-joule" data-unit="j" class="uc-impact mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">kg-m</label>
+                                <input type="number" id="uc-kgm" data-unit="kgm" class="uc-impact mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                             <div>
+                                <label class="block text-sm font-medium text-gray-700">lbf.ft</label>
+                                <input type="number" id="uc-lbfft" data-unit="lbfft" class="uc-impact mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Wire Feed Speed Conversion -->
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                         <h3 class="text-lg font-semibold mb-4 text-gray-800">送線速度換算</h3>
+                         <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">m/min</label>
+                                <input type="number" id="uc-mpm" data-unit="mpm" class="uc-wfs mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">ipm (inch/min)</label>
+                                <input type="number" id="uc-ipm" data-unit="ipm" class="uc-wfs mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gas Flow Rate Conversion -->
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                         <h3 class="text-lg font-semibold mb-4 text-gray-800">氣體流量換算</h3>
+                         <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">L/min</label>
+                                <input type="number" id="uc-lpm" data-unit="lpm" class="uc-gfr mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">cfh (ft³/hr)</label>
+                                <input type="number" id="uc-cfh" data-unit="cfh" class="uc-gfr mt-1 block w-full p-2 border rounded-md">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Heat Input Calculator -->
+            <div id="heat-input" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">入熱量計算</h2>
+                <p class="text-sm text-gray-500 mb-6 font-mono">HI (kJ/mm) = (A × V × 60 × 效率) / (速度(mm/min) × 1000)</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-start">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">電流 (A)</label>
+                            <input type="number" id="hi-current" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">電壓 (V)</label>
+                            <input type="number" id="hi-voltage" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <!-- Calculation Mode -->
+                        <fieldset class="pt-2">
+                            <legend class="block text-sm font-medium text-gray-700 mb-1">計算方式</legend>
+                            <div class="flex items-center space-x-6">
+                                <div class="flex items-center">
+                                    <input id="hi-mode-time" name="hi-mode" type="radio" value="time" checked class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 hi-mode-radio">
+                                    <label for="hi-mode-time" class="ml-2 block text-sm text-gray-900">依長度/時間</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="hi-mode-speed" name="hi-mode" type="radio" value="speed" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 hi-mode-radio">
+                                    <label for="hi-mode-speed" class="ml-2 block text-sm text-gray-900">直接輸入速度</label>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <!-- Time/Length Inputs -->
+                        <div id="hi-group-time" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">銲接長度</label>
+                                <div class="mt-1 flex rounded-md shadow-sm">
+                                    <input type="number" id="hi-length" class="hi-time-mode-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300">
+                                    <select id="hi-length-unit" class="hi-time-mode-input inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                        <option value="cm">cm</option>
+                                        <option value="mm" selected>mm</option>
+                                        <option value="m">m</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">銲接時間</label>
+                                <div class="mt-1 flex rounded-md shadow-sm">
+                                    <input type="number" id="hi-time" class="hi-time-mode-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300">
+                                    <select id="hi-time-unit" class="hi-time-mode-input inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                        <option value="min">min</option>
+                                        <option value="sec" selected>sec</option>
+                                        <option value="hr">hr</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Speed Input -->
+                        <div id="hi-group-speed">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">銲接速度</label>
+                                <div class="mt-1 flex rounded-md shadow-sm">
+                                    <input type="number" id="hi-speed-direct" class="hi-speed-mode-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300">
+                                    <select id="hi-speed-direct-unit" class="hi-speed-mode-input inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                        <option value="cm/min" selected>cm/min</option>
+                                        <option value="mm/min">mm/min</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">銲接方式</label>
+                            <select id="hi-process" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="1.0">潛弧銲 (SAW)</option>
+                                <option value="0.8">氣體金屬電弧銲 (GMAW/MIG)</option>
+                                <option value="0.8" selected>包藥銲線電弧銲 (FCAW)</option>
+                                <option value="0.8">遮蔽金屬電弧銲 (SMAW)</option>
+                                <option value="0.6">氣體鎢極電弧銲 (GTAW/TIG)</option>
+                                <option value="0.6">電漿銲 (PAW)</option>
+                                <option value="custom">手動輸入</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">熱效率</label>
+                            <input type="number" id="hi-efficiency" value="0.8" step="0.01" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="text-center space-y-6 lg:pt-8">
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700">計算後銲接速度 (cm/min)</label>
+                            <input type="text" id="hi-speed-display" class="mt-1 text-center block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm" readonly>
+                        </div>
+                        <div id="hi-warning" class="text-sm text-red-600 min-h-[20px]"></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg">
+                                <p class="text-base font-medium text-center">kJ/cm</p>
+                                <p id="hi-result-kjcm" class="text-3xl md:text-4xl font-bold text-blue-600 mt-1 text-center">0.00</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg">
+                                <p class="text-base font-medium text-center">kJ/mm</p>
+                                <p id="hi-result-kjmm" class="text-3xl md:text-4xl font-bold text-green-700 mt-1 text-center">0.000</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carbon Equivalent Calculator -->
+            <div id="carbon-equivalent" class="calculator-container">
+                 <h2 class="text-2xl font-bold mb-2">碳當量 (CEQ) 計算</h2>
+                 <p class="text-sm text-gray-500 mb-6">依據不同國際標準 (AWS, JIS, Pcm) 計算碳當量，評估材料的銲接性與冷裂敏感性。</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">輸入化學成分 (%)</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700">C</label><input type="number" id="ce-c" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.09"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Mn</label><input type="number" id="ce-mn" class="ce-input mt-1 w-full p-2 border rounded-md" value="1.24"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Si</label><input type="number" id="ce-si" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.27"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Ni</label><input type="number" id="ce-ni" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.02"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Cr</label><input type="number" id="ce-cr" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.02"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Mo</label><input type="number" id="ce-mo" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.01"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">V</label><input type="number" id="ce-v" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.002"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Cu</label><input type="number" id="ce-cu" class="ce-input mt-1 w-full p-2 border rounded-md" value="0.03"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Nb</label><input type="number" id="ce-nb" class="ce-input mt-1 w-full p-2 border rounded-md" value="0"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">B</label><input type="number" id="ce-b" class="ce-input mt-1 w-full p-2 border rounded-md" value="0"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">H (ml/100g)</label><input type="number" id="ce-h" class="ce-input mt-1 w-full p-2 border rounded-md" value="8"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">板厚 (mm)</label><input type="number" id="ce-t" class="ce-input mt-1 w-full p-2 border rounded-md" value="20"></div>
+                    </div>
+                    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">IACS CE (AWS)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="ce-result-aws">0.00</p>
+                            <p class="text-sm text-gray-500 mt-1 min-h-[20px]" id="ce-note-aws"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">JIS Ceq (WES)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="ce-result-jis">0.00</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Ito-Bessyo (Pcm)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="ce-result-pcm">0.00</p>
+                            <p class="text-sm text-gray-500 mt-1 min-h-[20px]" id="ce-note-pcm"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">Yurioka (Pw)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="ce-result-pw">0.00</p>
+                            <p class="text-sm text-gray-500 mt-1 min-h-[20px]" id="ce-note-pw"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ferrite Number Calculator -->
+            <div id="ferrite-number" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">肥粒鐵含量與 Tmd30 計算</h2>
+                <p class="text-sm text-gray-500 mb-6">輸入通用化學成分，同時計算肥粒鐵含量 (FN) 與馬氏體起始溫度 (Tmd30)。</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">輸入化學成分 (%) 與晶粒度</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <div><label class="block text-sm font-medium text-gray-700">C</label><input type="number" step="0.001" id="fn-c" class="fn-input mt-1 w-full p-2 border rounded-md" value="0.015"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Si</label><input type="number" step="0.01" id="fn-si" class="fn-input mt-1 w-full p-2 border rounded-md" value="0.85"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Mn</label><input type="number" step="0.01" id="fn-mn" class="fn-input mt-1 w-full p-2 border rounded-md" value="1.97"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Cr</label><input type="number" step="0.01" id="fn-cr" class="fn-input mt-1 w-full p-2 border rounded-md" value="18.04"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Ni</label><input type="number" step="0.01" id="fn-ni" class="fn-input mt-1 w-full p-2 border rounded-md" value="11.04"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Mo</label><input type="number" step="0.01" id="fn-mo" class="fn-input mt-1 w-full p-2 border rounded-md" value="2.04"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Nb</label><input type="number" step="0.01" id="fn-nb" class="fn-input mt-1 w-full p-2 border rounded-md" value="0.01"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">N</label><input type="number" step="0.001" id="fn-n" class="fn-input mt-1 w-full p-2 border rounded-md" value="0.054"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Cu</label><input type="number" step="0.01" id="fn-cu" class="fn-input mt-1 w-full p-2 border rounded-md" value="0"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Ti</label><input type="number" step="0.01" id="fn-ti" class="fn-input mt-1 w-full p-2 border rounded-md" value="0"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">晶粒度 (GS)</label><input type="number" step="0.1" id="fn-gs" class="fn-input mt-1 w-full p-2 border rounded-md" value="8.0"></div>
+                    </div>
+                     <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">鉻當量 (Cr_eq)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="fn-result-creq">0.00</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">鎳當量 (Ni_eq)</h4>
+                            <p class="text-3xl font-bold text-blue-600" id="fn-result-nieq">0.00</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-700">肥粒鐵數 (FN)</h4>
+                            <p class="text-3xl font-bold text-green-600" id="fn-result-fn">0.00</p>
+                        </div>
+                    </div>
+                    <div class="mt-8 text-center border-t pt-6">
+                        <h4 class="font-semibold text-gray-700">馬氏體起始溫度 (Tmd30)</h4>
+                        <p id="fn-result-tmd30" class="text-4xl md:text-5xl font-bold text-purple-600 mt-2">0.0 °C</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Steel Plate Weight Calculator -->
+            <div id="steel-plate" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">鋼板預估重</h2>
+                <p class="text-sm text-gray-500 mb-6 font-mono">重量(KG) = 長(M) × 寬(M) × 厚(mm) × 密度</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-center">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">長度 (M)</label>
+                            <input type="number" id="sp-length" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">寬度 (M)</label>
+                            <input type="number" id="sp-width" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">厚度 (mm)</label>
+                            <input type="number" id="sp-thickness" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">密度 (g/cm³)</label>
+                             <div class="mt-1 flex rounded-md shadow-sm">
+                                <select data-input-id="sp-density" class="density-select block w-2/3 px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300 bg-gray-50 text-gray-700">
+                                    <option value="7.85" selected>碳鋼 / 低合金鋼</option>
+                                    <option value="7.95">不銹鋼</option>
+                                    <option value="8.8">鎳合金</option>
+                                    <option value="8.9">銅合金</option>
+                                    <option value="2.7">鋁合金</option>
+                                    <option value="custom">自行輸入</option>
+                                </select>
+                                <input type="number" id="sp-density" class="density-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" value="7.85" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium">預估重量</p>
+                        <p id="sp-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 KG</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PREN Calculator -->
+            <div id="pren" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">孔蝕指數 (PREN) 計算</h2>
+                <p class="text-sm text-gray-500 mb-6 font-mono">PREN = %Cr + 3.3 × %Mo + 16 × %N</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cr (%)</label>
+                            <input type="number" id="pren-cr" class="pren-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Mo (%)</label>
+                            <input type="number" id="pren-mo" class="pren-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">N (%)</label>
+                            <input type="number" id="pren-n" class="pren-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium">PREN</p>
+                        <p id="pren-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00</p>
+                        <p class="text-sm text-gray-500 mt-2 min-h-[20px]" id="pren-note"></p>
+                    </div>
+                </div>
+            </div>
+
+             <!-- Sensitization Calculator -->
+            <div id="sensitization" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">銳敏化計算</h2>
+                <p class="text-sm text-gray-500 mb-6 font-mono">結果 = (%Nb + %Ti) / (%C + %N)</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600">評估不銹鋼的晶間腐蝕敏感性。當結果 ≥ 8 時，通常認為具有抗銳敏化能力。</p>
+                        <div><label class="block text-sm font-medium text-gray-700">Nb (%)</label><input type="number" step="0.0001" id="sen-nb" class="sen-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Ti (%)</label><input type="number" step="0.0001" id="sen-ti" class="sen-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">C (%)</label><input type="number" step="0.0001" id="sen-c" class="sen-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">N (%)</label><input type="number" step="0.0001" id="sen-n" class="sen-input mt-1 block w-full p-2 border rounded-md"></div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium">計算結果</p>
+                        <p id="sen-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00</p>
+                        <p class="text-xl font-semibold mt-4" id="sen-note"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Density Calculator -->
+            <div id="current-density" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">電流密度計算</h2>
+                <p class="text-sm text-gray-500 mb-6 font-mono">密度(A/mm²) = 電流(A) / (π × (線徑(mm)/2)²)</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">線徑 (mm)</label>
+                            <input type="number" id="cd-diameter" class="cd-input mt-1 block w-full p-2 border rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">電流 (A)</label>
+                            <input type="number" id="cd-current" class="cd-input mt-1 block w-full p-2 border rounded-md">
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium">電流密度</p>
+                        <p id="cd-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 A/mm²</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Fillet Weld Calculator -->
+            <div id="weld-fillet" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">銲道預估 - 角銲</h2>
+                <p class="text-sm text-gray-500 mb-6">依據腳長、銲道長度、密度及效率計算所需銲材重量。</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                     <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-700">上腳長 (mm)</label><input type="number" id="wf-leg1" class="wf-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">下腳長 (mm)</label><input type="number" id="wf-leg2" class="wf-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">銲道長 (M)</label><input type="number" id="wf-length" class="wf-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">密度 (g/cm³)</label>
+                            <div class="mt-1 flex rounded-md shadow-sm">
+                                <select data-input-id="wf-density" class="density-select block w-2/3 px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300 bg-gray-50 text-gray-700">
+                                    <option value="7.85" selected>碳鋼 / 低合金鋼</option>
+                                    <option value="7.95">不銹鋼</option>
+                                    <option value="8.8">鎳合金</option>
+                                    <option value="8.9">銅合金</option>
+                                    <option value="2.7">鋁合金</option>
+                                    <option value="custom">自行輸入</option>
+                                </select>
+                                <input type="number" id="wf-density" class="wf-input density-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" value="7.85" step="0.01">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">熔填效率 (%)</label>
+                            <div class="mt-1 flex rounded-md shadow-sm">
+                                <select data-input-id="wf-efficiency" class="efficiency-select block w-2/3 px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300 bg-gray-50 text-gray-700">
+                                    <option value="98">潛弧銲 (SAW)</option>
+                                    <option value="95">氣體金屬電弧銲 (GMAW)</option>
+                                    <option value="85" selected>包藥銲線電弧銲 (FCAW)</option>
+                                    <option value="60">遮蔽金屬電弧銲 (SMAW)</option>
+                                    <option value="custom">自行輸入</option>
+                                </select>
+                                <input type="number" id="wf-efficiency" class="wf-input efficiency-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" value="85">
+                            </div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700">冠高 (%)</label><input type="number" id="wf-reinforcement" class="wf-input mt-1 block w-full p-2 border rounded-md" value="20"></div>
+                    </div>
+                     <div class="text-center">
+                        <p class="text-lg font-medium">預估銲材需求量</p>
+                        <p id="wf-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 KG</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Butt Weld Calculator -->
+            <div id="weld-butt" class="calculator-container">
+                <h2 class="text-2xl font-bold mb-2">銲道預估 - 對接</h2>
+                 <p class="text-sm text-gray-500 mb-6">依據板厚、開槽角度、根間等參數計算所需銲材重量。</p>
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-700">板厚 (mm)</label><input type="number" id="wb-thickness" class="wb-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">開槽角度 (°)</label><input type="number" id="wb-angle" class="wb-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">根部間隙 (mm)</label><input type="number" id="wb-gap" class="wb-input mt-1 block w-full p-2 border rounded-md"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">銲道長 (M)</label><input type="number" id="wb-length" class="wb-input mt-1 block w-full p-2 border rounded-md"></div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700">密度 (g/cm³)</label>
+                            <div class="mt-1 flex rounded-md shadow-sm">
+                                <select data-input-id="wb-density" class="density-select block w-2/3 px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300 bg-gray-50 text-gray-700">
+                                    <option value="7.85" selected>碳鋼 / 低合金鋼</option>
+                                    <option value="7.95">不銹鋼</option>
+                                    <option value="8.8">鎳合金</option>
+                                    <option value="8.9">銅合金</option>
+                                    <option value="2.7">鋁合金</option>
+                                    <option value="custom">自行輸入</option>
+                                </select>
+                                <input type="number" id="wb-density" class="wb-input density-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" value="7.85" step="0.01">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">熔填效率 (%)</label>
+                            <div class="mt-1 flex rounded-md shadow-sm">
+                                <select data-input-id="wb-efficiency" class="efficiency-select block w-2/3 px-3 py-2 rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 border-gray-300 bg-gray-50 text-gray-700">
+                                    <option value="98">潛弧銲 (SAW)</option>
+                                    <option value="95">氣體金屬電弧銲 (GMAW)</option>
+                                    <option value="85" selected>包藥銲線電弧銲 (FCAW)</option>
+                                    <option value="60">遮蔽金屬電弧銲 (SMAW)</option>
+                                    <option value="custom">自行輸入</option>
+                                </select>
+                                <input type="number" id="wb-efficiency" class="wb-input efficiency-input flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-blue-500 focus:border-blue-500 border-gray-300" value="85">
+                            </div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700">冠高 (%)</label><input type="number" id="wb-reinforcement" class="wb-input mt-1 block w-full p-2 border rounded-md" value="20"></div>
+                    </div>
+                     <div class="text-center">
+                        <p class="text-lg font-medium">預估銲材需求量</p>
+                        <p id="wb-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 KG</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gas Cylinder Weight Calculator -->
+            <div id="gas-cylinder" class="calculator-container">
+                 <h2 class="text-2xl font-bold mb-2">鋼瓶氣體重量換算</h2>
+                 <p class="text-sm text-gray-500 mb-6">基於理想氣體定律，透過鋼瓶容積、壓力及氣體平均分子量計算總重量。</p>
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                             <h3 class="text-lg font-semibold text-gray-800">鋼瓶參數</h3>
+                             <div class="space-y-4">
+                                <div><label class="block text-sm font-medium text-gray-700">鋼瓶容積 (L)</label><input type="number" id="gc-volume" class="gc-input mt-1 block w-full p-2 border rounded-md" value="50"></div>
+                                <div><label class="block text-sm font-medium text-gray-700">充填壓力 (kg/cm²)</label><input type="number" id="gc-pressure" class="gc-input mt-1 block w-full p-2 border rounded-md" value="150"></div>
+                             </div>
+                             <div class="text-center pt-6">
+                                <p class="text-lg font-medium">預估氣體總重量</p>
+                                <p id="gc-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 KG</p>
+                                <p class="text-sm text-gray-500 mt-1" id="gc-note">基於常溫 25°C, 1 atm 壓力計算</p>
+                            </div>
+                        </div>
+                        <div>
+                             <h3 class="text-lg font-semibold mb-4 text-gray-800">氣體成分</h3>
+                             <div id="gas-mix-container" class="space-y-2">
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" placeholder="氣體名稱 (選填)" class="gc-input-name w-1/3 p-2 border rounded-md">
+                                    <input type="number" placeholder="分子量" class="gc-input-mw w-1/3 p-2 border rounded-md">
+                                    <input type="number" placeholder="體積 %" class="gc-input-percent w-1/3 p-2 border rounded-md" value="100">
+                                </div>
+                             </div>
+                              <button id="add-gas" class="mt-2 text-sm text-blue-600 hover:text-blue-800">+ 新增氣體</button>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+            
+            <!-- Welder Power Consumption Calculator -->
+            <div id="welder-power" class="calculator-container">
+                 <h2 class="text-2xl font-bold mb-2">電銲機耗電量計算</h2>
+                 <p class="text-sm text-gray-500 mb-6 font-mono">耗電量(kWh) = (A × V × 使用率) / (轉換效率 × 1000)</p>
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-700">電流 (A)</label><input type="number" id="wp-current" class="wp-input mt-1 block w-full p-2 border rounded-md" value="300"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">電壓 (V)</label><input type="number" id="wp-voltage" class="wp-input mt-1 block w-full p-2 border rounded-md" value="32"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">銲機轉換效率 (%)</label><input type="number" id="wp-efficiency" class="wp-input mt-1 block w-full p-2 border rounded-md" value="90"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">每小時使用率 (%)</label><input type="number" id="wp-dutycycle" class="wp-input mt-1 block w-full p-2 border rounded-md" value="50" placeholder="Duty Cycle"></div>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium">每小時耗電量</p>
+                        <p id="wp-result" class="text-4xl md:text-5xl font-bold text-blue-600 mt-2">0.00 度</p>
+                    </div>
+                 </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const calculatorContainers = document.querySelectorAll('.calculator-container');
+            const activeLinkClasses = ['bg-blue-600', 'text-white', 'hover:bg-blue-700'];
+            const inactiveLinkClasses = ['text-gray-700', 'hover:bg-blue-100', 'hover:text-blue-700'];
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const openIcon = document.getElementById('menu-open-icon');
+            const closeIcon = document.getElementById('menu-close-icon');
+            const mobileHeaderTitle = document.getElementById('mobile-header-title');
+
+            function toggleMenu() {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
+                openIcon.classList.toggle('hidden');
+                closeIcon.classList.toggle('hidden');
+            }
+
+            mobileMenuButton.addEventListener('click', toggleMenu);
+            overlay.addEventListener('click', toggleMenu);
+
+
+            // Function to switch calculators
+            function switchCalculator(targetId) {
+                calculatorContainers.forEach(container => {
+                    container.classList.remove('active');
+                });
+                const targetContainer = document.getElementById(targetId);
+                if (targetContainer) {
+                    targetContainer.classList.add('active');
+                }
+
+                navLinks.forEach(link => {
+                    if (link.dataset.target === targetId) {
+                        link.classList.add(...activeLinkClasses);
+                        link.classList.remove(...inactiveLinkClasses);
+                        mobileHeaderTitle.textContent = link.textContent;
+                    } else {
+                        link.classList.remove(...activeLinkClasses);
+                        link.classList.add(...inactiveLinkClasses);
+                    }
+                });
+            }
+
+            // Set initial state
+            switchCalculator('unit-conversion');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.dataset.target;
+                    switchCalculator(targetId);
+                     if (window.innerWidth < 1024) { // lg breakpoint
+                        toggleMenu();
+                    }
+                });
+            });
+
+            // --- Calculators Logic ---
+
+            // 1. Steel Plate Weight
+            const spInputs = ['sp-length', 'sp-width', 'sp-thickness', 'sp-density'];
+            spInputs.forEach(id => document.getElementById(id)?.addEventListener('input', calculateSteelPlateWeight));
+            function calculateSteelPlateWeight() {
+                const length = parseFloat(document.getElementById('sp-length').value) || 0;
+                const width = parseFloat(document.getElementById('sp-width').value) || 0;
+                const thickness = parseFloat(document.getElementById('sp-thickness').value) || 0;
+                const density = parseFloat(document.getElementById('sp-density').value) || 0;
+                const weight = length * width * thickness * density;
+                document.getElementById('sp-result').textContent = `${weight.toFixed(2)} KG`;
+            }
+
+            // 2. Heat Input
+            const allHiInputs = ['hi-current', 'hi-voltage', 'hi-length', 'hi-time', 'hi-efficiency', 'hi-length-unit', 'hi-time-unit', 'hi-speed-direct', 'hi-speed-direct-unit'];
+            allHiInputs.forEach(id => document.getElementById(id)?.addEventListener('input', calculateHeatInput));
+            
+            document.querySelectorAll('.hi-mode-radio').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    updateHeatInputMode();
+                    calculateHeatInput();
+                });
+            });
+
+            const hiProcessSelect = document.getElementById('hi-process');
+            const hiEfficiencyInput = document.getElementById('hi-efficiency');
+            let isUpdatingFromSelect = false;
+
+            hiProcessSelect.addEventListener('change', () => {
+                const selectedValue = hiProcessSelect.value;
+                if (selectedValue !== 'custom') {
+                    isUpdatingFromSelect = true;
+                    hiEfficiencyInput.value = selectedValue;
+                    calculateHeatInput();
+                    isUpdatingFromSelect = false;
+                }
+            });
+            
+            hiEfficiencyInput.addEventListener('input', () => {
+                if(isUpdatingFromSelect) return;
+
+                let matchFound = false;
+                for (const option of hiProcessSelect.options) {
+                    if (option.value != 'custom' && parseFloat(option.value) == parseFloat(hiEfficiencyInput.value)) {
+                        hiProcessSelect.value = option.value;
+                        matchFound = true;
+                        break;
+                    }
+                }
+                if (!matchFound) {
+                    hiProcessSelect.value = 'custom';
+                }
+            });
+
+            function updateHeatInputMode() {
+                const mode = document.querySelector('input[name="hi-mode"]:checked').value;
+                const timeInputs = document.querySelectorAll('.hi-time-mode-input');
+                const speedInputs = document.querySelectorAll('.hi-speed-mode-input');
+
+                if (mode === 'time') {
+                    timeInputs.forEach(input => {
+                        input.disabled = false;
+                        input.classList.remove('bg-gray-200');
+                    });
+                    speedInputs.forEach(input => {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-200');
+                    });
+                } else { // mode === 'speed'
+                    timeInputs.forEach(input => {
+                        input.disabled = true;
+                        input.classList.add('bg-gray-200');
+                    });
+                    speedInputs.forEach(input => {
+                        input.disabled = false;
+                        input.classList.remove('bg-gray-200');
+                    });
+                }
+            }
+
+
+            function calculateHeatInput() {
+                const current = parseFloat(document.getElementById('hi-current').value) || 0;
+                const voltage = parseFloat(document.getElementById('hi-voltage').value) || 0;
+                const efficiency = parseFloat(document.getElementById('hi-efficiency').value) || 0;
+                const warningEl = document.getElementById('hi-warning');
+                const mode = document.querySelector('input[name="hi-mode"]:checked').value;
+
+                let speedInMmPerMin = 0;
+
+                if (mode === 'time') {
+                    const lengthValue = parseFloat(document.getElementById('hi-length').value) || 0;
+                    const timeValue = parseFloat(document.getElementById('hi-time').value) || 0;
+                    const lengthUnit = document.getElementById('hi-length-unit').value;
+                    const timeUnit = document.getElementById('hi-time-unit').value;
+
+                    let lengthInMm = lengthValue;
+                    if (lengthUnit === 'cm') lengthInMm = lengthValue * 10;
+                    else if (lengthUnit === 'm') lengthInMm = lengthValue * 1000;
+
+                    let timeInMin = timeValue;
+                    if (timeUnit === 'sec') timeInMin = timeValue / 60;
+                    else if (timeUnit === 'hr') timeInMin = timeValue * 60;
+                    
+                    if (timeInMin > 0) {
+                        speedInMmPerMin = lengthInMm / timeInMin;
+                    }
+                } else { // mode === 'speed'
+                    const speedValue = parseFloat(document.getElementById('hi-speed-direct').value) || 0;
+                    const speedUnit = document.getElementById('hi-speed-direct-unit').value;
+                    if (speedUnit === 'cm/min') {
+                        speedInMmPerMin = speedValue * 10;
+                    } else { // mm/min
+                        speedInMmPerMin = speedValue;
+                    }
+                }
+
+                // Display speed in cm/min for user convenience
+                const speedInCmPerMin = speedInMmPerMin / 10;
+                document.getElementById('hi-speed-display').value = speedInCmPerMin > 0 ? speedInCmPerMin.toFixed(2) : '';
+                
+                // Check for very slow speed and show warning
+                if (speedInCmPerMin > 0 && speedInCmPerMin < 5) {
+                    warningEl.textContent = '注意：焊接速度極慢，可能導致入熱量異常高。';
+                } else {
+                    warningEl.textContent = '';
+                }
+
+                if (speedInMmPerMin <= 0) {
+                    document.getElementById('hi-result-kjcm').textContent = '0.00';
+                    document.getElementById('hi-result-kjmm').textContent = '0.000';
+                    return;
+                }
+
+                // The formula is: HI (kJ/mm) = (V * A * 60 * Efficiency) / (Speed [mm/min] * 1000)
+                const heatInputKjMm = (current * voltage * 60 * efficiency) / (speedInMmPerMin * 1000);
+                const heatInputKjCm = heatInputKjMm * 10;
+
+                document.getElementById('hi-result-kjcm').textContent = heatInputKjCm.toFixed(2);
+                document.getElementById('hi-result-kjmm').textContent = heatInputKjMm.toFixed(3);
+            }
+            
+            // 3. Carbon Equivalent
+            document.querySelectorAll('.ce-input').forEach(input => input.addEventListener('input', calculateCarbonEquivalent));
+            function calculateCarbonEquivalent() {
+                const getVal = id => parseFloat(document.getElementById(id).value) || 0;
+                const C = getVal('ce-c'), Mn = getVal('ce-mn'), Si = getVal('ce-si'), Ni = getVal('ce-ni');
+                const Cr = getVal('ce-cr'), Mo = getVal('ce-mo'), V = getVal('ce-v'), Cu = getVal('ce-cu');
+                const Nb = getVal('ce-nb'), B = getVal('ce-b'), H = getVal('ce-h'), t = getVal('ce-t');
+
+                // IACS CE (AWS)
+                const ce_aws = C + Mn/6 + (Cr+Mo+V)/5 + (Ni+Cu)/15;
+                document.getElementById('ce-result-aws').textContent = ce_aws.toFixed(3);
+                let note_aws = '';
+                if(ce_aws > 0.45) note_aws = '高裂紋敏感性，需預熱';
+                else if(ce_aws > 0.35) note_aws = '中等裂紋敏感性';
+                else note_aws = '焊接性良好';
+                document.getElementById('ce-note-aws').textContent = note_aws;
+
+
+                // JIS G3106 Ceq
+                const ceq_jis = C + Mn/6 + Si/24 + Ni/40 + Cr/5 + Mo/4 + V/14;
+                document.getElementById('ce-result-jis').textContent = ceq_jis.toFixed(3);
+                
+                // Ito-Bessyo (Pcm)
+                const pcm = C + Si/30 + Mn/20 + Cu/20 + Ni/60 + Cr/20 + Mo/15 + V/10 + 5*B;
+                document.getElementById('ce-result-pcm').textContent = pcm.toFixed(3);
+                let note_pcm = '';
+                if(pcm > 0.2) note_pcm = '建議預熱';
+                else note_pcm = '通常不需預熱';
+                 document.getElementById('ce-note-pcm').textContent = note_pcm;
+                
+                // Yurioka (Pw)
+                const pw = pcm + H/60 + t/600;
+                document.getElementById('ce-result-pw').textContent = pw.toFixed(3);
+                let note_pw = '';
+                if (pw > 0.45) note_pw = '預熱溫度可能 > 150°C';
+                else if (pw > 0.35) note_pw = '預熱溫度約 100-150°C';
+                else note_pw = '通常不需預熱';
+                document.getElementById('ce-note-pw').textContent = note_pw;
+            }
+            
+            // 4. Ferrite Number
+            document.querySelectorAll('.fn-input').forEach(input => input.addEventListener('input', calculateFerriteNumber));
+            function calculateFerriteNumber(){
+                const getVal = id => parseFloat(document.getElementById(id).value) || 0;
+                const C = getVal('fn-c'), Si = getVal('fn-si'), Mn = getVal('fn-mn'), Cr = getVal('fn-cr');
+                const Ni = getVal('fn-ni'), Mo = getVal('fn-mo'), Nb = getVal('fn-nb'), N = getVal('fn-n');
+                const Cu = getVal('fn-cu'), Ti = getVal('fn-ti');
+                const GS = getVal('fn-gs');
+                
+                // --- Ferrite Number Calculation ---
+                const crekv = Cr + 1.5 * Si + Mo + 2.0 * Ti + 0.5 * Nb;
+                const niekv = Ni + 0.5 * Mn + 30.0 * N + 30.0 * C + 0.5 * Cu;
+                
+                let fn = 3.34 * crekv - 2.46 * niekv - 28.6; // Calculate with formula (a) first
+                if (fn >= 6.0) {
+                    fn = 4.44 * crekv - 3.39 * niekv - 38.4; // Recalculate with formula (b) if condition met
+                }
+                
+                document.getElementById('fn-result-creq').textContent = crekv.toFixed(2);
+                document.getElementById('fn-result-nieq').textContent = niekv.toFixed(2);
+                document.getElementById('fn-result-fn').textContent = fn.toFixed(2);
+
+                // --- Tmd30 Calculation ---
+                const tmd30 = 551 - (462 * (C + N)) - (9.2 * Si) - (8.1 * Mn) - (13.7 * Cr) - (29 * Ni) - (18.5 * Mo) - (29 * Cu) - (68 * Nb) - (1.42 * (GS - 8.0));
+                document.getElementById('fn-result-tmd30').textContent = `${tmd30.toFixed(1)} °C`;
+            }
+
+            // 5. PREN
+            document.querySelectorAll('.pren-input').forEach(input => input.addEventListener('input', calculatePREN));
+            function calculatePREN() {
+                const cr = parseFloat(document.getElementById('pren-cr').value) || 0;
+                const mo = parseFloat(document.getElementById('pren-mo').value) || 0;
+                const n = parseFloat(document.getElementById('pren-n').value) || 0;
+                const pren = cr + 3.3 * mo + 16 * n;
+                document.getElementById('pren-result').textContent = pren.toFixed(2);
+                let note = '';
+                if (pren >= 40) note = '超級雙相不銹鋼等級';
+                else if (pren >= 32) note = '雙相不銹鋼等級';
+                else note = '奧氏體不銹鋼等級';
+                document.getElementById('pren-note').textContent = note;
+            }
+            
+            // 6. Sensitization
+            document.querySelectorAll('.sen-input').forEach(input => input.addEventListener('input', calculateSensitization));
+            function calculateSensitization() {
+                const nb = parseFloat(document.getElementById('sen-nb').value) || 0;
+                const ti = parseFloat(document.getElementById('sen-ti').value) || 0;
+                const c = parseFloat(document.getElementById('sen-c').value) || 0;
+                const n = parseFloat(document.getElementById('sen-n').value) || 0;
+                const denominator = c + n;
+                if (denominator === 0) {
+                    document.getElementById('sen-result').textContent = 'N/A';
+                    document.getElementById('sen-note').textContent = 'C+N 不能為 0';
+                    return;
+                }
+                const result = (nb + ti) / denominator;
+                document.getElementById('sen-result').textContent = result.toFixed(2);
+                const note = result >= 8 ? '合格 (具抗銳敏化能力)' : '不合格';
+                document.getElementById('sen-note').textContent = note;
+                document.getElementById('sen-note').style.color = result >= 8 ? 'green' : 'red';
+            }
+
+            // 7. Current Density
+            document.querySelectorAll('.cd-input').forEach(input => input.addEventListener('input', calculateCurrentDensity));
+            function calculateCurrentDensity() {
+                const diameter = parseFloat(document.getElementById('cd-diameter').value) || 0;
+                const current = parseFloat(document.getElementById('cd-current').value) || 0;
+                if (diameter === 0) {
+                    document.getElementById('cd-result').textContent = '0.00 A/mm²';
+                    return;
+                }
+                const area = Math.PI * Math.pow(diameter / 2, 2);
+                const density = current / area;
+                document.getElementById('cd-result').textContent = `${density.toFixed(2)} A/mm²`;
+            }
+            
+            // 8. Fillet Weld
+            document.querySelectorAll('.wf-input').forEach(input => input.addEventListener('input', calculateFilletWeld));
+            function calculateFilletWeld() {
+                const l1 = parseFloat(document.getElementById('wf-leg1').value) || 0;
+                const l2 = parseFloat(document.getElementById('wf-leg2').value) || 0;
+                const len = parseFloat(document.getElementById('wf-length').value) || 0;
+                const density = parseFloat(document.getElementById('wf-density').value) || 0;
+                const efficiency = (parseFloat(document.getElementById('wf-efficiency').value) || 100) / 100;
+                const reinforcement = (parseFloat(document.getElementById('wf-reinforcement').value) || 0) / 100;
+
+                if (efficiency === 0) return;
+                
+                const area_mm2 = (l1 * l2) / 2;
+                const volume_cm3 = (area_mm2 / 100) * (len * 100);
+                const weight_g = volume_cm3 * density * (1 + reinforcement);
+                const required_kg = (weight_g / 1000) / efficiency;
+                document.getElementById('wf-result').textContent = `${required_kg.toFixed(2)} KG`;
+            }
+
+            // 9. Butt Weld
+            document.querySelectorAll('.wb-input').forEach(input => input.addEventListener('input', calculateButtWeld));
+            function calculateButtWeld() {
+                const t = parseFloat(document.getElementById('wb-thickness').value) || 0;
+                const angle = parseFloat(document.getElementById('wb-angle').value) || 0;
+                const gap = parseFloat(document.getElementById('wb-gap').value) || 0;
+                const len = parseFloat(document.getElementById('wb-length').value) || 0;
+                const density = parseFloat(document.getElementById('wb-density').value) || 0;
+                const efficiency = (parseFloat(document.getElementById('wb-efficiency').value) || 100) / 100;
+                const reinforcement_percent = (parseFloat(document.getElementById('wb-reinforcement').value) || 0) / 100;
+
+                if (efficiency === 0) return;
+
+                const angle_rad = (angle * Math.PI) / 180;
+                const area_mm2 = (t * gap) + (t * t * Math.tan(angle_rad / 2));
+                const volume_cm3 = (area_mm2 / 100) * (len * 100);
+                const weight_g = volume_cm3 * density * (1 + reinforcement_percent);
+                const required_kg = (weight_g / 1000) / efficiency;
+                 document.getElementById('wb-result').textContent = `${required_kg.toFixed(2)} KG`;
+            }
+
+            // 10. Gas Cylinder Weight
+            document.querySelectorAll('.gc-input, .gc-input-mw, .gc-input-percent').forEach(el => el.addEventListener('input', calculateGasCylinderWeight));
+            document.getElementById('add-gas').addEventListener('click', () => {
+                const container = document.getElementById('gas-mix-container');
+                const newGasRow = document.createElement('div');
+                newGasRow.className = 'flex items-center space-x-2 relative';
+                newGasRow.innerHTML = `
+                    <input type="text" placeholder="氣體名稱 (選填)" class="gc-input-name w-1/3 p-2 border rounded-md">
+                    <input type="number" placeholder="分子量" class="gc-input-mw w-1/3 p-2 border rounded-md">
+                    <input type="number" placeholder="體積 %" class="gc-input-percent w-1/3 p-2 border rounded-md">
+                    <button class="remove-gas text-red-500 hover:text-red-700 absolute -right-6 top-1/2 -translate-y-1/2">&times;</button>
+                `;
+                container.appendChild(newGasRow);
+                newGasRow.querySelector('.remove-gas').addEventListener('click', (e) => {
+                    e.target.parentElement.remove();
+                    calculateGasCylinderWeight();
+                });
+                newGasRow.querySelectorAll('.gc-input-mw, .gc-input-percent').forEach(el => el.addEventListener('input', calculateGasCylinderWeight));
+            });
+
+            function calculateGasCylinderWeight(){
+                const volume = parseFloat(document.getElementById('gc-volume').value) || 0;
+                const pressure_kgcm2 = parseFloat(document.getElementById('gc-pressure').value) || 0;
+                const P0_kgcm2 = 1.033228; // 1 atm in kg/cm2
+                const MOLAR_VOLUME = 24.5; // L/mol at 25 C, 1 atm
+
+                const mw_inputs = document.querySelectorAll('.gc-input-mw');
+                const percent_inputs = document.querySelectorAll('.gc-input-percent');
+                
+                let total_percent = 0;
+                let avg_mw = 0;
+                for (let i = 0; i < mw_inputs.length; i++) {
+                    const mw = parseFloat(mw_inputs[i].value) || 0;
+                    const percent = parseFloat(percent_inputs[i].value) || 0;
+                    if(mw > 0 && percent > 0) {
+                        total_percent += percent;
+                        avg_mw += mw * (percent / 100);
+                    }
+                }
+                
+                // Normalize percentages if they don't add up to 100
+                if (total_percent > 0 && total_percent !== 100) {
+                    avg_mw = 0; // Recalculate
+                     for (let i = 0; i < mw_inputs.length; i++) {
+                        const mw = parseFloat(mw_inputs[i].value) || 0;
+                        const percent = parseFloat(percent_inputs[i].value) || 0;
+                        if(mw > 0 && percent > 0) {
+                           avg_mw += mw * (percent / total_percent);
+                        }
+                    }
+                }
+                
+                if (volume === 0 || pressure_kgcm2 === 0 || avg_mw === 0) {
+                     document.getElementById('gc-result').textContent = `0.00 KG`;
+                     return;
+                }
+
+                const V1 = (pressure_kgcm2 * volume) / P0_kgcm2;
+                const moles = V1 / MOLAR_VOLUME;
+                const weight_g = moles * avg_mw;
+                const weight_kg = weight_g / 1000;
+                document.getElementById('gc-result').textContent = `${weight_kg.toFixed(2)} KG`;
+            }
+
+            // 11. Welder Power
+            document.querySelectorAll('.wp-input').forEach(input => input.addEventListener('input', calculateWelderPower));
+            function calculateWelderPower() {
+                const current = parseFloat(document.getElementById('wp-current').value) || 0;
+                const voltage = parseFloat(document.getElementById('wp-voltage').value) || 0;
+                const efficiency = (parseFloat(document.getElementById('wp-efficiency').value) || 100) / 100;
+                const dutycycle = (parseFloat(document.getElementById('wp-dutycycle').value) || 0) / 100;
+                if (efficiency === 0) return;
+                
+                const power_w = (current * voltage) / efficiency;
+                const kwh = (power_w * dutycycle) / 1000;
+                document.getElementById('wp-result').textContent = `${kwh.toFixed(2)} 度`;
+            }
+
+            // 12. Unit Conversion
+            document.querySelectorAll('.uc-tensile').forEach(input => input.addEventListener('input', handleTensileConversion));
+            document.querySelectorAll('.uc-temp').forEach(input => input.addEventListener('input', handleTempConversion));
+            document.querySelectorAll('.uc-impact').forEach(input => input.addEventListener('input', handleImpactConversion));
+            document.querySelectorAll('.uc-wfs').forEach(input => input.addEventListener('input', handleWfsConversion));
+            document.querySelectorAll('.uc-gfr').forEach(input => input.addEventListener('input', handleGfrConversion));
+
+
+            function handleTensileConversion(e) {
+                const sourceUnit = e.target.dataset.unit;
+                const sourceValue = parseFloat(e.target.value) || 0;
+                if (isNaN(sourceValue)) return;
+                
+                let mpaValue;
+                const KG_TO_MPA = 9.80665;
+                const PSI_TO_MPA = 0.00689476;
+
+                if (sourceUnit === 'mpa') mpaValue = sourceValue;
+                else if (sourceUnit === 'kgf') mpaValue = sourceValue * KG_TO_MPA;
+                else if (sourceUnit === 'psi') mpaValue = sourceValue * PSI_TO_MPA;
+                
+                document.querySelectorAll('.uc-tensile').forEach(input => {
+                    if (input.dataset.unit === sourceUnit) return;
+                    let result;
+                    if (input.dataset.unit === 'mpa') result = mpaValue;
+                    else if (input.dataset.unit === 'kgf') result = mpaValue / KG_TO_MPA;
+                    else if (input.dataset.unit === 'psi') result = mpaValue / PSI_TO_MPA;
+                    input.value = result.toFixed(2);
+                });
+            }
+            
+            function handleTempConversion(e) {
+                const sourceUnit = e.target.dataset.unit;
+                const sourceValue = parseFloat(e.target.value);
+                 if (isNaN(sourceValue)) return;
+
+                if (sourceUnit === 'c') {
+                    const f = sourceValue * 9/5 + 32;
+                    document.getElementById('uc-fahrenheit').value = f.toFixed(1);
+                } else if (sourceUnit === 'f') {
+                    const c = (sourceValue - 32) * 5/9;
+                    document.getElementById('uc-celsius').value = c.toFixed(1);
+                }
+            }
+            
+            function handleImpactConversion(e) {
+                const sourceUnit = e.target.dataset.unit;
+                const sourceValue = parseFloat(e.target.value);
+                if (isNaN(sourceValue)) return;
+
+                const KGM_TO_J = 9.80665;
+                const LBFFT_TO_J = 1.35582;
+                
+                let jouleValue;
+                if (sourceUnit === 'j') {
+                    jouleValue = sourceValue;
+                } else if (sourceUnit === 'kgm') {
+                    jouleValue = sourceValue * KGM_TO_J;
+                } else if (sourceUnit === 'lbfft') {
+                    jouleValue = sourceValue * LBFFT_TO_J;
+                }
+
+                document.querySelectorAll('.uc-impact').forEach(input => {
+                    if (input.dataset.unit === sourceUnit) return;
+                    let result;
+                    if (input.dataset.unit === 'j') {
+                        result = jouleValue;
+                    } else if (input.dataset.unit === 'kgm') {
+                        result = jouleValue / KGM_TO_J;
+                    } else if (input.dataset.unit === 'lbfft') {
+                        result = jouleValue / LBFFT_TO_J;
+                    }
+                    input.value = result.toFixed(3);
+                });
+            }
+
+            function handleWfsConversion(e) {
+                const sourceUnit = e.target.dataset.unit;
+                const sourceValue = parseFloat(e.target.value);
+                 if (isNaN(sourceValue)) return;
+
+                const MPM_TO_IPM = 39.3701;
+                if (sourceUnit === 'mpm') {
+                    const ipm = sourceValue * MPM_TO_IPM;
+                    document.getElementById('uc-ipm').value = ipm.toFixed(2);
+                } else if (sourceUnit === 'ipm') {
+                    const mpm = sourceValue / MPM_TO_IPM;
+                    document.getElementById('uc-mpm').value = mpm.toFixed(2);
+                }
+            }
+            
+            function handleGfrConversion(e) {
+                const sourceUnit = e.target.dataset.unit;
+                const sourceValue = parseFloat(e.target.value);
+                if (isNaN(sourceValue)) return;
+
+                const LPM_TO_CFH = 2.11888;
+                if (sourceUnit === 'lpm') {
+                    const cfh = sourceValue * LPM_TO_CFH;
+                    document.getElementById('uc-cfh').value = cfh.toFixed(2);
+                } else if (sourceUnit === 'cfh') {
+                    const lpm = sourceValue / LPM_TO_CFH;
+                    document.getElementById('uc-lpm').value = lpm.toFixed(2);
+                }
+            }
+
+            // --- Density Select Logic ---
+            const densitySelects = document.querySelectorAll('.density-select');
+            const densityInputs = document.querySelectorAll('.density-input');
+
+            densitySelects.forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const selectedValue = e.target.value;
+                    const inputId = e.target.dataset.inputId;
+                    const targetInput = document.getElementById(inputId);
+
+                    if (selectedValue !== 'custom' && targetInput) {
+                        targetInput.value = selectedValue;
+                        // Trigger input event to recalculate
+                        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            });
+
+            densityInputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const inputValue = e.target.value;
+                    const associatedSelect = document.querySelector(`.density-select[data-input-id="${e.target.id}"]`);
+                    
+                    if (associatedSelect) {
+                        let matchFound = false;
+                        for (const option of associatedSelect.options) {
+                            if (option.value !== 'custom' && parseFloat(option.value).toPrecision(3) === parseFloat(inputValue).toPrecision(3)) {
+                                associatedSelect.value = option.value;
+                                matchFound = true;
+                                break;
+                            }
+                        }
+                        if (!matchFound) {
+                            associatedSelect.value = 'custom';
+                        }
+                    }
+                });
+            });
+
+            // --- Efficiency Select Logic ---
+            const efficiencySelects = document.querySelectorAll('.efficiency-select');
+            const efficiencyInputs = document.querySelectorAll('.efficiency-input');
+
+            efficiencySelects.forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const selectedValue = e.target.value;
+                    const inputId = e.target.dataset.inputId;
+                    const targetInput = document.getElementById(inputId);
+
+                    if (selectedValue !== 'custom' && targetInput) {
+                        targetInput.value = selectedValue;
+                        // Trigger input event to recalculate
+                        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            });
+
+            efficiencyInputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const inputValue = e.target.value;
+                    const associatedSelect = document.querySelector(`.efficiency-select[data-input-id="${e.target.id}"]`);
+                    
+                    if (associatedSelect) {
+                        let matchFound = false;
+                        for (const option of associatedSelect.options) {
+                            if (option.value !== 'custom' && parseFloat(option.value) == parseFloat(inputValue)) {
+                                associatedSelect.value = option.value;
+                                matchFound = true;
+                                break;
+                            }
+                        }
+                        if (!matchFound) {
+                            associatedSelect.value = 'custom';
+                        }
+                    }
+                });
+            });
+
+
+            // Initial calculations on load
+            calculateSteelPlateWeight();
+            updateHeatInputMode();
+            calculateHeatInput();
+            calculateCarbonEquivalent();
+            calculateFerriteNumber();
+            calculatePREN();
+            calculateSensitization();
+            calculateCurrentDensity();
+            calculateFilletWeld();
+            calculateButtWeld();
+            calculateGasCylinderWeight();
+            calculateWelderPower();
+
+        });
+    </script>
+</body>
+</html>

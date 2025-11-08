@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPS & PQR 管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .modal-content {
+            max-height: 80vh;
+        }
+        /* Helper class for preview layout */
+        .break-inside-avoid {
+            break-inside: avoid;
+        }
+        .tab-active {
+            border-color: #3b82f6; /* blue-500 */
+            color: #2563eb; /* blue-600 */
+        }
+        .tab-inactive {
+            border-color: transparent;
+            color: #6b7280; /* gray-500 */
+        }
+        .tab-inactive:hover {
+            border-color: #d1d5db; /* gray-300 */
+            color: #4b5563; /* gray-700 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="app" class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-6 relative">
+            <div class="text-center">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-700">WPS & PQR 銲接程序與檢定管理系統</h1>
+                <p class="text-gray-500 mt-2">集中管理、輕鬆查詢並列印您的WPS與PQR文件</p>
+            </div>
+        </header>
+        
+        <!-- Tabs -->
+        <div class="mb-6">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="tab-wps" onclick="showTab('wps')" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm tab-active">
+                        WPS 管理
+                    </button>
+                    <button id="tab-pqr" onclick="showTab('pqr')" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm tab-inactive">
+                        PQR 管理
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main controls -->
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="relative w-full sm:w-1/2 lg:w-1/3">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
+                </svg>
+                <input type="text" id="searchInput" onkeyup="filterActiveList()" placeholder="依WPS編號、銲接方式或母材搜尋..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button onclick="openModalForActiveTab()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center justify-center transition-transform transform hover:scale-105">
+                <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                </svg>
+                <span id="addButtonText">新增 WPS</span>
+            </button>
+        </div>
+
+        <!-- WPS Content -->
+        <div id="wps-content">
+            <div id="wpsGroupedList" class="space-y-8">
+                <!-- WPS tables will be inserted here by JavaScript -->
+            </div>
+            <p id="noWpsResults" class="text-center text-gray-500 mt-8 hidden">找不到符合條件的WPS文件。</p>
+        </div>
+        
+        <!-- PQR Content -->
+        <div id="pqr-content" class="hidden">
+            <div id="pqrGroupedList" class="space-y-8">
+                <!-- PQR tables will be inserted here by JavaScript -->
+            </div>
+            <p id="noPqrResults" class="text-center text-gray-500 mt-8 hidden">找不到符合條件的PQR文件。</p>
+        </div>
+    </div>
+
+    <!-- Modal for Add/Edit/View -->
+    <div id="itemModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl transform transition-all scale-95 opacity-0" id="modal-container">
+            <!-- Form Section -->
+            <div id="form-section">
+                <div class="px-8 pt-6 pb-4 border-b border-gray-200 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">新增項目</h2>
+                        <p class="text-gray-500">廣泰金屬工業股份有限公司</p>
+                    </div>
+                     <div class="no-print">
+                        <button onclick="closeItemModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-8 overflow-y-auto modal-content">
+                    <form id="itemForm" class="space-y-6">
+                        <input type="hidden" id="itemId">
+                        
+                        <!-- All form sections go here... -->
+                        <!-- 程序書資訊 -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 border-b pb-6">
+                            <div>
+                                <label for="itemNo" class="block text-sm font-medium text-gray-700" id="itemNoLabel">WPS 編號</label>
+                                <input type="text" id="itemNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div id="wpsNoFieldContainer" class="hidden">
+                                <label for="wpsNo" class="block text-sm font-medium text-gray-700">對應 WPS 編號</label>
+                                <select id="wpsNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></select>
+                            </div>
+                            <div>
+                                <label for="revisionDate" class="block text-sm font-medium text-gray-700" id="revisionDateLabel">制定日期 (Date)</label>
+                                <input type="date" id="revisionDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div id="revisionFieldContainer">
+                                <label for="revision" class="block text-sm font-medium text-gray-700">版次 (Revision)</label>
+                                <input type="text" id="revision" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="author" class="block text-sm font-medium text-gray-700">制定者 (By)</label>
+                                <input type="text" id="author" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="approver" class="block text-sm font-medium text-gray-700">核准者 (Authorized by)</label>
+                                <input type="text" id="approver" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- 母材資訊 -->
+                        <div class="border-b pb-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">母材 (Base Metal)</h3>
+                            <div class="space-y-4">
+                                <p class="text-md font-medium text-gray-600">母材 1</p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label for="baseMetalSpec1" class="block text-sm font-medium text-gray-700">材料規格</label>
+                                        <select id="baseMetalSpec1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                    </div>
+                                    <div>
+                                        <label for="baseMetalType1" class="block text-sm font-medium text-gray-700">等級/種類</label>
+                                        <select id="baseMetalType1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                    </div>
+                                    <div>
+                                        <label for="baseMetalThickness1" class="block text-sm font-medium text-gray-700">厚度 (mm)</label>
+                                        <input type="text" id="baseMetalThickness1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                </div>
+                                <p class="text-md font-medium text-gray-600 pt-2">母材 2 (可選)</p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label for="baseMetalSpec2" class="block text-sm font-medium text-gray-700">材料規格</label>
+                                        <select id="baseMetalSpec2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                    </div>
+                                    <div>
+                                        <label for="baseMetalType2" class="block text-sm font-medium text-gray-700">等級/種類</label>
+                                        <select id="baseMetalType2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                    </div>
+                                    <div>
+                                        <label for="baseMetalThickness2" class="block text-sm font-medium text-gray-700">厚度 (mm)</label>
+                                        <input type="text" id="baseMetalThickness2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 接頭設計 -->
+                        <div class="border-b pb-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">接頭設計 (Joint Design Used)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                                <div>
+                                    <label for="jointDesignType" class="block text-sm font-medium text-gray-700">接頭型式</label>
+                                    <select id="jointDesignType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="weldPassType" class="block text-sm font-medium text-gray-700">銲道型式</label>
+                                    <select id="weldPassType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="backing" class="block text-sm font-medium text-gray-700">背襯</label>
+                                    <select id="backing" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div class="col-span-1 md:col-span-2">
+                                    <label for="backingMaterial" class="block text-sm font-medium text-gray-700">背襯材料</label>
+                                    <select id="backingMaterial" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-6">
+                                <div>
+                                    <label for="rootOpening" class="block text-sm font-medium text-gray-700">根部間隙</label>
+                                    <input type="text" id="rootOpening" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="rootFaceDimension" class="block text-sm font-medium text-gray-700">根面尺寸</label>
+                                    <input type="text" id="rootFaceDimension" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="grooveAngle" class="block text-sm font-medium text-gray-700">開槽角度</label>
+                                    <input type="text" id="grooveAngle" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="radius" class="block text-sm font-medium text-gray-700">半徑 (J-U)</label>
+                                    <input type="text" id="radius" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                 <div>
+                                    <label for="backGouging" class="block text-sm font-medium text-gray-700">背鏟</label>
+                                    <select id="backGouging" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                 <div class="col-span-1 md:col-span-2">
+                                    <label for="backGougingMethod" class="block text-sm font-medium text-gray-700">背鏟方法</label>
+                                    <input type="text" id="backGougingMethod" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 銲接材料 -->
+                         <div class="border-b pb-6">
+                             <h3 class="text-lg font-semibold text-gray-700 mb-4">銲接材料 (Filler Metal)</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div>
+                                    <label for="fillerMetalSpec" class="block text-sm font-medium text-gray-700">規格 (Specification)</label>
+                                    <select id="fillerMetalSpec" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="fillerMetalClass" class="block text-sm font-medium text-gray-700">等級 (Classification)</label>
+                                    <select id="fillerMetalClass" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="fillerMetalBrandName" class="block text-sm font-medium text-gray-700">品名 (Brand name)</label>
+                                    <select id="fillerMetalBrandName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                 <div>
+                                    <label for="fillerMetalSize" class="block text-sm font-medium text-gray-700">尺寸 (Size)</label>
+                                    <select id="fillerMetalSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 銲接資訊 -->
+                        <div class="border-b pb-6">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">銲接資訊</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div>
+                                    <label for="weldingProcess" class="block text-sm font-medium text-gray-700">銲接方式</label>
+                                    <select id="weldingProcess" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="applicableStandard" class="block text-sm font-medium text-gray-700">適用標準</label>
+                                    <select id="applicableStandard" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="wireDiameter" class="block text-sm font-medium text-gray-700">線徑</label>
+                                    <select id="wireDiameter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="weldingType" class="block text-sm font-medium text-gray-700">銲接型式</label>
+                                    <select id="weldingType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+
+                            <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t" id="positionSectionTitle">銲接姿勢 (Position)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
+                                <div>
+                                    <label for="position" class="block text-sm font-medium text-gray-700">姿勢</label>
+                                    <select id="position" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div id="weldingEquipmentContainer" class="hidden">
+                                    <label for="weldingEquipment" class="block text-sm font-medium text-gray-700">銲接設備</label>
+                                    <input type="text" id="weldingEquipment" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                            </div>
+
+                            <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t">電流特性 (Electrical Characteristic)</p>
+                             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
+                                <div>
+                                    <label for="electricalCharacteristic" class="block text-sm font-medium text-gray-700">電流型式</label>
+                                    <select id="electricalCharacteristic" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="transferMode" class="block text-sm font-medium text-gray-700">熔滴轉移型式</label>
+                                    <select id="transferMode" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+                            
+                            <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t">銲接技術 (Technique)</p>
+                             <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mt-4">
+                                 <div>
+                                    <label for="technique" class="block text-sm font-medium text-gray-700">擺弧/直線</label>
+                                    <select id="technique" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="passType" class="block text-sm font-medium text-gray-700">單道/多道銲</label>
+                                    <select id="passType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                 <div>
+                                    <label for="numElectrodes" class="block text-sm font-medium text-gray-700">電極數</label>
+                                    <input type="text" id="numElectrodes" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="electrodeSpacing" class="block text-sm font-medium text-gray-700">電極間距</label>
+                                    <input type="text" id="electrodeSpacing" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                 <div>
+                                    <label for="ctwd" class="block text-sm font-medium text-gray-700">銲嘴間距</label>
+                                    <input type="text" id="ctwd" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                 <div>
+                                    <label for="peening" class="block text-sm font-medium text-gray-700">敲擊</label>
+                                    <select id="peening" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div class="col-span-full">
+                                    <label for="interpassCleaning" class="block text-sm font-medium text-gray-700">銲層清理</label>
+                                    <select id="interpassCleaning" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+
+                             <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t">遮護材料 (Shielding)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
+                                <div>
+                                    <label for="shieldingGas" class="block text-sm font-medium text-gray-700">氣體 (Gas)</label>
+                                    <select id="shieldingGas" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="shieldingComposition" class="block text-sm font-medium text-gray-700">組成 (Composition)</label>
+                                    <select id="shieldingComposition" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="shieldingFlowRate" class="block text-sm font-medium text-gray-700">流量 (Flow rate)</label>
+                                    <select id="shieldingFlowRate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="shieldingCupSize" class="block text-sm font-medium text-gray-700">氣罩尺寸 (Gas cup size)</label>
+                                    <select id="shieldingCupSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <label for="shieldingFluxName" class="block text-sm font-medium text-gray-700">銲劑品名 (Flux name)</label>
+                                    <select id="shieldingFluxName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="shieldingWireFluxClass" class="block text-sm font-medium text-gray-700">銲線銲粉搭配 (Class)</label>
+                                    <select id="shieldingWireFluxClass" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                            </div>
+                            
+                            <div id="temperatureControlSection">
+                                <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t">溫度控制 (Temperature)</p>
+                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                                    <div>
+                                        <label for="preheatTempMin" class="block text-sm font-medium text-gray-700">預熱溫度 最低 (°C)</label>
+                                        <input type="text" id="preheatTempMin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label for="interpassTempMin" class="block text-sm font-medium text-gray-700">層間溫度 最低 (°C)</label>
+                                        <input type="text" id="interpassTempMin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label for="interpassTempMax" class="block text-sm font-medium text-gray-700">層間溫度 最高 (°C)</label>
+                                        <input type="text" id="interpassTempMax" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                </div>
+
+                                 <p class="text-md font-medium text-gray-600 pt-4 mt-4 border-t">後熱處理 (Postweld Heat Treatment)</p>
+                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                    <div>
+                                        <label for="postweldTemp" class="block text-sm font-medium text-gray-700">溫度 (°C)</label>
+                                        <input type="text" id="postweldTemp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label for="postweldTime" class="block text-sm font-medium text-gray-700">時間 (hr)</label>
+                                        <input type="text" id="postweldTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 銲接程序/記錄 -->
+                        <div class="border-b pb-6">
+                            <h3 id="procedureSectionTitle" class="text-lg font-semibold text-gray-700 mb-4">銲接程序 (Welding Procedure)</h3>
+                            <div id="wpsProcedureHeader" class="hidden grid grid-cols-12 gap-x-2 gap-y-2 items-center mb-2">
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">道/層</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">極性</label></div>
+                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">等級</label></div>
+                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">尺寸</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">安培(A)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">電壓 (V)</label></div>
+                                <div class="col-span-3"><label class="block text-xs font-medium text-gray-600">移行速度 (cpm)</label></div>
+                                <div class="col-span-1"></div>
+                            </div>
+                            <div id="pqrProcedureHeader" class="hidden grid grid-cols-12 gap-x-2 gap-y-2 items-center mb-2">
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">道/層</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">安培(A)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">電壓(V)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">銲道長度</label></div>
+                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">移行速度</label></div>
+                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">銲接時間</label></div>
+                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">入熱量</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">層間溫度</label></div>
+                                <div class="col-span-1"></div>
+                            </div>
+                            <div id="weldingProcedureRows" class="space-y-2">
+                                <!-- Dynamic rows will be inserted here -->
+                            </div>
+                            <button type="button" onclick="addProcedureRow()" class="mt-4 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg">
+                                + 新增道次
+                            </button>
+                        </div>
+                        
+                        <!-- WPS-specific Notes & Drawing -->
+                        <div id="wpsExtraSection">
+                            <h3 class="text-lg font-semibold text-gray-700 mb-4">備註 & 圖面</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label for="notes" class="block text-sm font-medium text-gray-700">備註事項 (Note)</label>
+                                    <textarea id="notes" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">接頭設計圖面</label>
+                                    <div class="mt-1">
+                                        <input type="file" id="drawingUpload" class="hidden" accept="image/*">
+                                        <button type="button" onclick="document.getElementById('drawingUpload').click()" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                            選擇圖片
+                                        </button>
+                                    </div>
+                                    <div id="drawingPreviewContainer" class="mt-4 hidden">
+                                        <img id="drawingPreview" class="max-w-full h-auto rounded-md border">
+                                        <button type="button" id="removeDrawingBtn" class="mt-2 text-sm text-red-600 hover:text-red-800">移除圖片</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PQR-specific Sketch & Notes -->
+                        <div id="pqrExtraSection" class="hidden space-y-6">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-700 mb-4">銲接示意圖</h3>
+                                <div class="mt-1">
+                                    <input type="file" id="pqrSketchUpload" class="hidden" accept="image/*">
+                                    <button type="button" onclick="document.getElementById('pqrSketchUpload').click()" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        選擇圖片
+                                    </button>
+                                </div>
+                                <div id="pqrSketchPreviewContainer" class="mt-4 hidden">
+                                    <img id="pqrSketchPreview" class="max-w-full h-auto rounded-md border">
+                                    <button type="button" id="removePqrSketchBtn" class="mt-2 text-sm text-red-600 hover:text-red-800">移除圖片</button>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-700 mb-4">備註事項</h3>
+                                <textarea id="pqrNotes" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="請輸入此 PQR 的特定備註..."></textarea>
+                            </div>
+                            <!-- Test Results Section -->
+                            <div class="border-t pt-6">
+                                <div class="flex items-center space-x-3 mb-4">
+                                    <input type="checkbox" id="showTestResults" onchange="toggleTestResults()" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <label for="showTestResults" class="text-lg font-semibold text-gray-700">試驗結果 (Test Results)</label>
+                                </div>
+                            
+                                <div id="testResultsContainer" class="hidden space-y-6">
+                                    <!-- All Weld Metal Tensile Test -->
+                                    <div class="border-b pb-4">
+                                        <h4 class="text-md font-medium text-gray-600 mb-2">全銲道拉伸試驗 (All Weld Metal Tensile)</h4>
+                                        <div id="allWeldTensileTestRows" class="space-y-3">
+                                            <!-- Dynamic rows here -->
+                                        </div>
+                                        <button type="button" onclick="addAllWeldTensileRow()" class="mt-3 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded-lg">
+                                            + 新增全銲道試片
+                                        </button>
+                                    </div>
+
+                                    <!-- Transverse Tensile Test -->
+                                    <div class="border-b pb-4">
+                                        <h4 class="text-md font-medium text-gray-600 mb-2">拉力片拉伸試驗 (Transverse Tensile Test)</h4>
+                                        <div id="transverseTensileTestRows" class="space-y-3">
+                                            <!-- Dynamic rows here -->
+                                        </div>
+                                        <button type="button" onclick="addTransverseTensileRow()" class="mt-3 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded-lg">
+                                            + 新增拉力片試片
+                                        </button>
+                                    </div>
+                            
+                                    <!-- Impact Test -->
+                                    <div class="border-b pb-4">
+                                        <h4 class="text-md font-medium text-gray-600 mb-2">衝擊性能 (Impact Test)</h4>
+                                        <div id="impactTestRows" class="space-y-3">
+                                            <!-- Dynamic rows here -->
+                                        </div>
+                                        <button type="button" onclick="addImpactRow()" class="mt-3 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded-lg">
+                                            + 新增衝擊試片
+                                        </button>
+                                    </div>
+                            
+                                    <!-- Bend Test -->
+                                    <div class="border-b pb-4">
+                                        <h4 class="text-md font-medium text-gray-600 mb-2">彎曲試驗 (Bend Test)</h4>
+                                         <div id="bendTestRows" class="space-y-3">
+                                            <!-- Dynamic rows here -->
+                                        </div>
+                                        <button type="button" onclick="addBendRow()" class="mt-3 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-1 px-3 rounded-lg">
+                                            + 新增彎曲試片
+                                        </button>
+                                    </div>
+                            
+                                    <!-- NDE Test -->
+                                    <div>
+                                        <h4 class="text-md font-medium text-gray-600 mb-2">非破壞檢驗 (Nondestructive Examination)</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label for="ndeMethod" class="block text-sm font-medium text-gray-700">檢驗方法 (Method)</label>
+                                                <input type="text" id="ndeMethod" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            </div>
+                                             <div>
+                                                <label for="ndeResults" class="block text-sm font-medium text-gray-700">結果 (Results)</label>
+                                                <input type="text" id="ndeResults" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            </div>
+                                            <div>
+                                                <label for="ndeReportNo" class="block text-sm font-medium text-gray-700">報告編號 (Report No.)</label>
+                                                <input type="text" id="ndeReportNo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                                            </div>
+                                             <div>
+                                                <label for="ndeReportFile" class="block text-sm font-medium text-gray-700">報告檔案 (Report File)</label>
+                                                <input type="file" id="ndeReportFile" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                                <span id="ndeReportFile-name" class="text-xs text-gray-500"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Report Preview Section -->
+            <div id="report-preview-section" class="hidden">
+                 <div class="px-8 pt-6 pb-4 border-b border-gray-200 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800" id="previewModalTitle">報表預覽</h2>
+                        <p class="text-gray-500">廣泰金屬工業股份有限公司</p>
+                    </div>
+                     <div class="no-print">
+                        <button onclick="closeItemModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="preview-content" class="p-8 overflow-y-auto modal-content">
+                    <!-- Preview content will be dynamically generated here -->
+                </div>
+            </div>
+
+            <!-- Modal Buttons -->
+            <div id="form-buttons" class="px-8 py-4 bg-gray-50 rounded-b-2xl flex flex-col sm:flex-row justify-end items-center gap-3 no-print">
+                <button type="button" onclick="openSettingsModal()" class="mr-auto text-gray-500 hover:text-blue-600 p-2 rounded-full transition-colors" title="設定預設選項">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+                <button onclick="previewReport()" id="previewPdfBtn" class="w-full sm:w-auto border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-2 px-6 rounded-full flex items-center justify-center">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                       <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                       <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                    </svg>
+                    <span>預覽報表</span>
+                </button>
+                <button id="deleteButton" onclick="deleteItem()" class="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full">刪除</button>
+                <button onclick="saveItem()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full">儲存</button>
+            </div>
+            <div id="preview-buttons" class="px-8 py-4 bg-gray-50 rounded-b-2xl hidden flex-col sm:flex-row justify-end items-center gap-3 no-print">
+                <button onclick="backToEdit()" class="w-full sm:w-auto border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-2 px-6 rounded-full">返回編輯</button>
+                <button onclick="printReport()" id="printReportBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M5 2a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H5zm0 2h10v12H5V4z" clip-rule="evenodd" />
+                      <path d="M8 9a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M8 12a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    </svg>
+                    <span>開啟列印報表</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4 z-[60]">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl transform transition-all scale-95 opacity-0">
+            <div class="px-8 pt-6 pb-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-gray-800">預設選項設定</h2>
+                <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="h-7 w-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="settings-content" class="p-8 overflow-y-auto modal-content grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <!-- Settings content will be dynamically generated here -->
+            </div>
+            <div class="px-8 py-4 bg-gray-50 rounded-b-2xl flex justify-end">
+                <button onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full">儲存設定</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyA12XH2okeXVEgdztM_oKBXHbVWeYp0EGs",
+          authDomain: "weldwps-93ec4.firebaseapp.com",
+          projectId: "weldwps-93ec4",
+          storageBucket: "weldwps-93ec4.appspot.com",
+          messagingSenderId: "734060477729",
+          appId: "1:734060477729:web:b3cb8e6d0afa08e0cd9260",
+          measurementId: "G-KTFKQQ3PJL"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Global variables
+        let activeTab = 'wps';
+        let currentDrawingBase64 = null;
+        let currentPqrSketchBase64 = null;
+        let wpsData = [];
+        let pqrData = [];
+        let wpsUnsubscribe = null;
+        let pqrUnsubscribe = null;
+        let dropdownOptions = {};
+        
+        const optionKeyMap = {
+            'baseMetalSpec1': 'baseMetalSpec',
+            'baseMetalSpec2': 'baseMetalSpec',
+            'baseMetalType1': 'baseMetalType',
+            'baseMetalType2': 'baseMetalType',
+        };
+
+        const defaultDropdownOptions = {
+            weldPassType: ['單面銲 (Single)', '雙面銲 (Double)'],
+            backing: ['無 (No)', '有 (Yes)'],
+            backGouging: ['無 (No)', '有 (Yes)'],
+            weldingType: ['手動 (Manual)', '半自動 (Semi-automatic)', '機械 (Machine)', '自動 (Automatic)'],
+            electricalCharacteristic: ['交流 AC', '直流負極 DCEN', '直流正極 DCEP', '脈波電流 Pulsed', '其他 Other'],
+            transferMode: ['短路 Short-circuiting', '球狀 Globular', '噴射 Spray'],
+            technique: ['擺弧 (Weave)', '直線 (Stringer)'],
+            passType: ['單道銲 (Single pass)', '多道銲 (Multi-pass)'],
+            peening: ['否 (No)', '是 (Yes)'],
+            // New ones
+            baseMetalSpec: [],
+            baseMetalType: [],
+            jointDesignType: [],
+            backingMaterial: [],
+            fillerMetalSpec: [],
+            fillerMetalClass: [],
+            fillerMetalBrandName: [],
+            fillerMetalSize: [],
+            weldingProcess: [],
+            applicableStandard: [],
+            wireDiameter: [],
+            position: [],
+            interpassCleaning: [],
+            shieldingGas: [],
+            shieldingComposition: [],
+            shieldingFlowRate: [],
+            shieldingCupSize: [],
+            shieldingFluxName: [],
+            shieldingWireFluxClass: [],
+        };
+        const dropdownLabels = {
+            baseMetalSpec: '材料規格',
+            baseMetalType: '等級/種類',
+            jointDesignType: '接頭型式',
+            weldPassType: '銲道型式',
+            backing: '背襯',
+            backingMaterial: '背襯材料',
+            backGouging: '背鏟',
+            fillerMetalSpec: '銲材-規格',
+            fillerMetalClass: '銲材-等級',
+            fillerMetalBrandName: '銲材-品名',
+            fillerMetalSize: '銲材-尺寸',
+            weldingProcess: '銲接方式',
+            applicableStandard: '適用標準',
+            wireDiameter: '線徑',
+            weldingType: '銲接型式',
+            position: '姿勢',
+            electricalCharacteristic: '電流型式',
+            transferMode: '熔滴轉移型式',
+            technique: '擺弧/直線',
+            passType: '單道/多道銲',
+            peening: '敲擊',
+            interpassCleaning: '銲層清理',
+            shieldingGas: '氣體 (Gas)',
+            shieldingComposition: '組成 (Composition)',
+            shieldingFlowRate: '流量 (Flow rate)',
+            shieldingCupSize: '氣罩尺寸 (Gas cup size)',
+            shieldingFluxName: '銲劑品名 (Flux name)',
+            shieldingWireFluxClass: '銲線銲粉搭配 (Class)',
+        };
+
+
+        // DOM Elements
+        const wpsGroupedList = document.getElementById('wpsGroupedList');
+        const pqrGroupedList = document.getElementById('pqrGroupedList');
+        const modal = document.getElementById('itemModal');
+        const modalContainer = document.getElementById('modal-container');
+        const modalTitle = document.getElementById('modalTitle');
+        const itemForm = document.getElementById('itemForm');
+        const itemIdInput = document.getElementById('itemId');
+        const deleteButton = document.getElementById('deleteButton');
+        const searchInput = document.getElementById('searchInput');
+
+        // Make functions globally accessible
+        window.showTab = showTab;
+        window.openModalForActiveTab = openModalForActiveTab;
+        window.openItemModal = openItemModal;
+        window.duplicateItem = duplicateItem;
+        window.closeItemModal = closeItemModal;
+        window.saveItem = saveItem;
+        window.deleteItem = deleteItem;
+        window.previewReport = previewReport;
+        window.backToEdit = backToEdit;
+        window.printReport = printReport;
+        window.addProcedureRow = addProcedureRow;
+        window.toggleTestResults = toggleTestResults;
+        window.addAllWeldTensileRow = addAllWeldTensileRow;
+        window.addTransverseTensileRow = addTransverseTensileRow;
+        window.addImpactRow = addImpactRow;
+        window.calculateImpactAverage = calculateImpactAverage;
+        window.addBendRow = addBendRow;
+        window.filterActiveList = filterActiveList;
+        window.openSettingsModal = openSettingsModal;
+        window.closeSettingsModal = closeSettingsModal;
+        window.saveSettings = saveSettings;
+        window.addOptionToSetting = addOptionToSetting;
+        window.duplicateProcedureRow = duplicateProcedureRow;
+        
+        function showTab(tabName) {
+            activeTab = tabName;
+            const wpsTab = document.getElementById('tab-wps');
+            const pqrTab = document.getElementById('tab-pqr');
+            const wpsContent = document.getElementById('wps-content');
+            const pqrContent = document.getElementById('pqr-content');
+            const addButtonText = document.getElementById('addButtonText');
+
+            const activeClasses = ['tab-active'];
+            const inactiveClasses = ['tab-inactive'];
+
+            if (tabName === 'wps') {
+                wpsTab.classList.remove(...inactiveClasses);
+                wpsTab.classList.add(...activeClasses);
+                pqrTab.classList.remove(...activeClasses);
+                pqrTab.classList.add(...inactiveClasses);
+                
+                wpsContent.style.display = 'block';
+                pqrContent.style.display = 'none';
+                searchInput.placeholder = '依WPS編號、銲接方式或母材搜尋...';
+                addButtonText.innerText = '新增 WPS';
+                renderWPSGroups();
+            } else { // pqr
+                pqrTab.classList.remove(...inactiveClasses);
+                pqrTab.classList.add(...activeClasses);
+                wpsTab.classList.remove(...activeClasses);
+                wpsTab.classList.add(...inactiveClasses);
+
+                pqrContent.style.display = 'block';
+                wpsContent.style.display = 'none';
+                searchInput.placeholder = '依PQR編號、WPS編號或母材搜尋...';
+                addButtonText.innerText = '新增 PQR';
+                renderPQRGroups();
+            }
+            filterActiveList();
+        }
+
+        function renderWPSGroups(data = wpsData) {
+            wpsGroupedList.innerHTML = '';
+            const groupedData = data.reduce((acc, wps) => {
+                const key = wps.weldingProcess || '未分類';
+                if (!acc[key]) { acc[key] = []; }
+                acc[key].push(wps);
+                return acc;
+            }, {});
+            
+            const sortedGroupKeys = Object.keys(groupedData).sort();
+
+            if (sortedGroupKeys.length === 0 && searchInput.value === '') {
+                 wpsGroupedList.innerHTML = `<p class="text-center text-gray-500 mt-8">資料庫中尚無WPS文件，請點擊「新增WPS」來建立第一份文件。</p>`;
+                 document.getElementById('noWpsResults').style.display = 'none';
+                 return;
+            } else if (sortedGroupKeys.length === 0) {
+                document.getElementById('noWpsResults').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('noWpsResults').style.display = 'none';
+
+            sortedGroupKeys.forEach(process => {
+                const wpsItems = groupedData[process];
+                const groupContainer = document.createElement('div');
+                groupContainer.innerHTML = `
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">${process}</h2>
+                    <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-xs text-gray-700 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">WPS 編號</th>
+                                    <th scope="col" class="px-6 py-3">母材規格</th>
+                                    <th scope="col" class="px-6 py-3">厚度 (mm)</th>
+                                    <th scope="col" class="px-6 py-3">銲材等級</th>
+                                    <th scope="col" class="px-6 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${wpsItems.map(wps => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">${wps.wpsNo}</td>
+                                        <td class="px-6 py-4 text-gray-600">${wps.baseMetalSpec1} ${wps.baseMetalSpec2 ? ` / ${wps.baseMetalSpec2}` : ''}</td>
+                                        <td class="px-6 py-4 text-gray-600">${wps.baseMetalThickness1} ${wps.baseMetalThickness2 ? ` / ${wps.baseMetalThickness2}` : ''}</td>
+                                        <td class="px-6 py-4 text-gray-600">${wps.fillerMetalClass}</td>
+                                        <td class="px-6 py-4 text-right space-x-4">
+                                            <button onclick="duplicateItem('${wps.id}')" class="font-medium text-green-600 hover:underline">複製</button>
+                                            <button onclick="openItemModal('${wps.id}')" class="font-medium text-blue-600 hover:underline">檢視 / 編輯</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                wpsGroupedList.appendChild(groupContainer);
+            });
+        }
+        
+        function renderPQRGroups(data = pqrData) {
+            pqrGroupedList.innerHTML = '';
+            const groupedData = data.reduce((acc, pqr) => {
+                const key = pqr.weldingProcess || '未分類';
+                if (!acc[key]) { acc[key] = []; }
+                acc[key].push(pqr);
+                return acc;
+            }, {});
+            
+            const sortedGroupKeys = Object.keys(groupedData).sort();
+            
+            if (sortedGroupKeys.length === 0 && searchInput.value === '') {
+                 pqrGroupedList.innerHTML = `<p class="text-center text-gray-500 mt-8">資料庫中尚無PQR文件，請點擊「新增PQR」來建立第一份文件。</p>`;
+                 document.getElementById('noPqrResults').style.display = 'none';
+                 return;
+            } else if (sortedGroupKeys.length === 0) {
+                document.getElementById('noPqrResults').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('noPqrResults').style.display = 'none';
+
+            sortedGroupKeys.forEach(process => {
+                const pqrItems = groupedData[process];
+                const groupContainer = document.createElement('div');
+                groupContainer.innerHTML = `
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">${process}</h2>
+                    <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-xs text-gray-700 uppercase">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">PQR 編號</th>
+                                    <th scope="col" class="px-6 py-3">對應 WPS 編號</th>
+                                    <th scope="col" class="px-6 py-3">母材規格</th>
+                                    <th scope="col" class="px-6 py-3">厚度 (mm)</th>
+                                    <th scope="col" class="px-6 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${pqrItems.map(pqr => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">${pqr.pqrNo}</td>
+                                        <td class="px-6 py-4 text-gray-600">${pqr.wpsNo || '-'}</td>
+                                        <td class="px-6 py-4 text-gray-600">${pqr.baseMetalSpec1} ${pqr.baseMetalSpec2 ? ` / ${pqr.baseMetalSpec2}` : ''}</td>
+                                        <td class="px-6 py-4 text-gray-600">${pqr.baseMetalThickness1} ${pqr.baseMetalThickness2 ? ` / ${pqr.baseMetalThickness2}` : ''}</td>
+                                        <td class="px-6 py-4 text-right space-x-4">
+                                            <button onclick="duplicateItem('${pqr.id}')" class="font-medium text-green-600 hover:underline">複製</button>
+                                            <button onclick="openItemModal('${pqr.id}')" class="font-medium text-blue-600 hover:underline">檢視 / 編輯</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                pqrGroupedList.appendChild(groupContainer);
+            });
+        }
+        
+        function setupImageUpload(uploadId, previewContainerId, previewId, removeBtnId, setter) {
+            const uploadInput = document.getElementById(uploadId);
+            const previewContainer = document.getElementById(previewContainerId);
+            const preview = document.getElementById(previewId);
+            const removeBtn = document.getElementById(removeBtnId);
+
+            uploadInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64 = e.target.result;
+                        setter(base64);
+                        preview.src = base64;
+                        previewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            removeBtn.addEventListener('click', () => {
+                uploadInput.value = ''; // Clear the file input
+                preview.src = '';
+                previewContainer.style.display = 'none';
+                setter(null);
+            });
+        }
+        
+        function openModalForActiveTab() {
+            openItemModal();
+        }
+
+        function openItemModal(id = null) {
+            itemForm.reset();
+            backToEdit(); 
+            document.getElementById('weldingProcedureRows').innerHTML = '';
+            
+            populateAllDropdowns();
+            
+            // Reset main drawing
+            document.getElementById('drawingPreview').src = '';
+            document.getElementById('drawingPreviewContainer').style.display = 'none';
+            currentDrawingBase64 = null;
+            
+            // Reset PQR sketch
+            document.getElementById('pqrSketchPreview').src = '';
+            document.getElementById('pqrSketchPreviewContainer').style.display = 'none';
+            currentPqrSketchBase64 = null;
+            
+            const isPQR = activeTab === 'pqr';
+            const dataArray = isPQR ? pqrData : wpsData;
+            
+            // Get all elements that need to be toggled
+            const revisionDateLabel = document.getElementById('revisionDateLabel');
+            const revisionFieldContainer = document.getElementById('revisionFieldContainer');
+            const temperatureControlSection = document.getElementById('temperatureControlSection');
+            const procedureSectionTitle = document.getElementById('procedureSectionTitle');
+            const wpsNoSelect = document.getElementById('wpsNo');
+            const wpsNoContainer = document.getElementById('wpsNoFieldContainer');
+            const wpsExtraSection = document.getElementById('wpsExtraSection');
+            const pqrExtraSection = document.getElementById('pqrExtraSection');
+            const positionSectionTitle = document.getElementById('positionSectionTitle');
+            const weldingEquipmentContainer = document.getElementById('weldingEquipmentContainer');
+            const wpsHeader = document.getElementById('wpsProcedureHeader');
+            const pqrHeader = document.getElementById('pqrProcedureHeader');
+
+            // Reset listener from previous modal openings
+            wpsNoSelect.removeEventListener('change', populateFromWPS);
+
+            // Configure UI based on tab
+            document.getElementById('itemNoLabel').innerText = isPQR ? 'PQR 編號' : 'WPS 編號';
+            if (isPQR) {
+                revisionDateLabel.innerText = '記錄日期 (Record Date)';
+                revisionFieldContainer.style.display = 'none';
+                temperatureControlSection.style.display = 'none';
+                procedureSectionTitle.innerHTML = '銲接記錄 (Welding Record)';
+                wpsNoContainer.style.display = 'block';
+                wpsExtraSection.style.display = 'none';
+                pqrExtraSection.style.display = 'block';
+                positionSectionTitle.innerText = '銲接姿勢 (Position)與銲接設備';
+                weldingEquipmentContainer.style.display = 'block';
+                wpsHeader.style.display = 'none';
+                pqrHeader.style.display = 'grid';
+
+                // Populate the WPS dropdown
+                wpsNoSelect.innerHTML = '<option value="">請選擇對應的WPS...</option>';
+                const sortedWps = [...wpsData].sort((a, b) => a.wpsNo.localeCompare(b.wpsNo, undefined, { numeric: true }));
+                sortedWps.forEach(wps => {
+                    const option = document.createElement('option');
+                    option.value = wps.wpsNo;
+                    option.textContent = wps.wpsNo;
+                    wpsNoSelect.appendChild(option);
+                });
+                
+                // Add change listener to auto-populate data
+                wpsNoSelect.addEventListener('change', populateFromWPS);
+
+            } else { // WPS
+                revisionDateLabel.innerText = '制定日期 (Date)';
+                revisionFieldContainer.style.display = 'block';
+                temperatureControlSection.style.display = 'block';
+                procedureSectionTitle.innerHTML = '銲接程序 (Welding Procedure)';
+                wpsNoContainer.style.display = 'none';
+                wpsExtraSection.style.display = 'block';
+                pqrExtraSection.style.display = 'none';
+                positionSectionTitle.innerText = '銲接姿勢 (Position)';
+                weldingEquipmentContainer.style.display = 'none';
+                wpsHeader.style.display = 'grid';
+                pqrHeader.style.display = 'none';
+            }
+
+            if (id) { // Editing existing item
+                const item = dataArray.find(i => i.id === id);
+                modalTitle.innerText = isPQR ? '編輯/檢視 PQR' : '編輯/檢視 WPS';
+                deleteButton.style.display = 'block';
+                
+                // Set form values, ensuring dropdowns have the options before setting value
+                setTimeout(() => {
+                    Object.keys(item).forEach(key => {
+                        const formEl = document.getElementById(key);
+                        if (key === 'wpsNo' && !isPQR) {
+                            document.getElementById('itemNo').value = item[key];
+                        } else if (key === 'pqrNo' && isPQR) {
+                            document.getElementById('itemNo').value = item[key];
+                        } else if(formEl) {
+                            // If it's a select, we need to make sure the option exists
+                            if (formEl.tagName === 'SELECT' && item[key]) {
+                                const optionKey = optionKeyMap[key] || key;
+                                if (dropdownOptions[optionKey] && !dropdownOptions[optionKey].includes(item[key])) {
+                                    // If option doesn't exist, add it temporarily for this view
+                                    if(item[key]) {
+                                        const option = document.createElement('option');
+                                        option.value = item[key];
+                                        option.textContent = item[key];
+                                        formEl.appendChild(option);
+                                    }
+                                }
+                            }
+                            formEl.value = item[key];
+                        }
+                    });
+                }, 50); // Small delay to allow dropdowns to populate
+                
+                itemIdInput.value = item.id;
+                
+                if (item.drawing) {
+                    currentDrawingBase64 = item.drawing;
+                    document.getElementById('drawingPreview').src = currentDrawingBase64;
+                    document.getElementById('drawingPreviewContainer').style.display = 'block';
+                }
+                
+                if (isPQR && item.pqrSketch) {
+                    currentPqrSketchBase64 = item.pqrSketch;
+                    document.getElementById('pqrSketchPreview').src = currentPqrSketchBase64;
+                    document.getElementById('pqrSketchPreviewContainer').style.display = 'block';
+                }
+
+                if(item.weldingProcedures && item.weldingProcedures.length > 0) {
+                    item.weldingProcedures.forEach(proc => addProcedureRow(proc));
+                } else {
+                    addProcedureRow();
+                }
+
+                // Clear and populate test results section for PQR
+                document.getElementById('showTestResults').checked = false;
+                document.getElementById('testResultsContainer').style.display = 'none';
+                document.getElementById('allWeldTensileTestRows').innerHTML = '';
+                document.getElementById('transverseTensileTestRows').innerHTML = '';
+                document.getElementById('impactTestRows').innerHTML = '';
+                document.getElementById('bendTestRows').innerHTML = '';
+                document.getElementById('ndeMethod').value = '';
+                document.getElementById('ndeResults').value = '';
+                document.getElementById('ndeReportNo').value = '';
+                document.getElementById('ndeReportFile-name').textContent = '';
+                document.getElementById('ndeReportFile').value = '';
+
+
+                if (isPQR && item.testResults) {
+                    document.getElementById('showTestResults').checked = true;
+                    document.getElementById('testResultsContainer').style.display = 'block';
+                    
+                    if (item.testResults.allWeldTensile && item.testResults.allWeldTensile.length > 0) {
+                        item.testResults.allWeldTensile.forEach(d => addAllWeldTensileRow(d));
+                    }
+                     if (item.testResults.transverseTensile && item.testResults.transverseTensile.length > 0) {
+                        item.testResults.transverseTensile.forEach(d => addTransverseTensileRow(d));
+                    }
+                    if (item.testResults.impact && item.testResults.impact.length > 0) {
+                        item.testResults.impact.forEach(d => addImpactRow(d));
+                    }
+                    if (item.testResults.bend && item.testResults.bend.length > 0) {
+                        item.testResults.bend.forEach(d => addBendRow(d));
+                    }
+                    if (item.testResults.nde) {
+                        document.getElementById('ndeMethod').value = item.testResults.nde.method || '';
+                        document.getElementById('ndeResults').value = item.testResults.nde.results || '';
+                        document.getElementById('ndeReportNo').value = item.testResults.nde.reportNo || '';
+                        const fileNameSpan = document.getElementById('ndeReportFile-name');
+                        if(item.testResults.nde.reportFile) {
+                            fileNameSpan.textContent = item.testResults.nde.reportFile;
+                        } else {
+                            fileNameSpan.textContent = '';
+                        }
+                    }
+                }
+
+
+            } else { // Adding new item
+                modalTitle.innerText = isPQR ? '新增 PQR' : '新增 WPS';
+                itemIdInput.value = '';
+                deleteButton.style.display = 'none';
+                addProcedureRow();
+                 // Reset test results for new PQR
+                document.getElementById('showTestResults').checked = false;
+                document.getElementById('testResultsContainer').style.display = 'none';
+                document.getElementById('allWeldTensileTestRows').innerHTML = '';
+                document.getElementById('transverseTensileTestRows').innerHTML = '';
+                document.getElementById('impactTestRows').innerHTML = '';
+                document.getElementById('bendTestRows').innerHTML = '';
+            }
+            
+            modal.style.display = 'flex';
+            setTimeout(() => { modalContainer.classList.remove('scale-95', 'opacity-0'); }, 10);
+        }
+
+        function populateFromWPS() {
+            const wpsNoToFind = document.getElementById('wpsNo').value.trim();
+            if (!wpsNoToFind) {
+                // Clear the form if the user selects the blank option
+                const pqrNo = document.getElementById('itemNo').value;
+                itemForm.reset();
+                populateAllDropdowns();
+                document.getElementById('itemNo').value = pqrNo;
+                document.getElementById('wpsNo').value = '';
+                document.getElementById('weldingProcedureRows').innerHTML = '';
+                addProcedureRow();
+                return;
+            };
+
+            const sourceWPS = wpsData.find(wps => wps.wpsNo === wpsNoToFind);
+            if (!sourceWPS) {
+                alert(`找不到 WPS 編號為 "${wpsNoToFind}" 的文件。`);
+                return;
+            }
+
+            // A list of all fields to potentially copy
+            const fieldsToCopy = [
+                "author", "approver", 
+                "baseMetalThickness1", "baseMetalThickness2", "rootOpening", "rootFaceDimension", 
+                "grooveAngle", "radius", "backGougingMethod", 
+                "numElectrodes", "electrodeSpacing", "ctwd",
+                "baseMetalSpec1", "baseMetalType1", "baseMetalSpec2", "baseMetalType2",
+                "jointDesignType", "weldPassType", "backing", "backingMaterial", "backGouging",
+                "fillerMetalSpec", "fillerMetalClass", "fillerMetalBrandName", "fillerMetalSize",
+                "weldingProcess", "applicableStandard", "wireDiameter", "weldingType", "position",
+                "electricalCharacteristic", "transferMode", "technique", "passType", "peening", "interpassCleaning",
+                "shieldingGas", "shieldingComposition", "shieldingFlowRate", "shieldingCupSize", 
+                "shieldingFluxName", "shieldingWireFluxClass"
+            ];
+
+            fieldsToCopy.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
+                if (element && sourceWPS[fieldId] !== undefined) {
+                    const valueToSet = sourceWPS[fieldId];
+                     if (element.tagName === 'SELECT') {
+                        const optionKey = optionKeyMap[fieldId] || fieldId;
+                        // Ensure the option exists before setting it
+                        if (dropdownOptions[optionKey] && !dropdownOptions[optionKey].includes(valueToSet)) {
+                           if(valueToSet) { // Don't add blank options
+                                const option = document.createElement('option');
+                                option.value = valueToSet;
+                                option.textContent = valueToSet;
+                                element.appendChild(option);
+                           }
+                        }
+                    }
+                    element.value = valueToSet;
+                }
+            });
+
+            // Clear fields that are PQR-specific and should not be inherited
+            document.getElementById('pqrNotes').value = '';
+            document.getElementById('weldingEquipment').value = '';
+            
+            // Handle inherited joint design drawing (but PQR has its own sketch)
+            // It might be better not to auto-copy images to avoid confusion.
+            // Let's clear the sketch instead.
+            currentPqrSketchBase64 = null;
+            document.getElementById('pqrSketchUpload').value = ''; 
+            document.getElementById('pqrSketchPreview').src = '';
+            document.getElementById('pqrSketchPreviewContainer').style.display = 'none';
+
+            // Clear and add one empty row for the welding RECORD
+            document.getElementById('weldingProcedureRows').innerHTML = '';
+            addProcedureRow();
+            
+            // Reset test results when populating from WPS
+            document.getElementById('showTestResults').checked = false;
+            document.getElementById('testResultsContainer').style.display = 'none';
+            document.getElementById('allWeldTensileTestRows').innerHTML = '';
+            document.getElementById('transverseTensileTestRows').innerHTML = '';
+            document.getElementById('impactTestRows').innerHTML = '';
+            document.getElementById('bendTestRows').innerHTML = '';
+            document.getElementById('ndeMethod').value = '';
+            document.getElementById('ndeResults').value = '';
+        }
+
+        function duplicateProcedureRow(buttonEl) {
+            const row = buttonEl.closest('.procedure-row');
+            if (!row || activeTab !== 'pqr') return;
+            
+            const newRow = row.cloneNode(true);
+            row.after(newRow);
+        }
+
+        function addProcedureRow(data = {}) {
+            const container = document.getElementById('weldingProcedureRows');
+            const row = document.createElement('div');
+            const isPQR = activeTab === 'pqr';
+            
+            row.className = 'grid grid-cols-12 gap-x-2 gap-y-2 items-center procedure-row';
+            
+            if (isPQR) {
+                 row.innerHTML = `
+                    <div class="col-span-1">
+                        <input type="text" class="proc-passLayer block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.passLayer || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-amps block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.amps || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-volts block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.volts || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-weldLength block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldLength || ''}" placeholder="mm">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="text" class="proc-travelSpeed block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.travelSpeed || ''}" placeholder="cpm">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="text" class="proc-weldingTime block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldingTime || ''}" placeholder="sec">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="text" class="proc-heatInput block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.heatInput || ''}" placeholder="KJ/mm">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-interpassTemp block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.interpassTemp || ''}" placeholder="℃">
+                    </div>
+                    <div class="col-span-1 flex items-center justify-center h-full space-x-2">
+                         <button type="button" onclick="duplicateProcedureRow(this)" class="text-blue-500 hover:text-blue-700" title="複製此道次">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                            </svg>
+                        </button>
+                        <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700" title="刪除此道次">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+            } else { // WPS
+                row.innerHTML = `
+                    <div class="col-span-1">
+                        <input type="text" class="proc-passLayer block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.passLayer || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-polarity block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.polarity || ''}">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="text" class="proc-fillerClass block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.fillerClass || ''}">
+                    </div>
+                    <div class="col-span-2">
+                        <input type="text" class="proc-fillerSize block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.fillerSize || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-amps block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.amps || ''}">
+                    </div>
+                    <div class="col-span-1">
+                        <input type="text" class="proc-volts block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.volts || ''}">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="proc-travelSpeed block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.travelSpeed || ''}">
+                    </div>
+                    <div class="col-span-1 flex items-center justify-center h-full">
+                        <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+            }
+
+            container.appendChild(row);
+        }
+
+        function toggleTestResults() {
+            const checkbox = document.getElementById('showTestResults');
+            const container = document.getElementById('testResultsContainer');
+            if (checkbox.checked) {
+                container.style.display = 'block';
+                // If no rows exist when showing, add one of each type for convenience
+                if(document.getElementById('allWeldTensileTestRows').children.length === 0) addAllWeldTensileRow();
+                if(document.getElementById('transverseTensileTestRows').children.length === 0) addTransverseTensileRow();
+                if(document.getElementById('impactTestRows').children.length === 0) addImpactRow();
+                if(document.getElementById('bendTestRows').children.length === 0) addBendRow();
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function addAllWeldTensileRow(data = {}) {
+            const container = document.getElementById('allWeldTensileTestRows');
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-x-2 gap-y-1 items-center all-weld-tensile-row';
+            row.innerHTML = `
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">試片編號</label>
+                    <input type="text" class="tensile-specimenNo mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.specimenNo || ''}">
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">降伏強度 (MPa)</label>
+                    <input type="text" class="tensile-yieldStrength mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.yieldStrength || ''}">
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">抗拉強度 (MPa)</label>
+                    <input type="text" class="tensile-strength mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.strength || ''}">
+                </div>
+                <div class="col-span-2">
+                     <label class="block text-xs font-medium text-gray-600">延伸率 (%)</label>
+                    <input type="text" class="tensile-elongation mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.elongation || ''}">
+                </div>
+                <div class="col-span-1 flex items-end justify-center h-full">
+                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 mt-5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        function addTransverseTensileRow(data = {}) {
+            const container = document.getElementById('transverseTensileTestRows');
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-x-2 gap-y-1 items-center transverse-tensile-row';
+            row.innerHTML = `
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">試片編號</label>
+                    <input type="text" class="tensile-specimenNo mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.specimenNo || ''}">
+                </div>
+                 <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">抗拉強度 (MPa)</label>
+                    <input type="text" class="tensile-strength mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.strength || ''}">
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-600">斷裂位置</label>
+                    <input type="text" class="tensile-fractureLocation mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.fractureLocation || ''}">
+                </div>
+                <div class="col-span-2">
+                     <label class="block text-xs font-medium text-gray-600">結果</label>
+                    <input type="text" class="tensile-result mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.result || ''}">
+                </div>
+                <div class="col-span-1 flex items-end justify-center h-full">
+                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 mt-5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        function addImpactRow(data = {}) {
+            const container = document.getElementById('impactTestRows');
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-x-2 gap-y-1 items-start impact-row';
+            const values = data.values || ['', '', '', '', ''];
+            row.innerHTML = `
+                <div class="col-span-2">
+                    <label class="block text-xs font-medium text-gray-600">試片編號</label>
+                    <input type="text" class="impact-specimenNo mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.specimenNo || ''}">
+                </div>
+                <div class="col-span-2">
+                     <label class="block text-xs font-medium text-gray-600">溫度 (°C)</label>
+                    <input type="text" class="impact-temperature mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.temperature || ''}">
+                </div>
+                <div class="col-span-6">
+                    <label class="block text-xs font-medium text-gray-600">衝擊值 (J)</label>
+                    <div class="grid grid-cols-5 gap-x-2 mt-1">
+                        <input type="text" class="impact-value w-full rounded-md border-gray-300 shadow-sm text-sm" oninput="calculateImpactAverage(this.closest('.impact-row'))" value="${values[0]}">
+                        <input type="text" class="impact-value w-full rounded-md border-gray-300 shadow-sm text-sm" oninput="calculateImpactAverage(this.closest('.impact-row'))" value="${values[1]}">
+                        <input type="text" class="impact-value w-full rounded-md border-gray-300 shadow-sm text-sm" oninput="calculateImpactAverage(this.closest('.impact-row'))" value="${values[2]}">
+                        <input type="text" class="impact-value w-full rounded-md border-gray-300 shadow-sm text-sm" oninput="calculateImpactAverage(this.closest('.impact-row'))" value="${values[3]}">
+                        <input type="text" class="impact-value w-full rounded-md border-gray-300 shadow-sm text-sm" oninput="calculateImpactAverage(this.closest('.impact-row'))" value="${values[4]}">
+                    </div>
+                </div>
+                 <div class="col-span-1">
+                     <label class="block text-xs font-medium text-gray-600">平均值</label>
+                    <input type="text" class="impact-average mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm bg-gray-100" readonly>
+                </div>
+                 <div class="col-span-1 flex items-center justify-center h-full">
+                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 mt-8">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+            calculateImpactAverage(row);
+        }
+
+        function calculateImpactAverage(row) {
+            const valueInputs = row.querySelectorAll('.impact-value');
+            const averageInput = row.querySelector('.impact-average');
+            
+            const numbers = Array.from(valueInputs)
+                .map(input => parseFloat(input.value))
+                .filter(value => !isNaN(value));
+
+            if (numbers.length < 3) {
+                averageInput.value = '';
+                return;
+            }
+
+            let valuesToAverage = [...numbers];
+            // If exactly 5 values, remove highest and lowest
+            if (numbers.length === 5) {
+                valuesToAverage.sort((a, b) => a - b).shift(); // remove lowest
+                valuesToAverage.pop(); // remove highest
+            }
+            
+            const sum = valuesToAverage.reduce((a, b) => a + b, 0);
+            const avg = sum / valuesToAverage.length;
+            
+            averageInput.value = isNaN(avg) ? '' : avg.toFixed(2);
+        }
+        
+        function addBendRow(data = {}) {
+            const container = document.getElementById('bendTestRows');
+            const row = document.createElement('div');
+            const uniqueId = `bend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            row.className = 'bend-row border rounded-lg p-3 space-y-2';
+            row.id = uniqueId;
+            
+            // Store data in the element for later retrieval
+            row.bendData = {
+                beforePhoto: data.beforePhoto || null,
+                afterPhoto: data.afterPhoto || null
+            };
+        
+            row.innerHTML = `
+                <div class="grid grid-cols-12 gap-x-2 gap-y-1 items-center">
+                    <div class="col-span-4">
+                        <label class="block text-xs font-medium text-gray-600">試片編號</label>
+                        <input type="text" class="bend-specimenNo mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.specimenNo || ''}">
+                    </div>
+                    <div class="col-span-3">
+                         <label class="block text-xs font-medium text-gray-600">試驗類型</label>
+                        <input type="text" class="bend-type mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" placeholder="面彎/根彎/側彎" value="${data.type || ''}">
+                    </div>
+                    <div class="col-span-2">
+                         <label class="block text-xs font-medium text-gray-600">結果</label>
+                        <input type="text" class="bend-result mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" placeholder="通過/失敗" value="${data.result || ''}">
+                    </div>
+                    <div class="col-span-3 flex items-end justify-end h-full">
+                        <button type="button" onclick="this.closest('.bend-row').remove()" class="text-red-500 hover:text-red-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-12 gap-x-2 gap-y-1">
+                     <div class="col-span-12">
+                        <label class="block text-xs font-medium text-gray-600">備註</label>
+                        <textarea class="bend-remarks mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" rows="2">${data.remarks || ''}</textarea>
+                    </div>
+                    <div class="col-span-6">
+                        <label class="block text-xs font-medium text-gray-600">試驗前照片</label>
+                        <input type="file" id="before-upload-${uniqueId}" class="hidden" accept="image/*">
+                        <button type="button" onclick="document.getElementById('before-upload-${uniqueId}').click()" class="mt-1 text-xs bg-white py-1 px-2 border border-gray-300 rounded-md shadow-sm font-medium text-gray-700 hover:bg-gray-50">選擇圖片</button>
+                        <img id="before-preview-${uniqueId}" class="mt-2 max-h-20 rounded border ${data.beforePhoto ? '' : 'hidden'}">
+                    </div>
+                     <div class="col-span-6">
+                        <label class="block text-xs font-medium text-gray-600">試驗後照片</label>
+                        <input type="file" id="after-upload-${uniqueId}" class="hidden" accept="image/*">
+                        <button type="button" onclick="document.getElementById('after-upload-${uniqueId}').click()" class="mt-1 text-xs bg-white py-1 px-2 border border-gray-300 rounded-md shadow-sm font-medium text-gray-700 hover:bg-gray-50">選擇圖片</button>
+                        <img id="after-preview-${uniqueId}" class="mt-2 max-h-20 rounded border ${data.afterPhoto ? '' : 'hidden'}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(row);
+        
+            if (data.beforePhoto) {
+                document.getElementById(`before-preview-${uniqueId}`).src = data.beforePhoto;
+            }
+            if (data.afterPhoto) {
+                document.getElementById(`after-preview-${uniqueId}`).src = data.afterPhoto;
+            }
+        
+            const handlePhotoUpload = (event, photoType) => {
+                const file = event.target.files[0];
+                const preview = document.getElementById(`${photoType}-preview-${uniqueId}`);
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64 = e.target.result;
+                        row.bendData[photoType] = base64;
+                        preview.src = base64;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            document.getElementById(`before-upload-${uniqueId}`).addEventListener('change', (e) => handlePhotoUpload(e, 'beforePhoto'));
+            document.getElementById(`after-upload-${uniqueId}`).addEventListener('change', (e) => handlePhotoUpload(e, 'afterPhoto'));
+        }
+
+        function closeItemModal() {
+            document.getElementById('wpsNo').removeEventListener('change', populateFromWPS);
+            modalContainer.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+        }
+
+        async function saveItem() {
+            const id = itemIdInput.value;
+            const dataToSave = getCurrentFormData();
+            delete dataToSave.id; // Firestore handles its own IDs
+            
+            const collectionName = activeTab === 'pqr' ? 'pqr' : 'wps';
+
+            try {
+                 if (id) {
+                    const docRef = doc(db, collectionName, id);
+                    await setDoc(docRef, dataToSave);
+                 } else {
+                    await addDoc(collection(db, collectionName), dataToSave);
+                 }
+                 closeItemModal();
+            } catch (e) {
+                console.error("儲存文件時發生錯誤: ", e);
+                alert("儲存失敗，請檢查主控台中的錯誤訊息。");
+            }
+        }
+
+        async function deleteItem() {
+            const id = itemIdInput.value;
+            if (!id) return;
+            
+            const confirmMsg = activeTab === 'pqr' ? '您確定要刪除這份PQR文件嗎？此操作無法復原。' : '您確定要刪除這份WPS文件嗎？此操作無法復原。';
+            
+            if (confirm(confirmMsg)) {
+                try {
+                    const collectionName = activeTab === 'pqr' ? 'pqr' : 'wps';
+                    await deleteDoc(doc(db, collectionName, id));
+                    closeItemModal();
+                } catch (e) {
+                    console.error("刪除文件時發生錯誤: ", e);
+                    alert("刪除失敗，請檢查主控台中的錯誤訊息。");
+                }
+            }
+        }
+        
+        async function duplicateItem(id) {
+            const isPQR = activeTab === 'pqr';
+            const dataArray = isPQR ? pqrData : wpsData;
+            const collectionName = isPQR ? 'pqr' : 'wps';
+            
+            const originalItem = dataArray.find(i => i.id === id);
+            if (!originalItem) {
+                console.error("Item to duplicate not found");
+                alert("找不到要複製的項目。");
+                return;
+            }
+
+            // Create a deep copy and remove the ID
+            const newItem = JSON.parse(JSON.stringify(originalItem));
+            delete newItem.id;
+
+            // Modify the unique identifier
+            if(isPQR) {
+                newItem.pqrNo = (originalItem.pqrNo || '') + ' - 複製';
+            } else {
+                newItem.wpsNo = (originalItem.wpsNo || '') + ' - 複製';
+            }
+            
+            try {
+                await addDoc(collection(db, collectionName), newItem);
+                alert('項目已成功複製！');
+            } catch (e) {
+                console.error("複製文件時發生錯誤: ", e);
+                alert("複製失敗，請檢查主控台中的錯誤訊息。");
+            }
+        }
+
+        function previewReport() {
+            const data = getCurrentFormData();
+            const previewContent = document.getElementById('preview-content');
+            const isPQR = activeTab === 'pqr';
+            
+            const createPreviewSection = (title, items, columns = 5, hideEmpty = true) => {
+                let displayableItems = items;
+                if (hideEmpty) {
+                    displayableItems = items.filter(item => {
+                        const val = String(item.value || '').trim();
+                        return val !== '' && val !== '-' && val !== '°C' && val !== 'hr';
+                    });
+                }
+
+                if (displayableItems.length === 0) {
+                    return '';
+                }
+
+                return `
+                    <div class="bg-blue-50 p-3 rounded-lg shadow-sm mb-3 break-inside-avoid">
+                        <h3 class="text-md font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">${title}</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-${columns} gap-3 mt-2">
+                            ${displayableItems.map(item => `
+                                <div class="text-xs">
+                                    <p class="font-semibold text-gray-600">${item.label}</p>
+                                    <p class="text-gray-800 break-words mt-1">${item.value || '-'}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            };
+            
+            const drawingHtml = (title, drawingData) => {
+                if (!drawingData) return '';
+                return `
+                    <div class="bg-blue-50 p-3 rounded-lg shadow-sm mb-3 break-inside-avoid">
+                        <h3 class="text-md font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">${title}</h3>
+                        <img src="${drawingData}" class="w-full h-auto max-h-64 object-contain rounded border mt-1">
+                    </div>
+                `;
+            };
+
+            const notesHtml = (title, notesData) => {
+                if (!notesData) return '';
+                return `
+                     <div class="mt-3 bg-blue-50 p-3 rounded-lg shadow-sm break-inside-avoid">
+                        <h3 class="text-md font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">${title}</h3>
+                        <p class="text-xs whitespace-pre-wrap text-gray-800 break-words">${notesData}</p>
+                    </div>
+                `;
+            };
+
+            const baseMetalItems = [
+                { label: '材料規格 (Spec.)', value: data.baseMetalSpec1 }, { label: '等級/種類 (Type/Grade)', value: data.baseMetalType1 }, { label: '厚度 (Thickness, mm)', value: data.baseMetalThickness1 },
+                { label: '材料規格 (Spec.)', value: data.baseMetalSpec2 }, { label: '等級/種類 (Type/Grade)', value: data.baseMetalType2 }, { label: '厚度 (Thickness, mm)', value: data.baseMetalThickness2 }
+            ];
+
+            const jointDesignItems = [
+                { label: '接頭型式 (Joint Type)', value: data.jointDesignType }, { label: '銲道型式 (Weld Type)', value: data.weldPassType },
+                { label: '背襯 (Backing)', value: data.backing }, { label: '背襯材料 (Backing Material)', value: data.backingMaterial },
+                { label: '根部間隙 (Root Opening)', value: data.rootOpening }, { label: '根面尺寸 (Root Face)', value: data.rootFaceDimension },
+                { label: '開槽角度 (Groove Angle)', value: data.grooveAngle }, { label: '半徑 (Radius, J-U)', value: data.radius },
+                { label: '背鏟 (Back Gouging)', value: data.backGouging }, { label: '背鏟方法 (Gouging Method)', value: data.backGougingMethod }
+            ];
+            
+            const fillerMetalItems = [
+                { label: '規格 (Specification)', value: data.fillerMetalSpec }, { label: '等級 (Classification)', value: data.fillerMetalClass },
+                { label: '品名 (Brand Name)', value: data.fillerMetalBrandName }, { label: '尺寸 (Size)', value: data.fillerMetalSize }
+            ];
+
+            const weldingInfoItems = [
+                { label: '銲接方式 (Process)', value: data.weldingProcess }, { label: '適用標準 (Standard)', value: data.applicableStandard },
+                { label: '線徑 (Wire Diameter)', value: data.wireDiameter }, { label: '銲接型式 (Type)', value: data.weldingType },
+                { label: '姿勢 (Position)', value: data.position },
+                { label: '電流型式 (Current Type)', value: data.electricalCharacteristic },
+                { label: '熔滴轉移型式 (Transfer Mode)', value: data.transferMode }
+            ];
+            
+            if (isPQR) {
+                const positionIndex = weldingInfoItems.findIndex(item => item.label === '姿勢 (Position)');
+                if (positionIndex !== -1) {
+                    weldingInfoItems.splice(positionIndex + 1, 0, { label: '銲接設備 (Equipment)', value: data.weldingEquipment });
+                } else {
+                    weldingInfoItems.push({ label: '銲接設備 (Equipment)', value: data.weldingEquipment });
+                }
+            }
+
+
+            const techItems = [
+                 { label: '擺弧/直線 (Weave/Stringer)', value: data.technique },
+                 { label: '單道/多道銲 (Pass Type)', value: data.passType },
+                 { label: '電極數 (No. of Electrodes)', value: data.numElectrodes }, { label: '電極間距 (Electrode Spacing)', value: data.electrodeSpacing },
+                 { label: '銲嘴間距 (CTWD)', value: data.ctwd }, { label: '敲擊 (Peening)', value: data.peening },
+                 { label: '銲層清理 (Interpass Cleaning)', value: data.interpassCleaning }
+            ];
+
+             const shieldingItems = [
+                { label: '氣體 (Gas)', value: data.shieldingGas }, { label: '組成 (Composition)', value: data.shieldingComposition },
+                { label: '流量 (Flow Rate)', value: data.shieldingFlowRate }, { label: '氣罩尺寸 (Gas Cup Size)', value: data.shieldingCupSize },
+                { label: '銲劑品名 (Flux Name)', value: data.shieldingFluxName }, { label: '銲線銲粉搭配 (Wire-Flux Class)', value: data.shieldingWireFluxClass }
+            ];
+
+            const temperatureItems = [
+                { label: '預熱溫度 最低 (Preheat Min)', value: data.preheatTempMin ? `${data.preheatTempMin} °C` : '' },
+                { label: '層間溫度 最低 (Interpass Min)', value: data.interpassTempMin ? `${data.interpassTempMin} °C` : '' },
+                { label: '層間溫度 最高 (Interpass Max)', value: data.interpassTempMax ? `${data.interpassTempMax} °C` : '' },
+                { label: '後熱處理 溫度 (PWHT Temp)', value: data.postweldTemp ? `${data.postweldTemp} °C` : '' },
+                { label: '後熱處理 時間 (PWHT Time)', value: data.postweldTime ? `${data.postweldTime} hr` : '' }
+            ];
+
+            let previewHtml = `
+                <div class="text-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-900">${isPQR ? '程序檢定紀錄 (Procedure Qualification Record)' : '銲接程序說明書 (Welding Procedure Specification)'}</h2>
+                </div>
+
+                <div>
+                    ${createPreviewSection('基本資訊 (Basic Information)', [
+                        { label: isPQR ? 'PQR 編號 (No.)' : 'WPS 編號 (No.)', value: isPQR ? data.pqrNo : data.wpsNo },
+                        { label: isPQR ? '對應WPS編號' : '', value: data.wpsNo },
+                        { label: isPQR ? '記錄日期 (Record Date)' : '制定日期 (Date)', value: data.revisionDate },
+                        ...(isPQR ? [] : [{ label: '版次 (Revision)', value: data.revision }]),
+                        { label: '制定者 (By)', value: data.author },
+                        { label: '核准者 (Authorized by)', value: data.approver }
+                    ], 5, false)}
+                    ${createPreviewSection('母材 (Base Metal)', baseMetalItems, 3)}
+                    ${createPreviewSection('接頭設計 (Joint Design)', jointDesignItems, 5)}
+                    ${drawingHtml('接頭設計圖面 (Joint Design Drawing)', data.drawing)}
+                    ${createPreviewSection('銲接材料 (Filler Metal)', fillerMetalItems, 4)}
+                    ${createPreviewSection('銲接資訊 & 技術 (Welding Info & Technique)', [...weldingInfoItems, ...techItems], 6)}
+                    ${createPreviewSection('遮護材料 (Shielding)', shieldingItems, 6)}
+                    ${isPQR ? '' : createPreviewSection('溫度控制 (Temperature Control)', temperatureItems, 5)}
+                </div>
+            `;
+            
+            let tableHeaderHtml;
+            let tableRowsHtml;
+
+            if (isPQR) {
+                tableHeaderHtml = `
+                    <th class="p-1.5 font-semibold">道/層</th><th class="p-1.5 font-semibold">安培(A)</th>
+                    <th class="p-1.5 font-semibold">電壓(V)</th><th class="p-1.5 font-semibold">銲道長度(mm)</th>
+                    <th class="p-1.5 font-semibold">移行速度(cpm)</th><th class="p-1.5 font-semibold">銲接時間(sec)</th>
+                    <th class="p-1.5 font-semibold">入熱量(KJ/mm)</th><th class="p-1.5 font-semibold">層間溫度(℃)</th>
+                `;
+                tableRowsHtml = data.weldingProcedures.map(p => `
+                    <tr class="border-b border-gray-200 text-xs">
+                        <td class="p-1.5">${p.passLayer || '-'}</td><td class="p-1.5">${p.amps || '-'}</td>
+                        <td class="p-1.5">${p.volts || '-'}</td><td class="p-1.5">${p.weldLength || '-'}</td>
+                        <td class="p-1.5">${p.travelSpeed || '-'}</td><td class="p-1.5">${p.weldingTime || '-'}</td>
+                        <td class="p-1.5">${p.heatInput || '-'}</td><td class="p-1.5">${p.interpassTemp || '-'}</td>
+                    </tr>
+                `).join('');
+            } else { // WPS
+                tableHeaderHtml = `
+                    <th class="p-1.5 font-semibold">道/層</th>
+                    <th class="p-1.5 font-semibold">極性</th>
+                    <th class="p-1.5 font-semibold">等級</th>
+                    <th class="p-1.5 font-semibold">尺寸</th>
+                    <th class="p-1.5 font-semibold">安培 (A)</th>
+                    <th class="p-1.5 font-semibold">電壓 (V)</th>
+                    <th class="p-1.5 font-semibold">移行速度 (cpm)</th>
+                `;
+                tableRowsHtml = data.weldingProcedures.map(p => `
+                    <tr class="border-b border-gray-200 text-xs">
+                        <td class="p-1.5">${p.passLayer || '-'}</td>
+                        <td class="p-1.5">${p.polarity || '-'}</td>
+                        <td class="p-1.5">${p.fillerClass || '-'}</td>
+                        <td class="p-1.5">${p.fillerSize || '-'}</td>
+                        <td class="p-1.5">${p.amps || '-'}</td>
+                        <td class="p-1.5">${p.volts || '-'}</td>
+                        <td class="p-1.5">${p.travelSpeed || '-'}</td>
+                    </tr>
+                `).join('');
+            }
+
+            const procedurePreviewTitle = isPQR ? '銲接記錄參數 (Welding Record Parameters)' : '銲接道次參數 (Welding Procedure Parameters)';
+
+            if (data.weldingProcedures.length > 0 && data.weldingProcedures.some(p => Object.values(p).some(val => val))) {
+                previewHtml += `
+                    <div class="mt-3 bg-blue-50 p-3 rounded-lg shadow-sm">
+                        <h3 class="text-md font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">${procedurePreviewTitle}</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs table-auto">
+                                <thead class="bg-gray-100"><tr class="text-left">${tableHeaderHtml}</tr></thead>
+                                <tbody>${tableRowsHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            }
+
+            let testResultsHtml = '';
+            if (isPQR && data.testResults) {
+                const createTestTable = (title, headers, rowsData) => {
+                    const validRows = rowsData ? rowsData.filter(row => Object.values(row).some(v => v)) : [];
+                    if (validRows.length === 0) return '';
+                    
+                    const rowsHtml = validRows.map(row => 
+                        `<tr class="border-b border-gray-200 text-xs">${headers.map(header => `
+                            <td class="p-1.5">${row[header.key] || '-'}</td>`).join('')}
+                        </tr>`
+                    ).join('');
+
+                    const headersHtml = headers.map(h => `<th class="p-1.5 font-semibold">${h.label}</th>`).join('');
+
+                    return `
+                        <div class="mt-3">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-1">${title}</h4>
+                            <table class="w-full text-left text-xs table-auto">
+                                <thead class="bg-gray-100"><tr class="text-left">${headersHtml}</tr></thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>`;
+                };
+
+                const allWeldTensileTable = createTestTable( '全銲道拉伸試驗', 
+                    [ {key: 'specimenNo', label: '試片編號'}, {key: 'yieldStrength', label: '降伏強度(MPa)'}, {key: 'strength', label: '抗拉強度(MPa)'}, {key: 'elongation', label: '延伸率(%)'} ], 
+                    data.testResults.allWeldTensile );
+
+                const transverseTensileTable = createTestTable( '拉力片拉伸試驗', 
+                    [ {key: 'specimenNo', label: '試片編號'}, {key: 'strength', label: '抗拉強度(MPa)'}, {key: 'fractureLocation', label: '斷裂位置'}, {key: 'result', label: '結果'} ], 
+                    data.testResults.transverseTensile );
+
+                const impactTable = (() => {
+                    const validRows = data.testResults.impact ? data.testResults.impact.filter(row => row.values.some(v => v)) : [];
+                    if (validRows.length === 0) return '';
+                    const headersHtml = `
+                        <th class="p-1.5 font-semibold">試片編號</th><th class="p-1.5 font-semibold">溫度(°C)</th>
+                        <th class="p-1.5 font-semibold">衝擊值1</th><th class="p-1.5 font-semibold">衝擊值2</th>
+                        <th class="p-1.5 font-semibold">衝擊值3</th><th class="p-1.5 font-semibold">衝擊值4</th>
+                        <th class="p-1.5 font-semibold">衝擊值5</th><th class="p-1.5 font-semibold">平均值(J)</th>`;
+                    
+                    const rowsHtml = validRows.map(row => {
+                        const numbers = row.values.map(v => parseFloat(v)).filter(n => !isNaN(n));
+                        let avg = '';
+                        if (numbers.length >= 3) {
+                            let valuesToAverage = [...numbers];
+                            if (numbers.length === 5) {
+                                valuesToAverage.sort((a,b) => a-b).shift();
+                                valuesToAverage.pop();
+                            }
+                            avg = (valuesToAverage.reduce((a,b) => a+b, 0) / valuesToAverage.length).toFixed(2);
+                        }
+                        
+                        return `<tr class="border-b border-gray-200 text-xs">
+                            <td class="p-1.5">${row.specimenNo || '-'}</td>
+                            <td class="p-1.5">${row.temperature || '-'}</td>
+                            ${row.values.map(v => `<td class="p-1.5">${v || '-'}</td>`).join('')}
+                            <td class="p-1.5 font-medium">${avg}</td>
+                        </tr>`;
+                    }).join('');
+
+                    return `<div class="mt-3">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-1">衝擊性能 (Impact Test)</h4>
+                            <table class="w-full text-left text-xs table-auto">
+                                <thead class="bg-gray-100"><tr class="text-left">${headersHtml}</tr></thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>`;
+                })();
+
+                const bendTable = (() => {
+                    const validRows = data.testResults.bend ? data.testResults.bend.filter(row => Object.values(row).some(v => v)) : [];
+                    if (validRows.length === 0) return '';
+                    const headersHtml = `<th class="p-1.5 font-semibold">試片編號</th><th class="p-1.5 font-semibold">試驗類型</th><th class="p-1.5 font-semibold">結果</th><th class="p-1.5 font-semibold">備註</th><th class="p-1.5 font-semibold">試驗前</th><th class="p-1.5 font-semibold">試驗後</th>`;
+                    const rowsHtml = validRows.map(row => `
+                        <tr class="border-b border-gray-200 text-xs">
+                            <td class="p-1.5">${row.specimenNo || '-'}</td>
+                            <td class="p-1.5">${row.type || '-'}</td>
+                            <td class="p-1.5">${row.result || '-'}</td>
+                            <td class="p-1.5">${row.remarks || '-'}</td>
+                            <td class="p-1.5">${row.beforePhoto ? `<img src="${row.beforePhoto}" class="h-10 w-10 object-cover">` : '-'}</td>
+                            <td class="p-1.5">${row.afterPhoto ? `<img src="${row.afterPhoto}" class="h-10 w-10 object-cover">` : '-'}</td>
+                        </tr>`).join('');
+                    
+                    return `<div class="mt-3">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-1">彎曲試驗 (Bend Test)</h4>
+                            <table class="w-full text-left text-xs table-auto">
+                                <thead class="bg-gray-100"><tr class="text-left">${headersHtml}</tr></thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>`;
+                })();
+
+                let ndeHtml = '';
+                if (data.testResults.nde && Object.values(data.testResults.nde).some(v => v)) {
+                    ndeHtml = `
+                        <div class="mt-3">
+                             <h4 class="text-sm font-semibold text-gray-700 mb-1">非破壞檢驗 (Nondestructive Examination)</h4>
+                             <div class="grid grid-cols-2 gap-x-4">
+                                 <p class="text-xs"><strong>方法:</strong> ${data.testResults.nde.method || '-'}</p>
+                                 <p class="text-xs"><strong>結果:</strong> ${data.testResults.nde.results || '-'}</p>
+                                 <p class="text-xs"><strong>報告編號:</strong> ${data.testResults.nde.reportNo || '-'}</p>
+                                 <p class="text-xs"><strong>報告檔案:</strong> ${data.testResults.nde.reportFile || '-'}</p>
+                             </div>
+                        </div>
+                    `;
+                }
+
+                if (allWeldTensileTable || transverseTensileTable || impactTable || bendTable || ndeHtml) {
+                     testResultsHtml = `
+                        <div class="bg-blue-50 p-3 rounded-lg shadow-sm mb-3 break-inside-avoid">
+                            <h3 class="text-md font-bold text-gray-700 border-b border-gray-200 pb-2 mb-2">試驗結果 (Test Results)</h3>
+                            ${allWeldTensileTable}
+                            ${transverseTensileTable}
+                            ${impactTable || ''}
+                            ${bendTable || ''}
+                            ${ndeHtml}
+                        </div>
+                    `;
+                }
+            }
+            
+            if(isPQR) {
+                 previewHtml += drawingHtml('銲接示意圖 (Welding Sketch)', data.pqrSketch);
+                 previewHtml += testResultsHtml;
+                 previewHtml += notesHtml('備註事項 (Notes)', data.pqrNotes);
+            } else {
+                 previewHtml += notesHtml('備註事項 (Notes)', data.notes);
+            }
+
+            previewContent.innerHTML = previewHtml;
+
+            document.getElementById('form-section').style.display = 'none';
+            document.getElementById('form-buttons').style.display = 'none';
+            document.getElementById('report-preview-section').style.display = 'block';
+            document.getElementById('preview-buttons').style.display = 'flex';
+        }
+        
+        function backToEdit() {
+            document.getElementById('report-preview-section').style.display = 'none';
+            document.getElementById('preview-buttons').style.display = 'none';
+            document.getElementById('form-section').style.display = 'block';
+            document.getElementById('form-buttons').style.display = 'flex';
+            
+            const id = document.getElementById('itemId').value;
+            const isPQR = activeTab === 'pqr';
+            document.getElementById('modalTitle').innerText = id ? (isPQR ? '編輯/檢視 PQR' : '編輯/檢視 WPS') : (isPQR ? '新增 PQR' : '新增 WPS');
+        }
+        
+        function printReport() {
+            const data = getCurrentFormData();
+            
+            let previewHtml = document.getElementById('preview-content').innerHTML;
+
+            previewHtml = previewHtml.replaceAll('grid-cols-2 md:grid-cols-3', 'grid-cols-3');
+            previewHtml = previewHtml.replaceAll('grid-cols-2 md:grid-cols-4', 'grid-cols-4');
+            previewHtml = previewHtml.replaceAll('grid-cols-2 md:grid-cols-5', 'grid-cols-5');
+            previewHtml = previewHtml.replaceAll('grid-cols-2 md:grid-cols-6', 'grid-cols-6');
+            
+            const docTitle = activeTab === 'pqr' ? `PQR 報表 - ${data.pqrNo || '新文件'}` : `WPS 報表 - ${data.wpsNo || '新文件'}`;
+
+            const reportHtml = `
+                <!DOCTYPE html>
+                <html lang="zh-Hant">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${docTitle}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Noto Sans TC', sans-serif; background-color: #FFF; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        @page { size: A4; margin: 10mm; }
+                        @media print { body { margin: 0; box-shadow: none; } }
+                        .break-inside-avoid { break-inside: avoid; }
+                    <\/style>
+                </head>
+                <body class="p-0">
+                    ${previewHtml}
+                    <script>
+                        window.onload = () => { window.print(); };
+                    <\/script>
+                </body>
+                </html>
+            `;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(reportHtml);
+            printWindow.document.close();
+        }
+
+        function getCurrentFormData() {
+            const isPQR = activeTab === 'pqr';
+            const procedures = Array.from(document.querySelectorAll('#weldingProcedureRows .procedure-row')).map(row => {
+                if (isPQR) {
+                    return {
+                        passLayer: row.querySelector('.proc-passLayer')?.value || '',
+                        amps: row.querySelector('.proc-amps')?.value || '',
+                        volts: row.querySelector('.proc-volts')?.value || '',
+                        weldLength: row.querySelector('.proc-weldLength')?.value || '',
+                        travelSpeed: row.querySelector('.proc-travelSpeed')?.value || '',
+                        weldingTime: row.querySelector('.proc-weldingTime')?.value || '',
+                        heatInput: row.querySelector('.proc-heatInput')?.value || '',
+                        interpassTemp: row.querySelector('.proc-interpassTemp')?.value || ''
+                    };
+                } else { // WPS
+                    return {
+                        passLayer: row.querySelector('.proc-passLayer')?.value || '',
+                        polarity: row.querySelector('.proc-polarity')?.value || '',
+                        fillerClass: row.querySelector('.proc-fillerClass')?.value || '',
+                        fillerSize: row.querySelector('.proc-fillerSize')?.value || '',
+                        amps: row.querySelector('.proc-amps')?.value || '',
+                        volts: row.querySelector('.proc-volts')?.value || '',
+                        travelSpeed: row.querySelector('.proc-travelSpeed')?.value || ''
+                    };
+                }
+            });
+            
+            let data = {
+                id: document.getElementById('itemId').value || null,
+                itemNo: document.getElementById('itemNo').value.trim(),
+            };
+            
+            // Add IDs for fields that are not dropdowns
+            const nonDropdownIds = [
+                "revisionDate", "author", "approver", "baseMetalThickness1", "baseMetalThickness2",
+                "rootOpening", "rootFaceDimension", "grooveAngle", "radius", "backGougingMethod",
+                "numElectrodes", "electrodeSpacing", "ctwd"
+            ];
+
+            const allIds = [...new Set([...Object.keys(dropdownLabels), ...Object.keys(optionKeyMap), ...nonDropdownIds])];
+            
+            if (isPQR) {
+                data.pqrNo = data.itemNo;
+                delete data.itemNo;
+                data.wpsNo = document.getElementById('wpsNo').value.trim();
+                data.pqrNotes = document.getElementById('pqrNotes').value.trim();
+                data.pqrSketch = currentPqrSketchBase64;
+                data.weldingEquipment = document.getElementById('weldingEquipment').value.trim();
+
+                if (document.getElementById('showTestResults').checked) {
+                    data.testResults = {
+                        allWeldTensile: Array.from(document.querySelectorAll('.all-weld-tensile-row')).map(row => ({
+                            specimenNo: row.querySelector('.tensile-specimenNo').value,
+                            yieldStrength: row.querySelector('.tensile-yieldStrength').value,
+                            strength: row.querySelector('.tensile-strength').value,
+                            elongation: row.querySelector('.tensile-elongation').value
+                        })),
+                        transverseTensile: Array.from(document.querySelectorAll('.transverse-tensile-row')).map(row => ({
+                            specimenNo: row.querySelector('.tensile-specimenNo').value,
+                            strength: row.querySelector('.tensile-strength').value,
+                            fractureLocation: row.querySelector('.tensile-fractureLocation').value,
+                            result: row.querySelector('.tensile-result').value,
+                        })),
+                        impact: Array.from(document.querySelectorAll('.impact-row')).map(row => ({
+                            specimenNo: row.querySelector('.impact-specimenNo').value,
+                            temperature: row.querySelector('.impact-temperature').value,
+                            values: Array.from(row.querySelectorAll('.impact-value')).map(input => input.value)
+                        })),
+                        bend: Array.from(document.querySelectorAll('.bend-row')).map(row => ({
+                            specimenNo: row.querySelector('.bend-specimenNo').value,
+                            type: row.querySelector('.bend-type').value,
+                            result: row.querySelector('.bend-result').value,
+                            remarks: row.querySelector('.bend-remarks').value,
+                            beforePhoto: row.bendData.beforePhoto,
+                            afterPhoto: row.bendData.afterPhoto
+                        })),
+                        nde: {
+                            method: document.getElementById('ndeMethod').value,
+                            results: document.getElementById('ndeResults').value,
+                            reportNo: document.getElementById('ndeReportNo').value,
+                            reportFile: document.getElementById('ndeReportFile').files[0]?.name || document.getElementById('ndeReportFile-name').textContent || null
+                        }
+                    };
+                } else {
+                    data.testResults = null;
+                }
+
+            } else { // WPS
+                data.wpsNo = data.itemNo;
+                delete data.itemNo;
+                allIds.push("revision", "preheatTempMin", "interpassTempMin", "interpassTempMax", "postweldTemp", "postweldTime");
+                data.notes = document.getElementById('notes').value.trim();
+                data.drawing = currentDrawingBase64;
+            }
+            
+            allIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    data[id] = element.value.trim();
+                }
+            });
+            
+            data.weldingProcedures = procedures;
+            
+            return data;
+        }
+        
+        function filterActiveList() {
+            const term = searchInput.value.toLowerCase();
+            if (activeTab === 'wps') {
+                const filtered = wpsData.filter(wps => 
+                    (wps.wpsNo && wps.wpsNo.toLowerCase().includes(term)) ||
+                    (wps.weldingProcess && wps.weldingProcess.toLowerCase().includes(term)) ||
+                    (wps.baseMetalSpec1 && wps.baseMetalSpec1.toLowerCase().includes(term)) ||
+                    (wps.baseMetalSpec2 && wps.baseMetalSpec2.toLowerCase().includes(term))
+                );
+                renderWPSGroups(filtered);
+            } else { // pqr
+                 const filtered = pqrData.filter(pqr => 
+                    (pqr.pqrNo && pqr.pqrNo.toLowerCase().includes(term)) ||
+                    (pqr.wpsNo && pqr.wpsNo.toLowerCase().includes(term)) ||
+                    (pqr.weldingProcess && pqr.weldingProcess.toLowerCase().includes(term)) ||
+                    (pqr.baseMetalSpec1 && pqr.baseMetalSpec1.toLowerCase().includes(term)) ||
+                    (pqr.baseMetalSpec2 && pqr.baseMetalSpec2.toLowerCase().includes(term))
+                );
+                renderPQRGroups(filtered);
+            }
+        }
+
+        async function loadDropdownOptions() {
+            const docRef = doc(db, "settings", "dropdownOptions");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const loadedOptions = docSnap.data();
+                // Merge with defaults to ensure all keys exist
+                dropdownOptions = {...defaultDropdownOptions, ...loadedOptions};
+            } else {
+                dropdownOptions = JSON.parse(JSON.stringify(defaultDropdownOptions));
+                await saveSettingsData(dropdownOptions);
+            }
+            populateAllDropdowns();
+        }
+
+        function populateDropdown(selectId, options) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const currentValue = select.value;
+            select.innerHTML = '<option value=""></option>'; // Add a blank option
+            options.forEach(optionText => {
+                const option = document.createElement('option');
+                option.value = optionText;
+                option.textContent = optionText;
+                select.appendChild(option);
+            });
+            // Try to restore previous value
+            if (options.includes(currentValue)) {
+                 select.value = currentValue;
+            }
+        }
+
+        function populateAllDropdowns() {
+            const allSelectIds = [
+                'baseMetalSpec1', 'baseMetalType1', 'baseMetalSpec2', 'baseMetalType2', 'jointDesignType', 'weldPassType', 
+                'backing', 'backingMaterial', 'backGouging', 'fillerMetalSpec', 'fillerMetalClass', 'fillerMetalBrandName', 
+                'fillerMetalSize', 'weldingProcess', 'applicableStandard', 'wireDiameter', 'weldingType', 'position', 
+                'electricalCharacteristic', 'transferMode', 'technique', 'passType', 'peening', 'interpassCleaning', 
+                'shieldingGas', 'shieldingComposition', 'shieldingFlowRate', 'shieldingCupSize', 'shieldingFluxName', 
+                'shieldingWireFluxClass'
+            ];
+
+            allSelectIds.forEach(selectId => {
+                const optionKey = optionKeyMap[selectId] || selectId;
+                const options = dropdownOptions[optionKey] || [];
+                populateDropdown(selectId, options);
+            });
+        }
+
+
+        function setupListeners() {
+            if (wpsUnsubscribe) wpsUnsubscribe();
+            wpsUnsubscribe = onSnapshot(collection(db, "wps"), (snapshot) => {
+                wpsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                if (activeTab === 'wps') {
+                    filterActiveList();
+                }
+            });
+
+            if (pqrUnsubscribe) pqrUnsubscribe();
+            pqrUnsubscribe = onSnapshot(collection(db, "pqr"), (snapshot) => {
+                pqrData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                if (activeTab === 'pqr') {
+                   filterActiveList();
+                }
+            });
+        }
+        
+        // Settings Modal Functions
+        function openSettingsModal() {
+            const settingsContent = document.getElementById('settings-content');
+            settingsContent.innerHTML = ''; // Clear previous content
+
+            for (const key in dropdownLabels) {
+                const currentOptions = dropdownOptions[key] || [];
+                const label = dropdownLabels[key];
+
+                const section = document.createElement('div');
+                section.innerHTML = `
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">${label}</h3>
+                    <div id="settings-${key}-list" class="space-y-2 mb-3">
+                        ${currentOptions.map(option => `
+                            <div class="flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                                <span class="setting-option-text text-sm text-gray-700">${option}</span>
+                                <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="settings-new-${key}" class="flex-grow block w-full rounded-md border-gray-300 shadow-sm text-sm" placeholder="新增選項...">
+                        <button type="button" onclick="addOptionToSetting('${key}')" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm font-semibold hover:bg-blue-600">+</button>
+                    </div>
+                `;
+                settingsContent.appendChild(section);
+            }
+
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.querySelector('.transform').classList.remove('scale-95', 'opacity-0'), 10);
+        }
+
+        function addOptionToSetting(key) {
+            const input = document.getElementById(`settings-new-${key}`);
+            const value = input.value.trim();
+            if (!value) return;
+
+            const list = document.getElementById(`settings-${key}-list`);
+            const newItem = document.createElement('div');
+            newItem.className = 'flex items-center justify-between bg-gray-100 p-2 rounded-md';
+            newItem.innerHTML = `
+                <span class="setting-option-text text-sm text-gray-700">${value}</span>
+                <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            `;
+            list.appendChild(newItem);
+            input.value = '';
+            input.focus();
+        }
+        
+        async function saveSettingsData(data) {
+            try {
+                await setDoc(doc(db, "settings", "dropdownOptions"), data);
+                 console.log("Settings saved successfully.");
+            } catch (error) {
+                console.error("儲存設定時發生錯誤:", error);
+                alert("儲存設定失敗。");
+            }
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.querySelector('.transform').classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { modal.style.display = 'none'; }, 200);
+        }
+
+        async function saveSettings() {
+            const newOptions = {};
+            for (const key in dropdownLabels) {
+                const list = document.getElementById(`settings-${key}-list`);
+                if(list){
+                    const options = Array.from(list.querySelectorAll('.setting-option-text')).map(span => span.textContent);
+                    newOptions[key] = options;
+                }
+            }
+            
+            await saveSettingsData(newOptions);
+            dropdownOptions = newOptions; 
+            populateAllDropdowns();
+            closeSettingsModal();
+        }
+
+        // Initial render
+        window.onload = async () => { 
+            setupImageUpload('drawingUpload', 'drawingPreviewContainer', 'drawingPreview', 'removeDrawingBtn', (b64) => currentDrawingBase64 = b64);
+            setupImageUpload('pqrSketchUpload', 'pqrSketchPreviewContainer', 'pqrSketchPreview', 'removePqrSketchBtn', (b64) => currentPqrSketchBase64 = b64);
+            
+            // Add keydown listener for settings inputs
+            document.getElementById('settings-content').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    const key = e.target.id.replace('settings-new-', '');
+                    addOptionToSetting(key);
+                }
+            });
+
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("已登入使用者:", user.uid);
+                    await loadDropdownOptions();
+                    setupListeners();
+                    showTab('wps');
+                } else {
+                    console.log("使用者未登入，正在執行匿名登入...");
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("匿名登入失敗:", error);
+                        alert("無法連接到資料庫，請檢查您的網路連線或稍後再試。");
+                    });
+                }
+            });
+        };
+
+        // Close modal on escape key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (document.getElementById('itemModal').style.display === 'flex') {
+                    closeItemModal();
+                }
+                if (document.getElementById('settingsModal').style.display === 'flex') {
+                    closeSettingsModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

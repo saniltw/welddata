@@ -1,1009 +1,1814 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>銲接參數管理系統 (Firebase 版)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>樣品庫存管理系統 - 儀表板</title>
+    <script src="https://cdn-tailwindcss.vercel.app/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- QR Code & Zipping Libraries -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script type="text/javascript" src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body {
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            background-color: #f1f5f9; /* slate-100 */
         }
-        .slide-in {
-            transform: translateX(100%);
-            transition: transform 0.3s ease-out;
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.5);
+            transition: opacity 0.3s ease;
         }
-        .slide-in.active {
-            transform: translateX(0);
+        .modal-content {
+            transition: transform 0.3s ease, opacity 0.3s ease;
         }
-        .backdrop-blur-sm {
-            backdrop-filter: blur(4px);
+        .modal-hidden {
+            opacity: 0;
+            pointer-events: none;
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 4px solid #3498db;
-            width: 40px;
-            height: 40px;
-            animation: spin 2s linear infinite;
+        .modal-visible {
+            opacity: 1;
+            pointer-events: auto;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .modal-content-hidden {
+            transform: scale(0.95);
+            opacity: 0;
         }
-        /* 隱藏數字輸入框的上下箭頭 */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        .modal-content-visible {
+            transform: scale(1);
+            opacity: 1;
         }
-        input[type=number] {
-            -moz-appearance: textfield;
+        .tab-btn, .history-tab-btn {
+            border-color: transparent;
+            color: #475569; /* slate-600 */
         }
-        /* 表格輸入樣式 */
-        #multi-pass-table input, #multi-pass-table textarea {
-            font-size: 0.875rem;
-            padding: 0.25rem 0.5rem;
+        .active-tab {
+            border-color: #2563eb; /* blue-600 */
+            color: #1e293b; /* slate-800 */
+        }
+        .horizontal-scroll-container {
+            cursor: grab;
+            cursor: -webkit-grab;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            user-select: none;
+        }
+        .horizontal-scroll-container::-webkit-scrollbar {
+            display: none;
+        }
+        .horizontal-scroll-container.active {
+            cursor: grabbing;
+            cursor: -webkit-grabbing;
+        }
+        /* Notification Toast */
+        .toast {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        .toast-visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* VISUAL INVENTORY GRID STYLES */
+        .shelf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        @media (max-width: 640px) {
+            .shelf-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+        .slot-card {
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+            position: relative; /* Needed for tooltip positioning */
+            cursor: pointer;
+        }
+        .slot-occupied {
+            background-color: white;
+            padding: 0.75rem 1rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .slot-occupied:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .slot-occupied.selected, .staging-card.selected {
+            border-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 0 2px #bfdbfe; /* blue-200 */
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .slot-empty {
+            background-color: #f8fafc;
+            border-style: dashed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            color: #cbd5e1;
+            border-width: 1px;
+            border-color: #e2e8f0;
+        }
+        .slot-empty:hover {
+            background-color: #f0f9ff;
+            border-color: #38bdf8;
+            color: #0284c7;
+        }
+
+        /* TOOLTIP STYLES */
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1e293b; /* slate-800 */
+            color: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            width: max-content;
+            max-width: 320px;
+            z-index: 20;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            pointer-events: none;
+        }
+        .tooltip::after { /* The little arrow */
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        .slot-occupied:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Staging Area Styles */
+        .staging-card {
+            background-color: #fffbeb; /* amber-50 */
+            border: 1px solid #fcd34d; /* amber-300 */
+            border-radius: 0.75rem;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+         .staging-card.selected {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: #eff6ff; /* blue-50 */
+        }
+        
+        /* Batch Action Bar */
+        #batch-action-bar {
+            transition: transform 0.3s ease-in-out;
+            transform: translateY(110%);
+        }
+        #batch-action-bar.visible {
+            transform: translateY(0);
+        }
+        
+        /* QR Scanner Style */
+        #qr-reader {
             width: 100%;
-            min-width: 80px; /* 數字輸入框最小寬度 */
-        }
-        #multi-pass-table textarea {
-            min-width: 150px; /* 備註欄位較寬 */
-        }
-        #multi-pass-table th, #multi-pass-table td {
-            white-space: nowrap;
+            max-width: 500px;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            overflow: hidden;
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="p-4 sm:p-6 md:p-8 pb-32"> <!-- Added padding-bottom -->
 
-    <div id="app" class="max-w-5xl mx-auto p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
         <!-- 頁首 -->
-        <header class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">華研協作機器人-銲接參數總覽</h1>
-            <button onclick="openModal('base', null)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center">
-                <i class="fas fa-plus mr-2"></i> 新增工件
-            </button>
+        <header class="flex justify-between items-center mb-8 flex-wrap gap-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">樣品儀表板</h1>
+            <div class="flex items-center gap-2 sm:gap-3">
+                 <button id="scanSearchBtn" class="bg-indigo-600 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-indigo-700 whitespace-nowrap text-sm sm:text-base flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
+                    掃描搜尋
+                 </button>
+                 <button id="openAddSampleModalBtn" class="bg-blue-600 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 whitespace-nowrap text-sm sm:text-base">新增樣品</button>
+                 <button id="openHistoryModalBtn" class="bg-white text-slate-700 font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-slate-100 border border-slate-300 whitespace-nowrap text-sm sm:text-base">查看歷史</button>
+                 <button id="openReportModalBtn" class="bg-white text-slate-700 font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-slate-100 border border-slate-300 whitespace-nowrap text-sm sm:text-base">庫存報表</button>
+                 <button id="openSettingsBtn" class="bg-slate-700 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-slate-800 whitespace-nowrap text-sm sm:text-base">系統設定</button>
+            </div>
         </header>
 
-        <!-- 基礎參數列表 -->
-        <main id="base-params-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            <!-- Loading indicator -->
-            <div id="loading-indicator" class="col-span-full flex flex-col items-center justify-center p-10">
-                <div class="loader"></div>
-                <p class="mt-4 text-gray-600">正在連接您的 Firebase 專案...</p>
-            </div>
+        <!-- 主系統內容 -->
+        <main id="mainContent">
+            <!-- 搜尋區塊 -->
+            <section id="search-section" class="mb-8 bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold mb-5 text-slate-800">搜尋樣品</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <input type="text" id="searchInput" class="sm:col-span-2 lg:col-span-2 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="輸入樣品名稱、線徑、標準...">
+                    <select id="searchCabinet" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
+                    <select id="searchPerson" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+                 <div id="searchResults" class="mt-6 hidden">
+                    <h3 class="text-lg sm:text-xl font-semibold text-slate-700 mb-4">搜尋結果</h3>
+                    <div id="searchResultsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <!-- Search results will be injected here as a grid -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 樣品暫存區 -->
+            <section id="staging-area-section" class="mb-8">
+                <h2 class="text-xl sm:text-2xl font-bold mb-5 text-slate-800">樣品暫存區</h2>
+                <div id="stagingAreaGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <!-- Staging samples will be injected here -->
+                </div>
+                <div id="noStagingSamples" class="hidden text-center py-10 bg-white rounded-2xl border border-slate-200 shadow-lg">
+                    <p class="text-slate-500">暫存區是空的</p>
+                </div>
+            </section>
+
+            <!-- 各櫃子庫存總覽 (Tab 介面) -->
+            <section id="inventory-overview-section" class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-200 min-h-[200px] flex items-center justify-center">
+                 <div id="loader" class="text-center text-slate-500">
+                    <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    正在連接資料庫...
+                </div>
+                <div id="inventory-content" class="hidden w-full">
+                    <div id="cabinet-tabs-container" class="mb-4 border-b border-slate-200 -mx-4 sm:-mx-6 px-4 sm:px-6 flex items-center gap-4 overflow-x-auto horizontal-scroll-container"></div>
+                    <div id="cabinet-content-container" class="pt-4"></div>
+                </div>
+            </section>
         </main>
     </div>
 
-    <!-- 詳細資料側邊欄 (Slide-in Panel) -->
-    <div id="detail-panel" class="fixed top-0 right-0 h-full w-full md:w-3/4 lg:w-2/3 bg-gray-50 shadow-2xl z-20 p-6 overflow-y-auto slide-in">
-        <div class="flex justify-between items-center mb-6">
-            <h2 id="detail-title" class="text-2xl font-bold text-gray-800"></h2>
-            <button onclick="closeDetailPanel()" class="text-gray-500 hover:text-gray-800">
-                <i class="fas fa-times fa-2x"></i>
-            </button>
-        </div>
-        
-        <div id="base-param-details" class="mb-8"></div>
-
-        <div id="multipass-params-section">
+    <!-- Modals -->
+    <div id="qrScannerModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-4 sm:p-6 modal-content modal-content-hidden">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-gray-700">多層道參數</h3>
-                <button id="add-multipass-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-sm flex items-center">
-                    <i class="fas fa-plus mr-2"></i> 編輯/新增道次
-                </button>
+                <h2 id="qrScannerTitle" class="text-xl sm:text-2xl font-bold text-slate-800">掃描 QR Code</h2>
+                <button class="close-scanner-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
             </div>
-            <div id="multipass-params-list" class="space-y-3"></div>
-        </div>
-    </div>
-
-    <!-- 新增/編輯 Modal -->
-    <div id="form-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-30 flex justify-center items-center p-4 hidden">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                <h3 id="modal-title" class="text-xl font-semibold"></h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times fa-lg"></i></button>
-            </div>
-            <form id="data-form" class="p-6 space-y-6 overflow-y-auto flex-grow"></form>
-            <div id="modal-footer" class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0"></div>
+            <div id="qr-reader" class="mx-auto"></div>
         </div>
     </div>
     
-    <!-- 圖片檢視器 -->
-    <div id="image-viewer" class="fixed inset-0 bg-black bg-opacity-75 z-40 flex justify-center items-center p-4 hidden" onclick="this.classList.add('hidden')">
-        <img src="" class="max-w-full max-h-full rounded-lg shadow-xl">
+    <div id="addSampleModal" class="fixed inset-0 z-40 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">登錄新樣品</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto" style="max-height: 80vh;">
+                <form id="add-sample-form" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="sampleName" class="block text-sm font-medium text-slate-600 mb-1">樣品名稱</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="sampleName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="可掃描 QR Code 或手動輸入">
+                                <button type="button" id="scanInputQrBtn" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600" title="掃描 QR Code">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                </button>
+                            </div>
+                        </div>
+                         <div><label for="wireDiameter" class="block text-sm font-medium text-slate-600 mb-1">線徑</label><input type="text" id="wireDiameter" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="例如：2.5mm"></div>
+                    </div>
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                        <p class="text-sm text-slate-500 mb-4">以下欄位至少擇一填寫：</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div><label for="applicableStandard" class="block text-sm font-medium text-slate-600 mb-1">適用標準(規範)</label><input type="text" id="applicableStandard" class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="例如：JIS G 3521"></div>
+                            <div><label for="manufacturer" class="block text-sm font-medium text-slate-600 mb-1">製造商</label><input type="text" id="manufacturer" class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="例如：中鋼"></div>
+                            <div><label for="formulaCode" class="block text-sm font-medium text-slate-600 mb-1">配方代號</label><input type="text" id="formulaCode" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label for="processDetails" class="block text-sm font-medium text-slate-600 mb-1">製程明細</label><input type="text" id="processDetails" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label for="furnaceNo" class="block text-sm font-medium text-slate-600 mb-1">爐號</label><input type="text" id="furnaceNo" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label for="batchNo" class="block text-sm font-medium text-slate-600 mb-1">批號</label><input type="text" id="batchNo" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                        </div>
+                    </div>
+                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div class="lg:col-span-3">
+                            <label class="block text-sm font-medium text-slate-600 mb-1">存放位置</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <select id="storageCabinet" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                                <select id="storageShelf" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" disabled></select>
+                                <select id="storagePosition" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" disabled></select>
+                            </div>
+                        </div>
+                        <div><label for="loggedBy" class="block text-sm font-medium text-slate-600 mb-1">登錄人員</label><select id="loggedBy" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select></div>
+                    </div>
+                    <div class="text-right"><button type="submit" class="w-full sm:w-auto bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-md hover:bg-blue-700">確認存入</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div id="historyModal" class="fixed inset-0 z-40 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl mx-4 modal-content modal-content-hidden flex flex-col">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">操作歷史紀錄</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 flex-grow overflow-y-auto" style="max-height: 80vh;">
+                <div id="history-tabs-container" class="mb-4 border-b border-slate-200 flex items-center gap-4 -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-x-auto horizontal-scroll-container">
+                    <button data-target="historyTab-add" class="history-tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap active-tab">新增</button>
+                    <button data-target="historyTab-stage" class="history-tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap">暫存</button>
+                    <button data-target="historyTab-return" class="history-tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap">放回</button>
+                    <button data-target="historyTab-move" class="history-tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap">移位</button>
+                    <button data-target="historyTab-finalize" class="history-tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap">取出</button>
+                </div>
+                <div id="history-content-container" class="mt-4">
+                    <div id="historyTab-add" class="history-tab-content"></div>
+                    <div id="historyTab-stage" class="history-tab-content hidden"></div>
+                    <div id="historyTab-return" class="history-tab-content hidden"></div>
+                    <div id="historyTab-move" class="history-tab-content hidden"></div>
+                    <div id="historyTab-finalize" class="history-tab-content hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 modal-content modal-content-hidden flex flex-col">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">系統設定</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto flex-grow" style="max-height: 70vh;">
+                <div class="mb-8">
+                    <h3 class="text-lg sm:text-xl font-semibold text-slate-700 mb-4">人員管理</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4"><input type="text" id="newPersonName" class="flex-grow px-4 py-2 border border-slate-300 rounded-lg" placeholder="輸入人員姓名"><button id="addPersonBtn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap">新增人員</button></div>
+                    <div id="personList" class="space-y-2"></div>
+                </div><hr class="my-6">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-semibold text-slate-700 mb-4">櫃子配置管理</h3>
+                    <div class="mb-6 p-4 bg-slate-50 rounded-lg">
+                        <h4 class="font-semibold text-slate-600 mb-2">新增櫃子</h4>
+                        <div class="flex flex-col sm:flex-row items-center gap-4"><input type="text" id="newCabinetName" class="flex-grow w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="輸入新櫃子名稱"><button id="addCabinetBtn" class="bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 w-full sm:w-auto whitespace-nowrap">新增櫃子</button></div>
+                    </div><div id="cabinetSettings" class="space-y-6"></div>
+                </div>
+            </div>
+            <div class="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                <button id="closeSettingsBtn" class="bg-white text-slate-700 font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-slate-100 border border-slate-300">關閉</button>
+                <button id="saveSettingsBtn" class="bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700">儲存設定</button>
+            </div>
+        </div>
+    </div>
+    <div id="moveSampleModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">移動樣品位置</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <form id="move-sample-form" class="p-4 sm:p-6 space-y-4">
+                <input type="hidden" id="moveSampleId">
+                <input type="hidden" id="moveSampleSource">
+                <div>
+                    <p>樣品名稱: <span id="moveSampleName" class="font-semibold"></span></p>
+                    <p>目前位置: <span id="moveSampleOldLocation" class="text-sm text-slate-500"></span></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">新的存放位置</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <select id="moveStorageCabinet" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                        <select id="moveStorageShelf" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" disabled></select>
+                        <select id="moveStoragePosition" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" disabled></select>
+                    </div>
+                </div>
+                <div>
+                    <label for="movedBy" class="block text-sm font-medium text-slate-600 mb-1">操作人員</label>
+                    <select id="movedBy" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                </div>
+                <div class="text-right pt-4">
+                    <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300 mr-2">取消</button>
+                    <button type="submit" class="w-full sm:w-auto bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-md hover:bg-blue-700">確認移動</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="actionModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 id="actionModalTitle" class="text-xl font-bold text-slate-800"></h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <form id="actionForm" class="p-6 space-y-4">
+                <input type="hidden" id="actionSampleId">
+                <input type="hidden" id="actionType">
+                <p id="actionModalMessage" class="text-slate-600"></p>
+                <div>
+                    <label for="actionPerson" class="block text-sm font-medium text-slate-600 mb-1">操作人員</label>
+                    <select id="actionPerson" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                </div>
+                <div id="remarksContainer" class="hidden">
+                     <label for="actionRemarks" class="block text-sm font-medium text-slate-600 mb-1">備註事項 (必填)</label>
+                     <textarea id="actionRemarks" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" rows="3" placeholder="例如：用於 XX 實驗..."></textarea>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                    <button type="submit" id="actionConfirmBtn" class="bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg">確認</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="confirmationModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 modal-content modal-content-hidden">
+             <h3 id="confirmationTitle" class="text-xl font-bold text-slate-800 mb-4">確認操作</h3>
+             <p id="confirmationMessage" class="mb-6 text-slate-600"></p>
+             <div class="flex justify-end gap-3">
+                 <button id="confirmCancelBtn" class="bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                 <button id="confirmActionBtn" class="bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-red-700">確認</button>
+             </div>
+        </div>
+    </div>
+    <div id="sampleDetailModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 modal-content modal-content-hidden flex flex-col">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">樣品詳細資訊</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div id="sampleDetailContent" class="p-4 sm:p-6 overflow-y-auto" style="max-height: 70vh;"></div>
+            <div id="sampleDetailFooter" class="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3"></div>
+        </div>
+    </div>
+     <!-- Batch Action Modal -->
+    <div id="batchActionModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">批次移至暫存區</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <form id="batchActionForm" class="p-6">
+                <p class="text-slate-600 mb-4">您確定要將以下 <span id="batchCount" class="font-bold"></span> 個樣品移至暫存區嗎？</p>
+                <div id="batchSampleList" class="max-h-48 overflow-y-auto bg-slate-50 p-3 rounded-lg space-y-2 mb-4"></div>
+                <div>
+                    <label for="batchActionPerson" class="block text-sm font-medium text-slate-600 mb-1">操作人員</label>
+                    <select id="batchActionPerson" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                </div>
+                <div class="pt-6 flex justify-end gap-3">
+                    <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                    <button type="submit" class="bg-amber-500 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-amber-600">確認移至暫存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Batch Finalize Modal -->
+    <div id="batchFinalizeModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">批次最終取出 (歸檔)</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <form id="batchFinalizeForm" class="p-6">
+                <p class="text-slate-600 mb-4">您確定要歸檔以下 <span id="batchFinalizeCount" class="font-bold"></span> 個樣品嗎？此操作無法復原。</p>
+                <div id="batchFinalizeSampleList" class="max-h-48 overflow-y-auto bg-slate-50 p-3 rounded-lg space-y-2 mb-4"></div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="batchFinalizePerson" class="block text-sm font-medium text-slate-600 mb-1">操作人員</label>
+                        <select id="batchFinalizePerson" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                    </div>
+                    <div>
+                        <label for="batchFinalizeRemarks" class="block text-sm font-medium text-slate-600 mb-1">備註事項 (將套用至所有樣品)</label>
+                        <textarea id="batchFinalizeRemarks" required class="w-full px-4 py-2 border border-slate-300 rounded-lg" rows="3" placeholder="例如：XX 專案已結案"></textarea>
+                    </div>
+                </div>
+                <div class="pt-6 flex justify-end gap-3">
+                    <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                    <button type="submit" class="bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-red-700">確認並歸檔</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Report Filter Modal -->
+    <div id="reportFilterModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">選擇報表範圍</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <label for="reportCabinetSelect" class="block text-sm font-medium text-slate-600 mb-2">請選擇要產生的櫃子報表：</label>
+                <select id="reportCabinetSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></select>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                    <button id="generateReportBtn" class="bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg">產生報表</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Report Modal -->
+    <div id="reportModal" class="fixed inset-0 z-40 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl mx-4 modal-content modal-content-hidden flex flex-col">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">庫存報表</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div id="reportContent" class="p-4 sm:p-6 flex-grow overflow-y-auto" style="max-height: 80vh;">
+                <!-- Report table will be injected here -->
+            </div>
+            <div class="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                 <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-300">關閉</button>
+                 <button id="downloadCsvBtn" class="bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-green-700 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    下載 CSV
+                 </button>
+                 <button id="printReportBtn" class="bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    列印報表
+                 </button>
+            </div>
+        </div>
     </div>
 
-    <!-- 上傳狀態提示 -->
-    <div id="upload-status" class="fixed bottom-4 right-4 bg-gray-800 text-white py-2 px-4 rounded-lg shadow-lg z-50 hidden transition-opacity duration-300"></div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="toast fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+        <span id="notification-message"></span>
+    </div>
+
+    <!-- Batch Action Bar -->
+    <div id="batch-action-bar" class="fixed bottom-0 left-0 right-0 bg-slate-800 text-white p-4 shadow-lg z-30">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+                <span id="selected-count" class="font-bold"></span>
+                <span> 個樣品已選取</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="batch-download-qr-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2 rounded-lg hidden">下載 QR Codes</button>
+                <button id="batch-stage-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2 rounded-lg">批次移至暫存</button>
+                <button id="batch-finalize-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg hidden">批次最終取出</button>
+                <button id="deselect-all-btn" class="text-slate-300 hover:text-white font-semibold">取消選取</button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
-        // --- Firebase SDK Imports ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, deleteDoc, query, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- Firebase 設定 (強制使用您的專案) ---
         const firebaseConfig = {
-            apiKey: "AIzaSyDDPM9cbOuMttVVZQUu9w-URwF5qipgHZU",
-            authDomain: "welding-params-app.firebaseapp.com",
-            projectId: "welding-params-app",
-            storageBucket: "welding-params-app.firebasestorage.app",
-            messagingSenderId: "623714580072",
-            appId: "1:623714580072:web:22f6a7c14942358c39eddd",
-            measurementId: "G-WNCHHP4R1D"
-        };
-        
-        let db, auth, storage;
-        let baseParamsCol, multiPassParamsCol;
-        let baseParamsUnsubscribe, multiPassParamsUnsubscribe;
-
-        // --- 資料模型 ---
-        let baseParams = [];
-        let multiPassParams = [];
-
-        let currentEditing = { type: null, id: null };
-        let currentSelectedBaseId = null;
-        let imagesToDelete = [];
-
-        const baseParamFields = {
-            recordTime: { label: '記錄時間', type: 'datetime-local' },
-            workpieceType: { label: '工件型式', type: 'text' },
-            plateThickness: { label: '板厚 (mm)', type: 'number' },
-            grooveAngle: { label: '開槽角度 (°)', type: 'number' },
-            gap: { label: '間隙 (mm)', type: 'number' },
-            weldingMaterial: { label: '銲接材料', type: 'text' },
-            wireDiameter: { label: '線徑 (mm)', type: 'number' },
-            gas: { label: '氣體', type: 'text' },
-            alignment: { label: '協作對準方位', type: 'text' }
+            apiKey: "AIzaSyCDLS5yzP9yMeyhGJMePFCCUwpKpob6S84",
+            authDomain: "rdspools-6dc53.firebaseapp.com",
+            projectId: "rdspools-6dc53",
+            storageBucket: "rdspools-6dc53.appspot.com",
+            messagingSenderId: "1052447565403",
+            appId: "1:1052447565403:web:23498fc330636ecb38817e",
+            measurementId: "G-6DYX4YRN7D"
         };
 
-        const multiPassParamFields = {
-            layer: { label: '層數', type: 'number' },
-            pass: { label: '道數', type: 'number' },
-            mode: { label: '模式', type: 'text' },
-            current: { label: '電流 (A)', type: 'number' },
-            voltage: { label: '電壓 (V)', type: 'number' },
-            travelSpeed: { label: '移行速度 (cm/min)', type: 'number' },
-            weaveWidth: { label: '擺弧寬度 (mm)', type: 'number' },
-            weaveFreq: { label: '擺弧頻率 (Hz)', type: 'number' },
-            elevationAngle: { label: '仰角 (°)', type: 'number' },
-            directionAngle: { label: '方向角 (°)', type: 'number' },
-            dwellTimeLeft: { label: '左停留時間 (s)', type: 'number' },
-            dwellTimeRight: { label: '右停留時間 (s)', type: 'number' },
-            x: { label: 'X', type: 'number' },
-            y: { label: 'Y', type: 'number' },
-            z: { label: 'Z', type: 'number' },
-            rx: { label: 'RX', type: 'number' },
-            ry: { label: 'RY', type: 'number' },
-            rz: { label: 'RZ', type: 'number' },
-            notes: { label: '備註事項', type: 'textarea' }
-        };
-        
-        // --- Firestore Realtime Listeners ---
-        function setupRealtimeListeners() {
-            if (baseParamsUnsubscribe) baseParamsUnsubscribe();
-            if (multiPassParamsUnsubscribe) multiPassParamsUnsubscribe();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-            const baseParamsPath = 'sharedBaseParams';
-            const multiPassParamsPath = 'sharedMultiPassParams';
+        document.addEventListener('DOMContentLoaded', () => {
+            let systemConfig = {}, tempSystemConfig = {}, sampleInventory = [], stagingSamples = [], historyLog = [], currentReportData = [];
+            let unsubscribeConfig, unsubscribeInventory, unsubscribeStaging, unsubscribeHistory;
+            let selectedSamples = new Set();
+            let selectedStagingSamples = new Set();
+            let html5QrCode = null;
+            let scannerMode = 'input'; // 'input' or 'search'
+
+            const mainContent = document.getElementById('mainContent');
+            const searchInput = document.getElementById('searchInput');
+            const searchCabinetSelect = document.getElementById('searchCabinet');
+            const searchPersonSelect = document.getElementById('searchPerson');
+            const searchResultsContainer = document.getElementById('searchResults');
+            const searchResultsGrid = document.getElementById('searchResultsGrid');
+            const inventoryOverviewSection = document.getElementById('inventory-overview-section');
+            const loader = document.getElementById('loader');
+            const inventoryContent = document.getElementById('inventory-content');
+            const notificationToast = document.getElementById('notification-toast');
+            const notificationMessage = document.getElementById('notification-message');
+            const stagingAreaGrid = document.getElementById('stagingAreaGrid');
+            const noStagingSamplesMessage = document.getElementById('noStagingSamples');
+            const batchActionBar = document.getElementById('batch-action-bar');
             
-            baseParamsCol = collection(db, baseParamsPath);
-            multiPassParamsCol = collection(db, multiPassParamsPath);
+            const modals = { 
+                addSample: document.getElementById('addSampleModal'), 
+                history: document.getElementById('historyModal'), 
+                settings: document.getElementById('settingsModal'),
+                moveSample: document.getElementById('moveSampleModal'),
+                action: document.getElementById('actionModal'),
+                confirmation: document.getElementById('confirmationModal'),
+                sampleDetail: document.getElementById('sampleDetailModal'),
+                batchAction: document.getElementById('batchActionModal'),
+                batchFinalize: document.getElementById('batchFinalizeModal'),
+                qrScanner: document.getElementById('qrScannerModal'),
+                report: document.getElementById('reportModal'),
+                reportFilter: document.getElementById('reportFilterModal'),
+            };
+            const addSampleForm = document.getElementById('add-sample-form');
+            const storageCabinetSelect = document.getElementById('storageCabinet');
+            const storageShelfSelect = document.getElementById('storageShelf');
+            const storagePositionSelect = document.getElementById('storagePosition');
+            const loggedBySelect = document.getElementById('loggedBy');
+            const newCabinetNameInput = document.getElementById('newCabinetName');
+            const cabinetSettingsContainer = document.getElementById('cabinetSettings');
+            const personListContainer = document.getElementById('personList');
+            const newPersonNameInput = document.getElementById('newPersonName');
+            const moveSampleForm = document.getElementById('move-sample-form');
+            const actionForm = document.getElementById('actionForm');
+            const batchActionForm = document.getElementById('batchActionForm');
+            const batchFinalizeForm = document.getElementById('batchFinalizeForm');
+            const scanInputQrBtn = document.getElementById('scanInputQrBtn');
+            const scanSearchBtn = document.getElementById('scanSearchBtn');
+            const openReportModalBtn = document.getElementById('openReportModalBtn');
+            const printReportBtn = document.getElementById('printReportBtn');
+            const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 
-            baseParamsUnsubscribe = onSnapshot(baseParamsCol, (snapshot) => {
-                baseParams = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    const recordTime = data.recordTime?.toDate ? data.recordTime.toDate() : null;
-                    return { id: doc.id, ...data, recordTime };
+            function showNotification(message, duration = 3000) {
+                notificationMessage.textContent = message;
+                notificationToast.classList.add('toast-visible');
+                setTimeout(() => notificationToast.classList.remove('toast-visible'), duration);
+            }
+            
+            function showConfirmation({ title = '確認操作', message, actionText = '確認' }) {
+                return new Promise((resolve) => {
+                    const modal = modals.confirmation;
+                    modal.querySelector('#confirmationTitle').textContent = title;
+                    modal.querySelector('#confirmationMessage').textContent = message;
+                    const actionBtn = modal.querySelector('#confirmActionBtn');
+                    actionBtn.textContent = actionText;
+                    openModal(modal);
+                    
+                    const cancelBtn = modal.querySelector('#confirmCancelBtn');
+
+                    const confirmHandler = () => { closeModal(modal); resolve(true); actionBtn.removeEventListener('click', confirmHandler); cancelBtn.removeEventListener('click', cancelHandler); };
+                    const cancelHandler = () => { closeModal(modal); resolve(false); actionBtn.removeEventListener('click', confirmHandler); cancelBtn.removeEventListener('click', cancelHandler); };
+                    
+                    actionBtn.addEventListener('click', confirmHandler, { once: true });
+                    cancelBtn.addEventListener('click', cancelHandler, { once: true });
                 });
-                const loadingIndicator = document.getElementById('loading-indicator');
-                if (loadingIndicator) {
-                    loadingIndicator.style.display = 'none';
+            }
+
+            // --- QR Code Scanner Functions ---
+            function onScanInputSuccess(decodedText, decodedResult) {
+                document.getElementById('sampleName').value = decodedText;
+                stopScanner();
+                showNotification(`已掃描樣品名稱: ${decodedText}`);
+            }
+
+            function onScanSearchSuccess(decodedText, decodedResult) {
+                stopScanner();
+                const sampleId = decodedText.trim();
+                const foundSample = sampleInventory.find(s => s.id === sampleId) || stagingSamples.find(s => s.id === sampleId);
+                
+                if (foundSample) {
+                    showSampleDetails(foundSample);
+                    showNotification("已找到樣品並顯示詳細資訊。");
+                } else {
+                    showNotification(`找不到 ID 為 "${sampleId}" 的樣品。`, 4000);
                 }
-                renderBaseParamsList();
-            }, (error) => {
-                console.error("Error fetching base params:", error);
-                document.getElementById('base-params-list').innerHTML = `<div class="col-span-full text-center p-10 text-red-500">從 Firebase 載入共用資料失敗: ${error.message} <br>請確認 Firestore 安全性規則已更新為最新版。</div>`;
-            });
+            }
 
-            multiPassParamsUnsubscribe = onSnapshot(multiPassParamsCol, (snapshot) => {
-                multiPassParams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (currentSelectedBaseId) {
-                    renderMultiPassList(currentSelectedBaseId);
+
+            function startScanner(mode) {
+                scannerMode = mode;
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
                 }
-                renderBaseParamsList();
-            }, (error) => {
-                 console.error("Error fetching multi-pass params:", error);
-            });
-        }
-        
-        // --- Helper 函式 ---
-        function parseCustomDate(dateObj) {
-            if (!dateObj || !(dateObj instanceof Date)) return new Date();
-            return dateObj;
-        }
+                
+                const titleEl = modals.qrScanner.querySelector('#qrScannerTitle');
+                titleEl.textContent = mode === 'search' ? '掃描以搜尋樣品' : '掃描以輸入名稱';
+                openModal(modals.qrScanner);
 
-        // --- 渲染函式 ---
-        function renderBaseParamsList() {
-            const listEl = document.getElementById('base-params-list');
-            if (!listEl) return;
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                const successCallback = mode === 'search' ? onScanSearchSuccess : onScanInputSuccess;
+                
+                Html5Qrcode.getCameras().then(cameras => {
+                    if (cameras && cameras.length) {
+                        const cameraId = cameras.length > 1 ? { facingMode: "environment" } : cameras[0].id;
+                        html5QrCode.start(cameraId, config, successCallback, (errorMessage) => {})
+                        .catch((err) => {
+                            console.error(`無法啟動掃描: ${err}`);
+                            showNotification("無法啟動相機掃描", 4000);
+                            closeModal(modals.qrScanner);
+                        });
+                    } else {
+                         showNotification("找不到相機設備", 4000);
+                         closeModal(modals.qrScanner);
+                    }
+                }).catch(err => {
+                     showNotification("無法存取相機", 4000);
+                     closeModal(modals.qrScanner);
+                });
+            }
 
-            const loadingIndicator = document.getElementById('loading-indicator');
-            const stillLoading = loadingIndicator && loadingIndicator.style.display !== 'none';
-            listEl.innerHTML = '';
+            function stopScanner() {
+                if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => {
+                        closeModal(modals.qrScanner);
+                    }).catch(err => {
+                        console.error("停止掃描失敗", err);
+                        closeModal(modals.qrScanner);
+                    });
+                } else {
+                    closeModal(modals.qrScanner);
+                }
+            }
 
-            if (baseParams.length === 0 && !stillLoading) {
-                listEl.innerHTML = `<div class="col-span-full text-center p-10 text-gray-500">尚無共用資料，請點擊右上角新增第一筆工件。</div>`;
-                return;
+
+            async function setupListeners() {
+                const configRef = doc(db, 'sampleSystem', 'config');
+                unsubscribeConfig = onSnapshot(configRef, (docSnap) => {
+                    systemConfig = docSnap.exists() ? docSnap.data() : { storageLayout: {}, personnel: [] };
+                    updateAllSelects();
+                    renderInventoryByCabinet();
+                });
+                const inventoryQuery = query(collection(db, 'sampleSystem/data/inventory'));
+                unsubscribeInventory = onSnapshot(inventoryQuery, (querySnapshot) => {
+                    sampleInventory = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderInventoryByCabinet();
+                    handleSearch();
+                    loader.classList.add('hidden');
+                    inventoryContent.classList.remove('hidden');
+                });
+                const stagingQuery = query(collection(db, 'sampleSystem/data/staging'));
+                unsubscribeStaging = onSnapshot(stagingQuery, (querySnapshot) => {
+                    stagingSamples = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderStagingArea();
+                });
+                const historyQuery = query(collection(db, 'sampleSystem/data/history'));
+                unsubscribeHistory = onSnapshot(historyQuery, (querySnapshot) => {
+                    historyLog = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    historyLog.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+                    renderAllHistoryTables();
+                });
+            }
+
+            async function saveConfig(configToSave) {
+                await setDoc(doc(db, 'sampleSystem', 'config'), configToSave);
+                showNotification("設定已儲存");
             }
             
-            baseParams.sort((a, b) => (b.recordTime || 0) - (a.recordTime || 0));
-            baseParams.forEach(p => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all';
-                card.onclick = () => showDetail(p.id);
-                const displayDate = parseCustomDate(p.recordTime);
-                const imageCount = (p.imagesBefore?.length || 0) + (p.imagesAfter?.length || 0);
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">${p.workpieceType || '未命名工件'}</h3>
-                        <div class="flex items-center space-x-2">
-                           ${imageCount > 0 ? `<span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded-full flex items-center"><i class="fas fa-camera mr-1"></i> ${imageCount}</span>` : ''}
-                           <span class="text-xs font-semibold text-white bg-blue-400 px-2 py-1 rounded-full">${multiPassParams.filter(mp => mp.baseId == p.id).length} 道</span>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-500 mb-1">板厚: ${p.plateThickness || 'N/A'} mm</p>
-                    <p class="text-sm text-gray-500">日期: ${displayDate.toLocaleDateString()}</p>
-                `;
-                listEl.appendChild(card);
-            });
-        }
-        
-        function renderImageGallery(title, images = []) {
-            if (images.length === 0) return '';
-            return `
-                <div class="mt-6">
-                    <h4 class="text-base font-semibold text-gray-700 mb-2">${title}</h4>
-                    <div class="flex flex-wrap gap-3">
-                        ${images.map(url => `
-                            <img src="${url}" class="w-24 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity" onclick="showImageViewer('${url}')">
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderDetailView(baseId) {
-            currentSelectedBaseId = baseId;
-            const base = baseParams.find(p => p.id == baseId);
-            if (!base) {
-                closeDetailPanel();
-                return;
-            };
-
-            document.getElementById('detail-title').textContent = base.workpieceType;
-            const detailsEl = document.getElementById('base-param-details');
-            const renderField = (key) => {
-                const field = baseParamFields[key];
-                if (!field) return '';
-                let displayValue = base[key] || 'N/A';
-                if (key === 'recordTime' && base[key]) {
-                    displayValue = parseCustomDate(base[key]).toLocaleString('zh-TW', { hour12: false });
-                }
-                return `<div><p class="text-gray-500 text-sm">${field.label}</p><p class="font-medium text-gray-800">${displayValue}</p></div>`;
-            };
-
-            const imagesBeforeHTML = renderImageGallery('銲接前照片', base.imagesBefore);
-            const imagesAfterHTML = renderImageGallery('銲接後照片', base.imagesAfter);
-
-            detailsEl.innerHTML = `
-                <div class="bg-white rounded-lg p-4 shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-lg font-semibold text-gray-700">基礎參數</h4>
-                        <div class="flex items-center space-x-3">
-                            <button onclick="exportReport('${base.id}')" class="text-teal-500 hover:text-teal-700"><i class="fas fa-print mr-1"></i> 匯出報表</button>
-                            <button onclick="openModal('base', '${base.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i> 編輯</button>
-                            <button onclick="deleteRecord('base', '${base.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i> 刪除</button>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(0, 3).map(renderField).join('')}</div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(3, 6).map(renderField).join('')}</div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(6, 9).map(renderField).join('')}</div>
-                    </div>
-                    ${imagesBeforeHTML}
-                    ${imagesAfterHTML}
-                </div>
-            `;
-            document.getElementById('add-multipass-btn').onclick = () => openModal('multi', null);
-            renderMultiPassList(baseId);
-        }
-
-        function renderMultiPassList(baseId) {
-            const multiPassListEl = document.getElementById('multipass-params-list');
-            const relatedParams = multiPassParams.filter(p => p.baseId == baseId).sort((a,b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
-            multiPassListEl.innerHTML = '';
-
-            if (relatedParams.length === 0) {
-                multiPassListEl.innerHTML = `<p class="text-center text-gray-500 py-4">尚無多層道參數，點擊上方按鈕新增。</p>`;
-                return;
+            async function logAction(logData) {
+                await addDoc(collection(db, 'sampleSystem/data/history'), { ...logData, timestamp: serverTimestamp() });
             }
 
-            relatedParams.forEach(p => {
+            function openModal(modal) { modal.classList.remove('modal-hidden'); modal.classList.add('modal-visible'); modal.querySelector('.modal-content').classList.remove('modal-content-hidden'); modal.querySelector('.modal-content').classList.add('modal-content-visible'); }
+            function closeModal(modal) { modal.querySelector('.modal-content').classList.add('modal-content-hidden'); setTimeout(() => { modal.classList.add('modal-hidden'); modal.classList.remove('modal-visible'); }, 300); }
+
+            function createOccupiedSlotCard(sample) {
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-lg p-4 shadow-sm';
-                const renderField = (key) => {
-                    const field = multiPassParamFields[key];
-                    if (!field) return '<div></div>';
-                    let displayValue = p[key] !== undefined && p[key] !== null ? p[key] : 'N/A';
-                    return `<div><p class="text-gray-500 text-xs">${field.label.replace(' (cm/min)', '')}</p><p class="font-medium text-gray-800 text-sm">${displayValue}</p></div>`;
+                card.className = `slot-card slot-occupied ${selectedSamples.has(sample.id) ? 'selected' : ''}`;
+                card.dataset.sampleId = sample.id;
+
+                const locationParts = sample.storageLocation.split(' - ');
+                const position = locationParts[locationParts.length - 1];
+                const cardDetails = [sample.wireDiameter, sample.applicableStandard, sample.manufacturer].filter(Boolean).slice(0, 2).join(' / ');
+                const loggedAtDate = sample.loggedAt?.toDate().toLocaleString('zh-TW', { hour12: false }) || 'N/A';
+                
+                const tooltipHTML = `<div class="tooltip"><h5 class="font-bold text-base mb-2 border-b border-slate-600 pb-1">${sample.sampleName}</h5><dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-left"><dt class="font-semibold text-slate-300">線徑</dt><dd class="truncate" title="${sample.wireDiameter||''}">${sample.wireDiameter||'-'}</dd><dt class="font-semibold text-slate-300">標準</dt><dd class="truncate" title="${sample.applicableStandard||''}">${sample.applicableStandard||'-'}</dd><dt class="font-semibold text-slate-300">製造商</dt><dd class="truncate" title="${sample.manufacturer||''}">${sample.manufacturer||'-'}</dd><dt class="font-semibold text-slate-300">配方</dt><dd class="truncate" title="${sample.formulaCode||''}">${sample.formulaCode||'-'}</dd><dt class="col-span-2 font-semibold text-slate-300 mt-2">位置</dt><dd class="col-span-2">${sample.storageLocation}</dd><dt class="col-span-2 font-semibold text-slate-300 mt-1">登錄者</dt><dd class="col-span-2">${sample.loggedBy} (${loggedAtDate})</dd></dl></div>`;
+                
+                card.innerHTML = `
+                    <div class="absolute top-2 right-2 z-10">
+                        <input type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 sample-checkbox" ${selectedSamples.has(sample.id) ? 'checked' : ''}>
+                    </div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-base text-slate-800 truncate mb-1 pr-8" title="${sample.sampleName}">${sample.sampleName}</h4>
+                            <span class="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${position.replace('位置 ','')}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-2 truncate" title="${cardDetails}">${cardDetails||'無詳細資料'}</p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center gap-2">
+                        <button class="details-btn text-xs text-slate-500 hover:text-blue-600 font-semibold px-2 py-1 rounded-md">詳情</button>
+                        <button class="stage-btn text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-1 rounded-md hover:bg-amber-200">暫存</button>
+                    </div>
+                    ${tooltipHTML}`;
+                
+                card.addEventListener('click', (e) => {
+                    // 忽略在按鈕或複選框上的點擊，避免觸發卡片選取
+                    if (e.target.closest('button') || e.target.matches('.sample-checkbox')) {
+                        return;
+                    }
+                    const checkbox = card.querySelector('.sample-checkbox');
+                    checkbox.checked = !checkbox.checked;
+                    toggleInventorySelection(sample.id, checkbox.checked);
+                });
+
+                card.querySelector('.sample-checkbox').addEventListener('click', e => {
+                    e.stopPropagation();
+                    toggleInventorySelection(sample.id, e.target.checked);
+                });
+
+                card.querySelector('.stage-btn').addEventListener('click', e => {
+                    e.stopPropagation();
+                    openActionModal('stage', sample);
+                });
+
+                card.querySelector('.details-btn').addEventListener('click', e => {
+                    e.stopPropagation();
+                    showSampleDetails(sample);
+                });
+
+
+                return card;
+            }
+
+            function toggleInventorySelection(sampleId, isSelected) {
+                selectedStagingSamples.clear(); // Clear other selection type
+                const cardInGrid = document.querySelector(`.slot-card[data-sample-id="${sampleId}"]`);
+                const cardInSearch = document.querySelector(`#searchResultsGrid .slot-card[data-sample-id="${sampleId}"]`);
+                
+                if (isSelected) {
+                    selectedSamples.add(sampleId);
+                    if (cardInGrid) cardInGrid.classList.add('selected');
+                    if (cardInSearch) cardInSearch.classList.add('selected');
+                } else {
+                    selectedSamples.delete(sampleId);
+                    if (cardInGrid) cardInGrid.classList.remove('selected');
+                     if (cardInSearch) cardInSearch.classList.remove('selected');
+                }
+                updateBatchActionBar();
+            }
+
+            function toggleStagingSelection(sampleId, isSelected) {
+                selectedSamples.clear(); // Clear other selection type
+                const card = document.querySelector(`.staging-card[data-sample-id="${sampleId}"]`);
+
+                if (isSelected) {
+                    selectedStagingSamples.add(sampleId);
+                    if (card) card.classList.add('selected');
+                } else {
+                    selectedStagingSamples.delete(sampleId);
+                    if (card) card.classList.remove('selected');
+                }
+                updateBatchActionBar();
+            }
+
+            function updateBatchActionBar() {
+                const inventoryCount = selectedSamples.size;
+                const stagingCount = selectedStagingSamples.size;
+                const countEl = batchActionBar.querySelector('#selected-count');
+                const stageBtn = document.getElementById('batch-stage-btn');
+                const finalizeBtn = document.getElementById('batch-finalize-btn');
+                const downloadQrBtn = document.getElementById('batch-download-qr-btn');
+                
+                document.querySelectorAll('.slot-card.selected, .staging-card.selected').forEach(el => el.classList.remove('selected'));
+                document.querySelectorAll('.sample-checkbox:checked, .staging-sample-checkbox:checked').forEach(cb => cb.checked = false);
+                
+                if (inventoryCount > 0) {
+                    countEl.textContent = inventoryCount;
+                    stageBtn.classList.remove('hidden');
+                    finalizeBtn.classList.add('hidden');
+                    downloadQrBtn.classList.remove('hidden');
+                    batchActionBar.classList.add('visible');
+                    selectedSamples.forEach(id => {
+                       document.querySelectorAll(`.slot-card[data-sample-id="${id}"]`).forEach(card => card.classList.add('selected'));
+                       document.querySelectorAll(`.slot-card[data-sample-id="${id}"] .sample-checkbox`).forEach(cb => cb.checked = true);
+                    });
+                } else if (stagingCount > 0) {
+                    countEl.textContent = stagingCount;
+                    stageBtn.classList.add('hidden');
+                    finalizeBtn.classList.remove('hidden');
+                    downloadQrBtn.classList.add('hidden');
+                    batchActionBar.classList.add('visible');
+                    selectedStagingSamples.forEach(id => {
+                        const card = document.querySelector(`.staging-card[data-sample-id="${id}"]`);
+                        if (card) {
+                            card.classList.add('selected');
+                            card.querySelector('.staging-sample-checkbox').checked = true;
+                        }
+                    });
+                } else {
+                    batchActionBar.classList.remove('visible');
+                }
+            }
+            
+            function deselectAll() {
+                selectedSamples.clear();
+                selectedStagingSamples.clear();
+                updateBatchActionBar();
+            }
+
+            function createEmptySlotCard(cabinet, shelf, position) {
+                const card = document.createElement('div');
+                card.className = "slot-card slot-empty";
+                card.innerHTML = `<span class="text-2xl font-light">+</span><span class="text-xs mt-1">位置 ${position}</span>`;
+                card.addEventListener('click', () => {
+                    addSampleForm.reset();
+                    updateAddFormSelects();
+                    storageCabinetSelect.value = cabinet;
+                    storageCabinetSelect.dispatchEvent(new Event('change'));
+                    storageShelfSelect.value = shelf;
+                    storageShelfSelect.dispatchEvent(new Event('change'));
+                    storagePositionSelect.value = `位置 ${position}`;
+                    openModal(modals.addSample);
+                });
+                return card;
+            }
+
+            function renderInventoryByCabinet() {
+                if (!systemConfig.storageLayout) return;
+                const tabsContainer = document.getElementById('cabinet-tabs-container');
+                const contentContainer = document.getElementById('cabinet-content-container');
+                const currentActiveTab = tabsContainer.querySelector('.active-tab')?.dataset.target;
+                
+                tabsContainer.innerHTML = '';
+                contentContainer.innerHTML = '';
+
+                const cabinetNames = Object.keys(systemConfig.storageLayout);
+                if (cabinetNames.length === 0) { inventoryOverviewSection.innerHTML = '<p class="text-slate-500">尚未設定任何櫃子。請至系統設定新增。</p>'; return; }
+                const samplesByLocation = new Map(sampleInventory.map(s => [s.storageLocation, s]));
+                
+                let tabToActivate = currentActiveTab;
+                if (!tabToActivate || !cabinetNames.map(name => `tab-${name.replace(/\s/g, '-')}`).includes(tabToActivate)) {
+                    tabToActivate = `tab-${cabinetNames[0].replace(/\s/g, '-')}`;
+                }
+
+                cabinetNames.forEach((cabinetName, index) => {
+                    const tabId = `tab-${cabinetName.replace(/\s/g, '-')}`;
+                    const isActive = tabId === tabToActivate;
+                    const tabBtn = document.createElement('button');
+                    tabBtn.className = `tab-btn text-sm sm:text-base font-semibold py-3 px-4 border-b-2 whitespace-nowrap ${isActive ? 'active-tab' : ''}`;
+                    tabBtn.textContent = cabinetName;
+                    tabBtn.dataset.target = tabId;
+                    tabsContainer.appendChild(tabBtn);
+
+                    const tabContent = document.createElement('div');
+                    tabContent.id = tabId;
+                    tabContent.className = `space-y-6 tab-content ${isActive ? '' : 'hidden'}`;
+                    const shelves = systemConfig.storageLayout[cabinetName];
+
+                    if (shelves && Object.keys(shelves).length > 0) {
+                        Object.entries(shelves).forEach(([shelfName, capacity]) => {
+                            const shelfContainer = document.createElement('div');
+                            shelfContainer.innerHTML = `<h3 class="text-lg font-semibold text-slate-700 mb-3">${shelfName}</h3>`;
+                            const gridContainer = document.createElement('div');
+                            gridContainer.className = 'shelf-grid';
+                            for (let i = 1; i <= capacity; i++) {
+                                const locationString = `${cabinetName} - ${shelfName} - 位置 ${i}`;
+                                const sample = samplesByLocation.get(locationString);
+                                gridContainer.appendChild(sample ? createOccupiedSlotCard(sample) : createEmptySlotCard(cabinetName, shelfName, i));
+                            }
+                            shelfContainer.appendChild(gridContainer);
+                            tabContent.appendChild(shelfContainer);
+                        });
+                    } else {
+                        tabContent.innerHTML = '<p class="text-center py-8 text-slate-500">此櫃子尚未設定任何層架。</p>';
+                    }
+                    contentContainer.appendChild(tabContent);
+                });
+                if (tabsContainer.children.length > 0) makeSliderScrollable(tabsContainer);
+            }
+
+            function renderStagingArea() {
+                stagingAreaGrid.innerHTML = '';
+                noStagingSamplesMessage.classList.toggle('hidden', stagingSamples.length > 0);
+                stagingAreaGrid.classList.toggle('hidden', stagingSamples.length === 0);
+                if (stagingSamples.length > 0) {
+                    stagingSamples.forEach(sample => stagingAreaGrid.appendChild(createStagingCard(sample)));
+                }
+            }
+
+            function createStagingCard(sample) {
+                const card = document.createElement('div');
+                card.className = `p-4 sm:p-5 flex flex-col staging-card ${selectedStagingSamples.has(sample.id) ? 'selected' : ''}`;
+                card.dataset.sampleId = sample.id;
+
+                const fieldLabels = {
+                    wireDiameter: "線徑",
+                    applicableStandard: "適用標準",
+                    manufacturer: "製造商",
+                    formulaCode: "配方代號",
+                    processDetails: "製程明細",
+                    furnaceNo: "爐號",
+                    batchNo: "批號",
                 };
+
+                let detailsHTML = '';
+                for (const [key, label] of Object.entries(fieldLabels)) {
+                    if (sample[key]) {
+                        detailsHTML += `
+                            <dt class="text-amber-600 font-medium">${label}</dt>
+                            <dd class="col-span-2 text-amber-800 truncate" title="${sample[key]}">${sample[key]}</dd>
+                        `;
+                    }
+                }
+
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <p class="font-bold text-gray-800">層 ${p.layer || 'N/A'} / 道 ${p.pass || 'N/A'}</p>
-                        <div>
-                            <button onclick="deleteRecord('multi', '${p.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash fa-sm"></i></button>
+                    <div class="absolute top-2 right-2 z-10">
+                        <input type="checkbox" class="h-4 w-4 rounded border-gray-400 text-blue-600 focus:ring-blue-500 staging-sample-checkbox" ${selectedStagingSamples.has(sample.id) ? 'checked' : ''}>
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="font-bold text-lg text-amber-900 truncate mb-1 pr-8" title="${sample.sampleName}">${sample.sampleName}</h4>
+                        <p class="text-sm text-amber-700 mb-2">原位置: ${sample.storageLocation}</p>
+                        <div class="mt-2 pt-2 border-t border-amber-200 text-xs space-y-1">
+                            <dl class="grid grid-cols-3 gap-x-2">
+                                ${detailsHTML}
+                            </dl>
                         </div>
                     </div>
-                    <div class="space-y-3">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(0, 6).map(renderField).join('')}</div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(6, 12).map(renderField).join('')}</div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(12, 18).map(renderField).join('')}</div>
+                    <div class="mt-3 pt-3 border-t border-amber-200 grid grid-cols-3 gap-2">
+                        <button class="return-btn text-sm bg-green-100 text-green-800 font-semibold px-2 py-1.5 rounded-md hover:bg-green-200">放回</button>
+                        <button class="move-btn text-sm bg-blue-100 text-blue-800 font-semibold px-2 py-1.5 rounded-md hover:bg-blue-200">移位</button>
+                        <button class="finalize-btn text-sm bg-red-100 text-red-800 font-semibold px-2 py-1.5 rounded-md hover:bg-red-200">歸檔</button>
+                    </div>`;
+
+                card.addEventListener('click', (e) => {
+                    // 忽略在按鈕或複選框上的點擊，避免觸發卡片選取
+                    if (e.target.closest('button') || e.target.matches('.staging-sample-checkbox')) {
+                        return;
+                    }
+                    const checkbox = card.querySelector('.staging-sample-checkbox');
+                    checkbox.checked = !checkbox.checked;
+                    toggleStagingSelection(sample.id, checkbox.checked);
+                });
+
+                card.querySelector('.staging-sample-checkbox').addEventListener('click', e => {
+                    e.stopPropagation();
+                    toggleStagingSelection(sample.id, e.target.checked);
+                });
+
+                card.querySelector('.return-btn').addEventListener('click', (e) => { e.stopPropagation(); openActionModal('return', sample); });
+                card.querySelector('.move-btn').addEventListener('click', (e) => { e.stopPropagation(); handleMoveFromStaging(sample); });
+                card.querySelector('.finalize-btn').addEventListener('click', (e) => { e.stopPropagation(); openActionModal('finalize', sample); });
+                return card;
+            }
+
+            function showSampleDetails(sample) {
+                const contentContainer = document.getElementById('sampleDetailContent');
+                const footerContainer = document.getElementById('sampleDetailFooter');
+                const loggedAtDate = sample.loggedAt?.toDate().toLocaleString('zh-TW', { hour12: false }) || 'N/A';
+                
+                contentContainer.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+                            <div class="sm:col-span-2"><dt class="text-sm font-medium text-slate-500">樣品名稱</dt><dd class="mt-1 text-lg font-semibold text-slate-900">${sample.sampleName||'-'}</dd></div>
+                            <div><dt class="text-sm font-medium text-slate-500">線徑</dt><dd class="mt-1 text-lg text-slate-900">${sample.wireDiameter||'-'}</dd></div>
+                            <div class="sm:col-span-2"><hr class="border-slate-200"></div>
+                            <div><dt class="text-sm font-medium text-slate-500">適用標準</dt><dd class="mt-1 text-slate-800">${sample.applicableStandard||'-'}</dd></div>
+                            <div><dt class="text-sm font-medium text-slate-500">製造商</dt><dd class="mt-1 text-slate-800">${sample.manufacturer||'-'}</dd></div>
+                            <div><dt class="text-sm font-medium text-slate-500">配方代號</dt><dd class="mt-1 text-slate-800">${sample.formulaCode||'-'}</dd></div>
+                            <div class="sm:col-span-2"><hr class="border-slate-200"></div>
+                            <div class="sm:col-span-2"><dt class="text-sm font-medium text-slate-500">存放位置</dt><dd class="mt-1 text-slate-800">${sample.storageLocation||'-'}</dd></div>
+                            <div><dt class="text-sm font-medium text-slate-500">登錄人員</dt><dd class="mt-1 text-slate-800">${sample.loggedBy||'-'}</dd></div>
+                            <div class="sm:col-span-2"><dt class="text-sm font-medium text-slate-500">登錄時間</dt><dd class="mt-1 text-slate-800">${loggedAtDate}</dd></div>
+                        </dl>
                     </div>
-                    ${p.notes ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-xs text-gray-600"><strong>備註:</strong> ${p.notes}</p></div>` : ''}
-                `;
-                multiPassListEl.appendChild(card);
-            });
-        }
-        
-        // --- 互動函式 ---
-        function showDetail(baseId) {
-            renderDetailView(baseId);
-            document.getElementById('detail-panel').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeDetailPanel() {
-            document.getElementById('detail-panel').classList.remove('active');
-            document.body.style.overflow = 'auto';
-            currentSelectedBaseId = null;
-        }
-
-        function openModal(type, id) {
-            currentEditing = { type, id };
-            imagesToDelete = []; // 重置待刪除圖片列表
-            const modal = document.getElementById('form-modal');
-            const form = document.getElementById('data-form');
-            const modalTitle = document.getElementById('modal-title');
-            form.innerHTML = '';
-            
-            let modalMaxWidth = 'max-w-4xl'; // for base
-            if (type === 'multi') {
-                modalMaxWidth = 'max-w-7xl';
-            }
-            modal.querySelector('div').className = `bg-white rounded-xl shadow-2xl w-full ${modalMaxWidth} max-h-[90vh] flex flex-col`;
-
-
-            if (type === 'base') {
-                modalTitle.textContent = id ? '編輯基礎參數' : '新增基礎參數';
-                const data = id ? baseParams.find(p => p.id == id) : {};
-                buildBaseForm(form, data);
-            } else { // multi
-                modalTitle.textContent = '編輯/新增 多層道參數';
-                buildMultiPassTableForm(form);
-            }
-            
-            const modalFooter = document.getElementById('modal-footer');
-            modalFooter.innerHTML = `
-                <button type="button" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg">取消</button>
-                <button id="save-btn" type="submit" form="data-form" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">全部儲存</button>
-            `;
-            modal.classList.remove('hidden');
-        }
-
-        function createFieldHtml(key, field, data) {
-            let value = data[key] || '';
-            const commonClasses = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
-
-            if (key === 'recordTime') {
-                const dateObj = data.id && value ? parseCustomDate(value) : new Date();
-                value = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
-            }
-
-            let inputElement;
-            if (field.type === 'textarea') {
-                inputElement = `<textarea id="${key}" name="${key}" rows="3" class="${commonClasses}">${value}</textarea>`;
-            } else {
-                const stepAttribute = field.type === 'number' ? ' step="any"' : '';
-                inputElement = `<input type="${field.type}" id="${key}" name="${key}" value="${value}" class="${commonClasses}"${stepAttribute}>`;
-            }
-
-            return `<div><label for="${key}" class="block text-sm font-medium text-gray-700 mb-1">${field.label}</label>${inputElement}</div>`;
-        }
-
-        function buildImageUploader(type, existingImages = [], maxImages = 3) {
-            const title = type === 'before' ? '銲接前照片' : '銲接後照片';
-            let thumbnailsHTML = existingImages.map(url => `
-                <div class="relative group" id="thumb-${btoa(url)}">
-                    <img src="${url}" class="w-24 h-24 object-cover rounded-md border">
-                    <button type="button" onclick="prepareImageDeletion('${url}', 'thumb-${btoa(url)}')" class="absolute top-0 right-0 bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center -mt-2 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity" title="刪除此圖片">&times;</button>
-                </div>
-            `).join('');
-
-            let fileInputsHTML = '';
-            const inputsToShow = maxImages - existingImages.length;
-            if (inputsToShow > 0) {
-                 for(let i=0; i < inputsToShow; i++) {
-                     fileInputsHTML += `<input type="file" name="image_${type}[]" accept="image/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">`;
-                 }
-            } else {
-                fileInputsHTML = `<p class="text-sm text-gray-500 mt-2">已達 ${maxImages} 張圖片上限。</p>`;
-            }
-
-            return `
-                <div class="col-span-1">
-                    <h4 class="text-md font-medium text-gray-800 mb-2">${title}</h4>
-                    <div class="flex flex-wrap gap-4 mb-2 min-h-[100px]">${thumbnailsHTML}</div>
-                    ${fileInputsHTML}
-                </div>
-            `;
-        }
-
-        function buildBaseForm(form, data) {
-            const imagesBeforeHTML = buildImageUploader('before', data.imagesBefore || [], 3);
-            const imagesAfterHTML = buildImageUploader('after', data.imagesAfter || [], 3);
-
-            form.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    ${createFieldHtml('recordTime', baseParamFields.recordTime, data)}
-                    ${createFieldHtml('workpieceType', baseParamFields.workpieceType, data)}
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    ${createFieldHtml('plateThickness', baseParamFields.plateThickness, data)}
-                    ${createFieldHtml('grooveAngle', baseParamFields.grooveAngle, data)}
-                    ${createFieldHtml('gap', baseParamFields.gap, data)}
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    ${createFieldHtml('weldingMaterial', baseParamFields.weldingMaterial, data)}
-                    ${createFieldHtml('wireDiameter', baseParamFields.wireDiameter, data)}
-                    ${createFieldHtml('gas', baseParamFields.gas, data)}
-                </div>
-                <div>${createFieldHtml('alignment', baseParamFields.alignment, data)}</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6 mt-4">
-                    ${imagesBeforeHTML}
-                    ${imagesAfterHTML}
+                    <div class="text-center p-4 bg-slate-50 rounded-lg flex flex-col items-center justify-center">
+                        <h4 class="font-semibold text-slate-600 mb-2">樣品 QR Code</h4>
+                        <div id="qrCodeContainer" class="w-40 h-40"></div>
+                        <p class="text-xs text-slate-500 mt-2 break-all">ID: ${sample.id}</p>
+                        <button id="downloadQrBtn" class="mt-4 text-sm bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-md hover:bg-slate-300 w-full">下載 QR Code</button>
+                    </div>
                 </div>`;
-        }
 
+                const qrContainer = document.getElementById('qrCodeContainer');
+                if (qrContainer) {
+                    try {
+                        const qr = qrcode(0, 'M');
+                        qr.addData(sample.id);
+                        qr.make();
+                        const qrDataURL = qr.createDataURL(4, 8);
+                        qrContainer.innerHTML = `<img src="${qrDataURL}" style="width: 100%; height: 100%;">`;
+                        
+                        document.getElementById('downloadQrBtn').addEventListener('click', () => {
+                            const link = document.createElement('a');
+                            link.href = qrDataURL;
+                            link.download = `${sample.sampleName || 'qrcode'}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        });
 
-        function buildMultiPassTableForm(form) {
-            const relatedParams = multiPassParams
-                .filter(p => p.baseId == currentSelectedBaseId)
-                .sort((a, b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
+                    } catch (err) {
+                        qrContainer.innerHTML = '<p class="text-xs text-red-500">無法產生 QR Code</p>';
+                        console.error("QR Code generation failed:", err);
+                    }
+                }
+                
+                const sampleIsInInventory = sampleInventory.some(s => s.id === sample.id);
+                if (sampleIsInInventory) {
+                    footerContainer.innerHTML = `<button id="detailStageBtn" class="bg-amber-500 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-amber-600">移至暫存區</button>`;
+                    footerContainer.querySelector('#detailStageBtn').addEventListener('click', () => { closeModal(modals.sampleDetail); openActionModal('stage', sample); });
+                } else {
+                    footerContainer.innerHTML = '';
+                }
 
-            const headers = Object.values(multiPassParamFields).map(f => f.label.replace(/ \(.+?\)/g, ''));
+                openModal(modals.sampleDetail);
+            }
             
-            form.innerHTML = `
-                <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table id="multi-pass-table" class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+            function createHistoryTableHTML(data) {
+                if (data.length === 0) return '<p class="text-center py-8 text-slate-500">此分類沒有歷史紀錄</p>';
+                const rows = data.map(log => {
+                    const timestamp = log.timestamp?.toDate().toLocaleString('zh-TW') || 'N/A';
+                    let actionClass = '', locationInfo = log.storageLocation || '';
+                    if (log.action === '放入') actionClass = 'text-green-600';
+                    else if (log.action === '最終取出' || log.action === '批次最終取出') actionClass = 'text-red-600';
+                    else if (log.action === '移至暫存' || log.action === '批次移至暫存') actionClass = 'text-amber-600';
+                    else if (log.action === '放回儲位') actionClass = 'text-sky-600';
+                    else if (log.action === '移動') { actionClass = 'text-blue-600'; locationInfo = `<span class="text-xs text-slate-400 block">${log.fromLocation}</span> → ${log.toLocation}`; }
+                    
+                    let sampleNameDisplay = log.sampleName;
+                    if(log.action.startsWith('批次')) {
+                        sampleNameDisplay = `批次操作 (${log.count} 個)`;
+                    }
+
+                    return `<tr><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 text-sm whitespace-nowrap">${timestamp}</td><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 font-semibold ${actionClass}">${log.action}</td><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 font-medium text-slate-800">${sampleNameDisplay}</td><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 text-xs text-slate-500 hidden md:table-cell">${log.details||''}</td><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 text-sm hidden sm:table-cell">${locationInfo}</td><td class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200">${log.person}</td></tr>`;
+                }).join('');
+                return `<div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-200"><tr><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm">時間</th><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm">操作</th><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm">樣品名稱</th><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm hidden md:table-cell">詳細資訊</th><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm hidden sm:table-cell">位置/備註</th><th class="px-4 py-3 sm:px-6 sm:py-4 font-semibold text-slate-600 text-sm">操作人員</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            }
+
+            function renderAllHistoryTables() {
+                document.getElementById('historyTab-add').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '放入'));
+                document.getElementById('historyTab-stage').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '移至暫存' || l.action === '批次移至暫存'));
+                document.getElementById('historyTab-return').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '放回儲位'));
+                document.getElementById('historyTab-move').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '移動'));
+                document.getElementById('historyTab-finalize').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '最終取出' || l.action === '批次最終取出'));
+            }
+            
+            function generateReportTable(data) {
+                let tableHTML = `
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-100">
                             <tr>
-                                ${headers.map(h => `<th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">${h}</th>`).join('')}
-                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">操作</th>
+                                <th class="p-3 font-semibold">位置</th>
+                                <th class="p-3 font-semibold">樣品名稱</th>
+                                <th class="p-3 font-semibold">線徑</th>
+                                <th class="p-3 font-semibold">適用標準</th>
+                                <th class="p-3 font-semibold">製造商</th>
+                                <th class="p-3 font-semibold">登錄人員</th>
+                                <th class="p-3 font-semibold">登錄時間</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200"></tbody>
-                    </table>
-                </div>
-                <div class="mt-4">
-                    <button type="button" onclick="addPassRowToTable(null)" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-sm flex items-center">
-                        <i class="fas fa-plus mr-2"></i> 新增道次
-                    </button>
-                </div>
-            `;
-            
-            if (relatedParams.length > 0) {
-                relatedParams.forEach(p => addPassRowToTable(p, false));
-            } else {
-                addPassRowToTable(null, false);
-            }
-        }
+                        <tbody>
+                `;
 
-        function addPassRowToTable(data, shouldAnimate = true) {
-            const tableBody = document.getElementById('multi-pass-table')?.querySelector('tbody');
-            if (!tableBody) return;
-
-            const newRow = tableBody.insertRow();
-            if (data && data.id) {
-                newRow.dataset.docId = data.id;
-            }
-
-            let nextLayer = 1;
-            let nextPass = 1;
-            if (!data && tableBody.rows.length > 1) {
-                const lastRow = tableBody.rows[tableBody.rows.length - 2];
-                const lastLayerInput = lastRow.querySelector('input[name="layer"]');
-                const lastPassInput = lastRow.querySelector('input[name="pass"]');
-                if (lastLayerInput && lastPassInput) {
-                    nextLayer = parseInt(lastLayerInput.value, 10) || 1;
-                    nextPass = (parseInt(lastPassInput.value, 10) || 0) + 1;
-                }
-            }
-
-            let rowHtml = '';
-            for (const key in multiPassParamFields) {
-                const field = multiPassParamFields[key];
-                let value = data?.[key] ?? '';
-                if (!data && key === 'layer') value = nextLayer;
-                if (!data && key === 'pass') value = nextPass;
-
-                if (field.type === 'textarea') {
-                    rowHtml += `<td class="p-1"><textarea name="${key}" class="border-gray-300 rounded-md" rows="1">${value}</textarea></td>`;
-                } else {
-                    rowHtml += `<td class="p-1"><input type="${field.type}" name="${key}" value="${value}" class="border-gray-300 rounded-md" ${field.type === 'number' ? 'step="any"' : ''}></td>`;
-                }
-            }
-
-            rowHtml += `
-                <td class="p-2 whitespace-nowrap">
-                    <button type="button" onclick="duplicateRow(this.closest('tr'))" class="text-green-600 hover:text-green-900" title="複製此道次"><i class="fas fa-copy"></i></button>
-                    <button type="button" onclick="removePassRow(this.closest('tr'))" class="text-red-600 hover:text-red-900 ml-2" title="刪除此道次"><i class="fas fa-trash"></i></button>
-                </td>`;
-            newRow.innerHTML = rowHtml;
-
-            if (shouldAnimate) {
-                newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                newRow.style.backgroundColor = '#d1fae5';
-                setTimeout(() => { newRow.style.backgroundColor = ''; }, 1500);
-            }
-        }
-
-        function removePassRow(rowElement) {
-            if (rowElement.dataset.docId) {
-                rowElement.dataset.deleted = "true";
-                rowElement.style.textDecoration = 'line-through';
-                rowElement.style.opacity = '0.5';
-                rowElement.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
-            } else {
-                rowElement.remove();
-            }
-        }
-
-        function duplicateRow(rowElement) {
-            const data = {};
-            for (const key in multiPassParamFields) {
-                const input = rowElement.querySelector(`[name="${key}"]`);
-                if(input) {
-                    data[key] = input.type === 'number' && input.value !== '' ? parseFloat(input.value) : input.value;
-                }
-            }
-            delete data.id;
-            data.pass = (data.pass || 0) + 1;
-            addPassRowToTable(data);
-        }
-        
-        function closeModal() {
-            document.getElementById('form-modal').classList.add('hidden');
-            currentEditing = { type: null, id: null };
-        }
-        
-        function showUploadStatus(message) {
-            const el = document.getElementById('upload-status');
-            el.textContent = message;
-            el.classList.remove('hidden');
-        }
-        function hideUploadStatus() {
-            const el = document.getElementById('upload-status');
-            el.classList.add('hidden');
-        }
-
-        function resizeImage(file, maxWidth = 800, maxHeight = 800) {
-            console.log(`[Debug] Starting resize for file: ${file.name}`);
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = event => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        console.log(`[Debug] Image loaded, original size: ${img.width}x${img.height}`);
-                        const canvas = document.createElement('canvas');
-                        let { width, height } = img;
-
-                        if (width > height) {
-                            if (width > maxWidth) {
-                                height = Math.round((height * maxWidth) / width);
-                                width = maxWidth;
-                            }
-                        } else {
-                            if (height > maxHeight) {
-                                width = Math.round((width * maxHeight) / height);
-                                height = maxHeight;
-                            }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        console.log(`[Debug] Resized to: ${width}x${height}, converting to blob...`);
-                        canvas.toBlob(blob => {
-                            if (blob) {
-                                console.log(`[Debug] Blob created successfully, size: ${blob.size} bytes.`);
-                                resolve(blob);
-                            } else {
-                                console.error("[Debug] Canvas toBlob returned null.");
-                                reject(new Error("無法轉換圖片格式(toBlob failed)"));
-                            }
-                        }, 'image/jpeg', 0.9);
-                    };
-                    img.onerror = (err) => {
-                        console.error("[Debug] Image load error:", err);
-                        reject(new Error("無法讀取圖片檔案"));
-                    };
-                };
-                reader.onerror = (err) => {
-                    console.error("[Debug] FileReader error:", err);
-                    reject(new Error("無法讀取檔案"));
-                };
-            });
-        }
-        
-        async function uploadFile(fileBlob, path, onProgress) {
-             console.log(`[Debug] Starting upload to path: ${path}`);
-             return new Promise((resolve, reject) => {
-                const storageRef = ref(storage, path);
-                const uploadTask = uploadBytesResumable(storageRef, fileBlob);
-                uploadTask.on('state_changed', 
-                    (snapshot) => {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        console.log(`[Debug] Upload progress for ${path}: ${progress.toFixed(2)}%`);
-                        onProgress(progress);
-                    }, 
-                    (error) => {
-                        console.error(`[Debug] Firebase Storage upload error for ${path}:`, error);
-                        // Log specific error codes for easier debugging
-                        switch (error.code) {
-                            case 'storage/unauthorized':
-                                console.error("[Debug] !!! PERMISSION DENIED !!! Check your Firebase Storage security rules.");
-                                reject(new Error("權限不足，無法上傳檔案。請檢查 Firebase Storage 安全性規則。"));
-                                break;
-                            case 'storage/canceled':
-                                console.error("[Debug] Upload canceled.");
-                                reject(new Error("上傳已取消"));
-                                break;
-                            default:
-                                console.error("[Debug] An unknown error occurred.", error);
-                                reject(new Error(`上傳失敗: ${error.message}`));
-                                break;
-                        }
-                    }, 
-                    async () => {
-                        try {
-                            console.log(`[Debug] Upload complete for ${path}. Getting download URL...`);
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            console.log(`[Debug] Got download URL: ${downloadURL}`);
-                            resolve(downloadURL);
-                        } catch (error) {
-                             console.error(`[Debug] Error getting download URL for ${path}:`, error);
-                             reject(new Error("上傳成功但無法取得檔案連結"));
-                        }
-                    }
-                );
-            });
-        }
-
-
-        async function saveData() {
-            const form = document.getElementById('data-form');
-            const { type } = currentEditing;
-
-            const saveBtn = document.getElementById('save-btn');
-            const originalBtnText = saveBtn.innerHTML;
-            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 處理中...`;
-            saveBtn.disabled = true;
-
-            try {
-                if (type === 'base') {
-                    // --- 1. Save Text Data ---
-                    const formData = new FormData(form);
-                    let data = {};
-                    for (let [key, value] of formData.entries()) {
-                         if (baseParamFields[key]) {
-                            data[key] = baseParamFields[key]?.type === 'number' && value !== '' ? parseFloat(value) : value;
-                         }
-                    }
-                    if (data.recordTime) data.recordTime = new Date(data.recordTime);
-
-                    let recordId = currentEditing.id;
-                    if (recordId) {
-                        await setDoc(doc(baseParamsCol, recordId), data, { merge: true });
-                    } else {
-                        const newDocRef = await addDoc(baseParamsCol, data);
-                        recordId = newDocRef.id;
-                    }
-                    
-                    // --- 2. Handle Image Deletions ---
-                    if (imagesToDelete.length > 0) {
-                        showUploadStatus(`正在刪除 ${imagesToDelete.length} 張圖片...`);
-                        const deletePromises = imagesToDelete.map(url => deleteObject(ref(storage, url)).catch(err => console.error(`Failed to delete ${url}`, err)));
-                        await Promise.all(deletePromises);
-                    }
-
-                    // --- 3. Handle Image Uploads ---
-                    console.log("[Debug] Handling image uploads...");
-                    const imageInputs = [...form.querySelectorAll('input[type="file"]')];
-                    const filesToUpload = imageInputs
-                        .filter(input => input.files.length > 0)
-                        .map(input => ({file: input.files[0], type: input.name.includes('before') ? 'before' : 'after' }));
-                    
-                    console.log(`[Debug] Found ${filesToUpload.length} files to upload.`);
-
-                    if (filesToUpload.length > 0) {
-                        const uploadPromises = filesToUpload.map(async (item, index) => {
-                           try {
-                                showUploadStatus(`正在處理圖片 ${index + 1} / ${filesToUpload.length}...`);
-                               const resizedBlob = await resizeImage(item.file);
-                               const path = `images/${recordId}/${Date.now()}_${item.file.name}`;
-                               
-                               const downloadURL = await uploadFile(resizedBlob, path, (progress) => {
-                                    showUploadStatus(`圖片 ${index + 1} 上傳中: ${Math.round(progress)}%`);
-                               });
-                               return { url: downloadURL, type: item.type };
-                           } catch (uploadError) {
-                                console.error(`[Debug] Error processing file ${item.file.name}:`, uploadError);
-                                // Re-throw to be caught by the main catch block
-                                throw new Error(`處理圖片 ${item.file.name} 時失敗: ${uploadError.message}`);
-                           }
-                        });
-
-                        console.log("[Debug] Waiting for all uploads to complete...");
-                        const newImageResults = await Promise.all(uploadPromises);
-                        console.log("[Debug] All uploads completed.", newImageResults);
-                        
-                        // --- 4. Update Firestore with New Image URLs ---
-                        showUploadStatus(`更新資料庫...`);
-                        console.log("[Debug] Updating Firestore with new image URLs...");
-                        const currentRecord = baseParams.find(p => p.id === recordId) || {};
-                        const imagesBefore = (currentRecord.imagesBefore || []).filter(url => !imagesToDelete.includes(url));
-                        const imagesAfter = (currentRecord.imagesAfter || []).filter(url => !imagesToDelete.includes(url));
-                        
-                        newImageResults.forEach(result => {
-                            if (result.type === 'before') imagesBefore.push(result.url);
-                            else imagesAfter.push(result.url);
-                        });
-                        
-                        await setDoc(doc(baseParamsCol, recordId), { imagesBefore, imagesAfter }, { merge: true });
-                        console.log("[Debug] Firestore updated successfully.");
-                    }
-                    
-                    setTimeout(() => hideUploadStatus(), 1500);
-                    closeModal();
-
-                } else if (type === 'multi') { // --- Multi-pass Save Logic (Unchanged) ---
-                    const batch = writeBatch(db);
-                    const tableBody = document.getElementById('multi-pass-table')?.querySelector('tbody');
-                    if (!tableBody) throw new Error("Table not found");
-                    const rows = Array.from(tableBody.rows);
-                    for (const row of rows) {
-                        const docId = row.dataset.docId;
-                        const isDeleted = row.dataset.deleted === "true";
-
-                        if (docId && isDeleted) { batch.delete(doc(multiPassParamsCol, docId)); continue; }
-                        if (isDeleted) continue;
-
-                        const data = { baseId: currentSelectedBaseId };
-                        let hasData = false;
-                        for (const key in multiPassParamFields) {
-                            const input = row.querySelector(`[name="${key}"]`);
-                            if (input) {
-                                const value = input.value;
-                                if (value !== '') { hasData = true; }
-                                data[key] = multiPassParamFields[key]?.type === 'number' && value !== '' ? parseFloat(value) : (value || null);
-                            }
-                        }
-                        
-                        if (hasData) {
-                            if (docId) {
-                                batch.set(doc(multiPassParamsCol, docId), data, { merge: true });
-                            } else {
-                                batch.set(doc(multiPassParamsCol), data);
-                            }
-                        }
-                    }
-                    await batch.commit();
-                    closeModal();
-                }
-            } catch (error) {
-                console.error("Error saving data:", error);
-                showUploadStatus(`儲存失敗: ${error.message}`);
-                setTimeout(hideUploadStatus, 4000); // 顯示錯誤 4 秒
-            } finally {
-                saveBtn.innerHTML = originalBtnText;
-                saveBtn.disabled = false;
-            }
-        }
-        
-        function handleFormSubmit(event) {
-            event.preventDefault();
-            saveData();
-        }
-
-        async function deleteRecord(type, id) {
-            // 移除 confirm()，因為在 Canvas/iframe 環境下它可能會導致腳本停止而沒有任何提示。
-            // 理想情況下，這裡應該用一個自訂的 modal 來做確認，但為了解決當前問題，暫時直接執行刪除。
-            // if (!confirm('確定要刪除這筆共用紀錄嗎？此操作將會同步更新 Firestore 且無法復原。')) return;
-            
-            try {
-                if (type === 'base') {
-                    const baseDoc = baseParams.find(p => p.id === id);
-                    const allImages = [...(baseDoc.imagesBefore || []), ...(baseDoc.imagesAfter || [])];
-                    if (allImages.length > 0) {
-                        showUploadStatus(`正在刪除 ${allImages.length} 張關聯圖片...`);
-                        const deletePromises = allImages.map(url => deleteObject(ref(storage, url)).catch(err => console.warn(`Could not delete image ${url}:`, err)));
-                        await Promise.allSettled(deletePromises);
-                        hideUploadStatus();
-                    }
-
-                    const batch = writeBatch(db);
-                    batch.delete(doc(baseParamsCol, id));
-                    const q = query(multiPassParamsCol, where("baseId", "==", id));
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach((doc) => batch.delete(doc.ref));
-                    await batch.commit();
-                    closeDetailPanel();
-                } else {
-                    await deleteDoc(doc(multiPassParamsCol, id));
-                }
-            } catch (error) {
-                console.error("Error deleting record:", error);
-                // 改用非阻塞的狀態提示來顯示錯誤
-                showUploadStatus("刪除失敗，請檢查主控台錯誤訊息。");
-                setTimeout(hideUploadStatus, 3000);
-            }
-        }
-        
-        function exportReport(baseId) {
-            const base = baseParams.find(p => p.id == baseId);
-            const relatedMultiPass = multiPassParams
-                .filter(p => p.baseId == baseId)
-                .sort((a, b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
-
-            if (!base) return;
-
-            const reportWindow = window.open('', '_blank');
-            let reportHtml = `
-                <!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>銲接參數報表 - ${base.workpieceType}</title>
-                <style>
-                    body { font-family: 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif; margin: 20px; font-size: 12px; }
-                    h1, h2 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 15px; }
-                    .section { margin-bottom: 25px; page-break-inside: avoid; } .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-                    .grid-item strong { display: block; color: #555; font-size: 11px; margin-bottom: 2px; }
-                    .image-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; } .image-gallery img { max-width: 150px; border: 1px solid #ccc; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-                    th { background-color: #f2f2f2; font-weight: bold; }
-                    @media print { body { margin: 1cm; font-size: 10pt; } h1, h2, table, tr { page-break-inside: avoid; } thead { display: table-header-group; } .no-print { display: none; } }
-                </style></head><body><h1>銲接參數報表</h1>`;
-            
-            reportHtml += `<div class="section"><h2>基礎參數</h2><div class="grid-container">`;
-            for (const key in baseParamFields) {
-                const field = baseParamFields[key];
-                let value = base[key] || 'N/A';
-                if (key === 'recordTime' && base[key]) {
-                    value = parseCustomDate(base[key]).toLocaleString('zh-TW', { hour12: false });
-                }
-                reportHtml += `<div class="grid-item"><strong>${field.label}:</strong> ${value}</div>`;
-            }
-            reportHtml += `</div></div>`;
-            
-            if (base.imagesBefore?.length > 0) {
-                 reportHtml += `<div class="section"><h3>銲接前照片</h3><div class="image-gallery">${base.imagesBefore.map(url => `<img src="${url}">`).join('')}</div></div>`;
-            }
-            if (base.imagesAfter?.length > 0) {
-                 reportHtml += `<div class="section"><h3>銲接後照片</h3><div class="image-gallery">${base.imagesAfter.map(url => `<img src="${url}">`).join('')}</div></div>`;
-            }
-
-            reportHtml += `<div class="section"><h2>多層道參數</h2>`;
-            if (relatedMultiPass.length > 0) {
-                reportHtml += `<table><thead><tr>`;
-                const headers = ['layer', 'pass', 'mode', 'current', 'voltage', 'travelSpeed', 'weaveWidth', 'weaveFreq', 'elevationAngle', 'directionAngle', 'dwellTimeLeft', 'dwellTimeRight', 'x', 'y', 'z', 'rx', 'ry', 'rz', 'notes'];
-                headers.forEach(key => { reportHtml += `<th>${multiPassParamFields[key].label}</th>`; });
-                reportHtml += `</tr></thead><tbody>`;
-                relatedMultiPass.forEach(p => {
-                    reportHtml += `<tr>`;
-                    headers.forEach(key => { reportHtml += `<td>${p[key] !== undefined && p[key] !== null ? p[key] : ''}</td>`; });
-                    reportHtml += `</tr>`;
+                data.forEach(sample => {
+                    const loggedAtDate = sample.loggedAt?.toDate().toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short', hour12: false }) || 'N/A';
+                    tableHTML += `
+                        <tr class="border-b border-slate-200">
+                            <td class="p-3">${sample.storageLocation || '-'}</td>
+                            <td class="p-3 font-medium">${sample.sampleName || '-'}</td>
+                            <td class="p-3">${sample.wireDiameter || '-'}</td>
+                            <td class="p-3">${sample.applicableStandard || '-'}</td>
+                            <td class="p-3">${sample.manufacturer || '-'}</td>
+                            <td class="p-3">${sample.loggedBy || '-'}</td>
+                            <td class="p-3">${loggedAtDate}</td>
+                        </tr>
+                    `;
                 });
-                reportHtml += `</tbody></table>`;
-            } else {
-                reportHtml += `<p>無多層道參數資料。</p>`;
+                tableHTML += '</tbody></table>';
+                return tableHTML;
             }
-            reportHtml += `</div><div class="no-print" style="text-align:center; margin-top: 20px;"><button onclick="window.print()">列印</button></div></body></html>`;
-            
-            reportWindow.document.write(reportHtml);
-            reportWindow.document.close();
-        }
 
-        // --- 初始化 ---
-        async function initializeAppWithAuth() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                storage = getStorage(app);
+            function renderInventoryReport(selectedCabinet = 'all') {
+                const reportContent = document.getElementById('reportContent');
+                let inventoryToReport = [];
 
-                onAuthStateChanged(auth, user => {
-                    if (user) {
-                        setupRealtimeListeners();
-                    } else {
-                        if(baseParamsUnsubscribe) baseParamsUnsubscribe();
-                        if(multiPassParamsUnsubscribe) multiPassParamsUnsubscribe();
-                        baseParams = [];
-                        multiPassParams = [];
-                        renderBaseParamsList();
+                if (selectedCabinet === 'all') {
+                    inventoryToReport = [...sampleInventory];
+                } else {
+                    inventoryToReport = sampleInventory.filter(s => s.storageLocation.startsWith(selectedCabinet));
+                }
+                
+                currentReportData = [...inventoryToReport].sort((a, b) => a.storageLocation.localeCompare(b.storageLocation));
+
+                if (currentReportData.length === 0) {
+                    reportContent.innerHTML = '<p class="text-center py-8 text-slate-500">此範圍內沒有庫存樣品。</p>';
+                    return;
+                }
+
+                const reportDate = new Date().toLocaleString('zh-TW', { hour12: false });
+                let finalHTML = `
+                    <div class="mb-4 text-center">
+                        <h3 class="text-2xl font-bold">樣品庫存報表</h3>
+                        <p class="text-sm text-slate-500">報表範圍：${selectedCabinet === 'all' ? '全部櫃子' : selectedCabinet}</p>
+                        <p class="text-sm text-slate-500">報表生成時間：${reportDate}</p>
+                        <p class="text-sm text-slate-500">總筆數：${currentReportData.length}</p>
+                    </div>
+                `;
+
+                if (selectedCabinet === 'all') {
+                    const groupedByCabinet = currentReportData.reduce((acc, sample) => {
+                        const cabinetName = sample.storageLocation.split(' - ')[0];
+                        if (!acc[cabinetName]) {
+                            acc[cabinetName] = [];
+                        }
+                        acc[cabinetName].push(sample);
+                        return acc;
+                    }, {});
+
+                    Object.keys(groupedByCabinet).sort().forEach(cabinetName => {
+                         finalHTML += `<h4 class="text-lg font-semibold mt-6 mb-3 p-2 bg-slate-200 rounded-md">${cabinetName}</h4>`;
+                         finalHTML += generateReportTable(groupedByCabinet[cabinetName]);
+                    });
+
+                } else {
+                    finalHTML += generateReportTable(currentReportData);
+                }
+                
+                reportContent.innerHTML = finalHTML;
+            }
+
+            function handlePrintReport() {
+                const reportContentHTML = document.getElementById('reportContent').innerHTML;
+                const styles = `
+                    <style>
+                        body { font-family: 'Noto Sans TC', sans-serif; line-height: 1.5; }
+                        h3, h4, p { text-align: center; }
+                        h3 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+                        h4 { font-size: 1.2rem; margin-top: 1.5rem; margin-bottom: 0.5rem; padding: 0.25rem; background-color: #f1f5f9; page-break-before: auto; page-break-after: avoid; }
+                        p { font-size: 0.875rem; color: #555; margin-bottom: 1rem; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+                        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; word-break: break-word; }
+                        thead { display: table-header-group; }
+                        tr { page-break-inside: avoid; }
+                        th { background-color: #f8fafc; }
+                        @page { size: A4; margin: 1.5cm; }
+                    </style>
+                `;
+
+                const printWindow = window.open('', '', 'height=800,width=1200');
+                printWindow.document.write('<html><head><title>庫存報表</title>');
+                printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">');
+                printWindow.document.write(styles);
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(reportContentHTML);
+                printWindow.document.write('<script>window.onload = function() { window.print(); window.close(); };<\/script>');
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+            }
+
+            function handleDownloadCsv() {
+                if (currentReportData.length === 0) {
+                    showNotification('沒有庫存資料可供下載。');
+                    return;
+                }
+
+                const headers = ["位置", "樣品名稱", "線徑", "適用標準", "製造商", "配方代號", "製程明細", "爐號", "批號", "登錄人員", "登錄時間"];
+                
+                const escapeCsvCell = (cell) => {
+                    const str = String(cell === null || cell === undefined ? '' : cell);
+                    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                        return `"${str.replace(/"/g, '""')}"`;
                     }
+                    return str;
+                };
+
+                let csvContent = headers.map(escapeCsvCell).join(',') + '\r\n';
+
+                currentReportData.forEach(sample => {
+                    const loggedAtDate = sample.loggedAt?.toDate().toLocaleString('zh-TW', { hour12: false }) || '';
+                    const row = [
+                        sample.storageLocation, sample.sampleName, sample.wireDiameter,
+                        sample.applicableStandard, sample.manufacturer, sample.formulaCode,
+                        sample.processDetails, sample.furnaceNo, sample.batchNo,
+                        sample.loggedBy, loggedAtDate
+                    ];
+                    csvContent += row.map(escapeCsvCell).join(',') + '\r\n';
+                });
+
+                const bom = '\uFEFF';
+                const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                const reportDate = new Date().toISOString().slice(0, 10);
+                link.setAttribute("download", `樣品庫存報表_${reportDate}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showNotification('CSV 檔案已開始下載。');
+            }
+            
+            async function handleBatchDownloadQr() {
+                if (typeof JSZip === 'undefined') {
+                    showNotification('無法載入壓縮函式庫，請稍後再試。');
+                    return;
+                }
+                const samplesToDownload = Array.from(selectedSamples).map(id => sampleInventory.find(s => s.id === id)).filter(Boolean);
+                if (samplesToDownload.length === 0) return;
+
+                showNotification(`正在準備 ${samplesToDownload.length} 個 QR Code...`);
+
+                const zip = new JSZip();
+                
+                samplesToDownload.forEach(sample => {
+                    try {
+                        const qr = qrcode(0, 'M');
+                        qr.addData(sample.id);
+                        qr.make();
+                        const qrDataURL = qr.createDataURL(4, 0);
+                        const base64Data = qrDataURL.substring(qrDataURL.indexOf(',') + 1);
+                        const fileName = (sample.sampleName || sample.id).replace(/[^a-z0-9_.-]/gi, '_') + '.png';
+                        zip.file(fileName, base64Data, { base64: true });
+                    } catch (err) {
+                        console.error(`無法為樣品 "${sample.sampleName}" 產生 QR Code:`, err);
+                    }
+                });
+
+                try {
+                    const content = await zip.generateAsync({ type: "blob" });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(content);
+                    link.href = url;
+                    const date = new Date().toISOString().slice(0, 10);
+                    link.download = `樣品QR_Codes_${date}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    deselectAll();
+                } catch(err) {
+                     showNotification('壓縮 QR Code 檔案失敗。', 4000);
+                     console.error('Zipping failed:', err);
+                }
+            }
+
+
+            function openActionModal(action, sample) {
+                actionForm.reset();
+                const title = modals.action.querySelector('#actionModalTitle');
+                const message = modals.action.querySelector('#actionModalMessage');
+                const confirmBtn = modals.action.querySelector('#actionConfirmBtn');
+                const remarksContainer = modals.action.querySelector('#remarksContainer');
+                const remarksTextarea = modals.action.querySelector('#actionRemarks');
+                const personSelect = modals.action.querySelector('#actionPerson');
+
+                modals.action.querySelector('#actionSampleId').value = sample.id;
+                modals.action.querySelector('#actionType').value = action;
+                
+                personSelect.innerHTML = '<option value="">--- 請選擇人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => personSelect.innerHTML += `<option value="${p}">${p}</option>`);
+
+                remarksContainer.classList.add('hidden');
+                remarksTextarea.required = false;
+                confirmBtn.className = "text-white font-semibold px-5 py-2.5 rounded-lg";
+
+                switch(action) {
+                    case 'stage':
+                        title.textContent = '移至暫存區';
+                        message.textContent = `您確定要將樣品 "${sample.sampleName}" 從儲位取出嗎？`;
+                        confirmBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                        confirmBtn.textContent = '確認移至暫存';
+                        break;
+                    case 'return':
+                         title.textContent = '放回原位';
+                        message.textContent = `您確定要將樣品 "${sample.sampleName}" 放回原位 (${sample.storageLocation}) 嗎？`;
+                        confirmBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                        confirmBtn.textContent = '確認放回';
+                        break;
+                    case 'finalize':
+                        title.textContent = '最終取出 (歸檔)';
+                        message.textContent = `此操作將會歸檔樣品 "${sample.sampleName}"，無法復原。`;
+                        remarksContainer.classList.remove('hidden');
+                        remarksTextarea.required = true;
+                        confirmBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                        confirmBtn.textContent = '確認並歸檔';
+                        break;
+                }
+                openModal(modals.action);
+            }
+            
+            async function handleActionFormSubmit(e) {
+                e.preventDefault();
+                const form = e.target;
+                const sampleId = form.actionSampleId.value;
+                const type = form.actionType.value;
+                const person = form.actionPerson.value;
+                
+                if (!person) { showNotification('請選擇操作人員！'); return; }
+
+                let sample;
+                if(type === 'stage') {
+                    sample = sampleInventory.find(s => s.id === sampleId);
+                } else {
+                    sample = stagingSamples.find(s => s.id === sampleId);
+                }
+                if (!sample) { showNotification('找不到樣品資料，請重新整理。'); return; }
+                const { id, ...originalData } = sample;
+
+                try {
+                    switch(type) {
+                        case 'stage':
+                            await setDoc(doc(db, 'sampleSystem/data/staging', id), originalData);
+                            await deleteDoc(doc(db, 'sampleSystem/data/inventory', id));
+                            await logAction({ action: '移至暫存', person, sampleName: sample.sampleName, storageLocation: sample.storageLocation });
+                            showNotification(`樣品 "${sample.sampleName}" 已移至暫存區。`);
+                            break;
+                        case 'return':
+                            const isOccupied = sampleInventory.some(s => s.storageLocation === sample.storageLocation);
+                            if (isOccupied) { showNotification("原位置已被佔用，請改用「移至新位」。"); closeModal(modals.action); return; }
+                            await setDoc(doc(db, 'sampleSystem/data/inventory', id), originalData);
+                            await deleteDoc(doc(db, 'sampleSystem/data/staging', id));
+                            await logAction({ action: '放回儲位', person, sampleName: sample.sampleName, storageLocation: sample.storageLocation });
+                            showNotification("樣品已成功放回原位。");
+                            break;
+                        case 'finalize':
+                            const remarks = form.actionRemarks.value.trim();
+                            if(!remarks) { showNotification('請填寫備註事項！'); return; }
+                            await addDoc(collection(db, 'sampleSystem/data/archived'), { ...originalData, archivedAt: serverTimestamp(), remarks });
+                            await deleteDoc(doc(db, 'sampleSystem/data/staging', id));
+                            await logAction({ action: '最終取出', person, sampleName: sample.sampleName, details: remarks, storageLocation: sample.storageLocation });
+                            showNotification(`樣品 "${sample.sampleName}" 已歸檔。`);
+                            break;
+                    }
+                    closeModal(modals.action);
+                } catch (error) {
+                    console.error("Action failed: ", error);
+                    showNotification("操作失敗，請稍後再試。");
+                }
+            }
+
+            function handleMoveFromStaging(sample) {
+                const moveModal = modals.moveSample;
+                moveModal.querySelector('#moveSampleId').value = sample.id;
+                moveModal.querySelector('#moveSampleSource').value = 'staging';
+                moveModal.querySelector('#moveSampleName').textContent = sample.sampleName;
+                moveModal.querySelector('#moveSampleOldLocation').textContent = `暫存區 (原位置: ${sample.storageLocation})`;
+                const movedBySelect = moveModal.querySelector('#movedBy');
+                movedBySelect.innerHTML = '<option value="">--- 請選擇人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => movedBySelect.innerHTML += `<option value="${p}">${p}</option>`);
+                updateMoveFormSelects();
+                openModal(moveModal);
+            }
+            
+            function updateAllSelects() { updateSearchSelects(); updateAddFormSelects(); }
+            function updateAddShelves() {
+                const selectedCabinet = storageCabinetSelect.value;
+                storageShelfSelect.innerHTML = '<option value="">--- 請選擇層數 ---</option>'; storageShelfSelect.disabled = true;
+                storagePositionSelect.innerHTML = '<option value="">--- 請選擇位置 ---</option>'; storagePositionSelect.disabled = true;
+                if (!selectedCabinet || !systemConfig.storageLayout?.[selectedCabinet]) return;
+                const occupiedCounts = sampleInventory.reduce((acc, s) => { const key = s.storageLocation.split(' - ').slice(0, 2).join(' - '); acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+                let availableShelvesHTML = '';
+                Object.keys(systemConfig.storageLayout[selectedCabinet]).forEach(shelfName => {
+                    const capacity = systemConfig.storageLayout[selectedCabinet][shelfName];
+                    const itemsOnShelf = occupiedCounts[`${selectedCabinet} - ${shelfName}`] || 0;
+                    if (itemsOnShelf < capacity) availableShelvesHTML += `<option value="${shelfName}">${shelfName}</option>`;
+                });
+                if (availableShelvesHTML) { storageShelfSelect.innerHTML += availableShelvesHTML; storageShelfSelect.disabled = false; } else { storageShelfSelect.innerHTML = '<option value="">此櫃無空位</option>'; }
+            }
+            function updateAddPositions() {
+                const selectedCabinet = storageCabinetSelect.value, selectedShelf = storageShelfSelect.value;
+                storagePositionSelect.innerHTML = '<option value="">--- 請選擇位置 ---</option>'; storagePositionSelect.disabled = true;
+                if (!selectedCabinet || !selectedShelf || !systemConfig.storageLayout?.[selectedCabinet]?.[selectedShelf]) return;
+                const capacity = systemConfig.storageLayout[selectedCabinet][selectedShelf];
+                const occupiedPositions = new Set(sampleInventory.filter(s => s.storageLocation.startsWith(`${selectedCabinet} - ${selectedShelf}`)).map(s => parseInt(s.storageLocation.split(' - ')[2].replace('位置 ', ''), 10)));
+                let availablePositionsHTML = '';
+                for (let i = 1; i <= capacity; i++) { if (!occupiedPositions.has(i)) availablePositionsHTML += `<option value="位置 ${i}">位置 ${i}</option>`; }
+                if (availablePositionsHTML) { storagePositionSelect.innerHTML += availablePositionsHTML; storagePositionSelect.disabled = false; } else { storagePositionSelect.innerHTML = '<option value="">此層已滿</option>'; }
+            }
+            function updateMoveShelves() {
+                const cabinetSelect = document.getElementById('moveStorageCabinet');
+                const shelfSelect = document.getElementById('moveStorageShelf');
+                const positionSelect = document.getElementById('moveStoragePosition');
+                const selectedCabinet = cabinetSelect.value;
+                shelfSelect.innerHTML = '<option value="">--- 請選擇層數 ---</option>'; shelfSelect.disabled = true;
+                positionSelect.innerHTML = '<option value="">--- 請選擇位置 ---</option>'; positionSelect.disabled = true;
+                if (!selectedCabinet || !systemConfig.storageLayout?.[selectedCabinet]) return;
+                const occupiedCounts = sampleInventory.reduce((acc, s) => { const key = s.storageLocation.split(' - ').slice(0, 2).join(' - '); acc[key] = (acc[key] || 0) + 1; return acc; }, {});
+                let availableShelvesHTML = '';
+                Object.keys(systemConfig.storageLayout[selectedCabinet]).forEach(shelfName => {
+                    const capacity = systemConfig.storageLayout[selectedCabinet][shelfName];
+                    const itemsOnShelf = occupiedCounts[`${selectedCabinet} - ${shelfName}`] || 0;
+                    if (itemsOnShelf < capacity) availableShelvesHTML += `<option value="${shelfName}">${shelfName}</option>`;
+                });
+                if (availableShelvesHTML) { shelfSelect.innerHTML += availableShelvesHTML; shelfSelect.disabled = false; } else { shelfSelect.innerHTML = '<option value="">此櫃無空位</option>'; }
+            }
+            function updateMovePositions() {
+                const cabinetSelect = document.getElementById('moveStorageCabinet'), shelfSelect = document.getElementById('moveStorageShelf'), positionSelect = document.getElementById('moveStoragePosition');
+                const selectedCabinet = cabinetSelect.value, selectedShelf = shelfSelect.value;
+                positionSelect.innerHTML = '<option value="">--- 請選擇位置 ---</option>'; positionSelect.disabled = true;
+                if (!selectedCabinet || !selectedShelf || !systemConfig.storageLayout?.[selectedCabinet]?.[selectedShelf]) return;
+                const capacity = systemConfig.storageLayout[selectedCabinet][selectedShelf];
+                const occupiedPositions = new Set(sampleInventory.filter(s => s.storageLocation.startsWith(`${selectedCabinet} - ${selectedShelf}`)).map(s => parseInt(s.storageLocation.split(' - ')[2].replace('位置 ', ''), 10)));
+                let availablePositionsHTML = '';
+                for (let i = 1; i <= capacity; i++) { if (!occupiedPositions.has(i)) availablePositionsHTML += `<option value="位置 ${i}">位置 ${i}</option>`; }
+                if (availablePositionsHTML) { positionSelect.innerHTML += availablePositionsHTML; positionSelect.disabled = false; } else { positionSelect.innerHTML = '<option value="">此層已滿</option>'; }
+            }
+            function handleSearch() {
+                deselectAll();
+                const query = searchInput.value.toLowerCase().trim();
+                const cabinet = searchCabinetSelect.value;
+                const person = searchPersonSelect.value;
+                if (!query && !cabinet && !person) { searchResultsContainer.classList.add('hidden'); return; }
+                const results = sampleInventory.filter(sample => {
+                    const sampleString = Object.values(sample).join(' ').toLowerCase();
+                    return (!query || sampleString.includes(query)) && (!cabinet || sample.storageLocation.startsWith(cabinet)) && (!person || sample.loggedBy === person);
+                });
+                searchResultsGrid.innerHTML = '';
+                if (results.length > 0) { results.forEach(sample => searchResultsGrid.appendChild(createOccupiedSlotCard(sample))); } else { searchResultsGrid.innerHTML = '<p class="text-slate-500 col-span-full">找不到符合條件的樣品。</p>'; }
+                searchResultsContainer.classList.remove('hidden');
+            }
+            function updateSearchSelects() {
+                searchCabinetSelect.innerHTML = '<option value="">所有櫃子</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(name => searchCabinetSelect.innerHTML += `<option value="${name}">${name}</option>`);
+                searchPersonSelect.innerHTML = '<option value="">所有人員</option>';
+                (systemConfig.personnel || []).forEach(p => searchPersonSelect.innerHTML += `<option value="${p}">${p}</option>`);
+            }
+            function updateAddFormSelects() {
+                storageCabinetSelect.innerHTML = '<option value="">--- 請選擇櫃子 ---</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(name => storageCabinetSelect.innerHTML += `<option value="${name}">${name}</option>`);
+                loggedBySelect.innerHTML = '<option value="">--- 請選擇登錄人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => loggedBySelect.innerHTML += `<option value="${p}">${p}</option>`);
+                storageShelfSelect.innerHTML = '<option value="">--- 請選擇層數 ---</option>'; storageShelfSelect.disabled = true;
+                storagePositionSelect.innerHTML = '<option value="">--- 請選擇位置 ---</option>'; storagePositionSelect.disabled = true;
+            }
+            function updateMoveFormSelects() {
+                const cabinetSelect = document.getElementById('moveStorageCabinet');
+                cabinetSelect.innerHTML = '<option value="">--- 請選擇櫃子 ---</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(name => cabinetSelect.innerHTML += `<option value="${name}">${name}</option>`);
+                document.getElementById('moveStorageShelf').disabled = true;
+                document.getElementById('moveStoragePosition').disabled = true;
+            }
+            async function handleAddSample(e) {
+                e.preventDefault();
+                const form = e.target;
+                const sampleName = form.sampleName.value.trim();
+                const wireDiameter = form.wireDiameter.value.trim();
+                const loggedBy = form.loggedBy.value;
+                const cabinet = form.storageCabinet.value, shelf = form.storageShelf.value, position = form.storagePosition.value;
+                if (!sampleName || !wireDiameter || !loggedBy || !cabinet || !shelf || !position) { showNotification('請填寫所有必填欄位！'); return; }
+                const optionalFields = { applicableStandard: form.applicableStandard.value.trim(), manufacturer: form.manufacturer.value.trim(), formulaCode: form.formulaCode.value.trim(), processDetails: form.processDetails.value.trim(), furnaceNo: form.furnaceNo.value.trim(), batchNo: form.batchNo.value.trim() };
+                if (Object.values(optionalFields).every(f => f === '')) { showNotification('適用標準、製造商等欄位至少需填寫一項。'); return; }
+                const storageLocation = `${cabinet} - ${shelf} - ${position}`;
+                const newSample = { sampleName, wireDiameter, ...optionalFields, storageLocation, loggedBy, loggedAt: serverTimestamp() };
+                const details = Object.entries({線徑: wireDiameter, ...optionalFields}).filter(([_,v]) => v).map(([k,v]) => `${k}:${v}`).join(', ');
+                try {
+                    await addDoc(collection(db, 'sampleSystem/data/inventory'), newSample);
+                    await logAction({ action: '放入', person: loggedBy, sampleName, details, storageLocation });
+                    showNotification("樣品已成功存入");
+                    form.reset();
+                    closeModal(modals.addSample);
+                } catch (error) { console.error("Error adding document: ", error); showNotification("存入失敗，請稍後再試"); }
+            }
+            async function handleMoveSample(e) {
+                e.preventDefault();
+                const form = e.target;
+                const sampleId = form.moveSampleId.value;
+                const source = form.moveSampleSource.value;
+                const cabinet = form.moveStorageCabinet.value, shelf = form.moveStorageShelf.value, position = form.moveStoragePosition.value;
+                const movedBy = form.movedBy.value;
+                if (!cabinet || !shelf || !position || !movedBy) { showNotification('請完整填寫所有欄位！'); return; }
+                const sampleData = source === 'staging' ? stagingSamples.find(s => s.id === sampleId) : sampleInventory.find(s => s.id === sampleId);
+                if (!sampleData) return;
+                const fromLocation = source === 'staging' ? `暫存區 (原: ${sampleData.storageLocation})` : sampleData.storageLocation;
+                const toLocation = `${cabinet} - ${shelf} - ${position}`;
+                try {
+                    const { id, ...originalData } = sampleData;
+                    await setDoc(doc(db, 'sampleSystem/data/inventory', id), { ...originalData, storageLocation: toLocation });
+                    if (source === 'staging') await deleteDoc(doc(db, 'sampleSystem/data/staging', id));
+                    await logAction({ action: '移動', person: movedBy, sampleName: sampleData.sampleName, fromLocation, toLocation });
+                    showNotification("樣品已成功移動");
+                    form.reset();
+                    closeModal(modals.moveSample);
+                } catch (error) { console.error("Error moving sample: ", error); showNotification("移動失敗，請稍後再試"); }
+            }
+            async function handleBatchStageSubmit(e) {
+                e.preventDefault();
+                const person = batchActionForm.batchActionPerson.value;
+                if (!person) { showNotification('請選擇操作人員！'); return; }
+
+                const batch = writeBatch(db);
+                const samplesToMove = Array.from(selectedSamples).map(id => sampleInventory.find(s => s.id === id)).filter(Boolean);
+
+                if (samplesToMove.length === 0) {
+                    showNotification('沒有有效的樣品可供移動。');
+                    return;
+                }
+
+                samplesToMove.forEach(sample => {
+                    const { id, ...data } = sample;
+                    const inventoryRef = doc(db, 'sampleSystem/data/inventory', id);
+                    const stagingRef = doc(db, 'sampleSystem/data/staging', id);
+                    batch.set(stagingRef, data);
+                    batch.delete(inventoryRef);
                 });
                 
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
+                const historyRef = collection(db, 'sampleSystem/data/history');
+                const logEntry = { action: '批次移至暫存', person, count: samplesToMove.length, details: `批次移動 ${samplesToMove.length} 個樣品`, timestamp: serverTimestamp() };
+                batch.set(doc(historyRef), logEntry);
+
+                try {
+                    await batch.commit();
+                    showNotification(`成功將 ${samplesToMove.length} 個樣品移至暫存區。`);
+                    closeModal(modals.batchAction);
+                    deselectAll();
+                } catch (error) { console.error("Batch stage failed: ", error); showNotification("批次操作失敗，請稍後再試。"); }
+            }
+            async function handleBatchFinalizeSubmit(e) {
+                e.preventDefault();
+                const person = batchFinalizeForm.batchFinalizePerson.value;
+                const remarks = batchFinalizeForm.batchFinalizeRemarks.value.trim();
+                if (!person || !remarks) { showNotification('請選擇操作人員並填寫備註！'); return; }
+
+                const batch = writeBatch(db);
+                const samplesToFinalize = Array.from(selectedStagingSamples).map(id => stagingSamples.find(s => s.id === id)).filter(Boolean);
+
+                if (samplesToFinalize.length === 0) { showNotification('沒有有效的樣品可供歸檔。'); return; }
+
+                samplesToFinalize.forEach(sample => {
+                    const { id, ...data } = sample;
+                    const stagingRef = doc(db, 'sampleSystem/data/staging', id);
+                    const archivedRef = doc(collection(db, 'sampleSystem/data/archived'));
+                    batch.set(archivedRef, { ...data, archivedAt: serverTimestamp(), remarks });
+                    batch.delete(stagingRef);
+                });
+
+                const historyRef = collection(db, 'sampleSystem/data/history');
+                const logEntry = { action: '批次最終取出', person, count: samplesToFinalize.length, details: remarks, timestamp: serverTimestamp() };
+                batch.set(doc(historyRef), logEntry);
+                
+                try {
+                    await batch.commit();
+                    showNotification(`成功歸檔 ${samplesToFinalize.length} 個樣品。`);
+                    closeModal(modals.batchFinalize);
+                    deselectAll();
+                } catch (error) { console.error("Batch finalize failed: ", error); showNotification("批次歸檔失敗，請稍後再試。"); }
+            }
+
+
+            function makeSliderScrollable(slider) {
+                let isDown = false, startX, scrollLeft;
+                slider.addEventListener('mousedown', (e) => { isDown = true; slider.classList.add('active'); startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft; });
+                ['mouseleave', 'mouseup'].forEach(ev => slider.addEventListener(ev, () => { isDown = false; slider.classList.remove('active'); }));
+                slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const walk = (e.pageX - slider.offsetLeft - startX) * 2; slider.scrollLeft = scrollLeft - walk; });
+            }
+            
+            // --- Settings Modal Logic ---
+            function renderSettingsUI(config) {
+                renderPersonnelList(config.personnel || []);
+                renderCabinetSettings(config.storageLayout || {});
+            }
+            function renderPersonnelList(personnel) {
+                personListContainer.innerHTML = '';
+                personnel.forEach(person => personListContainer.innerHTML += `<div class="flex justify-between items-center bg-slate-100 p-2 rounded-lg"><span>${person}</span><button data-person="${person}" class="delete-person-btn text-red-500 hover:text-red-700">刪除</button></div>`);
+            }
+            function renderCabinetSettings(storageLayout) {
+                cabinetSettingsContainer.innerHTML = '';
+                Object.entries(storageLayout).forEach(([cabinetName, shelves]) => {
+                    const shelfHTML = Object.entries(shelves).map(([shelfName, capacity]) => `<div class="flex justify-between items-center mb-2 bg-slate-50 p-2 rounded flex-wrap gap-2"><div class="flex-grow flex items-center gap-2"><span class="font-medium text-slate-700">${shelfName}</span><label class="text-sm text-slate-600 ml-auto">格數:</label><input type="number" value="${capacity}" class="edit-shelf-capacity w-20 px-2 py-1 border border-slate-300 rounded-md text-sm" min="1" data-cabinet="${cabinetName}" data-shelf="${shelfName}"></div><button data-cabinet="${cabinetName}" data-shelf="${shelfName}" class="delete-shelf-btn text-red-500 hover:text-red-700 text-sm">刪除層</button></div>`).join('');
+                    cabinetSettingsContainer.innerHTML += `<div class="p-4 border border-slate-200 rounded-lg"><div class="flex justify-between items-center mb-4"><h4 class="font-bold text-lg text-slate-700">${cabinetName}</h4><button data-cabinet="${cabinetName}" class="delete-cabinet-btn bg-red-100 text-red-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-red-200">刪除櫃子</button></div><div class="mb-4">${shelfHTML}</div><div class="flex flex-col sm:flex-row items-center gap-2 mt-4"><input type="text" class="new-shelf-name w-full sm:flex-grow px-3 py-1.5 border border-slate-300 rounded-md text-sm" placeholder="新層數名稱"><input type="number" class="new-shelf-capacity w-full sm:w-24 px-3 py-1.5 border border-slate-300 rounded-md text-sm" placeholder="格數" min="1"><button data-cabinet="${cabinetName}" class="add-shelf-btn w-full sm:w-auto bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1.5 rounded-md hover:bg-slate-300">新增層</button></div></div>`;
+                });
+            }
+            function handleAddPerson() {
+                const name = newPersonNameInput.value.trim();
+                if (name && !(tempSystemConfig.personnel || []).includes(name)) {
+                    if (!tempSystemConfig.personnel) tempSystemConfig.personnel = [];
+                    tempSystemConfig.personnel.push(name);
+                    renderPersonnelList(tempSystemConfig.personnel);
+                    newPersonNameInput.value = '';
                 } else {
-                    setupRealtimeListeners();
+                    showNotification(name ? '此人員已存在！' : '人員姓名不能為空！');
                 }
-
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                const loadingEl = document.getElementById('loading-indicator');
-                if(loadingEl) loadingEl.innerHTML = `<p class="col-span-full text-center p-10 text-red-500">Firebase 初始化失敗: ${error.message}</p>`;
             }
-        }
-        
-        function prepareImageDeletion(url, thumbId) {
-            if (!imagesToDelete.includes(url)) {
-                imagesToDelete.push(url);
+             function handleAddCabinet() {
+                const name = newCabinetNameInput.value.trim();
+                if (name && !(tempSystemConfig.storageLayout || {})[name]) {
+                    if (!tempSystemConfig.storageLayout) tempSystemConfig.storageLayout = {};
+                    tempSystemConfig.storageLayout[name] = {};
+                    renderCabinetSettings(tempSystemConfig.storageLayout);
+                    newCabinetNameInput.value = '';
+                } else {
+                    showNotification(name ? '此櫃子名稱已存在！' : '櫃子名稱不能為空！');
+                }
             }
-            const thumbEl = document.getElementById(thumbId);
-            if(thumbEl) {
-                thumbEl.style.opacity = '0.3';
-                thumbEl.style.pointerEvents = 'none';
+            async function handleSettingsClick(e) {
+                const { cabinet, shelf } = e.target.dataset;
+                if (e.target.classList.contains('delete-cabinet-btn')) {
+                    if (await showConfirmation({ message: `確定要刪除整個櫃子 "${cabinet}" 嗎？`, actionText: '確認刪除' })) {
+                        delete tempSystemConfig.storageLayout[cabinet];
+                        renderCabinetSettings(tempSystemConfig.storageLayout);
+                    }
+                } else if (e.target.classList.contains('add-shelf-btn')) {
+                    const parent = e.target.parentElement;
+                    const shelfName = parent.querySelector('.new-shelf-name').value.trim();
+                    const shelfCapacity = parseInt(parent.querySelector('.new-shelf-capacity').value, 10);
+                    if (shelfName && shelfCapacity > 0) {
+                        if (!tempSystemConfig.storageLayout[cabinet]) tempSystemConfig.storageLayout[cabinet] = {};
+                        if (tempSystemConfig.storageLayout[cabinet][shelfName]) {
+                            showNotification(`層數 "${shelfName}" 已存在！`);
+                            return;
+                        }
+                        tempSystemConfig.storageLayout[cabinet][shelfName] = shelfCapacity;
+                        renderCabinetSettings(tempSystemConfig.storageLayout);
+                        parent.querySelector('.new-shelf-name').value = '';
+                        parent.querySelector('.new-shelf-capacity').value = '';
+                    } else {
+                        showNotification('請輸入有效的層數名稱和格數！');
+                    }
+                } else if (e.target.classList.contains('delete-shelf-btn')) {
+                     if (await showConfirmation({ message: `確定要刪除櫃子 "${cabinet}" 中的 "${shelf}" 嗎？`, actionText: '確認刪除' })) {
+                        delete tempSystemConfig.storageLayout[cabinet][shelf];
+                        renderCabinetSettings(tempSystemConfig.storageLayout);
+                    }
+                }
             }
-        }
 
-        function showImageViewer(src) {
-            const viewer = document.getElementById('image-viewer');
-            viewer.querySelector('img').src = src;
-            viewer.classList.remove('hidden');
-        }
+            // --- Event Listeners ---
+            [searchInput, searchCabinetSelect, searchPersonSelect].forEach(el => el.addEventListener('input', handleSearch));
+            document.getElementById('openAddSampleModalBtn').addEventListener('click', () => { addSampleForm.reset(); updateAddFormSelects(); openModal(modals.addSample); });
+            document.getElementById('openHistoryModalBtn').addEventListener('click', () => openModal(modals.history));
+            document.getElementById('openSettingsBtn').addEventListener('click', () => { tempSystemConfig = JSON.parse(JSON.stringify(systemConfig)); renderSettingsUI(tempSystemConfig); openModal(modals.settings); });
+            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal-backdrop'))));
+            document.querySelectorAll('.close-scanner-btn').forEach(btn => btn.addEventListener('click', stopScanner));
+            scanInputQrBtn.addEventListener('click', () => startScanner('input'));
+            scanSearchBtn.addEventListener('click', () => startScanner('search'));
+            openReportModalBtn.addEventListener('click', () => {
+                const select = document.getElementById('reportCabinetSelect');
+                select.innerHTML = '<option value="all">全部櫃子</option>';
+                Object.keys(systemConfig.storageLayout || {}).sort().forEach(name => {
+                    select.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+                openModal(modals.reportFilter);
+            });
+            document.getElementById('generateReportBtn').addEventListener('click', () => {
+                const selectedCabinet = document.getElementById('reportCabinetSelect').value;
+                closeModal(modals.reportFilter);
+                renderInventoryReport(selectedCabinet);
+                openModal(modals.report);
+            });
+            printReportBtn.addEventListener('click', handlePrintReport);
+            downloadCsvBtn.addEventListener('click', handleDownloadCsv);
+            document.getElementById('batch-download-qr-btn').addEventListener('click', handleBatchDownloadQr);
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => closeModal(modals.settings));
+            document.getElementById('saveSettingsBtn').addEventListener('click', () => saveConfig(tempSystemConfig).then(() => closeModal(modals.settings)));
+            addSampleForm.addEventListener('submit', handleAddSample);
+            moveSampleForm.addEventListener('submit', handleMoveSample);
+            actionForm.addEventListener('submit', handleActionFormSubmit);
+            batchActionForm.addEventListener('submit', handleBatchStageSubmit);
+            batchFinalizeForm.addEventListener('submit', handleBatchFinalizeSubmit);
+            storageCabinetSelect.addEventListener('change', updateAddShelves);
+            storageShelfSelect.addEventListener('change', updateAddPositions);
+            document.getElementById('moveStorageCabinet').addEventListener('change', updateMoveShelves);
+            document.getElementById('moveStorageShelf').addEventListener('change', updateMovePositions);
+            document.getElementById('addPersonBtn').addEventListener('click', handleAddPerson);
+            personListContainer.addEventListener('click', async (e) => { 
+                if (e.target.classList.contains('delete-person-btn')) {
+                    const personToDelete = e.target.dataset.person;
+                    if (await showConfirmation({message: `確定刪除人員 "${personToDelete}"?`, actionText: '確認刪除'})) { 
+                        tempSystemConfig.personnel = tempSystemConfig.personnel.filter(p => p !== personToDelete); 
+                        renderPersonnelList(tempSystemConfig.personnel); 
+                    } 
+                }
+            });
+            document.getElementById('addCabinetBtn').addEventListener('click', handleAddCabinet);
+            cabinetSettingsContainer.addEventListener('click', handleSettingsClick);
+            cabinetSettingsContainer.addEventListener('input', (e) => { if (e.target.classList.contains('edit-shelf-capacity')) { const { cabinet, shelf } = e.target.dataset; const newCapacity = parseInt(e.target.value, 10); if (cabinet && shelf && newCapacity > 0) tempSystemConfig.storageLayout[cabinet][shelf] = newCapacity; } });
+            mainContent.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab-btn')) {
+                    deselectAll();
+                    e.target.parentElement.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-tab'));
+                    e.target.classList.add('active-tab');
+                    document.getElementById('cabinet-content-container').querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                    document.getElementById(e.target.dataset.target).classList.remove('hidden');
+                }
+            });
+            document.getElementById('history-tabs-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('history-tab-btn')) {
+                    e.target.parentElement.querySelectorAll('.history-tab-btn').forEach(btn => btn.classList.remove('active-tab'));
+                    e.target.classList.add('active-tab');
+                    document.getElementById('history-content-container').querySelectorAll('.history-tab-content').forEach(c => c.classList.add('hidden'));
+                    document.getElementById(e.target.dataset.target).classList.remove('hidden');
+                }
+            });
+            document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
+            document.getElementById('batch-stage-btn').addEventListener('click', () => {
+                const modal = modals.batchAction;
+                const listEl = modal.querySelector('#batchSampleList');
+                const countEl = modal.querySelector('#batchCount');
+                const personSelect = modal.querySelector('#batchActionPerson');
+                const samplesToMove = Array.from(selectedSamples).map(id => sampleInventory.find(s => s.id === id)).filter(Boolean);
+                listEl.innerHTML = samplesToMove.map(s => `<div class="text-sm p-2 bg-white rounded truncate" title="${s.sampleName}">${s.sampleName} <span class="text-xs text-slate-500">(${s.storageLocation})</span></div>`).join('');
+                countEl.textContent = samplesToMove.length;
+                personSelect.innerHTML = '<option value="">--- 請選擇人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => personSelect.innerHTML += `<option value="${p}">${p}</option>`);
+                openModal(modal);
+            });
+            document.getElementById('batch-finalize-btn').addEventListener('click', () => {
+                const modal = modals.batchFinalize;
+                const listEl = modal.querySelector('#batchFinalizeSampleList');
+                const countEl = modal.querySelector('#batchFinalizeCount');
+                const personSelect = modal.querySelector('#batchFinalizePerson');
+                const samplesToFinalize = Array.from(selectedStagingSamples).map(id => stagingSamples.find(s => s.id === id)).filter(Boolean);
+                listEl.innerHTML = samplesToFinalize.map(s => `<div class="text-sm p-2 bg-white rounded truncate" title="${s.sampleName}">${s.sampleName} <span class="text-xs text-slate-500">(${s.storageLocation})</span></div>`).join('');
+                countEl.textContent = samplesToFinalize.length;
+                personSelect.innerHTML = '<option value="">--- 請選擇人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => personSelect.innerHTML += `<option value="${p}">${p}</option>`);
+                openModal(modal);
+            });
 
-        // Expose functions to global scope
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.showDetail = showDetail;
-        window.closeDetailPanel = closeDetailPanel;
-        window.deleteRecord = deleteRecord;
-        window.exportReport = exportReport;
-        window.addPassRowToTable = addPassRowToTable;
-        window.removePassRow = removePassRow;
-        window.duplicateRow = duplicateRow;
-        window.prepareImageDeletion = prepareImageDeletion;
-        window.showImageViewer = showImageViewer;
-        
-        document.getElementById('data-form').addEventListener('submit', handleFormSubmit);
-
-        // Start the app
-        initializeAppWithAuth();
+            onAuthStateChanged(auth, user => {
+                if (user) setupListeners();
+                else signInAnonymously(auth).catch(error => { console.error("Anonymous sign-in failed:", error); loader.textContent = '連接認證失敗，請檢查 Firebase 設定。'; });
+            });
+        });
     </script>
 </body>
 </html>
-
-
-
-
 
