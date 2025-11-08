@@ -689,7 +689,7 @@
         
         // --- 庫存總覽渲染 ---
         function renderOverviewTab() {
-            const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => a.order - b.order);
+            const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
             const mainTabsContainer = document.getElementById('main-category-tabs');
             mainTabsContainer.innerHTML = '';
 
@@ -776,7 +776,7 @@
                  return;
             }
 
-            const subCategories = Array.from(subCategoriesMap.values()).sort((a,b) => a.order - b.order);
+            const subCategories = Array.from(subCategoriesMap.values()).sort((a,b) => (a.order || 0) - (b.order || 0));
 
             if (subCategories.length > 0) {
                 subCatContainer.classList.remove('hidden');
@@ -1212,6 +1212,14 @@
                     batch.set(ref, { name: mainCatName, order: now });
                     needsCommit = true;
                     // console.log(`Reconciling: Adding main category ${mainCatName}`);
+                } else {
+                    // 檢查現有的大類是否缺少 order 欄位
+                    const catData = mainCategoriesStore.get(mainCatName);
+                    if (catData && catData.order === undefined) {
+                        const ref = doc(db, "inventory_main_categories", catData.id);
+                        batch.update(ref, { order: now }); // 使用 now 確保它排在後面
+                        needsCommit = true;
+                    }
                 }
                 
                 const subCats = categoryMap[mainCatName];
@@ -1221,6 +1229,14 @@
                          batch.set(ref, { name: subCatName, mainCategoryName: mainCatName, order: now });
                          needsCommit = true;
                         //  console.log(`Reconciling: Adding sub category ${mainCatName} -> ${subCatName}`);
+                    } else {
+                        // 檢查現有的小類是否缺少 order 欄位
+                        const subCatData = subCategoriesStore.get(mainCatName).get(subCatName);
+                        if (subCatData && subCatData.order === undefined) {
+                            const ref = doc(db, "inventory_sub_categories", subCatData.id);
+                            batch.update(ref, { order: now }); // 使用 now 確保它排在後面
+                            needsCommit = true;
+                        }
                     }
                 }
             }
@@ -2266,7 +2282,7 @@
             itemNameEl.className = 'font-semibold text-slate-800 mt-2';
             container.appendChild(itemNameEl);
             
-            let url = `https://saniltw.i234.me/tools.html?itemId=${item.id}`; // Replace with actual URL
+            let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 更新後的網址
             if (action) {
                 url += `&action=${action}`;
             }
@@ -2294,7 +2310,7 @@
             try {
                 // Create a temporary canvas to generate the QR for download
                 const tempCanvas = document.createElement('canvas');
-                let url = `https://saniltw.i234.me/tools.html?itemId=${item.id}`; // Replace with actual URL
+                let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 更新後的網址
                 if (action) {
                     url += `&action=${action}`;
                 }
