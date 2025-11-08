@@ -49,6 +49,33 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    /* 自訂核取方塊樣式 */
+    .form-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 1.25rem;
+      width: 1.25rem;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 0.25rem;
+      display: inline-block;
+      vertical-align: middle;
+      position: relative;
+      cursor: pointer;
+    }
+    .form-checkbox:checked {
+      background-color: #3b82f6;
+      border-color: #3b82f6;
+    }
+    .form-checkbox:checked::after {
+      content: '✔';
+      font-size: 0.75rem;
+      color: white;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -114,7 +141,7 @@
     // --- 通用組件 ---
     const Modal = ({ children, onClose, maxWidth = 'max-w-sm' }) => (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-            <div className={`bg-white rounded-lg shadow-xl p-6 sm:p-8 w-full ${maxWidth}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`bg-white rounded-lg shadow-xl p-6 sm:p-8 w-full ${maxWidth} overflow-y-auto max-h-screen`} onClick={(e) => e.stopPropagation()}>
                 {children}
             </div>
         </div>
@@ -125,36 +152,69 @@
             <p>{message}</p>
         </div>
     );
+    
+    // --- 卡片組件 (已更新) ---
+    const SiteCard = ({ site, isAdmin, onEdit, onDelete }) => {
+        // 判斷連結是否應顯示
+        // 規則：
+        // 1. (isAdmin)：管理員恆為 true
+        // 2. (site.show... !== false)：訪客模式，檢查設定 (使用 !== false 處理舊資料，預設為 true)
+        // 3. (site.downloadUrl / site.githubUrl / site.url)：連結本身必須存在
+        
+        const showFile = (isAdmin || site.showFileLink !== false) && site.downloadUrl;
+        const showGithub = (isAdmin || site.showGithubLink !== false) && site.githubUrl;
+        const showGemini = (isAdmin || site.showGeminiLink !== false) && site.url;
 
-    const SiteCard = ({ site, isAdmin, onEdit, onDelete }) => (
-        <div className="bg-white p-5 rounded-xl shadow-md flex flex-col justify-between transition-all duration-200 hover:scale-105 hover:shadow-xl hover:bg-sky-100">
-            <div>
-                <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate mb-2">{site.name}</h3>
-                
-                <div className="flex flex-col space-y-2 pt-2 border-t border-gray-100">
-                    {site.downloadUrl && (
-                        <a href={site.downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-sky-600 hover:underline text-sm font-medium">
-                            &#128279; 打開檔案
-                        </a>
-                    )}
-                    {site.downloadUrl && (
-                        <a href={site.downloadUrl} download className="inline-block text-green-600 hover:underline text-sm font-medium">
-                            &#x21E9; 下載檔案
-                        </a>
-                    )}
-                    <a href={site.url} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-600 hover:underline break-all text-sm font-medium">
-                        &#127760; Gemini設計網頁
-                    </a>
+        return (
+            <div className="bg-white p-5 rounded-xl shadow-md flex flex-col justify-between transition-all duration-200 hover:scale-105 hover:shadow-xl hover:bg-sky-100">
+                <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate mb-2">{site.name}</h3>
+                    
+                    <div className="flex flex-col space-y-2 pt-2 border-t border-gray-100">
+                        
+                        {/* 檔案連結 (打開) */}
+                        {showFile && (
+                            <a href={site.downloadUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-sky-600 hover:underline text-sm font-medium">
+                                &#128279; 打開檔案
+                            </a>
+                        )}
+                        
+                        {/* 檔案連結 (下載) */}
+                        {showFile && (
+                            <a href={site.downloadUrl} download className="inline-block text-green-600 hover:underline text-sm font-medium">
+                                &#x21E9; 下載檔案
+                            </a>
+                        )}
+
+                        {/* GitHub 連結 */}
+                        {showGithub && (
+                            <a href={site.githubUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-gray-700 hover:underline text-sm font-medium">
+                                &#128187; GitHub 網頁
+                            </a>
+                        )}
+
+                        {/* Gemini 連結 */}
+                        {showGemini && (
+                            <a href={site.url} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-600 hover:underline break-all text-sm font-medium">
+                                &#127760; Gemini 設計網頁
+                            </a>
+                        )}
+
+                        {/* 當所有連結都隱藏時 (訪客模式) */}
+                        {!isAdmin && !showFile && !showGithub && !showGemini && (
+                            <p className="text-sm text-gray-400">此項目目前沒有可顯示的連結。</p>
+                        )}
+                    </div>
                 </div>
+                {isAdmin && (
+                    <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
+                        <button onClick={() => onEdit(site)} className="w-full text-sm font-medium py-2 px-3 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition">編輯</button>
+                        <button onClick={() => onDelete(site)} className="w-full text-sm font-medium py-2 px-3 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition">刪除</button>
+                    </div>
+                )}
             </div>
-            {isAdmin && (
-                <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                    <button onClick={() => onEdit(site)} className="w-full text-sm font-medium py-2 px-3 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition">編輯</button>
-                    <button onClick={() => onDelete(site)} className="w-full text-sm font-medium py-2 px-3 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition">刪除</button>
-                </div>
-            )}
-        </div>
-    );
+        );
+    }
     
     function getPathFromUrl(url) {
         if (!url) return null;
@@ -172,7 +232,7 @@
     }
 
 
-    // --- 主應用程式組件 ---
+    // --- 主應用程式組件 (已更新) ---
     function App() {
         const [sites, setSites] = useState([]);
         const [isLoading, setIsLoading] = useState(true);
@@ -183,7 +243,18 @@
         const [isEditModalOpen, setEditModalOpen] = useState(false);
         const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
         const [currentSite, setCurrentSite] = useState(null);
-        const [newSite, setNewSite] = useState({ name: '', url: '' });
+        
+        // 新增網站的初始狀態 (已更新)
+        const initialNewSiteState = {
+            name: '',
+            url: '', // Gemini 連結
+            githubUrl: '', // GitHub 連結
+            showFileLink: true,
+            showGithubLink: true,
+            showGeminiLink: true,
+        };
+        const [newSite, setNewSite] = useState(initialNewSiteState);
+        
         const [newSiteFile, setNewSiteFile] = useState(null);
         const [passwordInput, setPasswordInput] = useState('');
         const [loginError, setLoginError] = useState('');
@@ -238,10 +309,11 @@
             }
         };
         
+        // 新增網站 (已更新)
         const handleAddSite = async (e) => {
             e.preventDefault();
             if (!newSite.name.trim() || !newSite.url.trim()) {
-                showNotification("請填寫網站名稱和網址。", false);
+                showNotification("請填寫網站名稱和 Gemini 網址。", false);
                 return;
             }
             setIsSubmitting(true);
@@ -255,7 +327,8 @@
                 }
                 
                 await addDoc(sitesCollectionRef, { ...newSite, downloadUrl });
-                setNewSite({ name: '', url: '' });
+                
+                setNewSite(initialNewSiteState); // 重設表單
                 setNewSiteFile(null);
                 document.getElementById('add-file-input').value = null;
                 showNotification("新增成功！");
@@ -267,6 +340,7 @@
             }
         };
         
+        // 更新網站 (已更新)
         const handleUpdateSite = async () => {
             if (!currentSite) return;
             setIsSubmitting(true);
@@ -293,10 +367,15 @@
                 }
 
                 const siteDocRef = doc(db, 'sites', currentSite.id);
+                // 確保所有欄位都被更新
                 await updateDoc(siteDocRef, {
                     name: currentSite.name,
-                    url: currentSite.url,
-                    downloadUrl: downloadUrl,
+                    url: currentSite.url, // Gemini 連結
+                    githubUrl: currentSite.githubUrl || '', // GitHub 連結
+                    downloadUrl: downloadUrl, // 檔案連結
+                    showFileLink: currentSite.showFileLink,
+                    showGithubLink: currentSite.showGithubLink,
+                    showGeminiLink: currentSite.showGeminiLink,
                 });
                 setEditModalOpen(false);
                 showNotification("更新成功！");
@@ -327,13 +406,39 @@
             }
         };
 
+        // 開啟編輯 (已更新)
         const openEditModal = (site) => {
-            setCurrentSite(site);
+            // 載入時確保舊資料有預設值
+            setCurrentSite({
+                ...site,
+                githubUrl: site.githubUrl || '',
+                showFileLink: site.showFileLink !== false, // 預設 true
+                showGithubLink: site.showGithubLink !== false, // 預設 true
+                showGeminiLink: site.showGeminiLink !== false, // 預設 true
+            });
             setEditModalOpen(true);
         };
         const openDeleteModal = (site) => {
             setCurrentSite(site);
             setDeleteModalOpen(true);
+        };
+        
+        // 處理新增表單中的輸入
+        const handleNewSiteChange = (e) => {
+            const { name, value, type, checked } = e.target;
+            setNewSite(prev => ({
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            }));
+        };
+        
+        // 處理編輯表單中的輸入 (已更新)
+        const handleEditSiteChange = (e) => {
+            const { name, value, type, checked } = e.target;
+            setCurrentSite(prev => ({
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            }));
         };
 
         return (
@@ -344,7 +449,8 @@
                     <div className="text-gray-500 mt-4 text-sm text-left inline-block bg-gray-50 p-3 rounded-lg">
                         <p>1.「打開檔案」：直接使用線上網頁。</p>
                         <p>2.「下載檔案」：可將檔案下載到本機使用。</p>
-                        <p>3.「Gemini設計網頁」：修改網頁用連結。</p>
+                        <p>3.「GitHub 網頁」：用於展示的 GitHub Page 連結。</p>
+                        <p>4.「Gemini設計網頁」：修改網頁用連結。</p>
                     </div>
                     <div className="absolute top-0 right-0 p-2">
                         <button onClick={handleAdminLogin} className={`font-semibold py-2 px-4 rounded-lg transition text-sm ${isAdmin ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
@@ -364,17 +470,38 @@
                         )}
                     </div>
                 )}
-
+                
+                {/* 新增表單 (已更新) */}
                 {isAdmin && (
                     <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-md mt-12">
                         <h2 className="text-lg sm:text-xl font-semibold mb-6 text-center">新增網站</h2>
                         <form onSubmit={handleAddSite} className="space-y-4">
-                            <input type="text" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} placeholder="網站名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
-                            <input type="url" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} placeholder="網站連結" className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                            <input type="text" name="name" value={newSite.name} onChange={handleNewSiteChange} placeholder="網站名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                            <input type="url" name="url" value={newSite.url} onChange={handleNewSiteChange} placeholder="Gemini 設計網址 (必填)" className="w-full px-4 py-2 border border-gray-300 rounded-lg" required />
+                            <input type="url" name="githubUrl" value={newSite.githubUrl} onChange={handleNewSiteChange} placeholder="GitHub 網頁網址 (選填)" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">上傳檔案 (選填)</label>
                                 <input id="add-file-input" type="file" onChange={(e) => setNewSiteFile(e.target.files[0])} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                             </div>
+                            
+                            <fieldset className="border border-gray-200 rounded-lg p-4">
+                                <legend className="text-sm font-medium text-gray-700 px-2">連結顯示設定 (訪客模式)</legend>
+                                <div className="flex flex-wrap gap-4 mt-2">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showFileLink" checked={newSite.showFileLink} onChange={handleNewSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示檔案</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showGithubLink" checked={newSite.showGithubLink} onChange={handleNewSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示 GitHub</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showGeminiLink" checked={newSite.showGeminiLink} onChange={handleNewSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示 Gemini</span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
                             <div className="mt-6 text-center">
                                 <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white font-semibold py-2 px-8 rounded-lg hover:bg-blue-700 w-full flex items-center justify-center disabled:bg-blue-300">
                                     {isSubmitting ? <div className="btn-loader"></div> : '新增'}
@@ -395,18 +522,38 @@
                         </div>
                     </Modal>
                 )}
-
+                
+                {/* 編輯表單 (已更新) */}
                 {isEditModalOpen && currentSite && (
                     <Modal onClose={() => setEditModalOpen(false)} maxWidth="max-w-md">
                         <h2 className="text-xl font-bold mb-6">編輯網站</h2>
                         <div className="space-y-4">
-                            <input type="text" value={currentSite.name} onChange={(e) => setCurrentSite({...currentSite, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
-                            <input type="url" value={currentSite.url} onChange={(e) => setCurrentSite({...currentSite, url: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+                            <input type="text" name="name" value={currentSite.name} onChange={handleEditSiteChange} className="w-full px-4 py-2 border rounded-lg" />
+                            <input type="url" name="url" value={currentSite.url} onChange={handleEditSiteChange} placeholder="Gemini 設計網址" className="w-full px-4 py-2 border rounded-lg" />
+                            <input type="url" name="githubUrl" value={currentSite.githubUrl} onChange={handleEditSiteChange} placeholder="GitHub 網頁網址" className="w-full px-4 py-2 border rounded-lg" />
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">取代檔案 (選填)</label>
                                 {currentSite.downloadUrl && <p className="text-xs text-gray-500 mb-2">目前檔案: <a href={currentSite.downloadUrl} className="text-blue-500" target="_blank">點此查看</a></p>}
                                 <input id="edit-file-input" type="file" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"/>
                             </div>
+                            
+                            <fieldset className="border border-gray-200 rounded-lg p-4">
+                                <legend className="text-sm font-medium text-gray-700 px-2">連結顯示設定 (訪客模式)</legend>
+                                <div className="flex flex-wrap gap-4 mt-2">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showFileLink" checked={currentSite.showFileLink} onChange={handleEditSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示檔案</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showGithubLink" checked={currentSite.showGithubLink} onChange={handleEditSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示 GitHub</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input type="checkbox" name="showGeminiLink" checked={currentSite.showGeminiLink} onChange={handleEditSiteChange} className="form-checkbox" />
+                                        <span className="text-sm">顯示 Gemini</span>
+                                    </label>
+                                </div>
+                            </fieldset>
                         </div>
                         <div className="flex justify-end gap-4 mt-8">
                             <button onClick={() => setEditModalOpen(false)} className="px-6 py-2 bg-gray-200 rounded-lg">取消</button>
@@ -437,4 +584,3 @@
 
 </body>
 </html>
-
