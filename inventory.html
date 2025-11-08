@@ -576,6 +576,21 @@
             let selectedStagingSamples = new Set();
             let html5QrCode = null;
             let scannerMode = 'input'; // 'input' or 'search'
+            
+            // --- Deep Link Parameters ---
+            let deepLinkId = null;
+            let deepLinkAddName = null;
+            let inventoryLoaded = false; // Flag for deep link
+            let stagingLoaded = false; // Flag for deep link
+
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                deepLinkId = urlParams.get('id');
+                deepLinkAddName = urlParams.get('add_name');
+            } catch (e) {
+                console.warn("無法解析 URL 參數", e);
+            }
+            // --- End Deep Link ---
 
             const mainContent = document.getElementById('mainContent');
             const searchInput = document.getElementById('searchInput');
@@ -652,21 +667,88 @@
 
             // --- QR Code Scanner Functions ---
             function onScanInputSuccess(decodedText, decodedResult) {
-                document.getElementById('sampleName').value = decodedText;
+                let sampleName = decodedText;
+                
+                // 檢查掃描到的文字是否為用戶指定的 URL 格式
+                if (decodedText.startsWith("https://saniltw.github.io/welddata/")) {
+                    try {
+                        const url = new URL(decodedText);
+                        const pathParts = url.pathname.split('/');
+                        let lastPart = pathParts[pathParts.length - 1];
+                        
+                        // 如果副檔名是 .html，則移除
+                        if (lastPart.toLowerCase().endsWith('.html')) {
+                            lastPart = lastPart.substring(0, lastPart.length - 5);
+                        }
+                        
+                        // 如果解析後不為空字串，則使用
+                        if (lastPart) {
+                            sampleName = lastPart;
+                        }
+                    } catch (e) {
+                        // 若非有效 URL 或解析失敗，則使用原始掃描文字
+                        console.warn("無法解析掃描到的 URL，將使用原始文字。", e);
+                        sampleName = decodedText; // fallback to original text
+                    }
+                }
+                
+                document.getElementById('sampleName').value = sampleName;
                 stopScanner();
-                showNotification(`已掃描樣品名稱: ${decodedText}`);
+                showNotification(`已掃描樣品名稱: ${sampleName}`);
             }
 
             function onScanSearchSuccess(decodedText, decodedResult) {
                 stopScanner();
-                const sampleId = decodedText.trim();
-                const foundSample = sampleInventory.find(s => s.id === sampleId) || stagingSamples.find(s => s.id === sampleId);
+                let scannedText = decodedText.trim();
+                let sampleIdToSearch = scannedText; // 預設：假定掃到的是純文字 ID
+
+                // --- NEW (v4) LOGIC TO PARSE URL ---
+                try {
+                    // 檢查掃描到的文字是否為一個 URL
+                    if (scannedText.startsWith("http://") || scannedText.startsWith("https://")) {
+                        
+                        // 我們必須解析 URL 才能檢查參數
+                        const url = new URL(scannedText);
+
+                        // 情況 1: QR Code 是帶有 ID 的深度連結 (正確)
+                        if (url.searchParams.has('id')) {
+                            sampleIdToSearch = url.searchParams.get('id');
+                            // 繼續執行下方的搜尋邏輯
+                        
+                        // 情況 2: QR Code 是用於「新增」樣品 (例如 ...?add_name=...)
+                        } else if (url.searchParams.has('add_name')) {
+                            const addNameParam = url.searchParams.get('add_name');
+                            showNotification(`這是新增樣品 (名稱: ${addNameParam}) 的 QR Code。請使用「新增樣品」內的掃描功能。`, 5000);
+                            return; // 停止
+                        
+                        // 情況 3: QR Code 是您舊的 .../7.html 格式
+                        } else if (scannedText.startsWith("https://saniltw.github.io/welddata/") && !scannedText.startsWith("https://saniltw.github.io/welddata/inventory.html")) {
+                            showNotification("這是新增樣品的 QR Code。請使用「新增樣品」內的掃描功能。", 5000);
+                            return; // 停止
+
+                        // 情況 4: 是 URL，但無法識別 (例如掃到 inventory.html 本身，或 google.com)
+                        } else {
+                            showNotification(`無法辨識的 QR Code 網址。`, 4000);
+                            return; // 停止
+                        }
+                    }
+                    // 如果不是 URL (例如 "qRj8..."), sampleIdToSearch 會保持為 "qRj8..."
+                } catch (e) {
+                    // 解析失敗 (例如不是一個完整的 URL)
+                    // 在這種情況下，我們假定 sampleIdToSearch (其值仍為 scannedText) 是一個純文字 ID。
+                    console.warn("QR Code 不是可解析的 URL，將使用原始文字進行搜尋。", e);
+                }
+                // --- END NEW (v4) LOGIC ---
+
+                // 使用 sampleIdToSearch (可能是純文字 ID 或從 URL 解析出的 ID) 執行搜尋
+                const foundSample = sampleInventory.find(s => s.id === sampleIdToSearch) || stagingSamples.find(s => s.id === sampleIdToSearch);
                 
                 if (foundSample) {
                     showSampleDetails(foundSample);
                     showNotification("已找到樣品並顯示詳細資訊。");
                 } else {
-                    showNotification(`找不到 ID 為 "${sampleId}" 的樣品。`, 4000);
+                    let displayId = sampleIdToSearch.length > 50 ? sampleIdToSearch.substring(0, 50) + '...' : sampleIdToSearch;
+                    showNotification(`找不到 ID 為 "${displayId}" 的樣品。`, 4000);
                 }
             }
 
@@ -723,6 +805,24 @@
                     systemConfig = docSnap.exists() ? docSnap.data() : { storageLayout: {}, personnel: [] };
                     updateAllSelects();
                     renderInventoryByCabinet();
+                    
+                    // --- Handle Deep Link for Adding Sample ---
+                    // Run this after config is loaded so personnel dropdowns are ready
+                    if (deepLinkAddName) {
+                        try {
+                            addSampleForm.reset();
+                            updateAddFormSelects(); // Ensure dropdowns are populated
+                            openModal(modals.addSample);
+                            document.getElementById('sampleName').value = deepLinkAddName;
+                            showNotification(`準備新增樣品: ${deepLinkAddName}`);
+                            // Clear the param so it doesn't trigger on modal close/reopen
+                            deepLinkAddName = null; 
+                            // Clean up the URL bar
+                            history.replaceState(null, '', window.location.pathname);
+                        } catch (e) {
+                            console.error("Deep link 'add_name' 失敗:", e);
+                        }
+                    }
                 });
                 const inventoryQuery = query(collection(db, 'sampleSystem/data/inventory'));
                 unsubscribeInventory = onSnapshot(inventoryQuery, (querySnapshot) => {
@@ -731,11 +831,19 @@
                     handleSearch();
                     loader.classList.add('hidden');
                     inventoryContent.classList.remove('hidden');
+
+                    // --- Handle Deep Link for Searching ID ---
+                    inventoryLoaded = true;
+                    handleDeepLinkCheck();
                 });
                 const stagingQuery = query(collection(db, 'sampleSystem/data/staging'));
                 unsubscribeStaging = onSnapshot(stagingQuery, (querySnapshot) => {
                     stagingSamples = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderStagingArea();
+
+                    // --- Handle Deep Link for Searching ID (in Staging) ---
+                    stagingLoaded = true;
+                    handleDeepLinkCheck();
                 });
                 const historyQuery = query(collection(db, 'sampleSystem/data/history'));
                 unsubscribeHistory = onSnapshot(historyQuery, (querySnapshot) => {
@@ -752,6 +860,25 @@
             
             async function logAction(logData) {
                 await addDoc(collection(db, 'sampleSystem/data/history'), { ...logData, timestamp: serverTimestamp() });
+            }
+
+            function handleDeepLinkCheck() {
+                // 只有當兩個清單都載入完成，且我們有一個有效的 deepLinkId 才執行
+                if (inventoryLoaded && stagingLoaded && deepLinkId) {
+                    const foundSample = sampleInventory.find(s => s.id === deepLinkId) || stagingSamples.find(s => s.id === deepLinkId);
+                    
+                    if (foundSample) {
+                        showSampleDetails(foundSample);
+                        showNotification("已載入掃描的樣品。");
+                    } else {
+                        // 兩個清單都載入了，但還是找不到
+                        showNotification(`找不到 ID 為 "${deepLinkId}" 的樣品。`, 4000);
+                    }
+                    
+                    // 無論是否找到，都清除 ID，這樣在資料更新時才不會重複觸發
+                    deepLinkId = null; 
+                    history.replaceState(null, '', window.location.pathname);
+                }
             }
 
             function openModal(modal) { modal.classList.remove('modal-hidden'); modal.classList.add('modal-visible'); modal.querySelector('.modal-content').classList.remove('modal-content-hidden'); modal.querySelector('.modal-content').classList.add('modal-content-visible'); }
@@ -1069,19 +1196,78 @@
                 if (qrContainer) {
                     try {
                         const qr = qrcode(0, 'M');
-                        qr.addData(sample.id);
-                        qr.make();
-                        const qrDataURL = qr.createDataURL(4, 8);
-                        qrContainer.innerHTML = `<img src="${qrDataURL}" style="width: 100%; height: 100%;">`;
                         
-                        document.getElementById('downloadQrBtn').addEventListener('click', () => {
-                            const link = document.createElement('a');
-                            link.href = qrDataURL;
-                            link.download = `${sample.sampleName || 'qrcode'}.png`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        });
+                        // --- MODIFIED FOR DEEP LINK (HARDCODED URL) ---
+                        // 使用您指定的固定網址
+                        const baseUrl = "https://saniltw.github.io/welddata/inventory.html";
+                        const deepLinkUrl = `${baseUrl}?id=${sample.id}`;
+                        qr.addData(deepLinkUrl);
+                        // --- END MODIFICATION ---
+                        
+                        qr.make();
+                        const qrImgSrc = qr.createDataURL(5, 10); // base64 string
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const qrSize = 200; // QR code size
+                        const padding = 10;
+                        const fontSize = 16;
+                        const textHeight = fontSize + padding;
+                        
+                        canvas.width = qrSize + (padding * 2);
+                        canvas.height = qrSize + (padding * 2) + textHeight;
+                        
+                        // White background
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        const qrImg = new Image();
+                        qrImg.onload = () => {
+                            // Draw QR code
+                            ctx.drawImage(qrImg, padding, padding, qrSize, qrSize);
+                            
+                            // Draw text
+                            ctx.fillStyle = '#1e293b'; // slate-800
+                            ctx.font = `bold ${fontSize}px 'Inter', 'Noto Sans TC', sans-serif`;
+                            ctx.textAlign = 'center';
+                            
+                            // Truncate text if needed for canvas
+                            let sampleName = sample.sampleName;
+                            const maxWidth = canvas.width - (padding * 2);
+                            if (ctx.measureText(sampleName).width > maxWidth) {
+                                while (ctx.measureText(sampleName + '...').width > maxWidth) {
+                                    sampleName = sampleName.slice(0, -1);
+                                }
+                                sampleName += '...';
+                            }
+                            
+                            ctx.fillText(sampleName, canvas.width / 2, qrSize + padding + fontSize);
+                            
+                            const finalDataURL = canvas.toDataURL('image/png');
+                            
+                            // Display in modal
+                            qrContainer.innerHTML = `<img src="${finalDataURL}" style="width: 100%; height: 100%; object-fit: contain;">`;
+                            
+                            // Setup download button
+                            const downloadBtn = document.getElementById('downloadQrBtn');
+                            // Remove old listener if any, by replacing the node
+                            const newDownloadBtn = downloadBtn.cloneNode(true);
+                            downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+                            
+                            newDownloadBtn.addEventListener('click', () => {
+                                const link = document.createElement('a');
+                                link.href = finalDataURL;
+                                link.download = `${sample.sampleName.replace(/[^a-z0-9]/gi, '_') || 'qrcode'}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            });
+                        };
+                        qrImg.onerror = () => {
+                             qrContainer.innerHTML = '<p class="text-xs text-red-500">無法載入 QR Code 影像</p>';
+                        }
+                        qrImg.src = qrImgSrc;
 
                     } catch (err) {
                         qrContainer.innerHTML = '<p class="text-xs text-red-500">無法產生 QR Code</p>';
@@ -1298,19 +1484,89 @@
 
                 const zip = new JSZip();
                 
-                samplesToDownload.forEach(sample => {
+                // --- Helper function to create QR with text on canvas ---
+                const createQrWithText = (sample) => {
+                    return new Promise((resolve, reject) => {
+                        try {
+                            const qr = qrcode(0, 'M');
+
+                            // --- MODIFIED FOR DEEP LINK (HARDCODED URL) ---
+                            // 使用您指定的固定網址
+                            const baseUrl = "https://saniltw.github.io/welddata/inventory.html";
+                            const deepLinkUrl = `${baseUrl}?id=${sample.id}`;
+                            qr.addData(deepLinkUrl);
+                            // --- END MODIFICATION ---
+
+                            qr.make();
+                            const qrImgSrc = qr.createDataURL(5, 10); // base64 string
+
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            const qrSize = 200; // QR code size
+                            const padding = 10;
+                            const fontSize = 16;
+                            const textHeight = fontSize + padding;
+                            
+                            canvas.width = qrSize + (padding * 2);
+                            canvas.height = qrSize + (padding * 2) + textHeight;
+                            
+                            // White background
+                            ctx.fillStyle = 'white';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            const qrImg = new Image();
+                            qrImg.onload = () => {
+                                // Draw QR code
+                                ctx.drawImage(qrImg, padding, padding, qrSize, qrSize);
+                                
+                                // Draw text
+                                ctx.fillStyle = '#1e293b'; // slate-800
+                                ctx.font = `bold ${fontSize}px 'Inter', 'Noto Sans TC', sans-serif`;
+                                ctx.textAlign = 'center';
+                                
+                                // Truncate text if needed for canvas
+                                let sampleName = sample.sampleName;
+                                const maxWidth = canvas.width - (padding * 2);
+                                if (ctx.measureText(sampleName).width > maxWidth) {
+                                    while (ctx.measureText(sampleName + '...').width > maxWidth) {
+                                        sampleName = sampleName.slice(0, -1);
+                                    }
+                                    sampleName += '...';
+                                }
+                                
+                                ctx.fillText(sampleName, canvas.width / 2, qrSize + padding + fontSize);
+                                
+                                // Get blob
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        resolve(blob);
+                                    } else {
+                                        reject(new Error('Canvas toBlob failed'));
+                                    }
+                                }, 'image/png');
+                            };
+                            qrImg.onerror = () => reject(new Error('QR Image load failed'));
+                            qrImg.src = qrImgSrc;
+                        } catch (err) {
+                            reject(err);
+                        }
+                    });
+                };
+                // --- End helper function ---
+
+                const promises = samplesToDownload.map(async (sample) => {
                     try {
-                        const qr = qrcode(0, 'M');
-                        qr.addData(sample.id);
-                        qr.make();
-                        const qrDataURL = qr.createDataURL(4, 0);
-                        const base64Data = qrDataURL.substring(qrDataURL.indexOf(',') + 1);
+                        const blob = await createQrWithText(sample);
                         const fileName = (sample.sampleName || sample.id).replace(/[^a-z0-9_.-]/gi, '_') + '.png';
-                        zip.file(fileName, base64Data, { base64: true });
+                        zip.file(fileName, blob);
                     } catch (err) {
                         console.error(`無法為樣品 "${sample.sampleName}" 產生 QR Code:`, err);
                     }
                 });
+
+                // Wait for all QR codes to be generated and added to zip
+                await Promise.all(promises);
 
                 try {
                     const content = await zip.generateAsync({ type: "blob" });
@@ -1811,4 +2067,3 @@
     </script>
 </body>
 </html>
-
