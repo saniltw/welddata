@@ -814,7 +814,7 @@
                     if(document.getElementById('admin-tab-content-maintenance').classList.contains('hidden') === false) {
                        renderMaintenanceLog();
                     }
-                    if(document.getElementById('admin-tab-content-reports').classList.contains('hidden') === false && document.getElementById('report-type-select').value === 'maintenance') {
+                    if(document.getElementById('admin-tab-content-summaryReports').classList.contains('hidden') === false && document.getElementById('report-type-select').value === 'maintenance') {
                        if (document.getElementById('report-maint-start-date').value && document.getElementById('report-maint-end-date').value) {
                            generateMaintenanceReport();
                        }
@@ -1486,7 +1486,7 @@
             checklistContainer.innerHTML = '';
             maintenanceContainer.innerHTML = '';
             
-            const APP_BASE_URL = 'https://saniltw.i234.me/equipment.html';
+            const APP_BASE_URL = 'https://saniltw.github.io/welddata/5.1.html';
 
             const checklistData = `${APP_BASE_URL}?action=start_checklist&id=${equipmentId}`;
             const maintenanceData = `${APP_BASE_URL}?action=start_maintenance&id=${equipmentId}`;
