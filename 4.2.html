@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內檢資料檢核用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF Generation Library: Replaced jsPDF with html2pdf for better styling support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body {
+            /* Added Microsoft JhengHei to the font stack */
+            font-family: 'Inter', 'Microsoft JhengHei', '微軟正黑體', 'Noto Sans TC', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .file-drop-area {
+            transition: all 0.2s ease-in-out;
+        }
+        .file-drop-area.dragover {
+            background-color: #e0f2fe;
+            border-color: #0ea5e9;
+            transform: scale(1.02);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0ea5e9;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-card {
+            background-color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+            transition: all 0.2s ease-in-out;
+            margin-bottom: 2rem;
+            /* This property helps with print page breaks */
+            page-break-inside: avoid;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -2px rgb(0 0 0 / 0.07);
+        }
+        .copy-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #111827;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            z-index: 1050;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .copy-toast.show {
+            opacity: 1;
+        }
+        .file-group {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            border: 1px solid #f3f4f6;
+        }
+        .fail-text {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        .spec-form-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, margin-top 0.5s ease-in-out;
+            margin-top: 0;
+        }
+        .spec-form-container.open {
+            max-height: 1500px; /* Large enough to fit content */
+            margin-top: 1rem;
+        }
+        .spec-status {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-left: 0.5rem;
+            font-style: italic;
+        }
+        .spec-select, .spec-input {
+             width: 100%;
+             padding: 0.5rem;
+             border: 1px solid #d1d5db;
+             border-radius: 0.5rem;
+             background-color: white;
+        }
+        .spec-text {
+            color: #4b5563;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            background-color: #f3f4f6;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .data-grid-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .data-grid-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">內檢資料檢核用</h1>
+            <p class="mt-3 text-lg text-gray-600">銲材測試內檢資料上傳、核對、整理用網頁</p>
+        </header>
+
+        <main id="main-content">
+            <!-- Step 1: File Upload Section -->
+            <div id="upload-section" class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">1. 上傳報告檔案</h3>
+                <div id="drop-area" class="w-full file-drop-area border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center text-center bg-slate-50 cursor-pointer">
+                    <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                    <div id="drop-area-content">
+                        <div class="text-sky-500 mx-auto w-16 h-16">
+                            <i data-lucide="upload-cloud" class="w-16 h-16"></i>
+                        </div>
+                        <p class="mt-4 text-gray-600 font-semibold">將所有檔案拖曳至此或<span class="text-sky-600">點擊上傳</span></p>
+                        <p class="text-xs text-gray-500 mt-1">支援 JPG, PNG, PDF 格式</p>
+                    </div>
+                    <div id="drop-area-loading" class="hidden">
+                        <div class="loader mx-auto"></div>
+                        <p class="mt-4 text-gray-600 font-semibold">正在處理檔案...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: File Groups and Spec Input Section -->
+            <div id="file-list-section" class="hidden">
+                 <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">2. 為各品項選擇規範</h3>
+                 <div id="file-list-container" class="w-full mt-4">
+                    <div id="file-list" class="space-y-6">
+                        <p id="no-files-text" class="text-gray-500 text-sm text-center py-4">尚未上傳任何檔案。</p>
+                    </div>
+                </div>
+                <div class="mt-8 text-center">
+                    <button id="start-processing-btn" class="bg-sky-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-sky-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm hover:shadow-md">
+                        開始分析與核對
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Section -->
+            <div id="loading-section" class="hidden text-center p-8 mt-8">
+                <div class="loader mx-auto"></div>
+                <p id="loading-text" class="mt-4 text-lg font-medium text-gray-700">AI 正在分析資料，請稍候...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="result-section" class="hidden mt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">分析與核對結果</h2>
+                    <div class="flex items-center gap-4 mt-4 md:mt-0">
+                        <button id="download-pdf-btn" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition duration-300 flex items-center justify-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>下載 PDF
+                        </button>
+                        <button id="copy-all-json-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition duration-300 flex items-center justify-center gap-2">複製全部 JSON</button>
+                        <button id="reset-btn" class="bg-gray-700 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-800 transition duration-300">重新開始</button>
+                    </div>
+                </div>
+                <div id="results-container"></div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        lucide.createIcons();
+        // --- DOM Element Selection ---
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const fileListDiv = document.getElementById('file-list');
+        const noFilesText = document.getElementById('no-files-text');
+        const startBtn = document.getElementById('start-processing-btn');
+        
+        const uploadSection = document.getElementById('upload-section');
+        const fileListSection = document.getElementById('file-list-section');
+        const loadingSection = document.getElementById('loading-section');
+        const loadingText = document.getElementById('loading-text');
+        const resultSection = document.getElementById('result-section');
+        const resultsContainer = document.getElementById('results-container');
+        
+        const copyAllJsonBtn = document.getElementById('copy-all-json-btn');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // --- Global State ---
+        const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwuY3JEypcFP8BLMO2_zLD22vSXB-Ie64LCzFbLH9e57AF4NS6n4yIlplTUJ7ycSveIMg/exec';
+        let fileQueue = [];
+        let allGroupedResults = [];
+        let availableSpecs = [];
+        let groupSpecSelections = {}; // NEW: Store spec selection for each group
+        let loadedSpecs = {}; // NEW: Cache for loaded spec data
+
+        const chemElements = ["C", "Si", "Mn", "P", "S", "Cr", "Ni", "Mo", "Al", "Cu", "Co", "Ti", "Nb", "V", "W", "B", "Sn", "Zr", "Fe"];
+
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            dropArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => handleFileSelection(e.target.files));
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false));
+            ['dragleave', 'drop'].forEach(eventName => dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false));
+            
+            dropArea.addEventListener('drop', (e) => handleFileSelection(e.dataTransfer.files), false);
+
+            startBtn.addEventListener('click', startProcessing);
+            copyAllJsonBtn.addEventListener('click', copyAllJsonToClipboard);
+            downloadPdfBtn.addEventListener('click', downloadResultsAsPDF);
+            resetBtn.addEventListener('click', resetUI);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // --- Custom Modal for Alerts ---
+        function showAlert(message) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal-backdrop';
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            const messageP = document.createElement('p');
+            messageP.textContent = message;
+            messageP.className = 'mb-4 text-lg';
+            const closeButton = document.createElement('button');
+            closeButton.textContent = '關閉';
+            closeButton.className = 'bg-sky-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-sky-700 transition duration-300';
+            closeButton.onclick = () => document.body.removeChild(modalBackdrop);
+            modalContent.appendChild(messageP);
+            modalContent.appendChild(closeButton);
+            modalBackdrop.appendChild(modalContent);
+            document.body.appendChild(modalBackdrop);
+        }
+
+        // --- UI and File Handling ---
+        async function handleFileSelection(files) {
+            if (!files || files.length === 0) return;
+
+            const dropAreaContent = document.getElementById('drop-area-content');
+            const dropAreaLoading = document.getElementById('drop-area-loading');
+
+            dropAreaContent.classList.add('hidden');
+            dropAreaLoading.classList.remove('hidden');
+            
+            // Allow UI to update before heavy processing
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            if (availableSpecs.length === 0) {
+                await fetchAllSpecIds();
+            }
+            
+            Array.from(files).forEach(file => {
+                if (!fileQueue.some(f => f.name === file.name && f.size === file.size)) {
+                    fileQueue.push(file);
+                }
+            });
+            
+            renderGroupedFileList();
+            checkProcessButtonState();
+
+            dropAreaContent.classList.remove('hidden');
+            dropAreaLoading.classList.add('hidden');
+        }
+
+        function getFileGroupId(fileName) {
+            const parts = fileName.split(/[-_.]/);
+            return parts[0].trim().toUpperCase() || fileName.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+        }
+
+        function getFileType(fileName) {
+            const lowerCaseName = fileName.toLowerCase();
+            if (lowerCaseName.endsWith('.pdf') || lowerCaseName.includes('chem')) {
+                return { type: '化學成分', color: 'bg-red-100 text-red-800' };
+            }
+            if (lowerCaseName.includes('mech') || lowerCaseName.includes('impact') || lowerCaseName.endsWith('.jpg') || lowerCaseName.endsWith('.jpeg') || lowerCaseName.endsWith('.png')) {
+                return { type: '機械性質', color: 'bg-blue-100 text-blue-800' };
+            }
+            return { type: '未知類型', color: 'bg-gray-100 text-gray-800' };
+        }
+
+        function renderGroupedFileList() {
+            fileListDiv.innerHTML = '';
+            if (fileQueue.length === 0) {
+                fileListDiv.appendChild(noFilesText);
+                return;
+            }
+            noFilesText.remove();
+
+            const fileGroups = new Map();
+            fileQueue.forEach(file => {
+                const groupId = getFileGroupId(file.name);
+                if (!fileGroups.has(groupId)) {
+                    fileGroups.set(groupId, []);
+                }
+                fileGroups.get(groupId).push(file);
+            });
+
+            fileGroups.forEach((files, groupId) => {
+                const groupContainer = document.createElement('div');
+                groupContainer.className = 'file-group';
+                groupContainer.id = `group-container-${groupId}`;
+
+                let filesHTML = `<div class="space-y-2">`;
+                files.forEach(file => {
+                    const fileTypeInfo = getFileType(file.name);
+                    filesHTML += `
+                        <div class="file-item text-sm">
+                            <div class="flex items-center gap-2 flex-grow overflow-hidden">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full ${fileTypeInfo.color}">${fileTypeInfo.type}</span>
+                                <span class="truncate" title="${file.name}">${file.name}</span>
+                            </div>
+                            <button class="text-gray-400 hover:text-red-600 p-1 rounded-full" onclick="removeFileByName('${file.name}')">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+                filesHTML += `</div>`;
+
+                let specOptions = '<option value="">-- 選擇或載入規範 --</option>';
+                availableSpecs.forEach(spec => {
+                    specOptions += `<option value="${spec.id}" ${spec.id === groupId ? 'selected' : ''}>${spec.name} (${spec.id})</option>`;
+                });
+
+                let chemInputsHTML = '';
+                chemElements.forEach(el => {
+                    chemInputsHTML += `
+                        <div>
+                            <label class="block text-xs font-medium mb-1">${el}</label>
+                            <div class="flex gap-1">
+                                <input type="number" name="${el}_min" placeholder="Min" step="any" class="spec-input text-xs p-1">
+                                <input type="number" name="${el}_max" placeholder="Max" step="any" class="spec-input text-xs p-1">
+                            </div>
+                        </div>`;
+                });
+
+                groupContainer.innerHTML = `
+                    <h5 class="font-bold text-lg mb-3 text-gray-800">${groupId}</h5>
+                    ${filesHTML}
+                    <div class="mt-4 space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">選擇規範樣板:</label>
+                            <select id="spec-select-${groupId}" class="spec-select" onchange="handleSpecSelectionChange('${groupId}')">
+                                ${specOptions}
+                            </select>
+                        </div>
+                        <div class="flex items-center">
+                            <button type="button" onclick="toggleSpecForm('${groupId}')" class="text-sm text-sky-600 font-semibold hover:text-sky-800 flex items-center gap-1">
+                                <i data-lucide="edit" class="w-4 h-4"></i>
+                                編輯/新增規範
+                            </button>
+                            <span id="spec-status-${groupId}" class="spec-status"></span>
+                        </div>
+                    </div>
+                    <div id="spec-form-container-${groupId}" class="spec-form-container">
+                        <form class="p-4 mt-2 border-t border-gray-200 bg-white rounded-b-md space-y-4">
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium">品名 ID (Key)</label>
+                                    <input type="text" name="spec_id" class="spec-input" value="${groupId}">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium">適用規範</label>
+                                    <input type="text" name="spec_name" class="spec-input">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t">
+                               <div>
+                                    <h4 class="font-bold text-base mb-3 text-sky-700">機械性質</h4>
+                                    <div class="space-y-3">
+                                        <label class="block text-sm">抗拉強度 (MPa):
+                                            <div class="flex gap-2">
+                                                <input type="number" name="tensile_strength_min" placeholder="Min" class="spec-input">
+                                                <input type="number" name="tensile_strength_max" placeholder="Max" class="spec-input">
+                                            </div>
+                                        </label>
+                                        <label class="block text-sm">降伏強度 (MPa):
+                                            <div class="flex gap-2">
+                                                <input type="number" name="yield_strength_min" placeholder="Min" class="spec-input">
+                                                <input type="number" name="yield_strength_max" placeholder="Max" class="spec-input">
+                                            </div>
+                                        </label>
+                                        <label class="block text-sm">延伸率 (%):
+                                            <div class="flex gap-2">
+                                                <input type="number" name="elongation_min" placeholder="Min" class="spec-input">
+                                                <input type="number" name="elongation_max" placeholder="Max" class="spec-input">
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-base mb-3 text-sky-700">衝擊試驗</h4>
+                                    <div class="space-y-3">
+                                        <label class="block text-sm">測試溫度 (°C) Max: <input type="number" name="impact_temp" class="spec-input"></label>
+                                        <label class="block text-sm">衝擊值 (J) Min: <input type="number" name="impact_value" class="spec-input"></label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t">
+                                <h4 class="font-bold text-base mb-3 text-sky-700">化學成分 (%)</h4>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-4 gap-y-3">${chemInputsHTML}</div>
+                            </div>
+                            <div class="text-right pt-4">
+                                <button type="button" onclick="saveSpecToSheet('${groupId}')" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 ml-auto">
+                                    <i data-lucide="save" class="w-4 h-4"></i>
+                                    儲存至雲端
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                fileListDiv.appendChild(groupContainer);
+                handleSpecSelectionChange(groupId);
+            });
+            lucide.createIcons();
+        }
+
+        function handleSpecSelectionChange(groupId) {
+            const selectEl = document.getElementById(`spec-select-${groupId}`);
+            const specId = selectEl.value;
+            groupSpecSelections[groupId] = specId; // Store selection
+            
+            checkProcessButtonState(); // Check immediately for UI responsiveness if user selects "-- select --"
+
+            if (specId) {
+                startBtn.disabled = true; // Still disable while loading this specific spec
+                loadSpecFromSheet(groupId, specId);
+            } else {
+                clearSpecForm(groupId);
+            }
+        }
+        
+        function toggleSpecForm(groupId) {
+            const formContainer = document.getElementById(`spec-form-container-${groupId}`);
+            if(formContainer) formContainer.classList.toggle('open');
+        }
+
+        function removeFileByName(fileName) {
+            fileQueue = fileQueue.filter(f => f.name !== fileName);
+            renderGroupedFileList();
+            checkProcessButtonState();
+        }
+        
+        function checkProcessButtonState() {
+            const hasFiles = fileQueue.length > 0;
+            if (!hasFiles) {
+                if(startBtn) startBtn.disabled = true;
+                if(fileListSection) fileListSection.classList.add('hidden');
+                return;
+            }
+
+            if(fileListSection) fileListSection.classList.remove('hidden');
+
+            const fileGroups = new Map();
+            fileQueue.forEach(file => {
+                const groupId = getFileGroupId(file.name);
+                if (!fileGroups.has(groupId)) {
+                    fileGroups.set(groupId, []);
+                }
+                fileGroups.get(groupId).push(file);
+            });
+
+            let allSpecsSelected = true;
+            for (const groupId of fileGroups.keys()) {
+                if (!groupSpecSelections[groupId]) { 
+                    allSpecsSelected = false;
+                    break;
+                }
+            }
+
+            if(startBtn) startBtn.disabled = !allSpecsSelected;
+        }
+
+        // --- Google Sheets Integration ---
+        async function fetchAllSpecIds() {
+            if (!appsScriptUrl) return;
+            try {
+                const response = await fetch(`${appsScriptUrl}?action=getAllSpecIds`);
+                if (!response.ok) {
+                    throw new Error(`伺服器回應錯誤: ${response.status}`);
+                }
+                const text = await response.text();
+                try {
+                    const specList = JSON.parse(text);
+                    availableSpecs = specList;
+                } catch (e) {
+                    console.error("無法解析從 Apps Script 傳回的 JSON:", text);
+                    throw new Error("Apps Script 回傳無效的資料格式。請檢查 Apps Script 中的 `getAllSpecIds` 函式。");
+                }
+            } catch (error) {
+                console.error('抓取所有規範 ID 時發生錯誤:', error);
+                showAlert(`無法從雲端載入規範列表。\n錯誤: ${error.message}\n請檢查您的 Google Apps Script 程式碼與部署設定。`);
+            }
+        }
+
+        async function loadSpecFromSheet(groupId, specIdToLoad) {
+            if (!appsScriptUrl) return;
+            const statusEl = document.getElementById(`spec-status-${groupId}`);
+            if(statusEl) statusEl.textContent = '正在從雲端載入規範...';
+            
+            // Use cache if available
+            if (loadedSpecs[specIdToLoad]) {
+                populateSpecForm(groupId, loadedSpecs[specIdToLoad], specIdToLoad);
+                if(statusEl) statusEl.textContent = `已載入規範: ${specIdToLoad}`;
+                checkProcessButtonState();
+                return;
+            }
+
+            try {
+                const response = await fetch(`${appsScriptUrl}?action=getSpec&id=${specIdToLoad}`);
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const specData = await response.json();
+                
+                if (Object.keys(specData).length > 0) {
+                    loadedSpecs[specIdToLoad] = specData; // Cache the loaded spec
+                    populateSpecForm(groupId, specData, specIdToLoad);
+                    if(statusEl) statusEl.textContent = `已載入規範: ${specIdToLoad}`;
+                } else {
+                    clearSpecForm(groupId);
+                    if(statusEl) statusEl.textContent = `雲端無此規範: ${specIdToLoad}`;
+                }
+            } catch (error) {
+                console.error('Error loading spec:', error);
+                if(statusEl) statusEl.textContent = '載入規範失敗。';
+            } finally {
+                checkProcessButtonState();
+            }
+        }
+        
+        function clearSpecForm(groupId) {
+            const form = document.getElementById(`spec-form-container-${groupId}`)?.querySelector('form');
+            if(form) {
+                form.reset();
+                const idInput = form.querySelector('input[name="spec_id"]');
+                if (idInput) idInput.value = groupId; // Reset ID to original group ID
+            }
+        }
+
+        function populateSpecForm(groupId, specData, specIdToLoad) {
+            clearSpecForm(groupId);
+            const form = document.getElementById(`spec-form-container-${groupId}`)?.querySelector('form');
+            if (!form) return;
+            
+            const specName = availableSpecs.find(s => s.id === specIdToLoad)?.name || '';
+            form.querySelector('input[name="spec_id"]').value = specIdToLoad;
+            form.querySelector('input[name="spec_name"]').value = specName;
+
+            if (specData.mech) {
+                const ts = specData.mech.tensile_strength;
+                if(ts) {
+                    form.querySelector(`input[name="tensile_strength_min"]`).value = ts.min ?? '';
+                    form.querySelector(`input[name="tensile_strength_max"]`).value = ts.max ?? '';
+                }
+                const ys = specData.mech.yield_strength;
+                if(ys) {
+                    form.querySelector(`input[name="yield_strength_min"]`).value = ys.min ?? '';
+                    form.querySelector(`input[name="yield_strength_max"]`).value = ys.max ?? '';
+                }
+                const el = specData.mech.elongation;
+                if(el) {
+                    form.querySelector(`input[name="elongation_min"]`).value = el.min ?? '';
+                    form.querySelector(`input[name="elongation_max"]`).value = el.max ?? '';
+                }
+            }
+            if (specData.impact) {
+                 form.querySelector(`input[name="impact_temp"]`).value = specData.impact.temp ?? '';
+                 form.querySelector(`input[name="impact_value"]`).value = specData.impact.value ?? '';
+            }
+            if (specData.chem) {
+                for (const el in specData.chem) {
+                    const minInput = form.querySelector(`input[name="${el}_min"]`);
+                    if(minInput && specData.chem[el].min !== null) minInput.value = specData.chem[el].min;
+                    const maxInput = form.querySelector(`input[name="${el}_max"]`);
+                    if(maxInput && specData.chem[el].max !== null) maxInput.value = specData.chem[el].max;
+                }
+            }
+        }
+
+        function getSpecDataFromForm(groupId) {
+            const form = document.getElementById(`spec-form-container-${groupId}`)?.querySelector('form');
+            if(!form) return null;
+
+            const spec = { mech: {}, impact: {}, chem: {} };
+            const specId = form.querySelector('input[name="spec_id"]').value.trim().toUpperCase();
+            const specName = form.querySelector('input[name="spec_name"]').value.trim();
+
+            if (!specId) {
+                showAlert('品名 ID (Key) 不可為空。');
+                return null;
+            }
+            
+            // Mechanical Properties
+            const ts_min = form.querySelector(`input[name="tensile_strength_min"]`).value;
+            const ts_max = form.querySelector(`input[name="tensile_strength_max"]`).value;
+            if(ts_min || ts_max) spec.mech.tensile_strength = { min: ts_min ? parseFloat(ts_min) : null, max: ts_max ? parseFloat(ts_max) : null };
+
+            const ys_min = form.querySelector(`input[name="yield_strength_min"]`).value;
+            const ys_max = form.querySelector(`input[name="yield_strength_max"]`).value;
+            if(ys_min || ys_max) spec.mech.yield_strength = { min: ys_min ? parseFloat(ys_min) : null, max: ys_max ? parseFloat(ys_max) : null };
+
+            const el_min = form.querySelector(`input[name="elongation_min"]`).value;
+            const el_max = form.querySelector(`input[name="elongation_max"]`).value;
+            if(el_min || el_max) spec.mech.elongation = { min: el_min ? parseFloat(el_min) : null, max: el_max ? parseFloat(el_max) : null };
+            
+            // Impact
+            const it = form.querySelector(`input[name="impact_temp"]`).value;
+            if(it) spec.impact.temp = parseFloat(it);
+
+            const iv = form.querySelector(`input[name="impact_value"]`).value;
+            if(iv) spec.impact.value = parseFloat(iv);
+
+            // Chemical
+            chemElements.forEach(elem => {
+                const min = form.querySelector(`input[name="${elem}_min"]`).value;
+                const max = form.querySelector(`input[name="${elem}_max"]`).value;
+                if (min || max) {
+                    spec.chem[elem] = {
+                        min: min ? parseFloat(min) : null,
+                        max: max ? parseFloat(max) : null
+                    };
+                }
+            });
+            return { id: specId, name: specName, spec: spec };
+        }
+
+        async function saveSpecToSheet(groupId) {
+            if (!appsScriptUrl) {
+                showAlert('內部錯誤：找不到 API 網址。');
+                return;
+            }
+            const statusEl = document.getElementById(`spec-status-${groupId}`);
+            const formData = getSpecDataFromForm(groupId);
+
+            if (!formData) return;
+
+            if(statusEl) statusEl.textContent = '正在儲存規範...';
+
+            const payload = { action: 'saveSpec', id: formData.id, name: formData.name, spec: formData.spec };
+
+            try {
+                const response = await fetch(appsScriptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                
+                showToast(`品名 ${formData.id} 的規範已成功傳送至雲端！`);
+                if(statusEl) statusEl.textContent = '規範已儲存。';
+                
+                await fetchAllSpecIds();
+                renderGroupedFileList();
+
+            } catch (error) {
+                console.error('儲存規範時發生錯誤:', error);
+                showAlert(`儲存規範失敗: ${error.message}\n\n請確認：\n1. 您的 Google Apps Script 已更新至最新版本。\n2. Script 已重新部署。\n3. 部署的存取權限設為「任何人」。`);
+                if(statusEl) statusEl.textContent = '儲存失敗。';
+            }
+        }
+
+        // --- Validation ---
+        function getSpecificationsForGroup(groupId) {
+            const selectedSpecId = groupSpecSelections[groupId];
+            const specData = loadedSpecs[selectedSpecId];
+
+            if (!specData) {
+                return { mech: {}, impact: {}, chem: {} };
+            }
+
+            const specs = { mech: {}, impact: {}, chem: {} };
+
+            if (specData.mech) {
+                if (specData.mech.tensile_strength) specs.mech.tensile_strength = { 
+                    min: specData.mech.tensile_strength.min !== null ? parseFloat(specData.mech.tensile_strength.min) : -Infinity,
+                    max: specData.mech.tensile_strength.max !== null ? parseFloat(specData.mech.tensile_strength.max) : Infinity
+                };
+                if (specData.mech.yield_strength) specs.mech.yield_strength = {
+                    min: specData.mech.yield_strength.min !== null ? parseFloat(specData.mech.yield_strength.min) : -Infinity,
+                    max: specData.mech.yield_strength.max !== null ? parseFloat(specData.mech.yield_strength.max) : Infinity
+                };
+                if (specData.mech.elongation) specs.mech.elongation = {
+                    min: specData.mech.elongation.min !== null ? parseFloat(specData.mech.elongation.min) : -Infinity,
+                    max: specData.mech.elongation.max !== null ? parseFloat(specData.mech.elongation.max) : Infinity
+                };
+            }
+
+            if (specData.impact) {
+                if(specData.impact.temp) specs.impact.temp = parseFloat(specData.impact.temp);
+                if(specData.impact.value) specs.impact.value = parseFloat(specData.impact.value);
+            }
+
+            if (specData.chem) {
+                for (const el in specData.chem) {
+                    const min = specData.chem[el].min;
+                    const max = specData.chem[el].max;
+                    if (min !== null || max !== null) {
+                        specs.chem[el] = {
+                            min: min !== null ? parseFloat(min) : -Infinity,
+                            max: max !== null ? parseFloat(max) : Infinity
+                        };
+                    }
+                }
+            }
+            return specs;
+        }
+
+        function validateData(extractedData, specs) {
+            const validation = { overall: 'pass', results: {} };
+            let isAnyFail = false;
+
+            if (extractedData.機械性質 && specs.mech) {
+                const props = extractedData.機械性質;
+                const checkMech = (propName, specName) => {
+                    if (specs.mech[specName] && props[propName]) {
+                        const val = parseFloat(props[propName]);
+                        const spec = specs.mech[specName];
+                        validation.results[specName] = (val >= spec.min && val <= spec.max) ? 'pass' : 'fail';
+                        if (validation.results[specName] === 'fail') isAnyFail = true;
+                    }
+                }
+                checkMech('抗拉強度', 'tensile_strength');
+                checkMech('降伏強度', 'yield_strength');
+                checkMech('延伸率', 'elongation');
+            }
+
+            if (extractedData.衝擊試驗 && extractedData.衝擊試驗.length > 0 && specs.impact) {
+                extractedData.衝擊試驗.forEach((test, index) => {
+                    const testAvg = parseFloat(test.平均值);
+                    if (specs.impact.value && testAvg < specs.impact.value) {
+                         validation.results[`impact_value_${index}`] = 'fail'; isAnyFail = true;
+                    } else if (specs.impact.value) {
+                         validation.results[`impact_value_${index}`] = 'pass';
+                    }
+                });
+            }
+
+            if (extractedData.化學成分 && specs.chem) {
+                const chem = extractedData.化學成分;
+                for (const el in specs.chem) {
+                    if (chem.hasOwnProperty(el) && chem[el]) {
+                        const val = parseFloat(chem[el].replace('<',''));
+                        const spec = specs.chem[el];
+                        if (spec) {
+                            validation.results[el] = (val >= spec.min && val <= spec.max) ? 'pass' : 'fail';
+                            if (validation.results[el] === 'fail') isAnyFail = true;
+                        }
+                    }
+                }
+            }
+            
+            if (isAnyFail) validation.overall = 'fail';
+            return validation;
+        }
+
+
+        // --- Core Processing Logic ---
+        
+        // New function to handle API calls with retry logic for transient errors
+        async function callGeminiApiWithRetry(fileObjs, maxRetries = 3) {
+            let attempt = 0;
+            let delay = 1000; // start with 1 second
+
+            while (attempt < maxRetries) {
+                try {
+                    // This is the actual API call
+                    return await callGeminiApi(fileObjs);
+                } catch (error) {
+                    attempt++;
+                    // Extract status code from the error message, which is expected to be in the format "API 請求失敗: XXX ..."
+                    const statusMatch = error.message.match(/API 請求失敗: (\d+)/);
+                    const statusCode = statusMatch ? parseInt(statusMatch[1], 10) : null;
+
+                    // Only retry on 5xx server errors or 429 (Too Many Requests).
+                    // Do not retry on client errors like 400, 401, 403, 404, as retrying won't fix them.
+                    if (statusCode >= 500 || statusCode === 429) {
+                        if (attempt >= maxRetries) {
+                            console.error(`API call failed after ${maxRetries} attempts with status ${statusCode}.`);
+                            throw error; // Re-throw the last error if all retries fail
+                        }
+                        console.log(`API call failed with status ${statusCode}. Retrying in ${delay / 1000}s... (Attempt ${attempt}/${maxRetries})`);
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2; // Exponential backoff for the next retry
+                    } else {
+                        // For non-retriable errors (like the user's 401), throw immediately without retrying.
+                        throw error;
+                    }
+                }
+            }
+        }
+
+        async function startProcessing() {
+            if (fileQueue.length === 0) {
+                showAlert("請至少上傳一份報告檔案。");
+                return;
+            }
+            
+            if(uploadSection) uploadSection.classList.add('hidden');
+            if(fileListSection) fileListSection.classList.add('hidden');
+            if(loadingSection) loadingSection.classList.remove('hidden');
+            if(resultSection) resultSection.classList.add('hidden');
+            if(startBtn) startBtn.disabled = true;
+            
+            allGroupedResults = [];
+            if(resultsContainer) resultsContainer.innerHTML = '';
+
+            const fileGroups = new Map();
+            fileQueue.forEach(file => {
+                const groupId = getFileGroupId(file.name);
+                if (!fileGroups.has(groupId)) {
+                    fileGroups.set(groupId, []);
+                }
+                fileGroups.get(groupId).push(file);
+            });
+            const groupsToProcess = Array.from(fileGroups.entries()).map(([id, files]) => ({ id, files }));
+
+
+            for (let i = 0; i < groupsToProcess.length; i++) {
+                const group = groupsToProcess[i];
+                if(loadingText) loadingText.textContent = `正在處理組別 ${i + 1} / ${groupsToProcess.length}: ${group.id}`;
+                
+                try {
+                    const specifications = getSpecificationsForGroup(group.id);
+                    const selectedSpecId = groupSpecSelections[group.id];
+                    const specName = availableSpecs.find(s => s.id === selectedSpecId)?.name || 'N/A';
+
+                    const fileObjects = await Promise.all(group.files.map(file => fileToObject(file)));
+                    const resultData = await callGeminiApiWithRetry(fileObjects); // Use the new retry wrapper
+                    const validationResult = validateData(resultData, specifications);
+                    
+                    const resultEntry = {
+                        groupId: group.id,
+                        specName: specName,
+                        sourceFiles: group.files.map(f => f.name),
+                        data: resultData,
+                        validation: validationResult,
+                        specifications: specifications
+                    };
+                    allGroupedResults.push(resultEntry);
+                    createResultCard(resultEntry);
+
+                } catch (error) {
+                    console.error(`處理組別 ${group.id} 時發生錯誤:`, error);
+                    const errorEntry = {
+                        groupId: group.id,
+                        specName: 'Error',
+                        sourceFiles: group.files.map(f => f.name),
+                        error: error.message
+                    };
+                    allGroupedResults.push(errorEntry);
+                    createResultCard(errorEntry);
+                }
+            }
+            
+            if(loadingSection) loadingSection.classList.add('hidden');
+            if(resultSection) resultSection.classList.remove('hidden');
+        }
+
+        function fileToObject(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve({
+                    mimeType: file.type,
+                    data: reader.result.split(',')[1]
+                });
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function callGeminiApi(fileObjs) {
+            const apiKey = ""; // Keep this empty
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const prompt = `你是一位專業的資料分析師，專門從金屬材料測試報告中擷取數據。
+請分析以下提供的所有檔案，它們都屬於同一個材料編號。請將所有檔案的資訊整合後，回傳一份合併的JSON結果。
+- 根據檔案內容，嚴格按照指定的JSON格式與順序回傳結果。
+- 只填寫你在檔案中找到的資料對應的區塊。如果某個區塊 (例如 "化學成分") 的資料完全不存在於任何檔案中，請在JSON中省略該區塊的key。
+- 如果找不到某個特定欄位的資料，請使用空字串 ""。
+- **重要規則**：在「衝擊試驗」部分，\`實測值\`和\`平均值\`欄位**絕對不能**包含單位 'J'，只能是純數字。溫度單位 '°C' 或 '℃' 必須放在獨立的\`單位\`欄位中。
+- 所有數值應為純數字字串 (或包含 '<' 的極限值字串)。`;
+            
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    "機械性質": {
+                        type: "OBJECT",
+                        properties: { "抗拉強度": { "type": "STRING" }, "降伏強度": { "type": "STRING" }, "延伸率": { "type": "STRING" } }
+                    },
+                    "衝擊試驗": {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: { "測試溫度": { "type": "STRING" }, "單位": { "type": "STRING" }, "實測值": { "type": "ARRAY", "items": { "type": "STRING" } }, "平均值": { "type": "STRING" } }
+                        }
+                    },
+                    "化學成分": {
+                        type: "OBJECT",
+                        properties: { "C": { "type": "STRING" }, "Si": { "type": "STRING" }, "Mn": { "type": "STRING" }, "P": { "type": "STRING" }, "S": { "type": "STRING" }, "Cr": { "type": "STRING" }, "Ni": { "type": "STRING" }, "Mo": { "type": "STRING" }, "Al": { "type": "STRING" }, "Cu": { "type": "STRING" }, "Co": { "type": "STRING" }, "Ti": { "type": "STRING" }, "Nb": { "type": "STRING" }, "V": { "type": "STRING" }, "W": { "type": "STRING" }, "B": { "type": "STRING" }, "Sn": { "type": "STRING" }, "Zr": { "type": "STRING" }, "Fe": { "type": "STRING" } }
+                    }
+                }
+            };
+
+            const parts = [{ text: prompt }];
+            fileObjs.forEach(fileObj => {
+                parts.push({ inlineData: fileObj });
+            });
+
+            const payload = {
+                contents: [{ role: "user", parts: parts }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                // Add specific check for 401 Unauthorized
+                if (response.status === 401) {
+                    console.error("Gemini API returned 401 Unauthorized. This often indicates an issue with the environment's API key setup.", errorBody);
+                    throw new Error(`API 請求失敗: 401 Unauthorized. 這通常表示 API 金鑰驗證失敗，可能是暫時的環境問題。請稍後再試一次。`);
+                }
+                throw new Error(`API 請求失敗: ${response.status} ${response.statusText}. ${errorBody}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                return JSON.parse(result.candidates[0].content.parts[0].text);
+            }
+            
+            throw new Error("從API收到的回應格式不正確或為空。");
+        }
+        
+        // --- Result Display, Copy & Reset ---
+        function createResultCard(resultEntry) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.dataset.jsonData = JSON.stringify(resultEntry, null, 2);
+
+            let sourceFilesHTML = resultEntry.sourceFiles.map(name => {
+                const fileTypeInfo = getFileType(name);
+                return `<li class="flex items-center gap-2 text-xs text-gray-600 truncate"><span class="px-1.5 py-0.5 text-xs font-medium rounded-full ${fileTypeInfo.color}">${fileTypeInfo.type}</span> <span title="${name}">${name}</span></li>`
+            }).join('');
+
+            const validation = resultEntry.validation;
+            const specs = resultEntry.specifications || { mech: {}, impact: {}, chem: {} };
+            let statusBadge = '';
+            if (validation) {
+                if (validation.overall === 'pass') {
+                    statusBadge = '<span class="px-3 py-1 text-sm font-bold text-green-800 bg-green-200 rounded-full">合格</span>';
+                } else {
+                    statusBadge = '<span class="px-3 py-1 text-sm font-bold text-red-800 bg-red-200 rounded-full">不合格</span>';
+                }
+            }
+
+            // The header is now wrapped for easier cloning
+            let headerHTML = `
+                <div class="report-header">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <div class="flex items-center gap-3 mb-1">
+                               <h3 class="text-2xl font-bold text-gray-800">${resultEntry.groupId} - ${resultEntry.specName}</h3>
+                               ${statusBadge}
+                            </div>
+                            <ul class="pl-1 space-y-1 mb-2">${sourceFilesHTML}</ul>
+                            <p class="text-sm text-gray-500">適用規範: ${resultEntry.specName}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            let contentHTML = '';
+            if (resultEntry.error) {
+                contentHTML = `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                                  <p class="font-bold">分析失敗</p>
+                                  <p>${resultEntry.error}</p>
+                               </div>`;
+            } else {
+                const data = resultEntry.data;
+                const vResults = validation ? validation.results : {};
+
+                const getValidationIcon = (status) => {
+                    if (status === 'pass') return '✅';
+                    if (status === 'fail') return '❌';
+                    return '-';
+                };
+
+                const formatSpecRange = (spec) => {
+                    if (!spec) return '';
+                    const min = (spec.min !== null && spec.min !== -Infinity) ? spec.min : null;
+                    const max = (spec.max !== null && spec.max !== Infinity) ? spec.max : null;
+
+                    if (min !== null && max !== null) return `規範: ${min} ~ ${max}`;
+                    if (min !== null) return `規範: ≥ ${min}`;
+                    if (max !== null) return `規範: ≤ ${max}`;
+                    return '';
+                };
+                
+                const renderSpecText = (spec) => {
+                    const text = formatSpecRange(spec);
+                    return text ? `<span class="spec-text">${text}</span>` : '';
+                }
+
+                let dataContainer = '';
+                let hasData = false;
+                
+                // Create a dedicated wrapper for the mechanical section
+                const hasMechSection = data.機械性質 || (data.衝擊試驗 && data.衝擊試驗.length > 0);
+                if (hasMechSection) {
+                    hasData = true;
+                    let mechContent = '';
+                    if (data.機械性質) {
+                        const mechProps = data.機械性質;
+                        mechContent += `<div><h4 class="section-title"><i data-lucide="gauge-circle" class="w-7 h-7 text-sky-500"></i>機械性質</h4>
+                                    <ul class="space-y-2 text-sm pl-2">
+                                        <li class="data-grid-item"><strong>抗拉強度:</strong> <span class="flex items-center gap-2 font-medium ${vResults.tensile_strength === 'fail' ? 'fail-text' : 'text-gray-700'}">${getValidationIcon(vResults.tensile_strength)} ${mechProps.抗拉強度 || 'N/A'} MPa ${renderSpecText(specs.mech.tensile_strength)}</span></li>
+                                        <li class="data-grid-item"><strong>降伏強度:</strong> <span class="flex items-center gap-2 font-medium ${vResults.yield_strength === 'fail' ? 'fail-text' : 'text-gray-700'}">${getValidationIcon(vResults.yield_strength)} ${mechProps.降伏強度 || 'N/A'} MPa ${renderSpecText(specs.mech.yield_strength)}</span></li>
+                                        <li class="data-grid-item"><strong>延伸率:</strong> <span class="flex items-center gap-2 font-medium ${vResults.elongation === 'fail' ? 'fail-text' : 'text-gray-700'}">${getValidationIcon(vResults.elongation)} ${mechProps.延伸率 || 'N/A'} % ${renderSpecText(specs.mech.elongation)}</span></li>
+                                    </ul></div>`;
+                    }
+                    if (data.衝擊試驗 && data.衝擊試驗.length > 0) {
+                        mechContent += `<div><h4 class="section-title"><i data-lucide="thermometer-snowflake" class="w-7 h-7 text-sky-500"></i>衝擊試驗</h4>`;
+                        data.衝擊試驗.forEach((test, index) => {
+                            const tempUnit = test.單位 || '';
+                            const values = (test.實測值 || []).map(v => v ? `${v} J` : 'N/A').join(', ');
+                            const avg = test.平均值 ? `${test.平均值} J` : 'N/A';
+                            const valueClass = vResults[`impact_value_${index}`] === 'fail' ? 'fail-text' : 'text-gray-700';
+                            const valueSpecText = (specs.impact && specs.impact.value) ? `規範: ≥ ${specs.impact.value}` : '';
+
+                            mechContent += `<div class="mb-3 pl-2 text-sm">
+                                            <div class="data-grid-item"><strong>測試溫度:</strong> <span class="font-medium text-gray-600">${test.測試溫度 || 'N/A'}${tempUnit}</span></div>
+                                            <div class="data-grid-item"><strong>實測值:</strong> <span class="font-medium text-gray-600">${values}</span></div>
+                                            <div class="data-grid-item"><strong>平均值:</strong> <span class="flex items-center gap-2 font-medium ${valueClass}">${getValidationIcon(vResults[`impact_value_${index}`])} ${avg} ${valueSpecText ? `<span class="spec-text">${valueSpecText}</span>` : ''}</span></div>
+                                        </div>`;
+                        });
+                        mechContent += `</div>`;
+                    }
+                    dataContainer += `<div class="mech-section space-y-6">${mechContent}</div>`;
+                }
+
+                // Create a dedicated wrapper for the chemical section
+                if (data.化學成分) {
+                    hasData = true;
+                    const chemData = data.化學成分;
+                    let chemContent = `<h4 class="section-title"><i data-lucide="flask-conical" class="w-7 h-7 text-sky-500"></i>化學成分</h4>
+                                 <div class="grid grid-cols-3 gap-x-8 gap-y-2 text-sm pl-2">`;
+                    chemElements.forEach(key => {
+                         if (chemData.hasOwnProperty(key) && chemData[key]) {
+                            const value = chemData[key];
+                            const vStatus = vResults[key];
+                            const valClass = vStatus === 'fail' ? 'fail-text' : 'text-gray-700';
+                            let displayValue = value.includes('<') ? value : `${value} %`;
+                            
+                            chemContent += `<div class="data-grid-item"><strong>${key}:</strong> <span class="flex items-center gap-2 font-medium ${valClass}">${getValidationIcon(vStatus)} ${displayValue} ${renderSpecText(specs.chem[key])}</span></div>`;
+                         }
+                    });
+                    chemContent += `</div>`;
+                    dataContainer += `<div class="chem-section">${chemContent}</div>`;
+                }
+                
+                if (hasData) {
+                    contentHTML = dataContainer;
+                } else {
+                    contentHTML = `<p class="text-gray-500 p-4 bg-gray-50 rounded">在此檔案中未偵測到可辨識的資料。</p>`;
+                }
+            }
+            
+            card.innerHTML = headerHTML + contentHTML;
+            resultsContainer.appendChild(card);
+            lucide.createIcons();
+        }
+
+        function copySingleJson(event) {
+            const card = event.target.closest('.result-card');
+            const jsonString = card.dataset.jsonData;
+            copyTextToClipboard(jsonString, '此項結果的 JSON 已成功複製！');
+        }
+
+        function copyAllJsonToClipboard() {
+            if (allGroupedResults.length === 0) return;
+            const jsonString = JSON.stringify(allGroupedResults, null, 2);
+            copyTextToClipboard(jsonString, '所有結果的 JSON 已成功複製！');
+        }
+
+        async function downloadResultsAsPDF() {
+            if (allGroupedResults.length === 0) {
+                showAlert('沒有可下載的結果。');
+                return;
+            }
+
+            const originalBtn = document.getElementById('download-pdf-btn');
+            const originalBtnHTML = originalBtn.innerHTML;
+            originalBtn.disabled = true;
+            originalBtn.innerHTML = `<div class="loader" style="width:20px;height:20px;border-width:2px;border-color:white;border-top-color:transparent;"></div><span class="ml-2">正在產生...</span>`;
+
+            try {
+                const resultsEl = document.getElementById('results-container');
+                
+                // 1. Create a new container for the print-ready content
+                const printContainer = document.createElement('div');
+                
+                const originalCards = resultsEl.querySelectorAll('.result-card');
+
+                originalCards.forEach(card => {
+                    const header = card.querySelector('.report-header');
+                    const mechSection = card.querySelector('.mech-section');
+                    const chemSection = card.querySelector('.chem-section');
+
+                    const hasMech = !!mechSection;
+                    const hasChem = !!chemSection;
+
+                    // If both sections exist, we split them into two separate "cards" for printing
+                    if (hasMech && hasChem) {
+                        // Page 1: Mechanical Properties
+                        const page1 = document.createElement('div');
+                        page1.className = 'result-card'; // Use the same class for consistent styling and page breaks
+                        page1.appendChild(header.cloneNode(true));
+                        page1.appendChild(mechSection.cloneNode(true));
+                        printContainer.appendChild(page1);
+
+                        // Page 2: Chemical Composition
+                        const page2 = document.createElement('div');
+                        page2.className = 'result-card';
+                        page2.appendChild(header.cloneNode(true)); // Clone the header again for the new page
+                        page2.appendChild(chemSection.cloneNode(true));
+                        printContainer.appendChild(page2);
+                    } else {
+                        // If only one or neither section exists, just clone the original card
+                        printContainer.appendChild(card.cloneNode(true));
+                    }
+                });
+
+
+                const opt = {
+                    margin: 15,
+                    filename: `analysis-report-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    // This mode will now correctly create a page break after each .result-card div in our printContainer
+                    pagebreak: { mode: 'after', after: '.result-card' }
+                };
+
+                // Generate PDF from the manipulated container
+                await html2pdf().from(printContainer).set(opt).save();
+
+            } catch (error) {
+                console.error("產生 PDF 時發生錯誤:", error);
+                showAlert("產生 PDF 失敗，請再試一次。");
+            } finally {
+                originalBtn.disabled = false;
+                originalBtn.innerHTML = originalBtnHTML;
+                lucide.createIcons();
+            }
+        }
+
+        function copyTextToClipboard(text, successMessage) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed'; 
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMessage);
+            } catch (err) {
+                console.error('無法複製文字: ', err);
+                showAlert('複製失敗，您的瀏覽器可能不支援此操作。');
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.className = 'copy-toast';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+
+        function resetUI() {
+            fileQueue = [];
+            allGroupedResults = [];
+            availableSpecs = [];
+            
+            if(fileInput) fileInput.value = '';
+            if(fileListDiv) fileListDiv.innerHTML = '';
+            
+            if(startBtn) startBtn.disabled = true;
+            
+            if(uploadSection) uploadSection.classList.remove('hidden');
+            if(fileListSection) fileListSection.classList.add('hidden');
+            if(loadingSection) loadingSection.classList.add('hidden');
+            if(resultSection) resultSection.classList.add('hidden');
+            if(resultsContainer) resultsContainer.innerHTML = '';
+        }
+        
+        // --- Initial Setup ---
+        setupEventListeners();
+
+    </script>
+</body>
+</html>

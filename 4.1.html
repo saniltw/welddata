@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銲材試驗統計分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .file-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            margin: 0.25rem;
+            background-color: #e0e7ff;
+            color: #4338ca;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .file-tag .remove-file-tag {
+            margin-left: 0.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        .file-tag .remove-file-tag:hover {
+            color: #1f2937;
+        }
+        .manage-btn {
+            flex-shrink: 0;
+            background-color: #eef2ff;
+            color: #4f46e5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .manage-btn:hover {
+            background-color: #e0e7ff;
+        }
+        .management-list-item.selected {
+            background-color: #e0e7ff;
+            font-weight: 600;
+        }
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        #loader-spinner {
+             width: 4rem;
+             height: 4rem;
+             border-bottom-width: 3px;
+             border-color: rgb(59 130 246);
+             transition: border-color 0.3s;
+        }
+        #loader-text {
+            margin-top: 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #d1d5db;
+        }
+        /* Style for completed inspection items */
+        .inspection-item-label.completed {
+            text-decoration: line-through;
+            color: #16a34a; /* green-600 */
+        }
+        .inspection-item-label.completed::before {
+            content: '✅';
+            margin-right: 0.25rem;
+        }
+        .inspection-item-label {
+            cursor: pointer;
+        }
+        .report-tab {
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .report-tab.active {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        /* Kanban Styles */
+        .kanban-column {
+            background-color: #f3f4f6; /* gray-100 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1rem;
+        }
+        .kanban-card {
+            background-color: white;
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 4px solid #a78bfa; /* violet-400 */
+        }
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-left-color: #8b5cf6; /* violet-500 */
+        }
+        .kanban-card .serial-number {
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 600; /* font-semibold */
+            color: #4338ca; /* indigo-700 */
+            background-color: #e0e7ff; /* indigo-100 */
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px; /* rounded-full */
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+        .kanban-card .project-name {
+            font-weight: 600; /* font-semibold */
+            color: #1f2937; /* gray-800 */
+        }
+        /* RBAC Styles */
+        .role-viewer .edit-btn,
+        .role-viewer .delete-btn,
+        .role-viewer #add-record-btn,
+        .role-viewer #quick-edit-btn,
+        .role-viewer #manage-base-data-btn,
+        .role-viewer .manage-btn {
+            display: none !important;
+        }
+        .role-editor .manage-btn[data-type="welders"],
+        .role-editor .master-manage-select-btn[data-type="welders"],
+        .role-editor .master-manage-select-btn[data-type="actionLog"] {
+            display: none !important;
+        }
+        
+        /* Hide inspection data for viewers */
+        .role-viewer .inspection-data,
+        .role-viewer #kanban-view-btn,
+        .role-viewer .report-tab[data-target="incomplete-panel"],
+        .role-viewer .inspection-section {
+            display: none !important;
+        }
+    
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[10000] flex items-center justify-center p-4 modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-8 modal-content transform scale-95">
+            <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">登入系統</h2>
+            <form id="login-form">
+                <div>
+                    <label for="login-user-select" class="block text-sm font-medium text-gray-700">選擇您的名稱</label>
+                    <select id="login-user-select" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required></select>
+                </div>
+                <div id="login-password-container" class="mt-4 hidden">
+                    <label id="login-password-label" for="login-password-input" class="block text-sm font-medium text-gray-700">密碼</label>
+                    <input type="password" id="login-password-input" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                </div>
+                <p id="login-error" class="text-red-500 text-sm mt-2 hidden"></p>
+                <div class="mt-6">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">登入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="loader" style="display: none;">
+        <div id="loader-spinner" class="animate-spin rounded-full"></div>
+        <p id="loader-text">資料載入中...</p>
+    </div>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 hidden">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">銲材試驗統計分析儀表板</h1>
+                <p class="text-gray-600 mt-1">瀏覽、篩選並新增您的銲材試驗資料。</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="user-info" class="text-right"></div>
+                <button id="logout-btn" title="登出" class="hidden text-gray-500 hover:text-red-600 focus:outline-none transition-colors">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                   </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Filters Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Main Filter controls -->
+                <div>
+                    <label for="manufacturer-filter" class="block text-sm font-medium text-gray-700 mb-1">廠商</label>
+                    <select id="manufacturer-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div id="project-name-filter-container" style="display: none;">
+                    <label for="project-name-filter" class="block text-sm font-medium text-gray-700 mb-1">工程名稱</label>
+                    <select id="project-name-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div>
+                    <label for="test-item-filter" class="block text-sm font-medium text-gray-700 mb-1">測試項目</label>
+                    <select id="test-item-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+            </div>
+            
+            <div id="advanced-filters-container" class="hidden mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
+                <div>
+                    <label for="lab-filter" class="block text-sm font-medium text-gray-700 mb-1">試驗單位</label>
+                    <select id="lab-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">銲接日期範圍</label>
+                    <div class="flex items-center space-x-2">
+                        <input type="date" id="start-date-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-500">-</span>
+                        <input type="date" id="end-date-filter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                 <div class="flex items-center space-x-4">
+                    <button id="apply-filters" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">套用篩選</button>
+                    <button id="reset-filters" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors">重設</button>
+                     <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer select-none">
+                        <input type="checkbox" id="toggle-advanced-filters" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <span>進階篩選</span>
+                    </label>
+                </div>
+                 <div class="flex items-center space-x-4">
+                    <button id="manage-base-data-btn" class="w-full sm:w-auto bg-gray-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">基本資料管理</button>
+                    <button id="export-report-btn" class="w-full sm:w-auto bg-teal-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors">報表輸出</button>
+                    <button id="kanban-view-btn" class="w-full sm:w-auto bg-purple-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors">看板檢視</button>
+                    <button id="quick-edit-btn" class="w-full sm:w-auto bg-yellow-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors">快速編輯</button>
+                    <button id="add-record-btn" class="w-full sm:w-auto bg-green-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">＋ 新增紀錄</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="table-responsive">
+                <table class="min-w-full text-sm text-left text-gray-500">
+                    <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
+                        <tr>
+                            <th class="px-6 py-3 whitespace-nowrap">序號</th>
+                            <th class="px-6 py-3 whitespace-nowrap">登記日期</th>
+                            <th class="px-6 py-3 whitespace-nowrap">銲接日期</th>
+                            <th class="px-6 py-3 whitespace-nowrap">廠商</th>
+                            <th class="px-6 py-3 whitespace-nowrap">工程名稱</th>
+                            <th class="px-6 py-3 whitespace-nowrap">測試項目 (人員)</th>
+                            <th class="px-6 py-3 whitespace-nowrap">數量</th>
+                            <th class="px-6 py-3 whitespace-nowrap">總組數</th>
+                            <th class="px-6 py-3 whitespace-nowrap">報告日期</th>
+                            <th class="px-6 py-3 whitespace-nowrap">試驗單位</th>
+                            <th class="px-6 py-3 whitespace-nowrap">合格數</th>
+                            <th class="px-6 py-3 whitespace-nowrap">不合格數</th>
+                            <th class="px-6 py-3 whitespace-nowrap inspection-data">內檢項目</th>
+                            <th class="px-6 py-3 whitespace-nowrap inspection-data">內檢總組數</th>
+                            <th class="px-6 py-3 whitespace-nowrap inspection-data">已完成組數</th>
+                            <th class="px-6 py-3 whitespace-nowrap">試驗報告檔案</th>
+                            <th class="px-6 py-3 whitespace-nowrap inspection-data">內檢資料日期</th>
+                            <th class="px-6 py-3 whitespace-nowrap inspection-data">內檢資料檔案</th>
+                            <th class="px-6 py-3 whitespace-nowrap">備註</th>
+                            <th class="px-6 py-3 whitespace-nowrap">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="divide-y"></tbody>
+                </table>
+            </div>
+             <div id="no-results" class="hidden text-center py-12">
+                <p class="text-gray-500 text-lg">找不到符合條件的資料。</p>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div id="pagination-controls" class="w-full flex justify-between items-center">
+                    <!-- Pagination content will be generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanban View Section -->
+        <div id="kanban-view" class="hidden mt-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                 <div>
+                    <h2 class="text-2xl font-bold text-gray-900">進度追蹤看板</h2>
+                    <p class="text-gray-600 mt-1">此處顯示待辦內檢與等待第三方報告的紀錄。</p>
+                 </div>
+                 <button id="back-to-table-btn" class="w-full sm:w-auto bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors">返回表格檢視</button>
+            </div>
+            <div id="kanban-board" class="bg-white p-4 rounded-xl shadow-md">
+                <!-- Kanban columns and cards will be generated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="record-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto modal-content transform scale-95">
+            <form id="record-form" class="p-8">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="modal-title" class="text-2xl font-bold text-gray-900">新增試驗紀錄</h2>
+                    <button type="button" id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                </div>
+                <!-- Modal Body -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <input type="hidden" id="form-edit-id">
+                    <div>
+                        <label for="form-serial-number" class="block text-sm font-medium text-gray-700">序號</label>
+                        <input type="text" id="form-serial-number" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                    </div>
+                    <div>
+                        <label for="form-registration-date" class="block text-sm font-medium text-gray-700">登記日期</label>
+                        <input type="date" id="form-registration-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="form-project-name" class="block text-sm font-medium text-gray-700">工程名稱</label>
+                        <input type="text" id="form-project-name" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="form-manufacturer" class="block text-sm font-medium text-gray-700">廠商</label>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <select id="form-manufacturer" class="w-full p-2 border border-gray-300 rounded-lg" required></select>
+                            <button type="button" class="manage-btn" data-type="manufacturers">管理</button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="form-welding-date" class="block text-sm font-medium text-gray-700">銲接日期</label>
+                        <input type="date" id="form-welding-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <!-- Test Item Section -->
+                    <div class="md:col-span-2 border-t pt-4 mt-4">
+                         <p class="block text-sm font-medium text-gray-700 mb-2">測試項目管理</p>
+                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">測試類別</label>
+                                <select id="form-test-category" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">測試項目</label>
+                                <select id="form-test-item" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                            </div>
+                             <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">銲接人員 (可選)</label>
+                                <div class="flex items-center space-x-1">
+                                    <select id="form-item-welder" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                                    <button type="button" class="manage-btn mt-1" data-type="welders">管理</button>
+                                </div>
+                            </div>
+                            <div class="sm:col-span-1">
+                                <label class="block text-xs font-medium text-gray-600">数量</label>
+                                <input type="number" id="form-item-quantity" min="1" value="1" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div class="sm:col-span-2 flex items-end">
+                                <button type="button" id="add-test-item-btn" class="w-full bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">新增項目</button>
+                            </div>
+                             <div class="sm:col-span-12 flex justify-end">
+                                <button type="button" class="manage-btn" data-type="testItemsAndCategories">管理列表</button>
+                            </div>
+                         </div>
+                         <div id="selected-test-items-container" class="mt-3 p-2 border rounded-lg min-h-[50px] bg-gray-50"></div>
+                         <p id="test-item-error" class="text-red-500 text-sm mt-1 hidden">請至少新增一個測試項目。</p>
+                    </div>
+
+                    <!-- Inspection Item Selection -->
+                    <div class="md:col-span-2 border-t pt-4 mt-2 inspection-section">
+                        <p class="block text-sm font-medium text-gray-700 mb-2">內檢項目選擇 (點擊項目文字標示為完成)</p>
+                        <div id="inspection-items-selection-container" class="mt-1 p-4 border rounded-lg min-h-[50px] bg-gray-50 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            <!-- Checkboxes will be dynamically inserted here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Result Section -->
+                    <div class="md:col-span-2 border-t pt-4 mt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">
+                             <div>
+                                <label for="form-total-sets" class="block text-sm font-medium text-gray-700">總組數</label>
+                                <input type="number" id="form-total-sets" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                            </div>
+                            <div>
+                                <label for="form-failed-count" class="block text-sm font-medium text-gray-700">不合格數</label>
+                                <input type="number" id="form-failed-count" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                            </div>
+                             <div>
+                                <label for="form-passed-count" class="block text-sm font-medium text-gray-700">合格數</label>
+                                <input type="number" id="form-passed-count" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                            </div>
+                             <div>
+                                <label for="form-lab" class="block text-sm font-medium text-gray-700">試驗單位</label>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <select id="form-lab" class="w-full p-2 border border-gray-300 rounded-lg"></select>
+                                    <button type="button" class="manage-btn" data-type="testLabs">管理</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- Report Date & File Upload -->
+                    <div class="md:col-span-1">
+                        <label for="form-report-date" class="block text-sm font-medium text-gray-700">報告日期</label>
+                        <input type="date" id="form-report-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="form-report-files" class="block text-sm font-medium text-gray-700">試驗報告檔案 (PDF)</label>
+                        <input type="file" id="form-report-files" multiple accept=".pdf" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                        <div id="report-files-list" class="mt-2 flex flex-wrap"></div>
+                    </div>
+
+                    <!-- Inspection Date & File Upload -->
+                    <div class="md:col-span-1 inspection-section">
+                        <label for="form-inspection-date" class="block text-sm font-medium text-gray-700">內檢資料日期</label>
+                        <input type="date" id="form-inspection-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-1 inspection-section">
+                        <label for="form-inspection-files" class="block text-sm font-medium text-gray-700">內檢資料檔案 (PDF)</label>
+                        <input type="file" id="form-inspection-files" multiple accept=".pdf" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100">
+                        <div id="inspection-files-list" class="mt-2 flex flex-wrap"></div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="form-remarks" class="block text-sm font-medium text-gray-700">備註</label>
+                        <textarea id="form-remarks" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg"></textarea>
+                    </div>
+                </div>
+                <!-- Modal Footer -->
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button type="button" id="cancel-modal-btn" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300">取消</button>
+                    <button type="submit" id="submit-record-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">儲存紀錄</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Quick Edit Modal -->
+    <div id="quick-edit-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto modal-content transform scale-95">
+            <form id="quick-edit-form" class="p-8">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 id="quick-edit-modal-title" class="text-2xl font-bold text-gray-900">快速編輯紀錄</h2>
+                        <p id="quick-edit-record-counter" class="text-sm text-gray-500 mt-1"></p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex-shrink-0">
+                            <button type="button" id="prev-record-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 nav-btn">上一筆</button>
+                            <button type="button" id="next-record-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 nav-btn ml-2">下一筆</button>
+                        </div>
+                        <button type="button" id="close-quick-edit-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                    </div>
+                </div>
+                <!-- Modal Body (copied from record-modal, with different IDs) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <input type="hidden" id="quick-edit-form-edit-id">
+                    <div>
+                        <label for="quick-edit-form-serial-number" class="block text-sm font-medium text-gray-700">序號</label>
+                        <input type="text" id="quick-edit-form-serial-number" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                    </div>
+                    <div>
+                        <label for="quick-edit-form-registration-date" class="block text-sm font-medium text-gray-700">登記日期</label>
+                        <input type="date" id="quick-edit-form-registration-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="quick-edit-form-project-name" class="block text-sm font-medium text-gray-700">工程名稱</label>
+                        <input type="text" id="quick-edit-form-project-name" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="quick-edit-form-manufacturer" class="block text-sm font-medium text-gray-700">廠商</label>
+                        <select id="quick-edit-form-manufacturer" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="quick-edit-form-welding-date" class="block text-sm font-medium text-gray-700">銲接日期</label>
+                        <input type="date" id="quick-edit-form-welding-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    
+                    <!-- Quick Edit: Test Item Section -->
+                    <div class="md:col-span-2 border-t pt-4 mt-4">
+                         <p class="block text-sm font-medium text-gray-700 mb-2">測試項目管理</p>
+                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">測試類別</label>
+                                <select id="quick-edit-form-test-category" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">測試項目</label>
+                                <select id="quick-edit-form-test-item" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-medium text-gray-600">銲接人員 (可選)</label>
+                                <select id="quick-edit-form-item-welder" class="w-full p-2 border border-gray-300 rounded-lg mt-1"></select>
+                            </div>
+                            <div class="sm:col-span-1">
+                                <label class="block text-xs font-medium text-gray-600">數量</label>
+                                <input type="number" id="quick-edit-form-item-quantity" min="1" value="1" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div class="sm:col-span-2 flex items-end">
+                                <button type="button" id="quick-edit-add-test-item-btn" class="w-full bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">新增項目</button>
+                            </div>
+                         </div>
+                         <div id="quick-edit-selected-test-items-container" class="mt-3 p-2 border rounded-lg min-h-[50px] bg-gray-50"></div>
+                         <p id="quick-edit-test-item-error" class="text-red-500 text-sm mt-1 hidden">請至少新增一個測試項目。</p>
+                    </div>
+
+                    <!-- Quick Edit: Inspection Item Selection -->
+                     <div class="md:col-span-2 border-t pt-4 mt-2 inspection-section">
+                        <p class="block text-sm font-medium text-gray-700 mb-2">內檢項目選擇 (點擊項目文字標示為完成)</p>
+                        <div id="quick-edit-inspection-items-selection-container" class="mt-1 p-4 border rounded-lg min-h-[50px] bg-gray-50 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 border-t pt-4 mt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">
+                             <div>
+                                <label for="quick-edit-form-total-sets" class="block text-sm font-medium text-gray-700">總組數</label>
+                                <input type="number" id="quick-edit-form-total-sets" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                            </div>
+                            <div>
+                                <label for="quick-edit-form-failed-count" class="block text-sm font-medium text-gray-700">不合格數</label>
+                                <input type="number" id="quick-edit-form-failed-count" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                            </div>
+                             <div>
+                                <label for="quick-edit-form-passed-count" class="block text-sm font-medium text-gray-700">合格數</label>
+                                <input type="number" id="quick-edit-form-passed-count" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                            </div>
+                             <div>
+                                <label for="quick-edit-form-lab" class="block text-sm font-medium text-gray-700">試驗單位</label>
+                                <select id="quick-edit-form-lab" class="mt-1 w-full p-2 border border-gray-300 rounded-lg"></select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label for="quick-edit-form-report-date" class="block text-sm font-medium text-gray-700">報告日期</label>
+                        <input type="date" id="quick-edit-form-report-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700">試驗報告檔案</label>
+                        <div id="quick-edit-report-files-list" class="mt-2 flex flex-wrap"></div>
+                    </div>
+                    <div class="md:col-span-1 inspection-section">
+                        <label for="quick-edit-form-inspection-date" class="block text-sm font-medium text-gray-700">內檢資料日期</label>
+                        <input type="date" id="quick-edit-form-inspection-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="md:col-span-1 inspection-section">
+                        <label class="block text-sm font-medium text-gray-700">內檢資料檔案</label>
+                        <div id="quick-edit-inspection-files-list" class="mt-2 flex flex-wrap"></div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="quick-edit-form-remarks" class="block text-sm font-medium text-gray-700">備註</label>
+                        <textarea id="quick-edit-form-remarks" rows="3" class="mt-1 w-full p-2 border border-gray-300 rounded-lg"></textarea>
+                    </div>
+                </div>
+                <!-- Modal Footer -->
+                <div class="mt-8 flex justify-end space-x-4">
+                    <button type="button" id="close-quick-edit-btn-footer" class="bg-gray-200 text-gray-700 font-semibold px-5 py-2 rounded-lg hover:bg-gray-300">關閉</button>
+                    <button type="submit" id="submit-quick-edit-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">儲存變更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Management Modal -->
+    <div id="management-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl modal-content transform scale-95">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="management-modal-title" class="text-xl font-bold">管理列表</h3>
+                    <button id="close-management-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                </div>
+                <div id="management-content">
+                    <!-- Dynamic content for different management types -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Master Management Modal -->
+    <div id="master-management-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg modal-content transform scale-95">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">基本資料管理</h3>
+                    <button id="close-master-management-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                </div>
+                <div id="master-management-content" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button data-type="manufacturers" class="master-manage-select-btn w-full text-left p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                        <h4 class="font-semibold text-indigo-800 pointer-events-none">廠商管理</h4>
+                        <p class="text-sm text-indigo-600 pointer-events-none">新增、編輯或刪除合作廠商。</p>
+                    </button>
+                    <button data-type="welders" class="master-manage-select-btn w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-purple-300">
+                        <h4 class="font-semibold text-purple-800 pointer-events-none">人員管理</h4>
+                        <p class="text-sm text-purple-600 pointer-events-none">新增、編輯或刪除銲接人員。</p>
+                    </button>
+                    <button data-type="testLabs" class="master-manage-select-btn w-full text-left p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-300">
+                        <h4 class="font-semibold text-teal-800 pointer-events-none">試驗單位管理</h4>
+                        <p class="text-sm text-teal-600 pointer-events-none">新增、編輯或刪除試驗單位。</p>
+                    </button>
+                    <button data-type="testItemsAndCategories" class="master-manage-select-btn w-full text-left p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                        <h4 class="font-semibold text-yellow-800 pointer-events-none">測試項目管理</h4>
+                        <p class="text-sm text-yellow-600 pointer-events-none">管理測試的類別與具體項目。</p>
+                    </button>
+                    <button data-type="actionLog" class="master-manage-select-btn w-full text-left p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 sm:col-span-2">
+                        <h4 class="font-semibold text-gray-800 pointer-events-none">操作紀錄</h4>
+                        <p class="text-sm text-gray-600 pointer-events-none">檢視所有人員的操作歷史紀錄。</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="report-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col modal-content transform scale-95">
+            <div class="p-6 border-b flex justify-between items-center no-print">
+                <h2 class="text-2xl font-bold text-gray-900">報表輸出</h2>
+                <button type="button" id="close-report-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-6">
+                <!-- Tab buttons -->
+                <div class="mb-6 border-b border-gray-200 no-print">
+                    <nav id="report-tabs" class="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button data-target="item-stats-panel" class="report-tab active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">項目數量統計</button>
+                        <button data-target="summary-panel" class="report-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">每月摘要</button>
+                        <button data-target="pending-panel" class="report-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">待出報告</button>
+                        <button data-target="incomplete-panel" class="report-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">未完內檢</button>
+                        <button data-target="welder-details-panel" class="report-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">人員工作明細</button>
+                    </nav>
+                </div>
+
+                <!-- Tab content panels -->
+                <div>
+                    <div id="item-stats-panel" class="report-panel">
+                        <div class="p-6 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-800">測試項目數量統計 (依月份)</h3>
+                            <p class="text-sm text-gray-500 mb-4">選擇月份，統計各測試類別與項目的執行數量。</p>
+                            <div class="flex flex-wrap items-end gap-4 mb-4 no-print">
+                                <div class="flex-grow">
+                                    <label for="month-selector" class="block text-sm font-medium text-gray-700">選擇月份 (按住 Ctrl/Cmd 可多選)</label>
+                                    <select multiple id="month-selector" class="mt-1 w-full p-2 border border-gray-300 rounded-lg h-32"></select>
+                                </div>
+                                <div class="flex flex-col space-y-2">
+                                    <button id="generate-monthly-item-report-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">產生報表</button>
+                                    <button id="print-monthly-item-report-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 hidden">列印報表</button>
+                                </div>
+                            </div>
+                            <div id="monthly-item-report-content">
+                                 <p class="text-center text-gray-500 py-4">請選擇月份並點擊產生報表。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="summary-panel" class="report-panel hidden">
+                         <div class="p-6 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-800">近六個月銲接狀況摘要</h3>
+                            <p class="text-sm text-gray-500 mb-4">統計近六個月的銲接、合格、不合格與未出報告的試片數量。</p>
+                            <div class="flex flex-wrap items-end gap-4 mb-4 no-print">
+                                <button id="generate-summary-report-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">產生報表</button>
+                                <button id="print-summary-report-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 hidden">列印報表</button>
+                            </div>
+                            <div id="summary-report-content">
+                                 <p class="text-center text-gray-500 py-4">請點擊產生報表。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pending-panel" class="report-panel hidden">
+                        <div class="p-6 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-800">待出報告項目</h3>
+                            <p class="text-sm text-gray-500 mb-4">統計已有銲接日期，但尚未提供報告日期的資料。</p>
+                            <div class="flex flex-wrap items-end gap-4 mb-4 no-print">
+                                <div>
+                                    <label for="pending-start-date" class="block text-sm font-medium text-gray-700">銲接日期 (起)</label>
+                                    <input type="date" id="pending-start-date" class="mt-1 p-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="pending-end-date" class="block text-sm font-medium text-gray-700">銲接日期 (迄)</label>
+                                    <input type="date" id="pending-end-date" class="mt-1 p-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <button id="generate-pending-report-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">產生報表</button>
+                                <button id="print-pending-report-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 hidden">列印報表</button>
+                            </div>
+                            <div id="pending-report-content">
+                                 <p class="text-center text-gray-500 py-4">請選擇日期區間並點擊產生報表。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="incomplete-panel" class="report-panel hidden">
+                        <div class="p-6 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-800">未完成內檢項目</h3>
+                            <p class="text-sm text-gray-500 mb-4">統計已有登記日期，但尚未完成全部內檢項目的資料。</p>
+                             <div class="flex flex-wrap items-end gap-4 mb-4 no-print">
+                                <div>
+                                    <label for="incomplete-start-date" class="block text-sm font-medium text-gray-700">登記日期 (起)</label>
+                                    <input type="date" id="incomplete-start-date" class="mt-1 p-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="incomplete-end-date" class="block text-sm font-medium text-gray-700">登記日期 (迄)</label>
+                                    <input type="date" id="incomplete-end-date" class="mt-1 p-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <button id="generate-incomplete-report-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">產生報表</button>
+                                <button id="print-incomplete-report-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 hidden">列印報表</button>
+                            </div>
+                            <div id="incomplete-report-content">
+                                <p class="text-center text-gray-500 py-4">請選擇日期區間並點擊產生報表。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="welder-details-panel" class="report-panel hidden">
+                        <div class="p-6 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-800">人員工作明細</h3>
+                            <p class="text-sm text-gray-500 mb-4">選擇人員與銲接日期範圍，統計其負責的項目明細。</p>
+                             <div class="flex flex-wrap items-end gap-4 mb-4 no-print">
+                                <div class="flex-grow">
+                                    <label for="welder-selector" class="block text-sm font-medium text-gray-700">選擇人員 (按住 Ctrl/Cmd 可多選)</label>
+                                    <select multiple id="welder-selector" class="mt-1 w-full p-2 border border-gray-300 rounded-lg h-32"></select>
+                                </div>
+                                <div class="flex-grow">
+                                    <label for="welder-report-start-date" class="block text-sm font-medium text-gray-700">銲接日期 (起)</label>
+                                    <input type="date" id="welder-report-start-date" class="mt-1 p-2 border border-gray-300 rounded-lg w-full">
+                                </div>
+                                <div class="flex-grow">
+                                    <label for="welder-report-end-date" class="block text-sm font-medium text-gray-700">銲接日期 (迄)</label>
+                                    <input type="date" id="welder-report-end-date" class="mt-1 p-2 border border-gray-300 rounded-lg w-full">
+                                </div>
+                                <div class="flex flex-col space-y-2">
+                                    <button id="generate-welder-report-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">產生報表</button>
+                                    <button id="print-welder-report-btn" class="bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 hidden">列印報表</button>
+                                </div>
+                            </div>
+                            <div id="welder-report-content">
+                                <p class="text-center text-gray-500 py-4">請選擇人員與日期區間並點擊產生報表。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- This div is used for printing content -->
+    <div id="print-area" class="hidden"></div>
+
+    <!-- Generic Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md modal-content transform scale-95">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 id="alert-title" class="text-lg font-bold text-gray-900">提示</h3>
+                    <button id="close-alert-btn" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
+                </div>
+                <p id="alert-text" class="text-gray-600 mb-6"></p>
+                <div class="flex justify-end">
+                    <button id="ok-alert-btn" class="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700">確認</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden modal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md modal-content transform scale-95">
+            <div class="p-6 text-center">
+                <svg class="mx-auto mb-4 text-gray-400 w-12 h-12" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <h3 id="confirm-title" class="mb-2 text-lg font-normal text-gray-600"></h3>
+                <p id="confirm-text" class="mb-5 text-sm text-gray-500"></p>
+                <button id="confirm-yes-btn" type="button" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">是的</button>
+                <button id="confirm-no-btn" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">取消</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, getDoc, deleteDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAeVNUxcvNg4skIFxgFD9hyvJ8KSjNDauQ",
+            authDomain: "rd20250803.firebaseapp.com",
+            projectId: "rd20250803",
+            storageBucket: "rd20250803.firebasestorage.app",
+            messagingSenderId: "258541470825",
+            appId: "1:258541470825:web:ab1b94810c0f2405db8ef8",
+            measurementId: "G-KZG5BJ121X"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const storage = getStorage(app);
+
+        // --- GLOBAL STATE ---
+        let currentUser = null;
+        let database = [];
+        let filteredDataHolder = []; // Holds the data currently being displayed (all or filtered)
+        let manufacturers = [];
+        let welders = [];
+        let testLabs = [];
+        let testItemsByCategory = {};
+        let allTestItems = [];
+        let selectedTestItems = []; // Used for both main and quick edit modals
+        let reportFiles = [];
+        let inspectionFiles = [];
+        let currentManagementContext = {};
+        let confirmPromiseResolver = null;
+        let alertPromiseResolver = null;
+        let currentPage = 1;
+        const rowsPerPage = 5;
+        let quickEditCurrentIndex = -1;
+
+        // DOM Elements
+        const mainContainer = document.querySelector('.container');
+        const loginModal = document.getElementById('login-modal');
+        const loginForm = document.getElementById('login-form');
+        const loginUserSelect = document.getElementById('login-user-select');
+        const loginPasswordContainer = document.getElementById('login-password-container');
+        const loginPasswordInput = document.getElementById('login-password-input');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loader-text');
+        const loaderSpinner = document.getElementById('loader-spinner');
+        const tableBody = document.getElementById('data-table-body');
+        const noResultsDiv = document.getElementById('no-results');
+        const manufacturerFilter = document.getElementById('manufacturer-filter');
+        const projectNameFilterContainer = document.getElementById('project-name-filter-container');
+        const projectNameFilter = document.getElementById('project-name-filter');
+        const testItemFilter = document.getElementById('test-item-filter');
+        const labFilter = document.getElementById('lab-filter');
+        const startDateFilter = document.getElementById('start-date-filter');
+        const endDateFilter = document.getElementById('end-date-filter');
+        const toggleAdvancedFilters = document.getElementById('toggle-advanced-filters');
+        const advancedFiltersContainer = document.getElementById('advanced-filters-container');
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const resetFiltersBtn = document.getElementById('reset-filters');
+        const recordModal = document.getElementById('record-modal');
+        const managementModal = document.getElementById('management-modal');
+        const addRecordBtn = document.getElementById('add-record-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        const recordForm = document.getElementById('record-form');
+        const modalTitle = document.getElementById('modal-title');
+        const formEditId = document.getElementById('form-edit-id');
+        const formSerialNumber = document.getElementById('form-serial-number');
+        const formRegistrationDate = document.getElementById('form-registration-date');
+        const formTotalSets = document.getElementById('form-total-sets');
+        const formPassedCount = document.getElementById('form-passed-count');
+        const formFailedCount = document.getElementById('form-failed-count');
+        const formTestCategory = document.getElementById('form-test-category');
+        const formTestItem = document.getElementById('form-test-item');
+        const formItemWelder = document.getElementById('form-item-welder');
+        const formItemQuantity = document.getElementById('form-item-quantity');
+        const addTestItemBtn = document.getElementById('add-test-item-btn');
+        const selectedTestItemsContainer = document.getElementById('selected-test-items-container');
+        const inspectionItemsSelectionContainer = document.getElementById('inspection-items-selection-container');
+        const testItemError = document.getElementById('test-item-error');
+        const reportFilesInput = document.getElementById('form-report-files');
+        const reportFilesList = document.getElementById('report-files-list');
+        const inspectionFilesInput = document.getElementById('form-inspection-files');
+        const inspectionFilesList = document.getElementById('inspection-files-list');
+        const managementModalTitle = document.getElementById('management-modal-title');
+        const managementContent = document.getElementById('management-content');
+        const closeManagementModalBtn = document.getElementById('close-management-modal-btn');
+        const submitRecordBtn = document.getElementById('submit-record-btn');
+        const alertModal = document.getElementById('alert-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        
+        // Master Management Modal DOM Elements
+        const manageBaseDataBtn = document.getElementById('manage-base-data-btn');
+        const masterManagementModal = document.getElementById('master-management-modal');
+        const closeMasterManagementModalBtn = document.getElementById('close-master-management-modal-btn');
+        const masterManagementContent = document.getElementById('master-management-content');
+
+        // Kanban View DOM Elements
+        const kanbanViewBtn = document.getElementById('kanban-view-btn');
+        const kanbanViewContainer = document.getElementById('kanban-view');
+        const kanbanBoard = document.getElementById('kanban-board');
+        const backToTableBtn = document.getElementById('back-to-table-btn');
+        const mainTableContainer = document.querySelector('.bg-white.rounded-xl.shadow-md.overflow-hidden');
+        const mainFiltersContainer = document.querySelector('.bg-white.p-6.rounded-xl.shadow-md.mb-8');
+
+        // Quick Edit Modal DOM Elements
+        const quickEditBtn = document.getElementById('quick-edit-btn');
+        const quickEditModal = document.getElementById('quick-edit-modal');
+        const quickEditForm = document.getElementById('quick-edit-form');
+        const closeQuickEditModalBtn = document.getElementById('close-quick-edit-modal-btn');
+        const closeQuickEditBtnFooter = document.getElementById('close-quick-edit-btn-footer');
+        const prevRecordBtn = document.getElementById('prev-record-btn');
+        const nextRecordBtn = document.getElementById('next-record-btn');
+        const quickEditRecordCounter = document.getElementById('quick-edit-record-counter');
+        const quickEditSelectedTestItemsContainer = document.getElementById('quick-edit-selected-test-items-container');
+        const quickEditInspectionItemsSelectionContainer = document.getElementById('quick-edit-inspection-items-selection-container');
+        const quickEditAddTestItemBtn = document.getElementById('quick-edit-add-test-item-btn');
+        const quickEditTestItemError = document.getElementById('quick-edit-test-item-error');
+
+        // Report Modal DOM Elements
+        const exportReportBtn = document.getElementById('export-report-btn');
+        const reportModal = document.getElementById('report-modal');
+        const closeReportModalBtn = document.getElementById('close-report-modal-btn');
+        const reportTabsContainer = document.getElementById('report-tabs');
+        const reportPanels = document.querySelectorAll('.report-panel');
+        const generatePendingReportBtn = document.getElementById('generate-pending-report-btn');
+        const printPendingReportBtn = document.getElementById('print-pending-report-btn');
+        const pendingReportContent = document.getElementById('pending-report-content');
+        const generateIncompleteReportBtn = document.getElementById('generate-incomplete-report-btn');
+        const printIncompleteReportBtn = document.getElementById('print-incomplete-report-btn');
+        const incompleteReportContent = document.getElementById('incomplete-report-content');
+        const generateSummaryReportBtn = document.getElementById('generate-summary-report-btn');
+        const printSummaryReportBtn = document.getElementById('print-summary-report-btn');
+        const summaryReportContent = document.getElementById('summary-report-content');
+        const generateMonthlyItemReportBtn = document.getElementById('generate-monthly-item-report-btn');
+        const printMonthlyItemReportBtn = document.getElementById('print-monthly-item-report-btn');
+        const monthlyItemReportContent = document.getElementById('monthly-item-report-content');
+        const generateWelderReportBtn = document.getElementById('generate-welder-report-btn');
+        const printWelderReportBtn = document.getElementById('print-welder-report-btn');
+        const welderReportContent = document.getElementById('welder-report-content');
+        const printArea = document.getElementById('print-area');
+
+
+        // --- UI & MODAL FUNCTIONS ---
+        const showLoader = (text = '處理中...') => {
+            loaderText.textContent = text;
+            loaderSpinner.style.borderColor = 'rgb(59 130 246)'; // blue
+            loader.style.display = 'flex';
+        };
+        const hideLoader = () => {
+            loader.style.display = 'none';
+        };
+
+        const showModalAnimation = (modalElement) => {
+            modalElement.classList.remove('hidden');
+            setTimeout(() => {
+                modalElement.classList.remove('opacity-0');
+                modalElement.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        };
+        const hideModalAnimation = (modalElement) => {
+            modalElement.classList.add('opacity-0');
+            modalElement.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => modalElement.classList.add('hidden'), 300);
+        };
+
+        const showAlert = (text, title = '提示') => {
+            document.getElementById('alert-title').textContent = title;
+            document.getElementById('alert-text').textContent = text;
+            showModalAnimation(alertModal);
+            return new Promise(resolve => {
+                alertPromiseResolver = resolve;
+            });
+        };
+
+        const showConfirm = (title, text = '') => {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-text').textContent = text;
+            showModalAnimation(confirmModal);
+            return new Promise(resolve => {
+                confirmPromiseResolver = resolve;
+            });
+        };
+
+        // --- ACTION LOGGING ---
+        const logAction = async (action, details = '') => {
+            if (!currentUser) return; // Don't log if no user is logged in
+            try {
+                await addDoc(collection(db, "actionLogs"), {
+                    user: currentUser.name,
+                    action: action,
+                    details: details,
+                    timestamp: new Date() // Firestore will convert this to its timestamp type
+                });
+            } catch (error) {
+                console.error("Error logging action:", error);
+            }
+        };
+
+        // --- DATA RENDERING FUNCTIONS ---
+        const renderInspectionListHtml = (inspectionItems = [], completedItems = []) => {
+            if (!inspectionItems || inspectionItems.length === 0) return '';
+            return inspectionItems.map(item => {
+                const isCompleted = completedItems.includes(item);
+                if (isCompleted) {
+                    return `<div class="text-green-600 line-through">✅ ${item}</div>`;
+                } else {
+                    return `<div>${item}</div>`;
+                }
+            }).join('');
+        };
+
+        const filesToHtml = (files) => {
+            if (!files || files.length === 0) return '<span class="text-gray-400">無檔案</span>';
+            return files.map(f => `
+                <div class="mr-2">
+                    <a href="${f.url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">${f.name}</a>
+                </div>`).join('');
+        };
+
+        const renderPage = () => {
+            // 1. Slice the data
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const pageData = filteredDataHolder.slice(startIndex, endIndex);
+
+            // 2. Render table rows
+            tableBody.innerHTML = '';
+            noResultsDiv.classList.toggle('hidden', filteredDataHolder.length > 0);
+            tableBody.classList.toggle('hidden', filteredDataHolder.length === 0);
+
+            pageData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white border-b hover:bg-gray-50';
+                
+                const testItemsHtml = (row.testItems || []).map(item => `<div>${item.item} <span class="text-xs text-indigo-600">(${item.welder || '未指定'})</span></div>`).join('');
+                const quantitiesHtml = (row.testItems || []).map(item => `<div>${item.quantity}</div>`).join('');
+                const totalSets = (row.testItems || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+                const passedCount = totalSets - (Number(row.failedCount) || 0);
+                const inspectionTotal = row.inspectionItems?.length || 0;
+                const inspectionCompleted = row.completedInspectionItems?.length || 0;
+
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${row.serialNumber || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.registrationDate || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.weldingDate || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.manufacturer || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.projectName || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${testItemsHtml}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${quantitiesHtml}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${totalSets}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.reportDate || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.lab || ''}</td>
+                    <td class="px-6 py-4 text-green-600 font-semibold whitespace-nowrap">${passedCount}</td>
+                    <td class="px-6 py-4 text-red-600 font-semibold whitespace-nowrap">${row.failedCount || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap inspection-data">${renderInspectionListHtml(row.inspectionItems, row.completedInspectionItems)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap inspection-data">${inspectionTotal}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-green-600 font-semibold inspection-data">${inspectionCompleted}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${filesToHtml(row.reportFiles)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap inspection-data">${row.inspectionDate || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap inspection-data">${filesToHtml(row.inspectionFiles)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${row.remarks || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <button class="edit-btn font-medium text-blue-600 hover:underline mr-3" data-id="${row.id}">編輯</button>
+                        <button class="delete-btn font-medium text-red-600 hover:underline" data-id="${row.id}">刪除</button>
+                    </td>`;
+                tableBody.appendChild(tr);
+            });
+
+            // 3. Render pagination controls
+            renderPaginationControls();
+        };
+
+        const renderPaginationControls = () => {
+            const paginationControls = document.getElementById('pagination-controls');
+            const totalRecords = filteredDataHolder.length;
+            const totalPages = Math.ceil(totalRecords / rowsPerPage);
+
+            if (totalRecords <= rowsPerPage) {
+                paginationControls.innerHTML = '';
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * rowsPerPage + 1;
+            const endIndex = Math.min(startIndex + rowsPerPage - 1, totalRecords);
+
+            let html = `
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <button id="prev-page-mobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"> 上一頁 </button>
+                    <button id="next-page-mobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"> 下一頁 </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            顯示第
+                            <span class="font-medium">${startIndex}</span>
+                            至
+                            <span class="font-medium">${endIndex}</span>
+                            筆，共
+                            <span class="font-medium">${totalRecords}</span>
+                            筆資料
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button id="prev-page-desktop" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">上一頁</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                            </button>
+                            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                第 ${currentPage} / ${totalPages} 頁
+                            </span>
+                            <button id="next-page-desktop" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">下一頁</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            `;
+            paginationControls.innerHTML = html;
+
+            const prevMobile = document.getElementById('prev-page-mobile');
+            const nextMobile = document.getElementById('next-page-mobile');
+            const prevDesktop = document.getElementById('prev-page-desktop');
+            const nextDesktop = document.getElementById('next-page-desktop');
+
+            if (currentPage === 1) {
+                prevMobile.disabled = true; prevMobile.classList.add('opacity-50', 'cursor-not-allowed');
+                prevDesktop.disabled = true; prevDesktop.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            if (currentPage >= totalPages) {
+                nextMobile.disabled = true; nextMobile.classList.add('opacity-50', 'cursor-not-allowed');
+                nextDesktop.disabled = true; nextDesktop.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            prevMobile.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPage(); } });
+            nextMobile.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; renderPage(); } });
+            prevDesktop.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderPage(); } });
+            nextDesktop.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; renderPage(); } });
+        };
+
+        const displayData = (data) => {
+            filteredDataHolder = data.sort((a, b) => (b.serialNumber || 0) - (a.serialNumber || 0));
+            currentPage = 1;
+            renderPage();
+        };
+
+        const populateSelect = (selectElement, options, defaultOptionText) => {
+            const currentValue = selectElement.value;
+            selectElement.innerHTML = defaultOptionText ? `<option value="">${defaultOptionText}</option>` : '';
+            options.forEach(option => {
+                if (option) {
+                    const opt = document.createElement('option');
+                    opt.value = option;
+                    opt.textContent = option;
+                    selectElement.appendChild(opt);
+                }
+            });
+            if (options.includes(currentValue)) selectElement.value = currentValue;
+        };
+
+        const refreshAllUIDropdowns = () => {
+            allTestItems = Object.values(testItemsByCategory).flat().sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            // Filters
+            populateSelect(manufacturerFilter, manufacturers, '所有廠商');
+            populateSelect(testItemFilter, allTestItems, '所有項目');
+            populateSelect(labFilter, testLabs, '所有單位');
+            // Add/Edit Modal
+            populateSelect(document.getElementById('form-manufacturer'), manufacturers, '選擇廠商');
+            populateSelect(formItemWelder, welders.map(w => w.name), '選擇人員 (可選)');
+            populateSelect(document.getElementById('form-lab'), testLabs, '選擇試驗單位');
+            updateTestCategoryDropdown(document.getElementById('form-test-category'), document.getElementById('form-test-item'));
+            // Quick Edit Modal
+            populateSelect(document.getElementById('quick-edit-form-manufacturer'), manufacturers, '選擇廠商');
+            populateSelect(document.getElementById('quick-edit-form-item-welder'), welders.map(w => w.name), '選擇人員 (可選)');
+            populateSelect(document.getElementById('quick-edit-form-lab'), testLabs, '選擇試驗單位');
+            updateTestCategoryDropdown(document.getElementById('quick-edit-form-test-category'), document.getElementById('quick-edit-form-test-item'));
+        };
+
+        const updateTestCategoryDropdown = (categorySelect, itemSelect) => populateSelect(categorySelect, Object.keys(testItemsByCategory).sort((a,b) => a.localeCompare(b, 'zh-Hant')), '選擇類別');
+        const updateTestItemDropdown = (categorySelect, itemSelect) => {
+            const category = categorySelect.value;
+            const items = testItemsByCategory[category] || [];
+            populateSelect(itemSelect, items.sort((a,b) => a.localeCompare(b, 'zh-Hant')), '選擇項目');
+        };
+        
+        const updatePassedCount = (totalSetsInput, failedCountInput, passedCountInput) => {
+            const total = parseInt(totalSetsInput.value) || 0;
+            const failed = parseInt(failedCountInput.value) || 0;
+            passedCountInput.value = Math.max(0, total - failed);
+        };
+        
+        const updateTotalSets = (totalSetsInput, failedCountInput, passedCountInput) => {
+            totalSetsInput.value = selectedTestItems.reduce((sum, current) => sum + Number(current.quantity), 0);
+            updatePassedCount(totalSetsInput, failedCountInput, passedCountInput);
+        };
+
+        const renderFileList = (container, fileArray) => {
+            container.innerHTML = '';
+            fileArray.forEach((file, index) => {
+                const fileName = file.name;
+                const fileElement = document.createElement('div');
+                fileElement.className = 'file-tag';
+                fileElement.innerHTML = `<span>${fileName}</span><span class="remove-file-tag" data-index="${index}">&times;</span>`;
+                container.appendChild(fileElement);
+            });
+        };
+
+        const renderInspectionItemCheckboxes = (container, recordInspectionItems = [], recordCompletedItems = []) => {
+            container.innerHTML = '';
+            if (selectedTestItems.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm col-span-full">請先在上方新增測試項目</p>';
+                return;
+            }
+            let checkboxIndex = 0;
+            selectedTestItems.forEach((item) => {
+                const itemName = item.item;
+                const types = ['成分', '機械'];
+                
+                types.forEach(type => {
+                    const value = `${itemName}(${type})`;
+                    const isSelected = recordInspectionItems.includes(value);
+                    const isCompleted = recordCompletedItems.includes(value);
+                    
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    
+                    const input = document.createElement('input');
+                    input.id = `${container.id}-item-${checkboxIndex}`;
+                    input.name = 'inspectionItems';
+                    input.type = 'checkbox';
+                    input.value = value;
+                    input.className = 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500';
+                    input.checked = isSelected;
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `${container.id}-item-${checkboxIndex}`;
+                    label.className = 'ml-2 block text-sm text-gray-900 inspection-item-label';
+                    label.textContent = value;
+                    if (isCompleted) {
+                        label.classList.add('completed');
+                    }
+
+                    div.appendChild(input);
+                    div.appendChild(label);
+                    container.appendChild(div);
+                    checkboxIndex++;
+                });
+            });
+        };
+
+        const showRecordModal = async (recordId = null) => {
+            recordForm.reset();
+            selectedTestItems = [];
+            reportFiles = [];
+            inspectionFiles = [];
+            let recordInspectionItems = [];
+            let recordCompletedItems = [];
+            testItemError.classList.add('hidden');
+            
+            refreshAllUIDropdowns();
+
+            if (recordId) { // Edit mode
+                modalTitle.textContent = '編輯試驗紀錄';
+                formEditId.value = recordId;
+                const docRef = doc(db, "weldingRecords", recordId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const mainRecord = docSnap.data();
+                    formSerialNumber.value = mainRecord.serialNumber;
+                    formRegistrationDate.value = mainRecord.registrationDate || '';
+                    document.getElementById('form-project-name').value = mainRecord.projectName || '';
+                    document.getElementById('form-manufacturer').value = mainRecord.manufacturer || '';
+                    document.getElementById('form-welding-date').value = mainRecord.weldingDate || '';
+                    document.getElementById('form-report-date').value = mainRecord.reportDate || '';
+                    document.getElementById('form-lab').value = mainRecord.lab || '';
+                    formFailedCount.value = mainRecord.failedCount || '';
+                    document.getElementById('form-inspection-date').value = mainRecord.inspectionDate || '';
+                    document.getElementById('form-remarks').value = mainRecord.remarks || '';
+                    reportFiles = [...(mainRecord.reportFiles || [])];
+                    inspectionFiles = [...(mainRecord.inspectionFiles || [])];
+                    selectedTestItems = mainRecord.testItems || [];
+                    recordInspectionItems = mainRecord.inspectionItems || [];
+                    recordCompletedItems = mainRecord.completedInspectionItems || [];
+                }
+            } else { // Add mode
+                modalTitle.textContent = '新增試驗紀錄';
+                formEditId.value = '';
+                const maxId = database.length > 0 ? Math.max(0, ...database.map(r => r.serialNumber || 0)) : 0;
+                formSerialNumber.value = maxId + 1;
+                formRegistrationDate.value = new Date().toLocaleDateString('en-CA');
+            }
+            renderSelectedTestItems(selectedTestItemsContainer);
+            renderInspectionItemCheckboxes(inspectionItemsSelectionContainer, recordInspectionItems, recordCompletedItems);
+            updateTotalSets(formTotalSets, formFailedCount, formPassedCount);
+            renderFileList(reportFilesList, reportFiles);
+            renderFileList(inspectionFilesList, inspectionFiles);
+            showModalAnimation(recordModal);
+        };
+
+        const renderSelectedTestItems = (container) => {
+            container.innerHTML = '';
+            if (selectedTestItems.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">尚未新增任何項目</p>';
+                return;
+            }
+
+            const welderOptionsHtml = `<option value="">未指定</option>` + welders.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+
+            selectedTestItems.forEach((item, index) => {
+                const itemRow = document.createElement('div');
+                itemRow.className = 'grid grid-cols-12 gap-x-2 items-center p-2 border-b last:border-b-0';
+                itemRow.innerHTML = `
+                    <div class="col-span-4 font-medium text-gray-800 text-sm">${item.item}</div>
+                    <div class="col-span-4">
+                        <select data-index="${index}" class="item-welder-select w-full p-1 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            ${welderOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number" min="1" value="${item.quantity}" data-index="${index}" class="item-quantity-input w-full p-1 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div class="col-span-2 text-right">
+                        <button type="button" data-index="${index}" class="remove-item-btn text-red-500 hover:text-red-700 font-bold text-lg leading-none p-1">&times;</button>
+                    </div>
+                `;
+                
+                itemRow.querySelector('.item-welder-select').value = item.welder || '';
+                container.appendChild(itemRow);
+            });
+        };
+        
+        // --- CORE DATA HANDLING (REFACTORED) ---
+
+        /**
+         * Uploads an array of files to a specific folder in Firebase Storage.
+         * @param {File[]} filesToUpload - Array of File objects to upload.
+         * @param {string} folder - The destination folder in storage (e.g., 'reportFiles').
+         * @param {string} serialNumber - The record's serial number for naming.
+         * @returns {Promise<object[]>} A promise that resolves to an array of {name, url} objects.
+         */
+        const uploadFiles = async (filesToUpload, folder, serialNumber) => {
+            const uploadPromises = filesToUpload.map(file => {
+                const filePath = `${folder}/${serialNumber}-${Date.now()}-${file.name}`;
+                const storageRef = ref(storage, filePath);
+                return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+            });
+
+            const urls = await Promise.all(uploadPromises);
+            
+            return urls.map((url, index) => ({
+                name: filesToUpload[index].name,
+                url: url
+            }));
+        };
+
+        /**
+         * Saves the complete record data to Firestore.
+         * @param {object} recordData - The final data object to save.
+         * @param {string|null} editId - The document ID if editing, or null if adding.
+         */
+        const saveRecordToFirestore = async (recordData, editId) => {
+            if (editId) {
+                await setDoc(doc(db, "weldingRecords", editId), recordData, { merge: true });
+            } else {
+                await addDoc(collection(db, "weldingRecords"), recordData);
+            }
+        };
+
+        /**
+         * Handles the entire form submission process.
+         * This function is refactored to be more robust and prevent UI freezes.
+         */
+        const handleFormSubmit = async (e) => {
+            e.preventDefault();
+            if (selectedTestItems.length === 0) {
+                testItemError.classList.remove('hidden');
+                return;
+            }
+            testItemError.classList.add('hidden');
+
+            // 1. Disable button and show loader immediately to prevent double-clicks.
+            submitRecordBtn.disabled = true;
+            showLoader('儲存中，請稍候...');
+            const editId = formEditId.value;
+            const serialNumber = formSerialNumber.value;
+
+            try {
+                // 2. Separate existing files from new files that need uploading.
+                const existingReportFiles = reportFiles.filter(f => !(f instanceof File));
+                const newReportFiles = reportFiles.filter(f => f instanceof File);
+                const existingInspectionFiles = inspectionFiles.filter(f => !(f instanceof File));
+                const newInspectionFiles = inspectionFiles.filter(f => f instanceof File);
+
+                // 3. Upload new files and gather all file data.
+                const [uploadedReportFiles, uploadedInspectionFiles] = await Promise.all([
+                    uploadFiles(newReportFiles, 'reportFiles', serialNumber),
+                    uploadFiles(newInspectionFiles, 'inspectionFiles', serialNumber)
+                ]);
+
+                const finalReportFiles = [...existingReportFiles, ...uploadedReportFiles];
+                const finalInspectionFiles = [...existingInspectionFiles, ...uploadedInspectionFiles];
+
+                // Get selected and completed inspection items
+                const selectedInspectionItems = [];
+                const completedInspectionItems = [];
+                document.querySelectorAll('#inspection-items-selection-container .flex').forEach(container => {
+                    const checkbox = container.querySelector('input[type="checkbox"]');
+                    const label = container.querySelector('label');
+                    if (checkbox.checked) {
+                        selectedInspectionItems.push(checkbox.value);
+                        if (label.classList.contains('completed')) {
+                            completedInspectionItems.push(checkbox.value);
+                        }
+                    }
+                });
+
+                // 4. Construct the final data object for Firestore.
+                const recordData = {
+                    serialNumber: parseInt(serialNumber),
+                    registrationDate: formRegistrationDate.value,
+                    manufacturer: document.getElementById('form-manufacturer').value,
+                    projectName: document.getElementById('form-project-name').value,
+                    weldingDate: document.getElementById('form-welding-date').value,
+                    reportDate: document.getElementById('form-report-date').value,
+                    lab: document.getElementById('form-lab').value,
+                    failedCount: parseInt(formFailedCount.value) || 0,
+                    remarks: document.getElementById('form-remarks').value,
+                    reportFiles: finalReportFiles,
+                    inspectionDate: document.getElementById('form-inspection-date').value,
+                    inspectionFiles: finalInspectionFiles,
+                    testItems: selectedTestItems,
+                    inspectionItems: selectedInspectionItems,
+                    completedInspectionItems: completedInspectionItems
+                };
+
+                // 5. Save the record to the database.
+                await saveRecordToFirestore(recordData, editId);
+                const action = editId ? '編輯紀錄' : '新增紀錄';
+                await logAction(action, `序號: ${serialNumber}`);
+
+                // 6. If everything succeeds, close the modal.
+                hideModalAnimation(recordModal);
+
+            } catch (error) {
+                console.error("Error saving record: ", error);
+                await showAlert("儲存失敗！", "請檢查網路連線或稍後再試。");
+            } finally {
+                // 7. This always runs to clean up UI
+                hideLoader();
+                submitRecordBtn.disabled = false;
+            }
+        };
+        
+        // --- QUICK EDIT FUNCTIONS ---
+        const loadQuickEditForm = (index) => {
+            if (index < 0 || index >= filteredDataHolder.length) return;
+            
+            const record = filteredDataHolder[index];
+            quickEditForm.reset();
+            
+            // Populate form fields
+            document.getElementById('quick-edit-form-edit-id').value = record.id;
+            document.getElementById('quick-edit-form-serial-number').value = record.serialNumber || '';
+            document.getElementById('quick-edit-form-registration-date').value = record.registrationDate || '';
+            document.getElementById('quick-edit-form-project-name').value = record.projectName || '';
+            document.getElementById('quick-edit-form-manufacturer').value = record.manufacturer || '';
+            document.getElementById('quick-edit-form-welding-date').value = record.weldingDate || '';
+            document.getElementById('quick-edit-form-report-date').value = record.reportDate || '';
+            document.getElementById('quick-edit-form-lab').value = record.lab || '';
+            const failedCountInput = document.getElementById('quick-edit-form-failed-count');
+            failedCountInput.value = record.failedCount || '';
+            document.getElementById('quick-edit-form-inspection-date').value = record.inspectionDate || '';
+            document.getElementById('quick-edit-form-remarks').value = record.remarks || '';
+            
+            // Populate Test and Inspection Items
+            selectedTestItems = [...(record.testItems || [])]; // Use global state for manipulation
+            renderSelectedTestItems(quickEditSelectedTestItemsContainer);
+            renderInspectionItemCheckboxes(quickEditInspectionItemsSelectionContainer, record.inspectionItems, record.completedInspectionItems);
+            
+            // Calculate and display total/passed sets
+            const totalSetsInput = document.getElementById('quick-edit-form-total-sets');
+            const passedCountInput = document.getElementById('quick-edit-form-passed-count');
+            updateTotalSets(totalSetsInput, failedCountInput, passedCountInput);
+
+            // Render file lists (read-only)
+            document.getElementById('quick-edit-report-files-list').innerHTML = filesToHtml(record.reportFiles);
+            document.getElementById('quick-edit-inspection-files-list').innerHTML = filesToHtml(record.inspectionFiles);
+            
+            // Update counter and nav buttons
+            quickEditRecordCounter.textContent = `正在編輯第 ${index + 1} / ${filteredDataHolder.length} 筆紀錄`;
+            prevRecordBtn.disabled = index === 0;
+            nextRecordBtn.disabled = index === filteredDataHolder.length - 1;
+        };
+        
+        const handleQuickEditSubmit = async (e) => {
+            e.preventDefault();
+            
+            if (selectedTestItems.length === 0) {
+                quickEditTestItemError.classList.remove('hidden');
+                return;
+            }
+            quickEditTestItemError.classList.add('hidden');
+
+            const submitBtn = document.getElementById('submit-quick-edit-btn');
+            submitBtn.disabled = true;
+            showLoader('儲存變更中...');
+            
+            const editId = document.getElementById('quick-edit-form-edit-id').value;
+            const originalRecord = filteredDataHolder.find(r => r.id === editId);
+
+            if (!originalRecord) {
+                await showAlert('錯誤', '找不到原始紀錄！');
+                hideLoader();
+                submitBtn.disabled = false;
+                return;
+            }
+            
+            // Get selected and completed inspection items from quick edit modal
+            const selectedInspectionItems = [];
+            const completedInspectionItems = [];
+            document.querySelectorAll('#quick-edit-inspection-items-selection-container .flex').forEach(container => {
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                const label = container.querySelector('label');
+                if (checkbox.checked) {
+                    selectedInspectionItems.push(checkbox.value);
+                    if (label.classList.contains('completed')) {
+                        completedInspectionItems.push(checkbox.value);
+                    }
+                }
+            });
+
+            const updatedData = {
+                ...originalRecord, // Start with original data to preserve files
+                registrationDate: document.getElementById('quick-edit-form-registration-date').value,
+                projectName: document.getElementById('quick-edit-form-project-name').value,
+                manufacturer: document.getElementById('quick-edit-form-manufacturer').value,
+                weldingDate: document.getElementById('quick-edit-form-welding-date').value,
+                reportDate: document.getElementById('quick-edit-form-report-date').value,
+                lab: document.getElementById('quick-edit-form-lab').value,
+                failedCount: parseInt(document.getElementById('quick-edit-form-failed-count').value) || 0,
+                inspectionDate: document.getElementById('quick-edit-form-inspection-date').value,
+                remarks: document.getElementById('quick-edit-form-remarks').value,
+                testItems: selectedTestItems, // Save the updated test items
+                inspectionItems: selectedInspectionItems,
+                completedInspectionItems: completedInspectionItems,
+            };
+            
+            try {
+                await setDoc(doc(db, "weldingRecords", editId), updatedData);
+                await logAction('快速編輯紀錄', `序號: ${originalRecord.serialNumber}`);
+                loaderText.textContent = '儲存成功！';
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Show success message briefly
+            } catch (error) {
+                console.error("Error updating record:", error);
+                await showAlert('錯誤', '儲存失敗，請稍後再試。');
+            } finally {
+                hideLoader();
+                submitBtn.disabled = false;
+            }
+        };
+
+        // --- MANAGEMENT MODAL FUNCTIONS ---
+        const openManagementModal = (type) => {
+            currentManagementContext = { type };
+            let title = '';
+            let contentHtml = '';
+
+            if (type === 'manufacturers' || type === 'testLabs') {
+                title = type === 'manufacturers' ? '管理廠商' : '管理試驗單位';
+                contentHtml = `
+                    <div id="management-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4"></div>
+                    <div>
+                        <label for="management-input" class="block text-sm font-medium text-gray-700">名稱</label>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <input type="text" id="management-input" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <input type="hidden" id="management-edit-id">
+                            <button id="management-save-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">新增</button>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'welders') {
+                title = '管理銲接人員';
+                contentHtml = `
+                    <div id="management-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-4 items-start">
+                        <div class="sm:col-span-1">
+                            <label for="management-input" class="block text-sm font-medium text-gray-700">人員名稱</label>
+                            <input type="text" id="management-input" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                            <input type="hidden" id="management-edit-id">
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label for="management-role-select" class="block text-sm font-medium text-gray-700">角色</label>
+                            <select id="management-role-select" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
+                                <option value="管理者">管理者</option>
+                                <option value="編輯者">編輯者</option>
+                                <option value="檢視者">檢視者</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label for="management-password-input" class="block text-sm font-medium text-gray-700">密碼</label>
+                            <input type="password" id="management-password-input" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" placeholder="若不變更請留白">
+                            <p class="text-xs text-gray-500 mt-1">檢視者無需密碼。</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="management-save-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">新增人員</button>
+                    </div>
+                `;
+            } else if (type === 'testItemsAndCategories') {
+                title = '管理測試項目與類別';
+                currentManagementContext.selectedCategory = null;
+                contentHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="md:col-span-1 flex flex-col space-y-4">
+                            <div>
+                                <h4 class="font-semibold mb-2">測試類別</h4>
+                                <div id="management-category-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-2 bg-gray-50"></div>
+                                <div class="flex items-center space-x-2">
+                                    <button id="management-category-delete-btn" class="w-full bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300" disabled>刪除類別</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="management-category-input" class="block text-sm font-medium text-gray-700">新類別名稱</label>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <input type="text" id="management-category-input" placeholder="輸入新類別" class="w-full p-2 border border-gray-300 rounded-lg">
+                                </div>
+                                <button id="management-category-add-btn" class="mt-2 w-full bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">新增類別</button>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <h4 class="font-semibold mb-2">測試項目 (<span id="selected-category-name" class="text-indigo-600">未選擇類別</span>)</h4>
+                            <div id="management-item-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4 bg-gray-50"></div>
+                             <div class="flex items-center space-x-2 mt-1">
+                                <input type="text" id="management-item-input" placeholder="項目名稱" class="w-full p-2 border border-gray-300 rounded-lg">
+                                <input type="hidden" id="management-item-edit-id">
+                                <button id="management-item-save-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300" disabled>儲存項目</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'actionLog') {
+                title = '操作紀錄';
+                contentHtml = `<div id="management-list" class="max-h-[60vh] overflow-y-auto p-2"></div>`;
+            }
+
+            managementModalTitle.textContent = title;
+            managementContent.innerHTML = contentHtml;
+            
+            if (type === 'manufacturers' || type === 'testLabs') {
+                renderSimpleManagementList();
+            } else if (type === 'welders') {
+                renderWelderManagementList();
+                const roleSelect = managementContent.querySelector('#management-role-select');
+                const passwordInputContainer = managementContent.querySelector('#management-password-input').parentElement;
+                const updatePasswordVisibility = () => {
+                    const role = roleSelect.value;
+                    if (role === '檢視者') {
+                        passwordInputContainer.classList.add('hidden');
+                    } else {
+                        passwordInputContainer.classList.remove('hidden');
+                    }
+                };
+                roleSelect.addEventListener('change', updatePasswordVisibility);
+                updatePasswordVisibility(); // Set initial state
+            } else if (type === 'testItemsAndCategories') {
+                renderCategoryManagementList();
+                renderItemManagementList(null);
+            } else if (type === 'actionLog') {
+                renderActionLogList();
+            }
+            
+            showModalAnimation(managementModal);
+        };
+        
+        const renderSimpleManagementList = () => {
+            const listContainer = managementContent.querySelector("#management-list");
+            listContainer.innerHTML = '';
+            const list = currentManagementContext.type === 'manufacturers' ? manufacturers : testLabs;
+            
+            list.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded';
+                div.innerHTML = `
+                    <span>${item}</span>
+                    <div>
+                        <button class="management-edit-btn text-blue-500 text-sm mr-2" data-id="${item}">編輯</button>
+                        <button class="management-delete-btn text-red-500 text-sm" data-id="${item}">刪除</button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        };
+
+        const renderWelderManagementList = () => {
+            const listContainer = managementContent.querySelector("#management-list");
+            listContainer.innerHTML = '';
+            const roles = {
+                '管理者': 'bg-red-100 text-red-800',
+                '編輯者': 'bg-blue-100 text-blue-800',
+                '檢視者': 'bg-gray-100 text-gray-800'
+            };
+
+            welders.forEach((welder) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded';
+                div.innerHTML = `
+                    <div>
+                        <span>${welder.name}</span>
+                        <span class="text-xs font-semibold ml-2 px-2 py-0.5 rounded-full ${roles[welder.role] || roles['檢視者']}">${welder.role}</span>
+                    </div>
+                    <div>
+                        <button class="management-edit-btn text-blue-500 text-sm mr-2" data-id="${welder.name}">編輯</button>
+                        <button class="management-delete-btn text-red-500 text-sm" data-id="${welder.name}">刪除</button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        };
+
+        const renderCategoryManagementList = () => {
+            const listContainer = managementContent.querySelector("#management-category-list");
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+            const categories = Object.keys(testItemsByCategory).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = `management-list-item p-2 hover:bg-indigo-100 rounded cursor-pointer`;
+                if (cat === currentManagementContext.selectedCategory) {
+                    div.classList.add('selected');
+                }
+                div.textContent = cat;
+                div.dataset.category = cat;
+                listContainer.appendChild(div);
+            });
+        };
+        
+        const renderItemManagementList = (category) => {
+            const listContainer = managementContent.querySelector("#management-item-list");
+            const categoryNameSpan = managementContent.querySelector("#selected-category-name");
+            const saveItemBtn = managementContent.querySelector("#management-item-save-btn");
+            const deleteCategoryBtn = document.querySelector("#management-category-delete-btn");
+
+            if (!listContainer || !categoryNameSpan || !saveItemBtn || !deleteCategoryBtn) return;
+            
+            listContainer.innerHTML = '';
+            
+            if (!category || !testItemsByCategory[category]) {
+                categoryNameSpan.textContent = '未選擇類別';
+                saveItemBtn.disabled = true;
+                deleteCategoryBtn.disabled = true;
+                listContainer.innerHTML = '<p class="text-gray-400 text-center p-4">請先從左側選擇一個類別</p>';
+                return;
+            };
+
+            categoryNameSpan.textContent = category;
+            saveItemBtn.disabled = false;
+            deleteCategoryBtn.disabled = false;
+
+            const items = testItemsByCategory[category].sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            items.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 hover:bg-gray-100 rounded';
+                div.innerHTML = `
+                    <span>${item}</span>
+                    <div>
+                        <button class="management-item-edit-btn text-blue-500 text-sm mr-2" data-id="${item}">編輯</button>
+                        <button class="management-item-delete-btn text-red-500 text-sm" data-id="${item}">刪除</button>
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        };
+
+        const renderActionLogList = async () => {
+// ... existing code ... -->
+        };
+
+
+        // --- KANBAN VIEW FUNCTIONS ---
+        const renderKanbanView = () => {
+            // Filter for "Pending Internal Inspection"
+            const pendingInspectionData = database.filter(
+                record => record.registrationDate && !record.inspectionDate
+            ).sort((a,b) => (a.registrationDate || '').localeCompare(b.registrationDate || ''));
+
+            // Filter for "Awaiting Third-Party Report" as per user request: records with NO lab and NO report date
+            const pendingReportData = database.filter(
+                record => !record.lab && !record.reportDate
+            ).sort((a,b) => (a.registrationDate || '').localeCompare(b.registrationDate || ''));
+
+            kanbanBoard.innerHTML = '';
+            // Change the main board to a grid that will hold the columns
+            kanbanBoard.className = 'bg-white p-4 rounded-xl shadow-md grid grid-cols-1 gap-6';
+
+            // Helper function to create a Kanban column with its cards
+            const createKanbanColumn = (title, data, dateField, dateLabel) => {
+                const columnWrapper = document.createElement('div');
+                columnWrapper.className = 'kanban-column';
+
+                const columnTitle = document.createElement('h3');
+                columnTitle.className = 'text-lg font-bold text-gray-700 mb-4 px-2';
+                columnTitle.textContent = `${title} (${data.length} 筆)`;
+                columnWrapper.appendChild(columnTitle);
+
+                const cardsContainer = document.createElement('div');
+                // A responsive grid for cards *within* the column
+                cardsContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                columnWrapper.appendChild(cardsContainer);
+
+                if (data.length === 0) {
+                    cardsContainer.innerHTML = '<p class="text-center text-gray-500 p-4 md:col-span-2">太棒了！目前沒有此類別的待辦項目。</p>';
+                } else {
+                    data.forEach(record => {
+                        const card = document.createElement('div');
+                        card.className = 'kanban-card';
+                        card.dataset.id = record.id;
+                        const dateValue = record[dateField] || 'N/A';
+                        card.innerHTML = `
+                            <span class="serial-number">序號: ${record.serialNumber}</span>
+                            <p class="project-name">${record.projectName}</p>
+                            <p class="text-sm text-gray-500 mt-2">${dateLabel}: ${dateValue}</p>
+                        `;
+                        cardsContainer.appendChild(card);
+                    });
+                }
+                return columnWrapper;
+            };
+
+            // Create and append both columns
+            const inspectionColumn = createKanbanColumn('待辦內檢', pendingInspectionData, 'registrationDate', '登記日期');
+            const reportColumn = createKanbanColumn('等待第三方報告', pendingReportData, 'registrationDate', '登記日期');
+
+            kanbanBoard.appendChild(inspectionColumn);
+            kanbanBoard.appendChild(reportColumn);
+        };
+
+        const showKanbanView = () => {
+            renderKanbanView();
+            mainTableContainer.classList.add('hidden');
+            mainFiltersContainer.classList.add('hidden');
+            kanbanViewContainer.classList.remove('hidden');
+        };
+
+        const showTableView = () => {
+            mainTableContainer.classList.remove('hidden');
+            mainFiltersContainer.classList.remove('hidden');
+            kanbanViewContainer.classList.add('hidden');
+        };
+
+        // --- REPORTING FUNCTIONS ---
+        const printReport = (contentId, title) => {
+            const contentToPrint = document.getElementById(contentId).innerHTML;
+            printArea.innerHTML = `
+                <h1 style="text-align: center; font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">${title}</h1>
+                ${contentToPrint}
+            `;
+            window.print();
+            printArea.innerHTML = '';
+        };
+
+        const populateReportSelectors = () => {
+            const monthSelector = document.getElementById('month-selector');
+            const welderSelector = document.getElementById('welder-selector');
+            
+            const uniqueMonths = new Set();
+            database.forEach(record => {
+                if (record.weldingDate) {
+                    uniqueMonths.add(record.weldingDate.substring(0, 7)); // YYYY-MM
+                }
+            });
+            const sortedMonths = Array.from(uniqueMonths).sort().reverse();
+            monthSelector.innerHTML = sortedMonths.map(month => `<option value="${month}">${month}</option>`).join('');
+
+            welderSelector.innerHTML = welders.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+        };
+
+        const generateMonthlyItemReport = () => {
+            const monthSelector = document.getElementById('month-selector');
+            const monthKeys = Array.from(monthSelector.selectedOptions).map(opt => opt.value);
+
+            if (monthKeys.length === 0) {
+                showAlert('提示', '請至少選擇一個月份。');
+                return;
+            }
+            monthKeys.sort().reverse(); // Show latest months first in the table
+            
+            const categoryStats = {};
+            const itemStats = {};
+
+            // 1. Get all unique categories and items, and create a reverse map
+            const allCategories = Object.keys(testItemsByCategory).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            const allItems = Object.values(testItemsByCategory).flat().sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+            const itemToCategoryMap = {};
+            allCategories.forEach(cat => {
+                testItemsByCategory[cat].forEach(item => {
+                    itemToCategoryMap[item] = cat;
+                });
+            });
+
+            // 2. Initialize stats objects for selected months
+            const categoryColTotals = { grandTotal: 0 };
+            const itemColTotals = { grandTotal: 0 };
+            const categoryRowTotals = {};
+            const itemRowTotals = {};
+
+            monthKeys.forEach(key => {
+                categoryStats[key] = {};
+                itemStats[key] = {};
+                categoryColTotals[key] = 0;
+                itemColTotals[key] = 0;
+                allCategories.forEach(cat => categoryStats[key][cat] = 0);
+                allItems.forEach(item => itemStats[key][item] = 0);
+            });
+            allCategories.forEach(cat => categoryRowTotals[cat] = 0);
+            allItems.forEach(item => itemRowTotals[item] = 0);
+
+            // 3. Process all records
+            database.forEach(record => {
+                if (!record.weldingDate || !record.testItems) return;
+
+                const monthKey = record.weldingDate.substring(0, 7);
+
+                if (monthKeys.includes(monthKey)) {
+                    record.testItems.forEach(item => {
+                        const quantity = Number(item.quantity) || 0;
+                        const itemName = item.item;
+                        const categoryName = itemToCategoryMap[itemName];
+
+                        if (quantity > 0) {
+                            if (categoryName && categoryStats[monthKey].hasOwnProperty(categoryName)) {
+                                categoryStats[monthKey][categoryName] += quantity;
+                                categoryColTotals[monthKey] += quantity;
+                                categoryRowTotals[categoryName] += quantity;
+                            }
+                            if (itemStats[monthKey].hasOwnProperty(itemName)) {
+                                itemStats[monthKey][itemName] += quantity;
+                                itemColTotals[monthKey] += quantity;
+                                itemRowTotals[itemName] += quantity;
+                            }
+                        }
+                    });
+                }
+            });
+
+            // 4. Calculate Grand Totals for columns
+            categoryColTotals.grandTotal = Object.values(categoryRowTotals).reduce((sum, total) => sum + total, 0);
+            itemColTotals.grandTotal = Object.values(itemRowTotals).reduce((sum, total) => sum + total, 0);
+
+            // 5. Filter out rows with all zeros
+            const filteredCategories = allCategories.filter(cat => categoryRowTotals[cat] > 0);
+            const filteredItems = allItems.filter(item => itemRowTotals[item] > 0);
+            
+            // 6. Helper function to render a stats table
+            const renderStatsTable = (title, rowLabels, statsData, rowTotals, colTotals) => {
+                if (rowLabels.length === 0) {
+                    return `<h4 class="font-semibold text-md mt-6 mb-2">${title}</h4><p class="text-gray-500">在選定月份中沒有此類別的資料。</p>`;
+                }
+                let table = `
+                    <h4 class="font-semibold text-md mt-6 mb-2">${title}</h4>
+                    <div class="table-responsive">
+                        <table class="min-w-full text-sm text-left text-gray-500">
+                            <thead class="bg-gray-200 text-xs text-gray-700 uppercase">
+                                <tr>
+                                    <th class="px-4 py-2">項目</th>
+                                    ${monthKeys.map(key => `<th class="px-4 py-2 text-center">${key}</th>`).join('')}
+                                    <th class="px-4 py-2 text-center bg-gray-300">總計</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">`;
+                
+                rowLabels.forEach(label => {
+                    table += `<tr class="bg-white">
+                                <td class="px-4 py-2 font-medium">${label}</td>
+                                ${monthKeys.map(key => `<td class="px-4 py-2 text-center">${statsData[key][label] || 0}</td>`).join('')}
+                                <td class="px-4 py-2 text-center font-bold bg-gray-50">${rowTotals[label] || 0}</td>
+                              </tr>`;
+                });
+
+                table += `
+                            </tbody>
+                            <tfoot class="font-bold">
+                                <tr class="bg-gray-200 border-t-2 border-gray-300">
+                                    <td class="px-4 py-2">總計</td>
+                                    ${monthKeys.map(key => `<td class="px-4 py-2 text-center">${colTotals[key] || 0}</td>`).join('')}
+                                    <td class="px-4 py-2 text-center bg-gray-300">${colTotals.grandTotal || 0}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+                return table;
+            };
+            
+            // 7. Render both tables
+            const categoryTableHtml = renderStatsTable('各類別數量統計', filteredCategories, categoryStats, categoryRowTotals, categoryColTotals);
+            const itemTableHtml = renderStatsTable('各測試項目數量統計', filteredItems, itemStats, itemRowTotals, itemColTotals);
+
+            monthlyItemReportContent.innerHTML = categoryTableHtml + itemTableHtml;
+            printMonthlyItemReportBtn.classList.remove('hidden');
+        };
+
+        generatePendingReportBtn.addEventListener('click', () => {
+            const startDate = document.getElementById('pending-start-date').value;
+            const endDate = document.getElementById('pending-end-date').value;
+
+            let filtered = database.filter(row => {
+                // Condition: Has welding date, but no report date
+                return row.weldingDate && !row.reportDate;
+            });
+
+            if (startDate) {
+                filtered = filtered.filter(row => row.weldingDate >= startDate);
+            }
+            if (endDate) {
+                filtered = filtered.filter(row => row.weldingDate <= endDate);
+            }
+            
+            if (filtered.length === 0) {
+                pendingReportContent.innerHTML = '<p class="text-center text-gray-500 py-4">此區間內無待出報告項目。</p>';
+                printPendingReportBtn.classList.add('hidden');
+                return;
+            }
+
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="min-w-full text-sm text-left text-gray-500">
+                        <thead class="bg-gray-200 text-xs text-gray-700 uppercase">
+                            <tr>
+                                <th class="px-6 py-3">銲接日期</th>
+                                <th class="px-6 py-3">廠商</th>
+                                <th class="px-6 py-3">工程名稱</th>
+                                <th class="px-6 py-3">待辦項目 (人員)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">`;
+            
+            filtered.forEach(row => {
+                 const itemsHtml = (row.testItems || []).map(item => `<div>${item.item} (${item.welder || '未指定'})</div>`).join('');
+                tableHtml += `
+                    <tr class="bg-white">
+                        <td class="px-6 py-4">${row.weldingDate || ''}</td>
+                        <td class="px-6 py-4">${row.manufacturer || ''}</td>
+                        <td class="px-6 py-4">${row.projectName || ''}</td>
+                        <td class="px-6 py-4">${itemsHtml}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+            pendingReportContent.innerHTML = tableHtml;
+            printPendingReportBtn.classList.remove('hidden');
+        });
+
+        generateIncompleteReportBtn.addEventListener('click', () => {
+            const startDate = document.getElementById('incomplete-start-date').value;
+            const endDate = document.getElementById('incomplete-end-date').value;
+
+            let filtered = database.filter(row => {
+                const total = row.inspectionItems?.length || 0;
+                const completed = row.completedInspectionItems?.length || 0;
+                // Condition: Has registration date and incomplete inspections
+                return row.registrationDate && total > 0 && completed < total;
+            });
+
+            if (startDate) {
+                filtered = filtered.filter(row => row.registrationDate >= startDate);
+            }
+            if (endDate) {
+                filtered = filtered.filter(row => row.registrationDate <= endDate);
+            }
+
+            if (filtered.length === 0) {
+                incompleteReportContent.innerHTML = '<p class="text-center text-gray-500 py-4">此區間內無未完成內檢項目。</p>';
+                printIncompleteReportBtn.classList.add('hidden');
+                return;
+            }
+
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="min-w-full text-sm text-left text-gray-500">
+                        <thead class="bg-gray-200 text-xs text-gray-700 uppercase">
+                            <tr>
+                                <th class="px-6 py-3">登記日期</th>
+                                <th class="px-6 py-3">工程名稱</th>
+                                <th class="px-6 py-3">未完成內檢項目 (人員)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">`;
+            
+            filtered.forEach(row => {
+                const allInspectionItems = row.inspectionItems || [];
+                const completedItems = row.completedInspectionItems || [];
+                const uncompletedItems = allInspectionItems.filter(item => !completedItems.includes(item));
+
+                const uncompletedHtml = uncompletedItems.map(inspectionItemName => {
+                    const itemName = inspectionItemName.split('(')[0];
+                    const testItem = (row.testItems || []).find(ti => ti.item === itemName);
+                    const welder = testItem ? testItem.welder : '未指定';
+                    return `<div>${inspectionItemName} (${welder})</div>`;
+                }).join('');
+
+                tableHtml += `
+                    <tr class="bg-white">
+                        <td class="px-6 py-4">${row.registrationDate || ''}</td>
+                        <td class="px-6 py-4">${row.projectName || ''}</td>
+                        <td class="px-6 py-4">${uncompletedHtml}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+            incompleteReportContent.innerHTML = tableHtml;
+            printIncompleteReportBtn.classList.remove('hidden');
+        });
+
+        generateSummaryReportBtn.addEventListener('click', () => {
+            const today = new Date();
+            const monthlyStats = {};
+            const monthKeys = [];
+
+            // 1. Initialize the last 6 months
+            for (let i = 5; i >= 0; i--) {
+                const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const year = targetDate.getFullYear();
+                const month = (targetDate.getMonth() + 1).toString().padStart(2, '0');
+                const monthKey = `${year}-${month}`;
+                monthKeys.push(monthKey);
+                monthlyStats[monthKey] = { welding: 0, passed: 0, failed: 0, pending: 0 };
+            }
+
+            // 2. Process all records
+            database.forEach(record => {
+                if (!record.weldingDate) return; // Skip if no welding date
+
+                const weldingDate = new Date(record.weldingDate);
+                const year = weldingDate.getFullYear();
+                const month = (weldingDate.getMonth() + 1).toString().padStart(2, '0');
+                const monthKey = `${year}-${month}`;
+
+                if (monthlyStats[monthKey]) {
+                    const totalPieces = (record.testItems || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+                    
+                    monthlyStats[monthKey].welding += totalPieces;
+
+                    if (record.reportDate) {
+                        const failedCount = Number(record.failedCount) || 0;
+                        const passedCount = totalPieces - failedCount;
+                        monthlyStats[monthKey].failed += failedCount;
+                        monthlyStats[monthKey].passed += passedCount;
+                    } else {
+                        monthlyStats[monthKey].pending += totalPieces;
+                    }
+                }
+            });
+
+            // 3. Render the table
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="min-w-full text-sm text-left text-gray-500">
+                        <thead class="bg-gray-200 text-xs text-gray-700 uppercase">
+                            <tr>
+                                <th class="px-6 py-3">月份</th>
+                                <th class="px-6 py-3">銲接數量 (試片)</th>
+                                <th class="px-6 py-3">合格數量</th>
+                                <th class="px-6 py-3">不合格數量</th>
+                                <th class="px-6 py-3">未有報告數量</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">`;
+
+            monthKeys.forEach(key => {
+                const stats = monthlyStats[key];
+                tableHtml += `
+                    <tr class="bg-white">
+                        <td class="px-6 py-4 font-medium">${key}</td>
+                        <td class="px-6 py-4">${stats.welding}</td>
+                        <td class="px-6 py-4 text-green-600">${stats.passed}</td>
+                        <td class="px-6 py-4 text-red-600">${stats.failed}</td>
+                        <td class="px-6 py-4 text-yellow-600">${stats.pending}</td>
+                    </tr>`;
+            });
+
+            tableHtml += `</tbody></table></div>`;
+            summaryReportContent.innerHTML = tableHtml;
+            printSummaryReportBtn.classList.remove('hidden');
+        });
+
+        generateWelderReportBtn.addEventListener('click', () => {
+            const selectedWelders = Array.from(document.getElementById('welder-selector').selectedOptions).map(opt => opt.value);
+            const startDate = document.getElementById('welder-report-start-date').value;
+            const endDate = document.getElementById('welder-report-end-date').value;
+
+            if (selectedWelders.length === 0) {
+                showAlert('提示', '請至少選擇一位人員。');
+                return;
+            }
+
+            const reportData = {};
+            selectedWelders.forEach(w => reportData[w] = []);
+
+            database.forEach(record => {
+                if (!record.weldingDate || !record.testItems) return;
+                if (startDate && record.weldingDate < startDate) return;
+                if (endDate && record.weldingDate > endDate) return;
+
+                record.testItems.forEach(item => {
+                    if (item.welder && selectedWelders.includes(item.welder)) {
+                        reportData[item.welder].push({
+                            weldingDate: record.weldingDate,
+                            projectName: record.projectName,
+                            item: item.item,
+                            quantity: item.quantity
+                        });
+                    }
+                });
+            });
+
+            let grandTotal = 0;
+            const welderStats = selectedWelders.map(welder => {
+                const welderTotal = reportData[welder].reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+                grandTotal += welderTotal;
+                return { name: welder, total: welderTotal };
+            });
+
+            welderStats.forEach(stat => {
+                stat.percentage = grandTotal > 0 ? ((stat.total / grandTotal) * 100).toFixed(1) : 0;
+            });
+
+            let summaryHtml = `
+                <div class="mb-8 p-4 border rounded-lg bg-white shadow-sm">
+                    <h4 class="font-semibold text-lg mb-4 text-gray-800 border-b pb-2">統計總覽</h4>
+                    <p class="text-gray-700 mb-4">
+                        <strong>選取區間總數量：</strong> 
+                        <span class="font-bold text-2xl text-blue-600">${grandTotal}</span> 組
+                    </p>
+                    <div class="space-y-3">`;
+
+            welderStats.forEach(stat => {
+                summaryHtml += `
+                    <div class="grid grid-cols-5 gap-4 items-center">
+                        <span class="col-span-1 text-gray-700 font-medium">${stat.name}</span>
+                        <div class="col-span-3 flex items-center">
+                            <div class="w-full bg-gray-200 rounded-full h-5">
+                                <div class="bg-blue-500 h-5 rounded-full text-white text-xs flex items-center justify-center" style="width: ${stat.percentage}%">
+                                    ${stat.percentage}%
+                                </div>
+                            </div>
+                        </div>
+                        <span class="col-span-1 font-semibold text-right">${stat.total} 組</span>
+                    </div>
+                `;
+            });
+
+            summaryHtml += `</div></div>`;
+
+            let detailsHtml = '';
+            selectedWelders.forEach(welder => {
+                detailsHtml += `<h4 class="font-semibold text-md mt-6 mb-2 text-gray-800">${welder} 詳細資料</h4>`;
+                const items = reportData[welder];
+                if (items.length === 0) {
+                    detailsHtml += '<p class="text-gray-500">在此日期範圍內沒有找到此人員的項目。</p>';
+                    return;
+                }
+
+                detailsHtml += `
+                    <div class="table-responsive">
+                        <table class="min-w-full text-sm text-left text-gray-500">
+                            <thead class="bg-gray-200 text-xs text-gray-700 uppercase">
+                                <tr>
+                                    <th class="px-4 py-2">銲接日期</th>
+                                    <th class="px-4 py-2">工程名稱</th>
+                                    <th class="px-4 py-2">測試項目</th>
+                                    <th class="px-4 py-2">數量</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">`;
+                
+                items.sort((a, b) => a.weldingDate.localeCompare(b.weldingDate)).forEach(d => {
+                    detailsHtml += `<tr class="bg-white">
+                                <td class="px-4 py-2">${d.weldingDate}</td>
+                                <td class="px-4 py-2">${d.projectName}</td>
+                                <td class="px-4 py-2">${d.item}</td>
+                                <td class="px-4 py-2">${d.quantity}</td>
+                             </tr>`;
+                });
+                detailsHtml += `</tbody></table></div>`;
+            });
+
+            welderReportContent.innerHTML = summaryHtml + detailsHtml;
+            printWelderReportBtn.classList.remove('hidden');
+        });
+
+
+        // --- EVENT LISTENERS ---
+        applyFiltersBtn.addEventListener('click', () => {
+            const manufacturer = manufacturerFilter.value;
+            const projectName = projectNameFilter.value;
+            const testItem = testItemFilter.value;
+            const lab = toggleAdvancedFilters.checked ? labFilter.value : '';
+            const startDate = toggleAdvancedFilters.checked ? startDateFilter.value : '';
+            const endDate = toggleAdvancedFilters.checked ? endDateFilter.value : '';
+            
+            let filteredData = database;
+
+            if (manufacturer) filteredData = filteredData.filter(row => row.manufacturer === manufacturer);
+            if (projectName) filteredData = filteredData.filter(row => row.projectName === projectName);
+            if (lab) filteredData = filteredData.filter(row => row.lab === lab);
+            if (testItem) filteredData = filteredData.filter(row => (row.testItems || []).some(item => item.item === testItem));
+            if (startDate) filteredData = filteredData.filter(row => row.weldingDate && row.weldingDate >= startDate);
+            if (endDate) filteredData = filteredData.filter(row => row.weldingDate && row.weldingDate <= endDate);
+
+            displayData(filteredData);
+        });
+        resetFiltersBtn.addEventListener('click', () => {
+            manufacturerFilter.value = ''; 
+            testItemFilter.value = ''; 
+            labFilter.value = '';
+            startDateFilter.value = ''; 
+            endDateFilter.value = '';
+            
+            projectNameFilter.value = '';
+            projectNameFilterContainer.style.display = 'none';
+            toggleAdvancedFilters.checked = false;
+            advancedFiltersContainer.classList.add('hidden');
+
+            displayData(database);
+        });
+
+        manufacturerFilter.addEventListener('change', () => {
+            const selectedManufacturer = manufacturerFilter.value;
+            if (selectedManufacturer) {
+                const projectNames = [...new Set(database
+                    .filter(record => record.manufacturer === selectedManufacturer && record.projectName)
+                    .map(record => record.projectName)
+                )].sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                
+                populateSelect(projectNameFilter, projectNames, '所有工程名稱');
+                projectNameFilterContainer.style.display = 'block';
+            } else {
+                projectNameFilterContainer.style.display = 'none';
+                projectNameFilter.innerHTML = '';
+            }
+        });
+
+        toggleAdvancedFilters.addEventListener('change', () => {
+            advancedFiltersContainer.classList.toggle('hidden', !toggleAdvancedFilters.checked);
+        });
+
+        addRecordBtn.addEventListener('click', () => showRecordModal());
+        closeModalBtn.addEventListener('click', () => hideModalAnimation(recordModal));
+        cancelModalBtn.addEventListener('click', () => hideModalAnimation(recordModal));
+        recordForm.addEventListener('submit', handleFormSubmit);
+        tableBody.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('edit-btn')) {
+                showRecordModal(e.target.dataset.id);
+            }
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                const confirmed = await showConfirm('您確定要刪除這筆紀錄嗎？', '相關的雲端檔案將會一併刪除，此操作無法復原。');
+                if (confirmed) {
+                    showLoader('刪除中...');
+                    try {
+                        const docRef = doc(db, "weldingRecords", id);
+                        const docSnap = await getDoc(docRef);
+                        let serialNumberForLog = '未知';
+
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            serialNumberForLog = data.serialNumber;
+                            const filesToDelete = [...(data.reportFiles || []), ...(data.inspectionFiles || [])];
+                            
+                            const deletePromises = filesToDelete.map(file => {
+                                try {
+                                    const fileRef = ref(storage, file.url);
+                                    return deleteObject(fileRef);
+                                } catch (error) {
+                                    console.error("Error creating ref for deletion:", error, "URL:", file.url);
+                                    return Promise.resolve();
+                                }
+                            });
+                            await Promise.all(deletePromises);
+                        }
+                        
+                        await deleteDoc(docRef);
+                        await logAction('刪除紀錄', `序號: ${serialNumberForLog}`);
+
+                    } catch (error) {
+                        console.error("Error deleting record and files:", error);
+                        await showAlert("刪除失敗！");
+                    } finally {
+                        hideLoader();
+                    }
+                }
+            }
+        });
+        
+        document.getElementById('form-test-category').addEventListener('change', (e) => updateTestItemDropdown(e.target, document.getElementById('form-test-item')));
+        addTestItemBtn.addEventListener('click', () => {
+            const item = formTestItem.value;
+            const welder = formItemWelder.value;
+            const quantity = formItemQuantity.value;
+            if (item && quantity > 0) {
+                selectedTestItems.push({ item, welder, quantity: Number(quantity) });
+                renderSelectedTestItems(selectedTestItemsContainer);
+                renderInspectionItemCheckboxes(inspectionItemsSelectionContainer);
+                updateTotalSets(formTotalSets, formFailedCount, formPassedCount);
+                formItemQuantity.value = 1;
+                formItemWelder.value = '';
+                testItemError.classList.add('hidden');
+            } else {
+                showAlert('請至少選擇一個項目並填寫數量。');
+            }
+        });
+
+        const handleItemDetailsChange = (e, container) => {
+            const target = e.target;
+            const index = parseInt(target.dataset.index);
+
+            if (isNaN(index) || index < 0 || index >= selectedTestItems.length) return;
+
+            if (target.classList.contains('item-welder-select')) {
+                selectedTestItems[index].welder = target.value;
+            }
+
+            if (target.classList.contains('item-quantity-input')) {
+                const newQuantity = parseInt(target.value) || 1;
+                selectedTestItems[index].quantity = newQuantity;
+                const modalRoot = container.closest('.modal');
+                if (modalRoot.id === 'record-modal') {
+                    updateTotalSets(formTotalSets, formFailedCount, formPassedCount);
+                } else if (modalRoot.id === 'quick-edit-modal') {
+                    updateTotalSets(document.getElementById('quick-edit-form-total-sets'), document.getElementById('quick-edit-form-failed-count'), document.getElementById('quick-edit-form-passed-count'));
+                }
+            }
+            
+            if (target.classList.contains('remove-item-btn')) {
+                selectedTestItems.splice(index, 1);
+                const modalRoot = container.closest('.modal');
+                if (modalRoot.id === 'record-modal') {
+                    renderSelectedTestItems(selectedTestItemsContainer);
+                    renderInspectionItemCheckboxes(inspectionItemsSelectionContainer);
+                    updateTotalSets(formTotalSets, formFailedCount, formPassedCount);
+                } else if (modalRoot.id === 'quick-edit-modal') {
+                    renderSelectedTestItems(quickEditSelectedTestItemsContainer);
+                    renderInspectionItemCheckboxes(quickEditInspectionItemsSelectionContainer);
+                    updateTotalSets(document.getElementById('quick-edit-form-total-sets'), document.getElementById('quick-edit-form-failed-count'), document.getElementById('quick-edit-form-passed-count'));
+                }
+            }
+        };
+
+        selectedTestItemsContainer.addEventListener('change', (e) => handleItemDetailsChange(e, selectedTestItemsContainer));
+        selectedTestItemsContainer.addEventListener('input', (e) => handleItemDetailsChange(e, selectedTestItemsContainer));
+        selectedTestItemsContainer.addEventListener('click', (e) => handleItemDetailsChange(e, selectedTestItemsContainer));
+
+        quickEditSelectedTestItemsContainer.addEventListener('change', (e) => handleItemDetailsChange(e, quickEditSelectedTestItemsContainer));
+        quickEditSelectedTestItemsContainer.addEventListener('input', (e) => handleItemDetailsChange(e, quickEditSelectedTestItemsContainer));
+        quickEditSelectedTestItemsContainer.addEventListener('click', (e) => handleItemDetailsChange(e, quickEditSelectedTestItemsContainer));
+
+        formFailedCount.addEventListener('input', () => updateTotalSets(formTotalSets, formFailedCount, formPassedCount));
+        
+        reportFilesInput.addEventListener('change', (e) => { 
+            if (e.target.files.length > 0) {
+                reportFiles.push(...e.target.files); 
+                renderFileList(reportFilesList, reportFiles);
+                const reportDateInput = document.getElementById('form-report-date');
+                if (!reportDateInput.value) {
+                    reportDateInput.value = new Date().toLocaleDateString('en-CA');
+                }
+            }
+            e.target.value = ''; 
+        });
+
+        inspectionFilesInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                inspectionFiles.push(...e.target.files);
+                renderFileList(inspectionFilesList, inspectionFiles);
+                const inspectionDateInput = document.getElementById('form-inspection-date');
+                if (!inspectionDateInput.value) {
+                    inspectionDateInput.value = new Date().toLocaleDateString('en-CA');
+                }
+            }
+            e.target.value = ''; 
+        });
+
+        const handleFileRemove = (e, fileList, container) => {
+            if (e.target.classList.contains('remove-file-tag')) {
+                const index = parseInt(e.target.dataset.index);
+                fileList.splice(index, 1);
+                renderFileList(container, fileList);
+            }
+        };
+        reportFilesList.addEventListener('click', (e) => handleFileRemove(e, reportFiles, reportFilesList));
+        inspectionFilesList.addEventListener('click', (e) => handleFileRemove(e, inspectionFiles, inspectionFilesList));
+        
+        // Inspection Item Completion Listener
+        inspectionItemsSelectionContainer.addEventListener('click', (e) => {
+            const label = e.target.closest('label');
+            if (label) {
+                const checkbox = document.getElementById(label.htmlFor);
+                if (checkbox && checkbox.checked) {
+                    label.classList.toggle('completed');
+                }
+            }
+        });
+
+
+        // Quick Edit Listeners
+        quickEditBtn.addEventListener('click', () => {
+            if (filteredDataHolder.length === 0) {
+                showAlert('沒有可編輯的資料', '請先清除篩選條件或新增資料。');
+                return;
+            }
+            quickEditCurrentIndex = 0;
+            loadQuickEditForm(quickEditCurrentIndex);
+            showModalAnimation(quickEditModal);
+        });
+        closeQuickEditModalBtn.addEventListener('click', () => hideModalAnimation(quickEditModal));
+        closeQuickEditBtnFooter.addEventListener('click', () => hideModalAnimation(quickEditModal));
+        prevRecordBtn.addEventListener('click', () => {
+            if (quickEditCurrentIndex > 0) {
+                quickEditCurrentIndex--;
+                loadQuickEditForm(quickEditCurrentIndex);
+            }
+        });
+        nextRecordBtn.addEventListener('click', () => {
+            if (quickEditCurrentIndex < filteredDataHolder.length - 1) {
+                quickEditCurrentIndex++;
+                loadQuickEditForm(quickEditCurrentIndex);
+            }
+        });
+        quickEditForm.addEventListener('submit', handleQuickEditSubmit);
+        document.getElementById('quick-edit-form-test-category').addEventListener('change', (e) => updateTestItemDropdown(e.target, document.getElementById('quick-edit-form-test-item')));
+        quickEditAddTestItemBtn.addEventListener('click', () => {
+            const item = document.getElementById('quick-edit-form-test-item').value;
+            const welder = document.getElementById('quick-edit-form-item-welder').value;
+            const quantity = document.getElementById('quick-edit-form-item-quantity').value;
+            if (item && quantity > 0) {
+                selectedTestItems.push({ item, welder, quantity: Number(quantity) });
+                renderSelectedTestItems(quickEditSelectedTestItemsContainer);
+                renderInspectionItemCheckboxes(quickEditInspectionItemsSelectionContainer);
+                updateTotalSets(document.getElementById('quick-edit-form-total-sets'), document.getElementById('quick-edit-form-failed-count'), document.getElementById('quick-edit-form-passed-count'));
+                document.getElementById('quick-edit-form-item-quantity').value = 1;
+                document.getElementById('quick-edit-form-item-welder').value = '';
+                quickEditTestItemError.classList.add('hidden');
+            } else {
+                 showAlert('請至少選擇一個項目並填寫數量。');
+            }
+        });
+        
+        quickEditInspectionItemsSelectionContainer.addEventListener('click', (e) => {
+            const label = e.target.closest('label');
+            if (label) {
+                const checkbox = document.getElementById(label.htmlFor);
+                if (checkbox && checkbox.checked) {
+                    label.classList.toggle('completed');
+                }
+            }
+        });
+        document.getElementById('quick-edit-form-failed-count').addEventListener('input', () => {
+             updateTotalSets(document.getElementById('quick-edit-form-total-sets'), document.getElementById('quick-edit-form-failed-count'), document.getElementById('quick-edit-form-passed-count'));
+        });
+
+
+        document.body.addEventListener('click', e => {
+            if (e.target.matches('.manage-btn')) {
+                openManagementModal(e.target.dataset.type);
+            }
+        });
+        closeManagementModalBtn.addEventListener('click', () => hideModalAnimation(managementModal));
+        
+        managementContent.addEventListener('click', async e => {
+            const target = e.target;
+            const type = currentManagementContext.type;
+
+            if (type === 'manufacturers' || type === 'testLabs') {
+                const listName = type;
+                let list = type === 'manufacturers' ? manufacturers : testLabs;
+                const input = managementContent.querySelector('#management-input');
+                const editIdInput = managementContent.querySelector('#management-edit-id');
+                const saveBtn = managementContent.querySelector('#management-save-btn');
+
+                if (target.id === 'management-save-btn') {
+                    const value = input.value.trim();
+                    const editId = editIdInput.value;
+                    if (value) {
+                        const actionType = type === 'manufacturers' ? '廠商' : '試驗單位';
+                        if (editId) {
+                            list = list.map(item => item === editId ? value : item);
+                            await logAction(`編輯${actionType}`, `從 "${editId}" 改為 "${value}"`);
+                        } else if (!list.includes(value)) {
+                            list.push(value);
+                            await logAction(`新增${actionType}`, value);
+                        }
+                        list.sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                        await setDoc(doc(db, "lists", listName), { items: list });
+                        input.value = ''; editIdInput.value = ''; saveBtn.textContent = '新增';
+                    }
+                } else if (target.classList.contains('management-edit-btn')) {
+                    const id = target.dataset.id;
+                    input.value = id;
+                    editIdInput.value = id;
+                    saveBtn.textContent = '儲存';
+                } else if (target.classList.contains('management-delete-btn')) {
+                    const id = target.dataset.id;
+                    if (await showConfirm(`您確定要刪除 "${id}" 嗎？`)) {
+                        const actionType = type === 'manufacturers' ? '廠商' : '試驗單位';
+                        list = list.filter(item => item !== id);
+                        await setDoc(doc(db, "lists", listName), { items: list });
+                        await logAction(`刪除${actionType}`, id);
+                    }
+                }
+            } else if (type === 'welders') {
+                const input = managementContent.querySelector('#management-input');
+                const editIdInput = managementContent.querySelector('#management-edit-id');
+                const saveBtn = managementContent.querySelector('#management-save-btn');
+                const roleSelect = managementContent.querySelector('#management-role-select');
+
+                if (target.id === 'management-save-btn') {
+                    const name = input.value.trim();
+                    const role = roleSelect.value;
+                    const editId = editIdInput.value;
+                    const password = managementContent.querySelector('#management-password-input').value;
+
+                    if (name) {
+                        const existingWelderIndex = welders.findIndex(w => w.name === editId);
+                        
+                        if (welders.some(w => w.name === name && w.name !== editId)) {
+                            showAlert('錯誤', '該人員名稱已存在。');
+                            return;
+                        }
+
+                        if (existingWelderIndex > -1) { // Editing
+                            const originalWelder = welders[existingWelderIndex];
+                            const updatedWelder = { name, role };
+
+                            if (role !== '檢視者') {
+                                if (password) {
+                                    updatedWelder.password = password;
+                                } else {
+                                    updatedWelder.password = originalWelder.password; // Keep old password
+                                }
+                            }
+                            welders[existingWelderIndex] = updatedWelder;
+                            await logAction('編輯人員', `名稱: ${name}, 角色: ${role}`);
+                        } else { // Adding
+                            const newWelder = { name, role };
+                            if (role !== '檢視者') {
+                                if (!password) {
+                                    showAlert('錯誤', '管理者或編輯者必須設定密碼。');
+                                    return;
+                                }
+                                newWelder.password = password;
+                            }
+                            welders.push(newWelder);
+                             await logAction('新增人員', `名稱: ${name}, 角色: ${role}`);
+                        }
+
+                        welders.sort((a,b) => a.name.localeCompare(b.name, 'zh-Hant'));
+                        await setDoc(doc(db, "lists", "welders"), { items: welders });
+                        input.value = ''; 
+                        editIdInput.value = ''; 
+                        managementContent.querySelector('#management-password-input').value = '';
+                        roleSelect.value = '管理者'; 
+                        saveBtn.textContent = '新增人員';
+                        roleSelect.dispatchEvent(new Event('change'));
+                    }
+                } else if (target.classList.contains('management-edit-btn')) {
+                    const id = target.dataset.id;
+                    const welder = welders.find(w => w.name === id);
+                    if (welder) {
+                        input.value = welder.name;
+                        roleSelect.value = welder.role;
+                        managementContent.querySelector('#management-password-input').value = ''; // Clear password field
+                        editIdInput.value = welder.name;
+                        saveBtn.textContent = '儲存變更';
+                        roleSelect.dispatchEvent(new Event('change')); // Update password visibility
+                    }
+                } else if (target.classList.contains('management-delete-btn')) {
+                    const id = target.dataset.id;
+                    if (await showConfirm(`您確定要刪除 "${id}" 嗎？`)) {
+                        welders = welders.filter(w => w.name !== id);
+                        await setDoc(doc(db, "lists", "welders"), { items: welders });
+                        await logAction('刪除人員', id);
+                    }
+                }
+            } else if (type === 'testItemsAndCategories') {
+                const category = currentManagementContext.selectedCategory;
+                
+                if (target.closest('.management-list-item')) {
+                    const selectedCategory = target.closest('.management-list-item').dataset.category;
+                    currentManagementContext.selectedCategory = selectedCategory;
+                    renderCategoryManagementList();
+                    renderItemManagementList(selectedCategory);
+                    return;
+                }
+                
+                if (target.id === 'management-category-add-btn') {
+                    const catInput = managementContent.querySelector('#management-category-input');
+                    const newCategory = catInput.value.trim();
+                    if (newCategory && !testItemsByCategory[newCategory]) {
+                        testItemsByCategory[newCategory] = [];
+                        await setDoc(doc(db, "lists", "testItemsByCategory"), testItemsByCategory);
+                        await logAction('新增測試類別', newCategory);
+                        catInput.value = '';
+                    } else if (testItemsByCategory[newCategory]) {
+                        await showAlert('此類別已存在。');
+                    }
+                }
+                
+                if (target.id === 'management-category-delete-btn' && category) {
+                    if (await showConfirm(`您確定要刪除類別 "${category}" 及其所有項目嗎？`)) {
+                        delete testItemsByCategory[category];
+                        await setDoc(doc(db, "lists", "testItemsByCategory"), testItemsByCategory);
+                        await logAction('刪除測試類別', category);
+                        currentManagementContext.selectedCategory = null;
+                        renderCategoryManagementList();
+                        renderItemManagementList(null);
+                    }
+                }
+
+                const itemInput = managementContent.querySelector('#management-item-input');
+                const itemEditIdInput = managementContent.querySelector('#management-item-edit-id');
+                const itemSaveBtn = managementContent.querySelector('#management-item-save-btn');
+
+                if (target.id === 'management-item-save-btn' && category) {
+                    const value = itemInput.value.trim();
+                    const editId = itemEditIdInput.value;
+                    if (value) {
+                         if (editId) {
+                            testItemsByCategory[category] = testItemsByCategory[category].map(item => item === editId ? value : item);
+                            await logAction('編輯測試項目', `於類別 "${category}", 從 "${editId}" 改為 "${value}"`);
+                        } else if (!testItemsByCategory[category].includes(value)) {
+                            testItemsByCategory[category].push(value);
+                            await logAction('新增測試項目', `於類別 "${category}": ${value}`);
+                        }
+                        await setDoc(doc(db, "lists", "testItemsByCategory"), testItemsByCategory);
+                        itemInput.value = ''; itemEditIdInput.value = ''; itemSaveBtn.textContent = '新增項目';
+                    }
+                } else if (target.classList.contains('management-item-edit-btn') && category) {
+                    const id = target.dataset.id;
+                    itemInput.value = id;
+                    itemEditIdInput.value = id;
+                    itemSaveBtn.textContent = '儲存變更';
+                } else if (target.classList.contains('management-item-delete-btn') && category) {
+                    const id = target.dataset.id;
+                    if (await showConfirm(`您確定要刪除項目 "${id}" 嗎？`)) {
+                        testItemsByCategory[category] = testItemsByCategory[category].filter(item => item !== id);
+                        await setDoc(doc(db, "lists", "testItemsByCategory"), testItemsByCategory);
+                        await logAction('刪除測試項目', `於類別 "${category}": ${id}`);
+                    }
+                }
+            }
+        });
+
+        // Report Modal Listeners
+        exportReportBtn.addEventListener('click', () => {
+            populateReportSelectors();
+            showModalAnimation(reportModal);
+        });
+        reportTabsContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            reportTabsContainer.querySelectorAll('.report-tab').forEach(tab => tab.classList.remove('active'));
+            button.classList.add('active');
+
+            reportPanels.forEach(panel => panel.classList.add('hidden'));
+            document.getElementById(button.dataset.target).classList.remove('hidden');
+        });
+        closeReportModalBtn.addEventListener('click', () => hideModalAnimation(reportModal));
+        printPendingReportBtn.addEventListener('click', () => printReport('pending-report-content', '待出報告項目'));
+        printIncompleteReportBtn.addEventListener('click', () => printReport('incomplete-report-content', '未完成內檢項目'));
+        printSummaryReportBtn.addEventListener('click', () => printReport('summary-report-content', '近六個月銲接狀況摘要'));
+        printMonthlyItemReportBtn.addEventListener('click', () => printReport('monthly-item-report-content', '測試項目數量統計 (依月份)'));
+        printWelderReportBtn.addEventListener('click', () => printReport('welder-report-content', '人員工作明細'));
+        generateMonthlyItemReportBtn.addEventListener('click', generateMonthlyItemReport);
+
+
+        // Kanban Listeners
+        kanbanViewBtn.addEventListener('click', showKanbanView);
+        backToTableBtn.addEventListener('click', showTableView);
+        kanbanBoard.addEventListener('click', (e) => {
+            const card = e.target.closest('.kanban-card');
+            if (card && card.dataset.id) {
+                showRecordModal(card.dataset.id);
+            }
+        });
+
+        // Master Management Listeners
+        manageBaseDataBtn.addEventListener('click', () => {
+            showModalAnimation(masterManagementModal);
+        });
+
+        closeMasterManagementModalBtn.addEventListener('click', () => {
+            hideModalAnimation(masterManagementModal);
+        });
+
+        masterManagementContent.addEventListener('click', (e) => {
+            const button = e.target.closest('.master-manage-select-btn');
+            if (button && button.dataset.type) {
+                hideModalAnimation(masterManagementModal);
+                // Use a slight delay to allow the first modal to finish its closing animation
+                setTimeout(() => {
+                    openManagementModal(button.dataset.type);
+                }, 300);
+            }
+        });
+
+        document.getElementById('ok-alert-btn').addEventListener('click', () => {
+            hideModalAnimation(alertModal);
+            if(alertPromiseResolver) alertPromiseResolver();
+        });
+        document.getElementById('close-alert-btn').addEventListener('click', () => {
+            hideModalAnimation(alertModal);
+            if(alertPromiseResolver) alertPromiseResolver();
+        });
+        document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+            hideModalAnimation(confirmModal);
+            if(confirmPromiseResolver) confirmPromiseResolver(true);
+        });
+        document.getElementById('confirm-no-btn').addEventListener('click', () => {
+            hideModalAnimation(confirmModal);
+            if(confirmPromiseResolver) confirmPromiseResolver(false);
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+
+
+        // --- APPLICATION START ---
+        
+        const applyRbac = () => {
+            if (!currentUser) return;
+            const body = document.body;
+            body.classList.remove('role-admin', 'role-editor', 'role-viewer');
+            
+            const roleName = {
+                '管理者': 'bg-red-100 text-red-800',
+                '編輯者': 'bg-blue-100 text-blue-800',
+                '檢視者': 'bg-gray-100 text-gray-800'
+            }[currentUser.role];
+
+            document.getElementById('user-info').innerHTML = `
+                <p class="font-semibold">${currentUser.name}</p>
+                <p class="text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block ${roleName}">${currentUser.role}</p>
+            `;
+
+            switch (currentUser.role) {
+                case '管理者':
+                    body.classList.add('role-admin');
+                    break;
+                case '編輯者':
+                    body.classList.add('role-editor');
+                    break;
+                case '檢視者':
+                default:
+                    body.classList.add('role-viewer');
+                    break;
+            }
+        };
+
+        const startApp = () => {
+            showLoader('資料載入中...');
+            applyRbac();
+            mainContainer.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+
+            onSnapshot(collection(db, "weldingRecords"), (snapshot) => {
+                database = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                displayData(database);
+                hideLoader();
+            }, (error) => {
+                console.error("Error fetching records:", error);
+                loaderText.textContent = "資料載入失敗！";
+            });
+
+            onSnapshot(doc(db, "lists", "manufacturers"), (doc) => {
+                if(doc.exists()) manufacturers = doc.data().items.sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                refreshAllUIDropdowns();
+            });
+            onSnapshot(doc(db, "lists", "welders"), (doc) => {
+                if(doc.exists()) {
+                    const items = doc.data().items || [];
+                    welders = items.map(item => {
+                        if (typeof item === 'string') {
+                            return { name: item, role: '檢視者' }; // Default role for old data
+                        }
+                        return item;
+                    }).sort((a,b) => a.name.localeCompare(b.name, 'zh-Hant'));
+                }
+                refreshAllUIDropdowns();
+                if (currentManagementContext.type === 'welders') {
+                    renderWelderManagementList();
+                }
+            });
+            onSnapshot(doc(db, "lists", "testLabs"), (doc) => {
+                if(doc.exists()) testLabs = doc.data().items.sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                refreshAllUIDropdowns();
+            });
+            onSnapshot(doc(db, "lists", "testItemsByCategory"), (doc) => {
+                if(doc.exists()) testItemsByCategory = doc.data();
+                else testItemsByCategory = {};
+                refreshAllUIDropdowns();
+                if (currentManagementContext.type === 'testItemsAndCategories') {
+                    renderCategoryManagementList();
+                    renderItemManagementList(currentManagementContext.selectedCategory);
+                }
+            });
+        };
+
+        // --- INITIALIZATION ---
+        signInAnonymously(auth).then(async () => {
+             try {
+                const weldersDoc = await getDoc(doc(db, "lists", "welders"));
+                if (weldersDoc.exists()) {
+                    const items = weldersDoc.data().items || [];
+                    welders = items.map(item => {
+                        if (typeof item === 'string') return { name: item, role: '檢視者' };
+                        return item;
+                    }).sort((a,b) => a.name.localeCompare(b.name, 'zh-Hant'));
+                    
+                    if (welders.length > 0) {
+                        loginUserSelect.innerHTML = '<option value="">請選擇...</option>' + welders.map(w => `<option value="${w.name}">${w.name}</option>`).join('');
+                    } else {
+                         loginForm.innerHTML = '<p class="text-red-500 text-center">系統尚未設定任何使用者。<br>請聯絡開發人員手動新增第一位管理者。</p>';
+                    }
+                } else {
+                     loginForm.innerHTML = '<p class="text-red-500 text-center">系統尚未設定任何使用者。<br>請聯絡開發人員手動新增第一位管理者。</p>';
+                }
+            } catch (e) {
+                loginForm.innerHTML = `<p class="text-red-500">無法載入使用者列表: ${e.message}</p>`;
+            }
+            
+            loginUserSelect.addEventListener('change', () => {
+                const selectedWelderName = loginUserSelect.value;
+                loginError.classList.add('hidden');
+                loginPasswordInput.value = '';
+                const selectedWelder = welders.find(w => w.name === selectedWelderName);
+                const passwordLabel = document.getElementById('login-password-label');
+                if (selectedWelder && (selectedWelder.role === '管理者' || selectedWelder.role === '編輯者')) {
+                    loginPasswordContainer.classList.remove('hidden');
+                    loginPasswordInput.required = true;
+                    if (!selectedWelder.hasOwnProperty('password') || selectedWelder.password === null) {
+                        passwordLabel.textContent = '請設定您的初始密碼';
+                    } else {
+                        passwordLabel.textContent = '密碼';
+                    }
+                } else {
+                    loginPasswordContainer.classList.add('hidden');
+                    loginPasswordInput.required = false;
+                    passwordLabel.textContent = '密碼'; // Reset label
+                }
+            });
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                loginError.classList.add('hidden');
+                const selectedWelderName = loginUserSelect.value;
+                const password = loginPasswordInput.value;
+                
+                if (!selectedWelderName) {
+                    loginError.textContent = '請選擇您的名稱。';
+                    loginError.classList.remove('hidden');
+                    return;
+                }
+
+                const foundUser = welders.find(w => w.name === selectedWelderName);
+
+                if (!foundUser) { // Should not happen
+                    loginError.textContent = '發生未預期的錯誤。';
+                    loginError.classList.remove('hidden');
+                    return;
+                }
+                
+                let loginSuccess = false;
+                if (foundUser.role === '檢視者') {
+                    loginSuccess = true;
+                } else { // Admin or Editor
+                    if (!password) {
+                        loginError.textContent = foundUser.hasOwnProperty('password') && foundUser.password !== null ? '請輸入密碼。' : '請設定您的初始密碼。';
+                        loginError.classList.remove('hidden');
+                        return;
+                    }
+
+                    // Case 1: Initial password setup
+                    if (!foundUser.hasOwnProperty('password') || foundUser.password === null) {
+                        const userIndex = welders.findIndex(w => w.name === selectedWelderName);
+                        if (userIndex > -1) {
+                            welders[userIndex].password = password;
+                            try {
+                                await setDoc(doc(db, "lists", "welders"), { items: welders });
+                                loginSuccess = true;
+                            } catch (dbError) {
+                                console.error("Failed to set initial password:", dbError);
+                                loginError.textContent = '設定密碼時發生錯誤，請稍後再試。';
+                                loginError.classList.remove('hidden');
+                            }
+                        } else {
+                            loginError.textContent = '找不到使用者資料，無法設定密碼。';
+                            loginError.classList.remove('hidden');
+                        }
+                    } 
+                    // Case 2: Normal password check
+                    else if (foundUser.password === password) {
+                        loginSuccess = true;
+                    } 
+                    // Case 3: Wrong password
+                    else {
+                        loginError.textContent = '密碼錯誤。';
+                        loginError.classList.remove('hidden');
+                    }
+                }
+
+                if (loginSuccess) {
+                    currentUser = welders.find(w => w.name === selectedWelderName); // Re-find user from potentially updated array
+                    hideModalAnimation(loginModal);
+                    startApp();
+                }
+            });
+
+        }).catch((error) => {
+            console.error("Anonymous sign-in failed:", error);
+            loaderText.textContent = "無法連接到資料庫。";
+        });
+    </script>
+
+</body>
+</html>

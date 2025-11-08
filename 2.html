@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加班記錄系統 (最終版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        input[type="date"]:not(:valid):before,
+        input[type="time"]:not(:valid):before { content: attr(placeholder); color: #9ca3af; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .tab-button.active { border-color: #3b82f6; color: #3b82f6; background-color: #eff6ff; }
+        .modal { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-5xl p-4 sm:p-6 lg:p-8">
+        
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-gray-900">加班記錄系統</h1>
+            <p class="mt-2 text-gray-600">整合新增、查詢、刪除、即時新增選項功能</p>
+        </header>
+        
+        <div id="loading-indicator" class="flex flex-col items-center justify-center py-20">
+            <div class="loader"></div>
+            <p class="mt-4 text-gray-600">正在從 Google Sheets 載入設定...</p>
+        </div>
+        <div id="error-container" class="hidden text-center bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert"></div>
+
+        <main id="main-content" class="hidden">
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                    <button id="tab-add" class="tab-button active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">新增記錄</button>
+                    <button id="tab-query" class="tab-button whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">查詢記錄</button>
+                </nav>
+            </div>
+
+            <div id="view-add"><!-- 新增記錄表單會動態載入這裡 --></div>
+            <div id="view-query" class="hidden"><!-- 查詢記錄表單會動態載入這裡 --></div>
+        </main>
+    </div>
+
+    <!-- 確認刪除 Modal -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full flex items-center justify-center hidden z-50">
+        <!-- Modal 內容會動態載入 -->
+    </div>
+
+    <!-- 新增項目 Modal -->
+    <div id="add-item-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full flex items-center justify-center hidden z-50">
+        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 id="add-item-modal-title" class="text-lg leading-6 font-medium text-gray-900"></h3>
+            <div class="mt-4">
+                <input type="text" id="new-item-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="請輸入新項目名稱">
+                <div id="add-item-status" class="text-sm text-red-600 mt-2"></div>
+            </div>
+            <div class="items-center px-4 py-3 mt-3 text-right">
+                <button id="cancel-add-item-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300">取消</button>
+                <button id="save-new-item-btn" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-auto ml-2 shadow-sm hover:bg-blue-700">儲存</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmUeRgLIv-cLXCK_pDATfWFVM-aJ3a5Mc0C9fIhcOu3E-bdIG2e4-_KGNplCW_F44UFQ/exec";
+
+        // --- 全域變數 ---
+        let rowToDelete = null;
+        let itemToAdd = { type: null };
+
+        // --- DOM 元素 ---
+        const mainContent = document.getElementById('main-content');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorContainer = document.getElementById('error-container');
+        const viewAdd = document.getElementById('view-add');
+        const viewQuery = document.getElementById('view-query');
+        const tabAdd = document.getElementById('tab-add');
+        const tabQuery = document.getElementById('tab-query');
+        // Modals
+        const confirmModal = document.getElementById('confirm-modal');
+        const addItemModal = document.getElementById('add-item-modal');
+
+        // --- 函式 ---
+        function populateSelect(select, options, defaultOption) {
+            select.innerHTML = '';
+            if (defaultOption) {
+                const opt = document.createElement('option');
+                opt.value = defaultOption.value;
+                opt.textContent = defaultOption.text;
+                select.appendChild(opt);
+            }
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                select.appendChild(opt);
+            });
+        }
+        
+        function switchView(view) {
+            viewAdd.classList.toggle('hidden', view !== 'add');
+            viewQuery.classList.toggle('hidden', view === 'add');
+            tabAdd.classList.toggle('active', view === 'add');
+            tabQuery.classList.toggle('active', view !== 'add');
+        }
+
+        async function loadInitialData() {
+            loadHtmlTemplates();
+            bindStaticEvents();
+            bindAddFormEvents(); // 【關鍵修正】將此函式呼叫移至此處，確保表單元素存在後再綁定事件
+
+            try {
+                const url = new URL(SCRIPT_URL);
+                url.searchParams.append('action', 'getConfig');
+                const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const nameSelect = document.getElementById('name');
+                    const reason1Select = document.getElementById('reason1-select');
+                    const reason2Select = document.getElementById('reason2-select');
+                    const queryNameSelect = document.getElementById('query-name');
+
+                    populateSelect(nameSelect, result.data.names, {value: "", text: "請選擇姓名"});
+                    populateSelect(queryNameSelect, result.data.names, {value: "", text: "全部人員"});
+                    populateSelect(reason1Select, result.data.reasons, {value: "", text: "無"});
+                    populateSelect(reason2Select, result.data.reasons, {value: "", text: "無"});
+                    
+                    loadingIndicator.classList.add('hidden');
+                    mainContent.classList.remove('hidden');
+                } else {
+                    throw new Error(result.message || '無法解析資料');
+                }
+            } catch (error) {
+                loadingIndicator.classList.add('hidden');
+                errorContainer.textContent = `載入設定失敗: ${error.message}。請確認 Apps Script 已正確部署。`;
+                errorContainer.classList.remove('hidden');
+            }
+        }
+
+        function loadHtmlTemplates() {
+            viewAdd.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <form id="overtime-form">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div><label for="date" class="block text-sm font-medium text-gray-700 mb-1">日期</label><input type="date" id="date" required placeholder="選擇加班日期" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div>
+                            <div>
+                                <label for="name" class="flex justify-between items-center text-sm font-medium text-gray-700 mb-1"><span>姓名</span><button type="button" class="add-item-btn text-blue-600 hover:text-blue-800 font-bold text-lg" data-type="name" title="新增姓名">+</button></label>
+                                <select id="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"><option value="" disabled selected>請選擇姓名</option></select>
+                            </div>
+                            <div><label for="start-time" class="block text-sm font-medium text-gray-700 mb-1">開始時間 (24H)</label><input type="time" id="start-time" required placeholder="選擇開始時間" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div>
+                            <div><label for="end-time" class="block text-sm font-medium text-gray-700 mb-1">結束時間 (24H)</label><input type="time" id="end-time" required placeholder="選擇結束時間" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div>
+                        </div>
+                        <div class="mt-6 bg-blue-50 p-4 rounded-lg text-center"><p class="text-sm font-medium text-blue-700">加班時數</p><p class="text-2xl font-bold text-blue-900"><span id="hours-display">0.00</span> 小時</p></div>
+                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <label for="reason1-select" class="flex justify-between items-center text-sm font-medium text-gray-700 mb-1"><span>加班事由 (1)</span><button type="button" class="add-item-btn text-blue-600 hover:text-blue-800 font-bold text-lg" data-type="reason" title="新增事由">+</button></label>
+                                <select id="reason1-select" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"><option value="">無</option></select>
+                                <input type="text" id="reason1-other" placeholder="請輸入其它事由" class="hidden w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="reason2-select" class="block text-sm font-medium text-gray-700 mb-1">加班事由 (2)</label>
+                                <select id="reason2-select" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"><option value="">無</option></select>
+                                <input type="text" id="reason2-other" placeholder="請輸入其它事由" class="hidden w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div class="mt-6"><label for="remarks" class="block text-sm font-medium text-gray-700 mb-1">備註</label><textarea id="remarks" rows="3" placeholder="可以在此輸入額外說明" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea></div>
+                        <div class="mt-8"><button type="submit" id="submit-button" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:bg-blue-400"><span id="button-text">提交記錄</span><div id="button-loader" class="loader hidden" style="width:20px; height:20px; border-width: 2px;"></div></button></div>
+                    </form>
+                    <div id="status-message" class="mt-4 text-center"></div>
+                </div>`;
+            
+            viewQuery.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl shadow-md">
+                    <form id="query-form" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                        <div><label for="query-name" class="block text-sm font-medium text-gray-700 mb-1">姓名</label><select id="query-name" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white"><option value="">全部</option></select></div>
+                        <div><label for="query-start-date" class="block text-sm font-medium text-gray-700 mb-1">開始日期</label><input type="date" id="query-start-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><label for="query-end-date" class="block text-sm font-medium text-gray-700 mb-1">結束日期</label><input type="date" id="query-end-date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><button type="submit" id="query-submit-button" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">查詢</button></div>
+                    </form>
+                </div>
+                <div id="query-results-container" class="mt-6"></div>`;
+
+            confirmModal.innerHTML = `
+                <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div class="mt-3 text-center">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">確認刪除</h3>
+                        <div class="mt-2 px-7 py-3"><p class="text-sm text-gray-500">您確定要刪除這筆記錄嗎？此操作無法復原。</p></div>
+                        <div class="items-center px-4 py-3">
+                            <button id="confirm-delete-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700">確認刪除</button>
+                            <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto ml-2 shadow-sm hover:bg-gray-300">取消</button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function bindStaticEvents() {
+            tabAdd.addEventListener('click', () => switchView('add'));
+            tabQuery.addEventListener('click', () => switchView('query'));
+            
+            viewQuery.addEventListener('submit', e => {
+                if (e.target.id === 'query-form') handleQuerySubmit(e);
+            });
+            
+            viewAdd.addEventListener('click', e => {
+                if (e.target.classList.contains('add-item-btn')) {
+                    openAddItemModal(e.target.dataset.type);
+                }
+            });
+
+            viewQuery.addEventListener('click', e => {
+                if (e.target.classList.contains('delete-btn')) {
+                    const rowNum = e.target.dataset.rowNum;
+                    const rowElement = document.getElementById(`row-${rowNum}`);
+                    openConfirmModal(rowNum, rowElement);
+                }
+            });
+            
+            // Modal 按鈕事件
+            confirmModal.addEventListener('click', e => {
+                if (e.target.id === 'cancel-delete-btn') closeConfirmModal();
+                if (e.target.id === 'confirm-delete-btn') executeDelete();
+            });
+            addItemModal.addEventListener('click', e => {
+                 if (e.target.id === 'cancel-add-item-btn') closeAddItemModal();
+                 if (e.target.id === 'save-new-item-btn') executeAddItem();
+            });
+        }
+
+        function bindAddFormEvents() {
+            const overtimeForm = document.getElementById('overtime-form');
+            const startTimeInput = document.getElementById('start-time');
+            const endTimeInput = document.getElementById('end-time');
+            const reason1Select = document.getElementById('reason1-select');
+            const reason2Select = document.getElementById('reason2-select');
+            const reason1Other = document.getElementById('reason1-other');
+            const reason2Other = document.getElementById('reason2-other');
+            
+            startTimeInput.addEventListener('change', calculateHours);
+            endTimeInput.addEventListener('change', calculateHours);
+            reason1Select.addEventListener('change', () => handleOtherReason(reason1Select, reason1Other));
+            reason2Select.addEventListener('change', () => handleOtherReason(reason2Select, reason2Other));
+            overtimeForm.addEventListener('submit', handleFormSubmit);
+        }
+
+        // --- 新增項目 Modal 相關函式 ---
+        function openAddItemModal(type) {
+            itemToAdd.type = type;
+            const modalTitle = document.getElementById('add-item-modal-title');
+            const newItemInput = document.getElementById('new-item-input');
+            document.getElementById('add-item-status').textContent = '';
+            newItemInput.value = '';
+            modalTitle.textContent = `新增${type === 'name' ? '姓名' : '加班事由'}`;
+            newItemInput.placeholder = `請輸入新的${type === 'name' ? '姓名' : '加班事由'}`;
+            addItemModal.classList.remove('hidden');
+            newItemInput.focus();
+        }
+
+        function closeAddItemModal() {
+            addItemModal.classList.add('hidden');
+            itemToAdd.type = null;
+        }
+
+        async function executeAddItem() {
+            const newItemInput = document.getElementById('new-item-input');
+            const value = newItemInput.value.trim();
+            if (!value) {
+                document.getElementById('add-item-status').textContent = '項目名稱不能為空！';
+                return;
+            }
+
+            const payload = {
+                action: 'addItem',
+                itemType: itemToAdd.type,
+                value: value
+            };
+
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+
+                addNewOptionToSelects(itemToAdd.type, result.newValue);
+                closeAddItemModal();
+
+            } catch (error) {
+                document.getElementById('add-item-status').textContent = `儲存失敗: ${error.message}`;
+            }
+        }
+
+        function addNewOptionToSelects(type, value) {
+            const newOption = document.createElement('option');
+            newOption.value = value;
+            newOption.textContent = value;
+            newOption.selected = true;
+
+            if (type === 'name') {
+                document.getElementById('name').appendChild(newOption);
+                const queryNameOption = newOption.cloneNode(true);
+                queryNameOption.selected = false;
+                document.getElementById('query-name').appendChild(queryNameOption);
+            } else if (type === 'reason') {
+                const r1 = document.getElementById('reason1-select');
+                const r2 = document.getElementById('reason2-select');
+                const r1Clone = newOption.cloneNode(true);
+                const r2Clone = newOption.cloneNode(true);
+                r2Clone.selected = false;
+                r1.appendChild(r1Clone);
+                r2.appendChild(r2Clone);
+            }
+        }
+
+        function calculateHours() {
+            const startTimeInput = document.getElementById('start-time');
+            const endTimeInput = document.getElementById('end-time');
+            const hoursDisplay = document.getElementById('hours-display');
+            if (!startTimeInput || !endTimeInput || !startTimeInput.value || !endTimeInput.value) {
+                if(hoursDisplay) hoursDisplay.textContent = "0.00"; 
+                return;
+            }
+            const start = new Date(`1970-01-01T${startTimeInput.value}`);
+            let end = new Date(`1970-01-01T${endTimeInput.value}`);
+            if (end < start) end.setDate(end.getDate() + 1);
+            hoursDisplay.textContent = ((end - start) / 3600000).toFixed(2);
+        }
+
+        function handleOtherReason(select, otherInput) {
+            otherInput.classList.toggle('hidden', select.value !== '其它');
+            if (select.value !== '其它') otherInput.value = '';
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const submitButton = document.getElementById('submit-button');
+            const buttonText = document.getElementById('button-text');
+            const buttonLoader = document.getElementById('button-loader');
+            const statusMessage = document.getElementById('status-message');
+
+            submitButton.disabled = true;
+            buttonText.classList.add('hidden');
+            buttonLoader.classList.remove('hidden');
+
+            let reason1 = document.getElementById('reason1-select').value === '其它' ? document.getElementById('reason1-other').value : document.getElementById('reason1-select').value;
+            let reason2 = document.getElementById('reason2-select').value === '其它' ? document.getElementById('reason2-other').value : document.getElementById('reason2-select').value;
+            const formData = {
+                action: 'addLog',
+                date: document.getElementById('date').value, name: document.getElementById('name').value,
+                startTime: document.getElementById('start-time').value, endTime: document.getElementById('end-time').value,
+                hours: document.getElementById('hours-display').textContent, reason1, reason2,
+                remarks: document.getElementById('remarks').value,
+            };
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(formData) });
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                statusMessage.textContent = '記錄成功！';
+                statusMessage.className = 'mt-4 text-center font-medium text-green-600';
+                document.getElementById('overtime-form').reset();
+                calculateHours();
+            } catch (error) {
+                statusMessage.textContent = `提交失敗: ${error.message}`;
+                statusMessage.className = 'mt-4 text-center font-medium text-red-600';
+            } finally {
+                submitButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                buttonLoader.classList.add('hidden');
+                setTimeout(() => statusMessage.textContent = '', 4000);
+            }
+        }
+
+        async function handleQuerySubmit(e) {
+            if(e) e.preventDefault();
+            const queryResultsContainer = document.getElementById('query-results-container');
+            queryResultsContainer.innerHTML = `<div class="flex justify-center py-10"><div class="loader"></div></div>`;
+            try {
+                const url = new URL(SCRIPT_URL);
+                url.searchParams.append('action', 'queryLogs');
+                const queryNameSelect = document.getElementById('query-name');
+                const queryStartDate = document.getElementById('query-start-date');
+                const queryEndDate = document.getElementById('query-end-date');
+                if (queryNameSelect.value) url.searchParams.append('name', queryNameSelect.value);
+                if (queryStartDate.value) url.searchParams.append('startDate', queryStartDate.value);
+                if (queryEndDate.value) url.searchParams.append('endDate', queryEndDate.value);
+
+                const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                
+                renderQueryResults(result.data, result.headers);
+            } catch (error) {
+                document.getElementById('query-results-container').innerHTML = `<div class="text-center text-red-600 p-4 bg-red-100 rounded-lg">查詢失敗: ${error.message}</div>`;
+            }
+        }
+
+        function renderQueryResults(data, headers) {
+            const queryResultsContainer = document.getElementById('query-results-container');
+            if (data.length === 0) {
+                queryResultsContainer.innerHTML = `<div class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">在此條件下找不到任何記錄。</div>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm text-left text-gray-500';
+            const thead = table.createTHead();
+            thead.className = 'text-xs text-gray-700 uppercase bg-gray-50';
+            const headerRow = thead.insertRow();
+            [...headers, "操作"].forEach(headerText => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.className = 'px-4 py-3 whitespace-nowrap';
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            const tbody = table.createTBody();
+            data.forEach(item => {
+                const row = tbody.insertRow();
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.id = `row-${item.rowNum}`;
+                item.rowData.forEach(cellData => {
+                    const cell = row.insertCell();
+                    cell.className = 'px-4 py-3';
+                    cell.textContent = cellData;
+                });
+                const actionCell = row.insertCell();
+                actionCell.className = 'px-4 py-3';
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = '刪除';
+                deleteButton.className = 'font-medium text-red-600 hover:underline delete-btn';
+                deleteButton.dataset.rowNum = item.rowNum;
+                actionCell.appendChild(deleteButton);
+            });
+            queryResultsContainer.innerHTML = '';
+            const wrapper = document.createElement('div');
+            wrapper.className = 'relative overflow-x-auto shadow-md sm:rounded-lg';
+            wrapper.appendChild(table);
+            queryResultsContainer.appendChild(wrapper);
+        }
+
+        function openConfirmModal(rowNum, rowElement) {
+            rowToDelete = { rowNum, rowElement };
+            confirmModal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            rowToDelete = null;
+            confirmModal.classList.add('hidden');
+        }
+
+        async function executeDelete() {
+            if (!rowToDelete) return;
+            const { rowNum, rowElement } = rowToDelete;
+            
+            const originalButton = rowElement.querySelector('.delete-btn');
+            originalButton.textContent = '刪除中...';
+            originalButton.disabled = true;
+
+            closeConfirmModal();
+
+            try {
+                const url = new URL(SCRIPT_URL);
+                url.searchParams.append('action', 'deleteRow');
+                url.searchParams.append('rowNumber', rowNum);
+                const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                
+                rowElement.style.transition = 'opacity 0.5s ease';
+                rowElement.style.opacity = '0';
+                setTimeout(() => {
+                    rowElement.remove();
+                    if(document.getElementById('query-results-container').querySelector('tbody').rows.length === 0) {
+                        document.getElementById('query-results-container').innerHTML = `<div class="text-center text-gray-500 p-4 bg-gray-100 rounded-lg">所有記錄皆已刪除。</div>`;
+                    }
+                }, 500);
+
+            } catch (error) {
+                alert(`刪除失敗: ${error.message}`);
+                originalButton.textContent = '刪除';
+                originalButton.disabled = false;
+            }
+        }
+
+        // --- 事件監聽 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+        });
+    </script>
+</body>
+</html>

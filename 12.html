@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>接頭示意圖產生器</title>
+  <style>
+    /* 網頁基本樣式設定 */
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+      padding: 20px; 
+      background-color: #f4f7f9; 
+      color: #333;
+    }
+    .page-wrapper {
+        max-width: 1300px;
+        margin: 0 auto;
+    }
+    .container {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    .controls-wrapper {
+        /* Wrapper for the controls row */
+    }
+    .diagrams-wrapper {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: flex-start; /* Align items to the top */
+    }
+    .diagram-container {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      width: 100%;
+      text-align: center;
+    }
+    /* Set specific flex properties for the containers inside diagrams-wrapper */
+    .diagrams-wrapper > .diagram-container:nth-child(1) {
+        flex: 1 1 550px; /* Flex-grow, flex-shrink, flex-basis */
+        max-width: 550px;
+    }
+    .diagrams-wrapper > .diagram-container:nth-child(2) {
+        flex: 1 1 400px;
+        max-width: 500px;
+    }
+    h3 { 
+      margin-top: 0; 
+      color: #007aff; 
+      font-size: 24px;
+      border-bottom: 2px solid #eef;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    h4 {
+        margin-top: 0;
+        font-size: 18px;
+        color: #555;
+    }
+    .input-group { margin-bottom: 15px; }
+    .input-row { 
+        display: flex; 
+        gap: 15px; 
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+    .input-row .input-group { flex: 1; min-width: 130px; margin-bottom: 0; }
+    .input-row > button {
+        align-self: flex-end; /* Keep button at the bottom */
+        flex-shrink: 0;
+    }
+    label { 
+      display: block; 
+      margin-bottom: 6px; 
+      font-size: 14px; 
+      color: #555; 
+      font-weight: 500;
+    }
+    input[type="number"], input[type="text"] { 
+      width: 100%; 
+      padding: 10px; 
+      border-radius: 6px; 
+      border: 1px solid #ccc; 
+      box-sizing: border-box;
+      font-size: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="number"]:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+    }
+    .checkbox-group, .radio-group-container {
+      display: flex;
+      align-items: center;
+      padding-top: 25px; /* Align with labels */
+    }
+    .checkbox-group label {
+      margin-bottom: 0;
+      margin-left: 8px;
+    }
+    .radio-group {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    .radio-group label {
+        margin: 0 0 0 4px;
+        font-weight: normal;
+    }
+    button {
+      background: linear-gradient(to right, #007aff, #005bb5);
+      color: white; 
+      padding: 12px 20px;
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 16px; 
+      transition: all 0.2s ease-in-out;
+      font-weight: 500;
+    }
+    button:hover { 
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+      transform: translateY(-1px);
+    }
+    button.download-btn {
+        background: #28a745;
+        color: white;
+        padding: 10px 18px;
+        font-size: 14px;
+        width: auto;
+        margin-top: 15px;
+    }
+    button.download-btn:hover {
+        background: #218838;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        transform: translateY(-1px);
+    }
+    canvas { 
+      border: 1px solid #ddd; 
+      background-color: #fff; 
+      margin-top: 15px; 
+      width: 100%;
+      border-radius: 8px;
+    }
+    /* Styles for the new table */
+    #weldLayersTable {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 5px;
+    }
+    #weldLayersTable th, #weldLayersTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    #weldLayersTable th {
+        background-color: #f8f9fa;
+        font-size: 13px;
+    }
+    #weldLayersTable td:first-child {
+        font-weight: bold;
+        background-color: #f8f9fa;
+    }
+    #weldLayersTable input[type="number"] {
+        padding: 5px;
+        font-size: 14px;
+        text-align: center;
+        -moz-appearance: textfield; /* Firefox */
+    }
+     #weldLayersTable input::-webkit-outer-spin-button,
+     #weldLayersTable input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .table-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .table-controls button {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+    #addLayerBtn {
+        background: #28a745;
+    }
+    #addLayerBtn:hover {
+        background: #218838;
+    }
+    #removeLayerBtn {
+        background: #dc3545;
+    }
+     #removeLayerBtn:hover {
+        background: #c82333;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="container">
+    <h3>參數設定</h3>
+    <div class="controls-wrapper">
+      <div class="input-row">
+        <div class="input-group">
+            <label for="angleA">A板角度 (度)</label>
+            <input type="number" id="angleA">
+        </div>
+        <div class="input-group">
+            <label for="angleB">B板角度 (度)</label>
+            <input type="number" id="angleB">
+        </div>
+        <div class="input-group">
+            <label for="plateThickness">板厚 (mm)</label>
+            <input type="number" id="plateThickness">
+        </div>
+        <div class="input-group">
+            <label for="rootGap">根部間隙 (mm)</label>
+            <input type="number" id="rootGap">
+        </div>
+        <div class="input-group">
+            <label for="rootFace">鈍邊 (mm)</label>
+            <input type="number" id="rootFace">
+        </div>
+        <div class="input-group checkbox-group">
+            <input type="checkbox" id="useBackingPlate" checked>
+            <label for="useBackingPlate">使用背襯板</label>
+        </div>
+        <div class="input-group checkbox-group">
+            <input type="checkbox" id="showWeldBeads" checked>
+            <label for="showWeldBeads">顯示銲道</label>
+        </div>
+         <div class="input-group checkbox-group">
+            <input type="checkbox" id="fillToTop" checked>
+            <label for="fillToTop">最後一層填滿至頂部</label>
+        </div>
+        <div class="input-group radio-group-container">
+            <label style="margin-bottom: 0; margin-right: 10px;">旋轉角度</label>
+            <div class="radio-group">
+                <input type="radio" id="rot0" name="rotation" value="0" checked><label for="rot0">0°</label>
+                <input type="radio" id="rot90" name="rotation" value="90"><label for="rot90">90°</label>
+                <input type="radio" id="rot180" name="rotation" value="180"><label for="rot180">180°</label>
+            </div>
+        </div>
+        <button id="generateBtn">重新生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="diagrams-wrapper">
+      <div class="diagram-container">
+        <h3>前視圖</h3>
+        <canvas id="weldCanvasFront" width="1500" height="1200"></canvas>
+        <button id="downloadFrontBtn" class="download-btn">下載前視圖</button>
+      </div>
+      <div class="diagram-container">
+        <h3>銲道層數設定 (W/H為半徑)</h3>
+        <table id="weldLayersTable">
+            <thead>
+                <tr>
+                    <th>層</th>
+                    <th>寬度 (mm)</th>
+                    <th>高度 (mm)</th>
+                    <th>道數</th>
+                </tr>
+            </thead>
+            <tbody id="weldLayersTableBody">
+                <!-- Rows will be added dynamically by JavaScript -->
+            </tbody>
+        </table>
+        <div class="table-controls">
+            <button type="button" id="addLayerBtn">+ 新增一層</button>
+            <button type="button" id="removeLayerBtn">- 移除最後一層</button>
+        </div>
+      </div>
+  </div>
+
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+      // 設定初始參數
+      document.getElementById('angleA').value = 22.5;
+      document.getElementById('angleB').value = 22.5;
+      document.getElementById('plateThickness').value = 20;
+      document.getElementById('rootGap').value = 13;
+      document.getElementById('rootFace').value = 0;
+      
+      // 設定初始銲道表格
+      const initialLayers = [
+          { width: 10, height: 3.5, count: 2 },
+          { width: 10, height: 3.5, count: 2 },
+          { width: 10, height: 3.5, count: 2 },
+          { width: 10, height: 3.5, count: 2 },
+          { width: 10, height: 3.5, count: 2 },
+          { width: 7, height: 3.5, count: 3 }
+      ];
+      setupWeldTable(initialLayers);
+
+      // 為所有控制項加上事件監聽
+      const inputs = document.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.addEventListener('input', drawDiagram);
+      });
+
+      document.getElementById('generateBtn').addEventListener('click', drawDiagram);
+      document.getElementById('downloadFrontBtn').addEventListener('click', () => downloadCanvas('weldCanvasFront', '接頭示意圖-前視圖.png'));
+      
+      // 初始繪圖
+      drawDiagram();
+  });
+
+  // --- 銲道表格管理 ---
+  function setupWeldTable(initialData = []) {
+      const tableBody = document.getElementById('weldLayersTableBody');
+      tableBody.innerHTML = ''; // 清空表格
+      
+      initialData.forEach(layer => {
+          addLayerRow(layer.width, layer.height, layer.count);
+      });
+
+      document.getElementById('addLayerBtn').addEventListener('click', () => {
+          addLayerRow();
+          drawDiagram();
+      });
+      document.getElementById('removeLayerBtn').addEventListener('click', () => {
+          removeLayerRow();
+          drawDiagram();
+      });
+  }
+
+  function addLayerRow(width = '', height = '', count = '') {
+      const tableBody = document.getElementById('weldLayersTableBody');
+      const newRow = tableBody.insertRow();
+      const layerNum = tableBody.rows.length;
+
+      // 層數
+      newRow.insertCell(0).textContent = layerNum;
+      
+      // 寬度
+      const cellWidth = newRow.insertCell(1);
+      const inputWidth = document.createElement('input');
+      inputWidth.type = 'number';
+      inputWidth.value = width;
+      inputWidth.min = 0;
+      inputWidth.step = 0.1;
+      inputWidth.addEventListener('input', drawDiagram);
+      cellWidth.appendChild(inputWidth);
+
+      // 高度
+      const cellHeight = newRow.insertCell(2);
+      const inputHeight = document.createElement('input');
+      inputHeight.type = 'number';
+      inputHeight.value = height;
+      inputHeight.min = 0;
+      inputHeight.step = 0.1;
+      inputHeight.addEventListener('input', drawDiagram);
+      cellHeight.appendChild(inputHeight);
+
+      // 道數
+      const cellCount = newRow.insertCell(3);
+      const inputCount = document.createElement('input');
+      inputCount.type = 'number';
+      inputCount.value = count;
+      inputCount.min = 1;
+      inputCount.step = 1;
+      inputCount.addEventListener('input', drawDiagram);
+      cellCount.appendChild(inputCount);
+  }
+
+  function removeLayerRow() {
+      const tableBody = document.getElementById('weldLayersTableBody');
+      if (tableBody.rows.length > 0) {
+          tableBody.deleteRow(-1); // -1 代表最後一列
+      }
+  }
+
+  function getWeldLayersFromTable() {
+      const tableBody = document.getElementById('weldLayersTableBody');
+      const rows = tableBody.rows;
+      const layersData = [];
+
+      for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const widthInput = row.cells[1].querySelector('input');
+          const heightInput = row.cells[2].querySelector('input');
+          const countInput = row.cells[3].querySelector('input');
+
+          const width = parseFloat(widthInput.value);
+          const height = parseFloat(heightInput.value);
+          const count = parseInt(countInput.value, 10);
+
+          if (!isNaN(width) && !isNaN(height) && !isNaN(count) && width > 0 && height > 0 && count > 0) {
+              layersData.push({ width, height, count });
+          }
+      }
+      return layersData;
+  }
+
+  // --- 主要邏輯 ---
+  function getInputs() {
+    return {
+      angleA: parseFloat(document.getElementById('angleA').value),
+      angleB: parseFloat(document.getElementById('angleB').value),
+      thickness: parseFloat(document.getElementById('plateThickness').value),
+      rootGap: parseFloat(document.getElementById('rootGap').value),
+      rootFace: parseFloat(document.getElementById('rootFace').value),
+      useBackingPlate: document.getElementById('useBackingPlate').checked,
+      rotationAngle: parseFloat(document.querySelector('input[name="rotation"]:checked').value),
+      showWeldBeads: document.getElementById('showWeldBeads').checked,
+      weldLayersData: getWeldLayersFromTable(),
+      fillToTop: document.getElementById('fillToTop').checked
+    };
+  }
+
+  // 主繪圖函數
+  function drawDiagram() {
+    drawFrontView();
+  }
+  
+  // 繪製前視圖
+  function drawFrontView() {
+      const params = getInputs();
+      if (Object.values(params).some(v => typeof v === 'number' && isNaN(v))) return;
+
+      const { angleA, angleB, thickness, rootGap, rootFace, useBackingPlate, rotationAngle, showWeldBeads, weldLayersData, fillToTop } = params;
+      
+      const canvas = document.getElementById('weldCanvasFront');
+      const ctx = canvas.getContext('2d');
+      const rotationRad = rotationAngle * Math.PI / 180;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rotationRad);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      const padding = 60;
+      const angleRadA = angleA * Math.PI / 180;
+      const angleRadB = angleB * Math.PI / 180;
+      
+      const backingHeightMM = useBackingPlate ? 10 : 0;
+      const rootGapDimHeightMM = rootGap > 0 ? 30 : 0;
+      const bevelHeight = thickness - rootFace;
+      if (bevelHeight < 0) {
+          ctx.restore();
+          return;
+      }
+      
+      const fixedPlateLengthMM = 25;
+      const totalWidthMM = bevelHeight * (Math.tan(angleRadA) + Math.tan(angleRadB)) + rootGap + (fixedPlateLengthMM * 2);
+      const totalHeightMM = thickness + backingHeightMM + rootGapDimHeightMM;
+
+      const scaleX = (canvas.width - padding * 2) / totalWidthMM;
+      const scaleY = (canvas.height - padding * 2) / totalHeightMM;
+      const scale = Math.min(scaleX, scaleY);
+
+      const centerX = canvas.width / 2;
+      const topY = (canvas.height - totalHeightMM * scale) / 2 + 30 * scale; 
+      const bottomY = topY + thickness * scale;
+      const rootGapScaled = rootGap * scale;
+      const rootFaceScaled = rootFace * scale;
+      
+      const p_bevel_tl = { x: centerX - rootGapScaled / 2 - bevelHeight * Math.tan(angleRadA) * scale, y: topY };
+      const p_bevel_bl = { x: centerX - rootGapScaled / 2, y: bottomY - rootFaceScaled };
+      const p_root_bl = { x: centerX - rootGapScaled / 2, y: bottomY };
+      
+      const p_bevel_tr = { x: centerX + rootGapScaled / 2 + bevelHeight * Math.tan(angleRadB) * scale, y: topY };
+      const p_bevel_br = { x: centerX + rootGapScaled / 2, y: bottomY - rootFaceScaled };
+      const p_root_br = { x: centerX + rootGapScaled / 2, y: bottomY };
+
+      // 繪製銲道
+      if (showWeldBeads && weldLayersData.length > 0) {
+        const geometry = { p_bevel_tl, p_bevel_tr, p_bevel_bl, p_bevel_br, bottomY, useBackingPlate, topY, fillToTop };
+        drawWeldBeads(ctx, geometry, weldLayersData, scale);
+      }
+
+      // 繪製鋼板
+      ctx.strokeStyle = '#333';
+      ctx.fillStyle = '#e0e0e0';
+      ctx.lineWidth = 8;
+      
+      const fixedPlateLengthScaled = fixedPlateLengthMM * scale;
+      const plateA_outer_x = p_root_bl.x - fixedPlateLengthScaled;
+      const plateA = new Path2D();
+      plateA.moveTo(plateA_outer_x, topY);
+      plateA.lineTo(p_bevel_tl.x, topY);
+      plateA.lineTo(p_bevel_bl.x, p_bevel_bl.y);
+      plateA.lineTo(p_root_bl.x, p_root_bl.y);
+      plateA.lineTo(plateA_outer_x, bottomY);
+      plateA.closePath();
+      
+      const plateB_outer_x = p_root_br.x + fixedPlateLengthScaled;
+      const plateB = new Path2D();
+      plateB.moveTo(plateB_outer_x, topY);
+      plateB.lineTo(p_bevel_tr.x, topY);
+      plateB.lineTo(p_bevel_br.x, p_bevel_br.y);
+      plateB.lineTo(p_root_br.x, p_root_br.y);
+      plateB.lineTo(plateB_outer_x, bottomY);
+      plateB.closePath();
+
+      ctx.fill(plateA);
+      ctx.fill(plateB);
+      ctx.stroke(plateA);
+      ctx.stroke(plateB);
+
+      const backingHeight = backingHeightMM * scale;
+      if (useBackingPlate) {
+          const backingWidth = rootGapScaled + 20 * scale;
+          ctx.beginPath();
+          ctx.rect(centerX - backingWidth / 2, bottomY, backingWidth, backingHeight);
+          ctx.fill(); ctx.stroke();
+      }
+
+      // 繪製標註
+      drawFrontViewAnnotations(ctx, {p_bevel_tl, p_bevel_tr, p_bevel_bl, p_bevel_br, p_root_bl, p_root_br, topY, bottomY, thickness, angleA, angleB, rootGap, rootFace, scale, useBackingPlate, backingHeight, rotationRad, plateB_outer_x, rotationAngle});
+  
+      ctx.restore();
+  }
+
+  function drawWeldBeads(ctx, geo, layers, scale) {
+      if (layers.length === 0) return;
+
+      const { p_bevel_tl, p_bevel_tr, p_bevel_bl, p_bevel_br, bottomY, useBackingPlate, topY, fillToTop } = geo;
+      const beadColor = '#3498db'; // 將銲道統一為單一顏色
+
+      const getGrooveBounds = (y) => {
+          let safeY = Math.max(p_bevel_tl.y, Math.min(y, p_bevel_bl.y));
+          const x_left = p_bevel_bl.x + (p_bevel_tl.x - p_bevel_bl.x) * (safeY - p_bevel_bl.y) / (p_bevel_tl.y - p_bevel_bl.y);
+          const x_right = p_bevel_br.x + (p_bevel_tr.x - p_bevel_br.x) * (safeY - p_bevel_br.y) / (p_bevel_tr.y - p_bevel_br.y);
+          return { left: x_left, right: x_right, width: x_right - x_left };
+      };
+      
+      ctx.save();
+      
+      let initialY = p_bevel_bl.y;
+      if (useBackingPlate && layers.length > 0 && layers[0].height > 0) {
+          const firstLayerHeightRadius = layers[0].height * scale;
+          initialY = bottomY + (firstLayerHeightRadius * 2 / 3);
+      }
+      let currentY = initialY; 
+      
+      const verticalOverlapFactor = 0.5; 
+      const horizontalOverlapFactor = 0.7;
+
+      const allBeads = [];
+      for (let i = 0; i < layers.length; i++) {
+          const layer = layers[i];
+          const { width, count } = layer;
+          
+          let beadHeightRadius = layer.height * scale;
+          let beadWidthRadius = width * scale;
+
+          if (fillToTop && i === layers.length - 1) {
+              const reinforcementHeight = 2 * scale; 
+              const remainingGrooveHeight = currentY - topY;
+              const finalBeadDiameter = remainingGrooveHeight > 0 ? remainingGrooveHeight + reinforcementHeight : layer.height * scale * 2;
+              beadHeightRadius = finalBeadDiameter / 2;
+          }
+          
+          const layerCenterY = currentY - beadHeightRadius;
+          const bounds = getGrooveBounds(layerCenterY);
+          
+          const spacing = (beadWidthRadius * 2) * horizontalOverlapFactor;
+          const totalBeadsWidth = (count > 1) ? (count - 1) * spacing + (beadWidthRadius * 2) : (beadWidthRadius * 2);
+          const startX = bounds.left + (bounds.width - totalBeadsWidth) / 2;
+
+          for (let j = 0; j < count; j++) {
+              allBeads.push({
+                  cx: startX + j * spacing + beadWidthRadius,
+                  cy: layerCenterY,
+                  rx: beadWidthRadius,
+                  ry: beadHeightRadius,
+                  color: beadColor
+              });
+          }
+          currentY -= (beadHeightRadius * 2) * (1 - verticalOverlapFactor);
+      }
+
+      for (let i = allBeads.length - 1; i >= 0; i--) {
+          const bead = allBeads[i];
+          ctx.fillStyle = bead.color;
+          ctx.strokeStyle = '#2c3e50';
+          ctx.lineWidth = 4;
+
+          ctx.beginPath();
+          ctx.ellipse(bead.cx, bead.cy, bead.rx, bead.ry, 0, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.stroke();
+      }
+
+      // 加上第一道與最後一道銲道的數字
+      if (allBeads.length > 1) { 
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = 'white'; 
+
+          // 第一道銲道的數字 (往右移)
+          const firstBead = allBeads[0];
+          const firstFontSize = Math.max(12, Math.min(28, firstBead.ry * 0.8));
+          ctx.font = `bold ${firstFontSize}px Arial`;
+          ctx.fillText('1', firstBead.cx + firstBead.rx * 0.5, firstBead.cy);
+
+          // 最後一道銲道的數字 (往上移)
+          const lastBead = allBeads[allBeads.length - 1];
+          const lastFontSize = Math.max(12, Math.min(28, lastBead.ry * 0.8));
+          ctx.font = `bold ${lastFontSize}px Arial`;
+          ctx.fillText(`${allBeads.length}`, lastBead.cx, lastBead.cy - lastBead.ry * 0.5);
+      }
+      
+      ctx.restore();
+  }
+
+
+  function drawFrontViewAnnotations(ctx, geo) {
+      const {p_bevel_tl, p_bevel_tr, p_bevel_bl, p_bevel_br, p_root_bl, p_root_br, topY, bottomY, thickness, angleA, angleB, rootGap, rootFace, scale, useBackingPlate, backingHeight, rotationRad, plateB_outer_x, rotationAngle} = geo;
+      ctx.strokeStyle = '#c0392b';
+      ctx.fillStyle = '#c0392b';
+      ctx.lineWidth = 4;
+      ctx.font = '42px Arial';
+
+      const dimOffsetX = 80;
+      const plateOuterEdgeRX = plateB_outer_x;
+      const lineStartX = plateOuterEdgeRX + dimOffsetX;
+      ctx.beginPath();
+      ctx.moveTo(lineStartX, topY); ctx.lineTo(lineStartX, bottomY);
+      ctx.moveTo(plateOuterEdgeRX, topY); ctx.lineTo(lineStartX, topY);
+      ctx.moveTo(plateOuterEdgeRX, bottomY); ctx.lineTo(lineStartX, bottomY);
+      ctx.stroke();
+      drawArrowhead(ctx, lineStartX, bottomY, lineStartX, topY);
+      drawArrowhead(ctx, lineStartX, topY, lineStartX, bottomY);
+      
+      ctx.save();
+      const baseTextX_thick = lineStartX;
+      const baseTextY_thick = (topY + bottomY) / 2;
+      let offsetX_thick = 5;
+      let offsetY_thick = 0;
+      let textAlign_thick = 'left';
+      let textBaseline_thick = 'middle';
+
+      switch(rotationAngle) {
+          case 90:
+              offsetX_thick = 25;
+              offsetY_thick = 0;
+              textAlign_thick = 'center';
+              textBaseline_thick = 'top';
+              break;
+          case 180:
+              offsetX_thick = -5;
+              offsetY_thick = 0;
+              textAlign_thick = 'right';
+              break;
+      }
+
+      ctx.translate(baseTextX_thick + offsetX_thick, baseTextY_thick + offsetY_thick);
+      ctx.rotate(-rotationRad);
+      ctx.textAlign = textAlign_thick;
+      ctx.textBaseline = textBaseline_thick;
+      ctx.fillText(`${thickness}mm`, 0, 0);
+      ctx.restore();
+
+      const totalAngle = angleA + angleB;
+      if (totalAngle > 0) {
+        const lineLength = 40;
+        ctx.beginPath();
+        const vecA = { x: p_bevel_tl.x - p_bevel_bl.x, y: p_bevel_tl.y - p_bevel_bl.y };
+        const magA = Math.sqrt(vecA.x * vecA.x + vecA.y * vecA.y);
+        const unitVecA = { x: vecA.x / magA, y: vecA.y / magA };
+        const endPointA = { x: p_bevel_tl.x + lineLength * unitVecA.x, y: p_bevel_tl.y + lineLength * unitVecA.y };
+        const vecB = { x: p_bevel_tr.x - p_bevel_br.x, y: p_bevel_tr.y - p_bevel_br.y };
+        const magB = Math.sqrt(vecB.x * vecB.x + vecB.y * vecB.y);
+        const unitVecB = { x: vecB.x / magB, y: vecB.y / magB };
+        const endPointB = { x: p_bevel_tr.x + lineLength * unitVecB.x, y: p_bevel_tr.y + lineLength * unitVecB.y };
+        ctx.moveTo(p_bevel_tl.x, p_bevel_tl.y);
+        ctx.lineTo(endPointA.x, endPointA.y);
+        ctx.moveTo(p_bevel_tr.x, p_bevel_tr.y);
+        ctx.lineTo(endPointB.x, endPointB.y);
+        const midX = (endPointA.x + endPointB.x) / 2;
+        const midY = (endPointA.y + endPointB.y) / 2;
+        const controlY = midY - 60;
+        ctx.moveTo(endPointA.x, endPointA.y);
+        ctx.quadraticCurveTo(midX, controlY, endPointB.x, endPointB.y);
+        ctx.stroke();
+        ctx.save();
+        
+        let offsetX_angle = 0;
+        let offsetY_angle = -15;
+        let textAlign_angle = 'center';
+        let textBaseline_angle = 'bottom';
+
+        switch(rotationAngle) {
+            case 90:
+                offsetX_angle = 0;
+                offsetY_angle = -15;
+                textAlign_angle = 'center';
+                textBaseline_angle = 'middle';
+                break;
+            case 180:
+                offsetX_angle = 0;
+                offsetY_angle = 5;
+                textBaseline_angle = 'top';
+                break;
+        }
+        
+        ctx.translate(midX + offsetX_angle, controlY + offsetY_angle);
+        ctx.rotate(-rotationRad);
+        ctx.textAlign = textAlign_angle;
+        ctx.textBaseline = textBaseline_angle;
+        ctx.fillText(`${totalAngle}°`, 0, 0);
+        ctx.restore();
+      }
+
+      if (rootGap > 0) {
+          const dimOffsetY = 60;
+          const finalBottomY = bottomY + (useBackingPlate ? backingHeight : 0);
+          const lineY = finalBottomY + dimOffsetY / 2;
+          ctx.beginPath();
+          ctx.moveTo(p_root_bl.x, lineY); ctx.lineTo(p_root_br.x, lineY);
+          ctx.moveTo(p_root_bl.x, finalBottomY); ctx.lineTo(p_root_bl.x, lineY + 10);
+          ctx.moveTo(p_root_br.x, finalBottomY); ctx.lineTo(p_root_br.x, lineY + 10);
+          ctx.stroke();
+          drawArrowhead(ctx, p_root_br.x, lineY, p_root_bl.x, lineY);
+          drawArrowhead(ctx, p_root_bl.x, lineY, p_root_br.x, lineY);
+          ctx.save();
+
+          const baseTextX_gap = (p_root_bl.x + p_root_br.x) / 2;
+          const baseTextY_gap = lineY;
+          let offsetX_gap = 0;
+          let offsetY_gap = 5;
+          let textAlign_gap = 'center';
+          let textBaseline_gap = 'top';
+          
+          switch(rotationAngle) {
+              case 90:
+                  offsetX_gap = 15;
+                  offsetY_gap = 0;
+                  textAlign_gap = 'center';
+                  textBaseline_gap = 'middle';
+                  break;
+              case 180:
+                  offsetX_gap = 0;
+                  offsetY_gap = -5;
+                  textBaseline_gap = 'bottom';
+                  break;
+          }
+
+          ctx.translate(baseTextX_gap + offsetX_gap, baseTextY_gap + offsetY_gap);
+          ctx.rotate(-rotationRad);
+          ctx.textAlign = textAlign_gap;
+          ctx.textBaseline = textBaseline_gap;
+          ctx.fillText(`${rootGap}mm`, 0, 0);
+          ctx.restore();
+      }
+
+      if (rootFace > 0) {
+          const dimOffsetX_face = 25;
+          const lineX = p_bevel_tl.x - dimOffsetX_face;
+          const startY = p_bevel_bl.y;
+          const endY = p_root_bl.y;
+          ctx.beginPath();
+          ctx.moveTo(lineX, startY); ctx.lineTo(lineX, endY);
+          ctx.moveTo(p_bevel_bl.x, startY); ctx.lineTo(lineX, startY);
+          ctx.moveTo(p_root_bl.x, endY); ctx.lineTo(lineX, endY);
+          ctx.stroke();
+          drawArrowhead(ctx, lineX, endY, lineX, startY);
+          drawArrowhead(ctx, lineX, startY, lineX, endY);
+          ctx.save();
+          const baseTextX_face = lineX;
+          const baseTextY_face = (startY + endY) / 2;
+          let offsetX_face = -5;
+          let offsetY_face = 0;
+          let textAlign_face = 'right';
+          let textBaseline_face = 'middle';
+          
+          switch(rotationAngle) {
+              case 90:
+                  offsetX_face = 0;
+                  offsetY_face = -5;
+                  textAlign_face = 'center';
+                  textBaseline_face = 'middle';
+                  break;
+              case 180:
+                  offsetX_face = 5;
+                  offsetY_face = 0;
+                  textAlign_face = 'left';
+                  break;
+          }
+
+          ctx.translate(baseTextX_face + offsetX_face, baseTextY_face + offsetY_face);
+          ctx.rotate(-rotationRad);
+          ctx.textAlign = textAlign_face;
+          ctx.textBaseline = textBaseline_face;
+          ctx.fillText(`${rootFace}mm`, 0, 0);
+          ctx.restore();
+      }
+  }
+
+  function drawArrowhead(ctx, fromX, fromY, toX, toY) {
+    const headLength = 30;
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  }
+
+  function downloadCanvas(canvasId, filename) {
+    const canvas = document.getElementById(canvasId);
+    
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    tempCtx.fillStyle = '#FFFFFF';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    tempCtx.drawImage(canvas, 0, 0);
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  }
+
+</script>
+
+</body>
+</html>

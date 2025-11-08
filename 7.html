@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銲接參數管理系統 (Firebase 版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .slide-in {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
+        }
+        .slide-in.active {
+            transform: translateX(0);
+        }
+        .backdrop-blur-sm {
+            backdrop-filter: blur(4px);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 隱藏數字輸入框的上下箭頭 */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* 表格輸入樣式 */
+        #multi-pass-table input, #multi-pass-table textarea {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
+            width: 100%;
+            min-width: 80px; /* 數字輸入框最小寬度 */
+        }
+        #multi-pass-table textarea {
+            min-width: 150px; /* 備註欄位較寬 */
+        }
+        #multi-pass-table th, #multi-pass-table td {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app" class="max-w-5xl mx-auto p-4 md:p-6">
+        <!-- 頁首 -->
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">華研協作機器人-銲接參數總覽</h1>
+            <button onclick="openModal('base', null)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center">
+                <i class="fas fa-plus mr-2"></i> 新增工件
+            </button>
+        </header>
+
+        <!-- 基礎參數列表 -->
+        <main id="base-params-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <!-- Loading indicator -->
+            <div id="loading-indicator" class="col-span-full flex flex-col items-center justify-center p-10">
+                <div class="loader"></div>
+                <p class="mt-4 text-gray-600">正在連接您的 Firebase 專案...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 詳細資料側邊欄 (Slide-in Panel) -->
+    <div id="detail-panel" class="fixed top-0 right-0 h-full w-full md:w-3/4 lg:w-2/3 bg-gray-50 shadow-2xl z-20 p-6 overflow-y-auto slide-in">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="detail-title" class="text-2xl font-bold text-gray-800"></h2>
+            <button onclick="closeDetailPanel()" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times fa-2x"></i>
+            </button>
+        </div>
+        
+        <div id="base-param-details" class="mb-8"></div>
+
+        <div id="multipass-params-section">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-700">多層道參數</h3>
+                <button id="add-multipass-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-sm flex items-center">
+                    <i class="fas fa-plus mr-2"></i> 編輯/新增道次
+                </button>
+            </div>
+            <div id="multipass-params-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- 新增/編輯 Modal -->
+    <div id="form-modal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-30 flex justify-center items-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modal-title" class="text-xl font-semibold"></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times fa-lg"></i></button>
+            </div>
+            <form id="data-form" class="p-6 space-y-6 overflow-y-auto flex-grow"></form>
+            <div id="modal-footer" class="p-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0"></div>
+        </div>
+    </div>
+    
+    <!-- 圖片檢視器 -->
+    <div id="image-viewer" class="fixed inset-0 bg-black bg-opacity-75 z-40 flex justify-center items-center p-4 hidden" onclick="this.classList.add('hidden')">
+        <img src="" class="max-w-full max-h-full rounded-lg shadow-xl">
+    </div>
+
+    <!-- 上傳狀態提示 -->
+    <div id="upload-status" class="fixed bottom-4 right-4 bg-gray-800 text-white py-2 px-4 rounded-lg shadow-lg z-50 hidden transition-opacity duration-300"></div>
+
+    <script type="module">
+        // --- Firebase SDK Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // --- Firebase 設定 (強制使用您的專案) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDDPM9cbOuMttVVZQUu9w-URwF5qipgHZU",
+            authDomain: "welding-params-app.firebaseapp.com",
+            projectId: "welding-params-app",
+            storageBucket: "welding-params-app.firebasestorage.app",
+            messagingSenderId: "623714580072",
+            appId: "1:623714580072:web:22f6a7c14942358c39eddd",
+            measurementId: "G-WNCHHP4R1D"
+        };
+        
+        let db, auth, storage;
+        let baseParamsCol, multiPassParamsCol;
+        let baseParamsUnsubscribe, multiPassParamsUnsubscribe;
+
+        // --- 資料模型 ---
+        let baseParams = [];
+        let multiPassParams = [];
+
+        let currentEditing = { type: null, id: null };
+        let currentSelectedBaseId = null;
+        let imagesToDelete = [];
+
+        const baseParamFields = {
+            recordTime: { label: '記錄時間', type: 'datetime-local' },
+            workpieceType: { label: '工件型式', type: 'text' },
+            plateThickness: { label: '板厚 (mm)', type: 'number' },
+            grooveAngle: { label: '開槽角度 (°)', type: 'number' },
+            gap: { label: '間隙 (mm)', type: 'number' },
+            weldingMaterial: { label: '銲接材料', type: 'text' },
+            wireDiameter: { label: '線徑 (mm)', type: 'number' },
+            gas: { label: '氣體', type: 'text' },
+            alignment: { label: '協作對準方位', type: 'text' }
+        };
+
+        const multiPassParamFields = {
+            layer: { label: '層數', type: 'number' },
+            pass: { label: '道數', type: 'number' },
+            mode: { label: '模式', type: 'text' },
+            current: { label: '電流 (A)', type: 'number' },
+            voltage: { label: '電壓 (V)', type: 'number' },
+            travelSpeed: { label: '移行速度 (cm/min)', type: 'number' },
+            weaveWidth: { label: '擺弧寬度 (mm)', type: 'number' },
+            weaveFreq: { label: '擺弧頻率 (Hz)', type: 'number' },
+            elevationAngle: { label: '仰角 (°)', type: 'number' },
+            directionAngle: { label: '方向角 (°)', type: 'number' },
+            dwellTimeLeft: { label: '左停留時間 (s)', type: 'number' },
+            dwellTimeRight: { label: '右停留時間 (s)', type: 'number' },
+            x: { label: 'X', type: 'number' },
+            y: { label: 'Y', type: 'number' },
+            z: { label: 'Z', type: 'number' },
+            rx: { label: 'RX', type: 'number' },
+            ry: { label: 'RY', type: 'number' },
+            rz: { label: 'RZ', type: 'number' },
+            notes: { label: '備註事項', type: 'textarea' }
+        };
+        
+        // --- Firestore Realtime Listeners ---
+        function setupRealtimeListeners() {
+            if (baseParamsUnsubscribe) baseParamsUnsubscribe();
+            if (multiPassParamsUnsubscribe) multiPassParamsUnsubscribe();
+
+            const baseParamsPath = 'sharedBaseParams';
+            const multiPassParamsPath = 'sharedMultiPassParams';
+            
+            baseParamsCol = collection(db, baseParamsPath);
+            multiPassParamsCol = collection(db, multiPassParamsPath);
+
+            baseParamsUnsubscribe = onSnapshot(baseParamsCol, (snapshot) => {
+                baseParams = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    const recordTime = data.recordTime?.toDate ? data.recordTime.toDate() : null;
+                    return { id: doc.id, ...data, recordTime };
+                });
+                const loadingIndicator = document.getElementById('loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+                renderBaseParamsList();
+            }, (error) => {
+                console.error("Error fetching base params:", error);
+                document.getElementById('base-params-list').innerHTML = `<div class="col-span-full text-center p-10 text-red-500">從 Firebase 載入共用資料失敗: ${error.message} <br>請確認 Firestore 安全性規則已更新為最新版。</div>`;
+            });
+
+            multiPassParamsUnsubscribe = onSnapshot(multiPassParamsCol, (snapshot) => {
+                multiPassParams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (currentSelectedBaseId) {
+                    renderMultiPassList(currentSelectedBaseId);
+                }
+                renderBaseParamsList();
+            }, (error) => {
+                 console.error("Error fetching multi-pass params:", error);
+            });
+        }
+        
+        // --- Helper 函式 ---
+        function parseCustomDate(dateObj) {
+            if (!dateObj || !(dateObj instanceof Date)) return new Date();
+            return dateObj;
+        }
+
+        // --- 渲染函式 ---
+        function renderBaseParamsList() {
+            const listEl = document.getElementById('base-params-list');
+            if (!listEl) return;
+
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const stillLoading = loadingIndicator && loadingIndicator.style.display !== 'none';
+            listEl.innerHTML = '';
+
+            if (baseParams.length === 0 && !stillLoading) {
+                listEl.innerHTML = `<div class="col-span-full text-center p-10 text-gray-500">尚無共用資料，請點擊右上角新增第一筆工件。</div>`;
+                return;
+            }
+            
+            baseParams.sort((a, b) => (b.recordTime || 0) - (a.recordTime || 0));
+            baseParams.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-md p-5 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all';
+                card.onclick = () => showDetail(p.id);
+                const displayDate = parseCustomDate(p.recordTime);
+                const imageCount = (p.imagesBefore?.length || 0) + (p.imagesAfter?.length || 0);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">${p.workpieceType || '未命名工件'}</h3>
+                        <div class="flex items-center space-x-2">
+                           ${imageCount > 0 ? `<span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded-full flex items-center"><i class="fas fa-camera mr-1"></i> ${imageCount}</span>` : ''}
+                           <span class="text-xs font-semibold text-white bg-blue-400 px-2 py-1 rounded-full">${multiPassParams.filter(mp => mp.baseId == p.id).length} 道</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-1">板厚: ${p.plateThickness || 'N/A'} mm</p>
+                    <p class="text-sm text-gray-500">日期: ${displayDate.toLocaleDateString()}</p>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+        
+        function renderImageGallery(title, images = []) {
+            if (images.length === 0) return '';
+            return `
+                <div class="mt-6">
+                    <h4 class="text-base font-semibold text-gray-700 mb-2">${title}</h4>
+                    <div class="flex flex-wrap gap-3">
+                        ${images.map(url => `
+                            <img src="${url}" class="w-24 h-24 object-cover rounded-md cursor-pointer hover:opacity-80 transition-opacity" onclick="showImageViewer('${url}')">
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDetailView(baseId) {
+            currentSelectedBaseId = baseId;
+            const base = baseParams.find(p => p.id == baseId);
+            if (!base) {
+                closeDetailPanel();
+                return;
+            };
+
+            document.getElementById('detail-title').textContent = base.workpieceType;
+            const detailsEl = document.getElementById('base-param-details');
+            const renderField = (key) => {
+                const field = baseParamFields[key];
+                if (!field) return '';
+                let displayValue = base[key] || 'N/A';
+                if (key === 'recordTime' && base[key]) {
+                    displayValue = parseCustomDate(base[key]).toLocaleString('zh-TW', { hour12: false });
+                }
+                return `<div><p class="text-gray-500 text-sm">${field.label}</p><p class="font-medium text-gray-800">${displayValue}</p></div>`;
+            };
+
+            const imagesBeforeHTML = renderImageGallery('銲接前照片', base.imagesBefore);
+            const imagesAfterHTML = renderImageGallery('銲接後照片', base.imagesAfter);
+
+            detailsEl.innerHTML = `
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-semibold text-gray-700">基礎參數</h4>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="exportReport('${base.id}')" class="text-teal-500 hover:text-teal-700"><i class="fas fa-print mr-1"></i> 匯出報表</button>
+                            <button onclick="openModal('base', '${base.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i> 編輯</button>
+                            <button onclick="deleteRecord('base', '${base.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i> 刪除</button>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(0, 3).map(renderField).join('')}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(3, 6).map(renderField).join('')}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">${Object.keys(baseParamFields).slice(6, 9).map(renderField).join('')}</div>
+                    </div>
+                    ${imagesBeforeHTML}
+                    ${imagesAfterHTML}
+                </div>
+            `;
+            document.getElementById('add-multipass-btn').onclick = () => openModal('multi', null);
+            renderMultiPassList(baseId);
+        }
+
+        function renderMultiPassList(baseId) {
+            const multiPassListEl = document.getElementById('multipass-params-list');
+            const relatedParams = multiPassParams.filter(p => p.baseId == baseId).sort((a,b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
+            multiPassListEl.innerHTML = '';
+
+            if (relatedParams.length === 0) {
+                multiPassListEl.innerHTML = `<p class="text-center text-gray-500 py-4">尚無多層道參數，點擊上方按鈕新增。</p>`;
+                return;
+            }
+
+            relatedParams.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg p-4 shadow-sm';
+                const renderField = (key) => {
+                    const field = multiPassParamFields[key];
+                    if (!field) return '<div></div>';
+                    let displayValue = p[key] !== undefined && p[key] !== null ? p[key] : 'N/A';
+                    return `<div><p class="text-gray-500 text-xs">${field.label.replace(' (cm/min)', '')}</p><p class="font-medium text-gray-800 text-sm">${displayValue}</p></div>`;
+                };
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="font-bold text-gray-800">層 ${p.layer || 'N/A'} / 道 ${p.pass || 'N/A'}</p>
+                        <div>
+                            <button onclick="deleteRecord('multi', '${p.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash fa-sm"></i></button>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(0, 6).map(renderField).join('')}</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(6, 12).map(renderField).join('')}</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-x-4 gap-y-3">${Object.keys(multiPassParamFields).slice(12, 18).map(renderField).join('')}</div>
+                    </div>
+                    ${p.notes ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-xs text-gray-600"><strong>備註:</strong> ${p.notes}</p></div>` : ''}
+                `;
+                multiPassListEl.appendChild(card);
+            });
+        }
+        
+        // --- 互動函式 ---
+        function showDetail(baseId) {
+            renderDetailView(baseId);
+            document.getElementById('detail-panel').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detail-panel').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentSelectedBaseId = null;
+        }
+
+        function openModal(type, id) {
+            currentEditing = { type, id };
+            imagesToDelete = []; // 重置待刪除圖片列表
+            const modal = document.getElementById('form-modal');
+            const form = document.getElementById('data-form');
+            const modalTitle = document.getElementById('modal-title');
+            form.innerHTML = '';
+            
+            let modalMaxWidth = 'max-w-4xl'; // for base
+            if (type === 'multi') {
+                modalMaxWidth = 'max-w-7xl';
+            }
+            modal.querySelector('div').className = `bg-white rounded-xl shadow-2xl w-full ${modalMaxWidth} max-h-[90vh] flex flex-col`;
+
+
+            if (type === 'base') {
+                modalTitle.textContent = id ? '編輯基礎參數' : '新增基礎參數';
+                const data = id ? baseParams.find(p => p.id == id) : {};
+                buildBaseForm(form, data);
+            } else { // multi
+                modalTitle.textContent = '編輯/新增 多層道參數';
+                buildMultiPassTableForm(form);
+            }
+            
+            const modalFooter = document.getElementById('modal-footer');
+            modalFooter.innerHTML = `
+                <button type="button" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg">取消</button>
+                <button id="save-btn" type="submit" form="data-form" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">全部儲存</button>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function createFieldHtml(key, field, data) {
+            let value = data[key] || '';
+            const commonClasses = "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm";
+
+            if (key === 'recordTime') {
+                const dateObj = data.id && value ? parseCustomDate(value) : new Date();
+                value = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            }
+
+            let inputElement;
+            if (field.type === 'textarea') {
+                inputElement = `<textarea id="${key}" name="${key}" rows="3" class="${commonClasses}">${value}</textarea>`;
+            } else {
+                const stepAttribute = field.type === 'number' ? ' step="any"' : '';
+                inputElement = `<input type="${field.type}" id="${key}" name="${key}" value="${value}" class="${commonClasses}"${stepAttribute}>`;
+            }
+
+            return `<div><label for="${key}" class="block text-sm font-medium text-gray-700 mb-1">${field.label}</label>${inputElement}</div>`;
+        }
+
+        function buildImageUploader(type, existingImages = [], maxImages = 3) {
+            const title = type === 'before' ? '銲接前照片' : '銲接後照片';
+            let thumbnailsHTML = existingImages.map(url => `
+                <div class="relative group" id="thumb-${btoa(url)}">
+                    <img src="${url}" class="w-24 h-24 object-cover rounded-md border">
+                    <button type="button" onclick="prepareImageDeletion('${url}', 'thumb-${btoa(url)}')" class="absolute top-0 right-0 bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center -mt-2 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity" title="刪除此圖片">&times;</button>
+                </div>
+            `).join('');
+
+            let fileInputsHTML = '';
+            const inputsToShow = maxImages - existingImages.length;
+            if (inputsToShow > 0) {
+                 for(let i=0; i < inputsToShow; i++) {
+                     fileInputsHTML += `<input type="file" name="image_${type}[]" accept="image/*" class="mt-2 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">`;
+                 }
+            } else {
+                fileInputsHTML = `<p class="text-sm text-gray-500 mt-2">已達 ${maxImages} 張圖片上限。</p>`;
+            }
+
+            return `
+                <div class="col-span-1">
+                    <h4 class="text-md font-medium text-gray-800 mb-2">${title}</h4>
+                    <div class="flex flex-wrap gap-4 mb-2 min-h-[100px]">${thumbnailsHTML}</div>
+                    ${fileInputsHTML}
+                </div>
+            `;
+        }
+
+        function buildBaseForm(form, data) {
+            const imagesBeforeHTML = buildImageUploader('before', data.imagesBefore || [], 3);
+            const imagesAfterHTML = buildImageUploader('after', data.imagesAfter || [], 3);
+
+            form.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${createFieldHtml('recordTime', baseParamFields.recordTime, data)}
+                    ${createFieldHtml('workpieceType', baseParamFields.workpieceType, data)}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    ${createFieldHtml('plateThickness', baseParamFields.plateThickness, data)}
+                    ${createFieldHtml('grooveAngle', baseParamFields.grooveAngle, data)}
+                    ${createFieldHtml('gap', baseParamFields.gap, data)}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    ${createFieldHtml('weldingMaterial', baseParamFields.weldingMaterial, data)}
+                    ${createFieldHtml('wireDiameter', baseParamFields.wireDiameter, data)}
+                    ${createFieldHtml('gas', baseParamFields.gas, data)}
+                </div>
+                <div>${createFieldHtml('alignment', baseParamFields.alignment, data)}</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6 mt-4">
+                    ${imagesBeforeHTML}
+                    ${imagesAfterHTML}
+                </div>`;
+        }
+
+
+        function buildMultiPassTableForm(form) {
+            const relatedParams = multiPassParams
+                .filter(p => p.baseId == currentSelectedBaseId)
+                .sort((a, b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
+
+            const headers = Object.values(multiPassParamFields).map(f => f.label.replace(/ \(.+?\)/g, ''));
+            
+            form.innerHTML = `
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table id="multi-pass-table" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                ${headers.map(h => `<th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">${h}</th>`).join('')}
+                                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 z-10">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+                <div class="mt-4">
+                    <button type="button" onclick="addPassRowToTable(null)" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-sm flex items-center">
+                        <i class="fas fa-plus mr-2"></i> 新增道次
+                    </button>
+                </div>
+            `;
+            
+            if (relatedParams.length > 0) {
+                relatedParams.forEach(p => addPassRowToTable(p, false));
+            } else {
+                addPassRowToTable(null, false);
+            }
+        }
+
+        function addPassRowToTable(data, shouldAnimate = true) {
+            const tableBody = document.getElementById('multi-pass-table')?.querySelector('tbody');
+            if (!tableBody) return;
+
+            const newRow = tableBody.insertRow();
+            if (data && data.id) {
+                newRow.dataset.docId = data.id;
+            }
+
+            let nextLayer = 1;
+            let nextPass = 1;
+            if (!data && tableBody.rows.length > 1) {
+                const lastRow = tableBody.rows[tableBody.rows.length - 2];
+                const lastLayerInput = lastRow.querySelector('input[name="layer"]');
+                const lastPassInput = lastRow.querySelector('input[name="pass"]');
+                if (lastLayerInput && lastPassInput) {
+                    nextLayer = parseInt(lastLayerInput.value, 10) || 1;
+                    nextPass = (parseInt(lastPassInput.value, 10) || 0) + 1;
+                }
+            }
+
+            let rowHtml = '';
+            for (const key in multiPassParamFields) {
+                const field = multiPassParamFields[key];
+                let value = data?.[key] ?? '';
+                if (!data && key === 'layer') value = nextLayer;
+                if (!data && key === 'pass') value = nextPass;
+
+                if (field.type === 'textarea') {
+                    rowHtml += `<td class="p-1"><textarea name="${key}" class="border-gray-300 rounded-md" rows="1">${value}</textarea></td>`;
+                } else {
+                    rowHtml += `<td class="p-1"><input type="${field.type}" name="${key}" value="${value}" class="border-gray-300 rounded-md" ${field.type === 'number' ? 'step="any"' : ''}></td>`;
+                }
+            }
+
+            rowHtml += `
+                <td class="p-2 whitespace-nowrap">
+                    <button type="button" onclick="duplicateRow(this.closest('tr'))" class="text-green-600 hover:text-green-900" title="複製此道次"><i class="fas fa-copy"></i></button>
+                    <button type="button" onclick="removePassRow(this.closest('tr'))" class="text-red-600 hover:text-red-900 ml-2" title="刪除此道次"><i class="fas fa-trash"></i></button>
+                </td>`;
+            newRow.innerHTML = rowHtml;
+
+            if (shouldAnimate) {
+                newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                newRow.style.backgroundColor = '#d1fae5';
+                setTimeout(() => { newRow.style.backgroundColor = ''; }, 1500);
+            }
+        }
+
+        function removePassRow(rowElement) {
+            if (rowElement.dataset.docId) {
+                rowElement.dataset.deleted = "true";
+                rowElement.style.textDecoration = 'line-through';
+                rowElement.style.opacity = '0.5';
+                rowElement.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+            } else {
+                rowElement.remove();
+            }
+        }
+
+        function duplicateRow(rowElement) {
+            const data = {};
+            for (const key in multiPassParamFields) {
+                const input = rowElement.querySelector(`[name="${key}"]`);
+                if(input) {
+                    data[key] = input.type === 'number' && input.value !== '' ? parseFloat(input.value) : input.value;
+                }
+            }
+            delete data.id;
+            data.pass = (data.pass || 0) + 1;
+            addPassRowToTable(data);
+        }
+        
+        function closeModal() {
+            document.getElementById('form-modal').classList.add('hidden');
+            currentEditing = { type: null, id: null };
+        }
+        
+        function showUploadStatus(message) {
+            const el = document.getElementById('upload-status');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+        function hideUploadStatus() {
+            const el = document.getElementById('upload-status');
+            el.classList.add('hidden');
+        }
+
+        function resizeImage(file, maxWidth = 800, maxHeight = 800) {
+            console.log(`[Debug] Starting resize for file: ${file.name}`);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        console.log(`[Debug] Image loaded, original size: ${img.width}x${img.height}`);
+                        const canvas = document.createElement('canvas');
+                        let { width, height } = img;
+
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = Math.round((height * maxWidth) / width);
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = Math.round((width * maxHeight) / height);
+                                height = maxHeight;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        console.log(`[Debug] Resized to: ${width}x${height}, converting to blob...`);
+                        canvas.toBlob(blob => {
+                            if (blob) {
+                                console.log(`[Debug] Blob created successfully, size: ${blob.size} bytes.`);
+                                resolve(blob);
+                            } else {
+                                console.error("[Debug] Canvas toBlob returned null.");
+                                reject(new Error("無法轉換圖片格式(toBlob failed)"));
+                            }
+                        }, 'image/jpeg', 0.9);
+                    };
+                    img.onerror = (err) => {
+                        console.error("[Debug] Image load error:", err);
+                        reject(new Error("無法讀取圖片檔案"));
+                    };
+                };
+                reader.onerror = (err) => {
+                    console.error("[Debug] FileReader error:", err);
+                    reject(new Error("無法讀取檔案"));
+                };
+            });
+        }
+        
+        async function uploadFile(fileBlob, path, onProgress) {
+             console.log(`[Debug] Starting upload to path: ${path}`);
+             return new Promise((resolve, reject) => {
+                const storageRef = ref(storage, path);
+                const uploadTask = uploadBytesResumable(storageRef, fileBlob);
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log(`[Debug] Upload progress for ${path}: ${progress.toFixed(2)}%`);
+                        onProgress(progress);
+                    }, 
+                    (error) => {
+                        console.error(`[Debug] Firebase Storage upload error for ${path}:`, error);
+                        // Log specific error codes for easier debugging
+                        switch (error.code) {
+                            case 'storage/unauthorized':
+                                console.error("[Debug] !!! PERMISSION DENIED !!! Check your Firebase Storage security rules.");
+                                reject(new Error("權限不足，無法上傳檔案。請檢查 Firebase Storage 安全性規則。"));
+                                break;
+                            case 'storage/canceled':
+                                console.error("[Debug] Upload canceled.");
+                                reject(new Error("上傳已取消"));
+                                break;
+                            default:
+                                console.error("[Debug] An unknown error occurred.", error);
+                                reject(new Error(`上傳失敗: ${error.message}`));
+                                break;
+                        }
+                    }, 
+                    async () => {
+                        try {
+                            console.log(`[Debug] Upload complete for ${path}. Getting download URL...`);
+                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                            console.log(`[Debug] Got download URL: ${downloadURL}`);
+                            resolve(downloadURL);
+                        } catch (error) {
+                             console.error(`[Debug] Error getting download URL for ${path}:`, error);
+                             reject(new Error("上傳成功但無法取得檔案連結"));
+                        }
+                    }
+                );
+            });
+        }
+
+
+        async function saveData() {
+            const form = document.getElementById('data-form');
+            const { type } = currentEditing;
+
+            const saveBtn = document.getElementById('save-btn');
+            const originalBtnText = saveBtn.innerHTML;
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 處理中...`;
+            saveBtn.disabled = true;
+
+            try {
+                if (type === 'base') {
+                    // --- 1. Save Text Data ---
+                    const formData = new FormData(form);
+                    let data = {};
+                    for (let [key, value] of formData.entries()) {
+                         if (baseParamFields[key]) {
+                            data[key] = baseParamFields[key]?.type === 'number' && value !== '' ? parseFloat(value) : value;
+                         }
+                    }
+                    if (data.recordTime) data.recordTime = new Date(data.recordTime);
+
+                    let recordId = currentEditing.id;
+                    if (recordId) {
+                        await setDoc(doc(baseParamsCol, recordId), data, { merge: true });
+                    } else {
+                        const newDocRef = await addDoc(baseParamsCol, data);
+                        recordId = newDocRef.id;
+                    }
+                    
+                    // --- 2. Handle Image Deletions ---
+                    if (imagesToDelete.length > 0) {
+                        showUploadStatus(`正在刪除 ${imagesToDelete.length} 張圖片...`);
+                        const deletePromises = imagesToDelete.map(url => deleteObject(ref(storage, url)).catch(err => console.error(`Failed to delete ${url}`, err)));
+                        await Promise.all(deletePromises);
+                    }
+
+                    // --- 3. Handle Image Uploads ---
+                    console.log("[Debug] Handling image uploads...");
+                    const imageInputs = [...form.querySelectorAll('input[type="file"]')];
+                    const filesToUpload = imageInputs
+                        .filter(input => input.files.length > 0)
+                        .map(input => ({file: input.files[0], type: input.name.includes('before') ? 'before' : 'after' }));
+                    
+                    console.log(`[Debug] Found ${filesToUpload.length} files to upload.`);
+
+                    if (filesToUpload.length > 0) {
+                        const uploadPromises = filesToUpload.map(async (item, index) => {
+                           try {
+                                showUploadStatus(`正在處理圖片 ${index + 1} / ${filesToUpload.length}...`);
+                               const resizedBlob = await resizeImage(item.file);
+                               const path = `images/${recordId}/${Date.now()}_${item.file.name}`;
+                               
+                               const downloadURL = await uploadFile(resizedBlob, path, (progress) => {
+                                    showUploadStatus(`圖片 ${index + 1} 上傳中: ${Math.round(progress)}%`);
+                               });
+                               return { url: downloadURL, type: item.type };
+                           } catch (uploadError) {
+                                console.error(`[Debug] Error processing file ${item.file.name}:`, uploadError);
+                                // Re-throw to be caught by the main catch block
+                                throw new Error(`處理圖片 ${item.file.name} 時失敗: ${uploadError.message}`);
+                           }
+                        });
+
+                        console.log("[Debug] Waiting for all uploads to complete...");
+                        const newImageResults = await Promise.all(uploadPromises);
+                        console.log("[Debug] All uploads completed.", newImageResults);
+                        
+                        // --- 4. Update Firestore with New Image URLs ---
+                        showUploadStatus(`更新資料庫...`);
+                        console.log("[Debug] Updating Firestore with new image URLs...");
+                        const currentRecord = baseParams.find(p => p.id === recordId) || {};
+                        const imagesBefore = (currentRecord.imagesBefore || []).filter(url => !imagesToDelete.includes(url));
+                        const imagesAfter = (currentRecord.imagesAfter || []).filter(url => !imagesToDelete.includes(url));
+                        
+                        newImageResults.forEach(result => {
+                            if (result.type === 'before') imagesBefore.push(result.url);
+                            else imagesAfter.push(result.url);
+                        });
+                        
+                        await setDoc(doc(baseParamsCol, recordId), { imagesBefore, imagesAfter }, { merge: true });
+                        console.log("[Debug] Firestore updated successfully.");
+                    }
+                    
+                    setTimeout(() => hideUploadStatus(), 1500);
+                    closeModal();
+
+                } else if (type === 'multi') { // --- Multi-pass Save Logic (Unchanged) ---
+                    const batch = writeBatch(db);
+                    const tableBody = document.getElementById('multi-pass-table')?.querySelector('tbody');
+                    if (!tableBody) throw new Error("Table not found");
+                    const rows = Array.from(tableBody.rows);
+                    for (const row of rows) {
+                        const docId = row.dataset.docId;
+                        const isDeleted = row.dataset.deleted === "true";
+
+                        if (docId && isDeleted) { batch.delete(doc(multiPassParamsCol, docId)); continue; }
+                        if (isDeleted) continue;
+
+                        const data = { baseId: currentSelectedBaseId };
+                        let hasData = false;
+                        for (const key in multiPassParamFields) {
+                            const input = row.querySelector(`[name="${key}"]`);
+                            if (input) {
+                                const value = input.value;
+                                if (value !== '') { hasData = true; }
+                                data[key] = multiPassParamFields[key]?.type === 'number' && value !== '' ? parseFloat(value) : (value || null);
+                            }
+                        }
+                        
+                        if (hasData) {
+                            if (docId) {
+                                batch.set(doc(multiPassParamsCol, docId), data, { merge: true });
+                            } else {
+                                batch.set(doc(multiPassParamsCol), data);
+                            }
+                        }
+                    }
+                    await batch.commit();
+                    closeModal();
+                }
+            } catch (error) {
+                console.error("Error saving data:", error);
+                showUploadStatus(`儲存失敗: ${error.message}`);
+                setTimeout(hideUploadStatus, 4000); // 顯示錯誤 4 秒
+            } finally {
+                saveBtn.innerHTML = originalBtnText;
+                saveBtn.disabled = false;
+            }
+        }
+        
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            saveData();
+        }
+
+        async function deleteRecord(type, id) {
+            // 移除 confirm()，因為在 Canvas/iframe 環境下它可能會導致腳本停止而沒有任何提示。
+            // 理想情況下，這裡應該用一個自訂的 modal 來做確認，但為了解決當前問題，暫時直接執行刪除。
+            // if (!confirm('確定要刪除這筆共用紀錄嗎？此操作將會同步更新 Firestore 且無法復原。')) return;
+            
+            try {
+                if (type === 'base') {
+                    const baseDoc = baseParams.find(p => p.id === id);
+                    const allImages = [...(baseDoc.imagesBefore || []), ...(baseDoc.imagesAfter || [])];
+                    if (allImages.length > 0) {
+                        showUploadStatus(`正在刪除 ${allImages.length} 張關聯圖片...`);
+                        const deletePromises = allImages.map(url => deleteObject(ref(storage, url)).catch(err => console.warn(`Could not delete image ${url}:`, err)));
+                        await Promise.allSettled(deletePromises);
+                        hideUploadStatus();
+                    }
+
+                    const batch = writeBatch(db);
+                    batch.delete(doc(baseParamsCol, id));
+                    const q = query(multiPassParamsCol, where("baseId", "==", id));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => batch.delete(doc.ref));
+                    await batch.commit();
+                    closeDetailPanel();
+                } else {
+                    await deleteDoc(doc(multiPassParamsCol, id));
+                }
+            } catch (error) {
+                console.error("Error deleting record:", error);
+                // 改用非阻塞的狀態提示來顯示錯誤
+                showUploadStatus("刪除失敗，請檢查主控台錯誤訊息。");
+                setTimeout(hideUploadStatus, 3000);
+            }
+        }
+        
+        function exportReport(baseId) {
+            const base = baseParams.find(p => p.id == baseId);
+            const relatedMultiPass = multiPassParams
+                .filter(p => p.baseId == baseId)
+                .sort((a, b) => (a.layer || 0) - (b.layer || 0) || (a.pass || 0) - (b.pass || 0));
+
+            if (!base) return;
+
+            const reportWindow = window.open('', '_blank');
+            let reportHtml = `
+                <!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>銲接參數報表 - ${base.workpieceType}</title>
+                <style>
+                    body { font-family: 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif; margin: 20px; font-size: 12px; }
+                    h1, h2 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 15px; }
+                    .section { margin-bottom: 25px; page-break-inside: avoid; } .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+                    .grid-item strong { display: block; color: #555; font-size: 11px; margin-bottom: 2px; }
+                    .image-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; } .image-gallery img { max-width: 150px; border: 1px solid #ccc; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    @media print { body { margin: 1cm; font-size: 10pt; } h1, h2, table, tr { page-break-inside: avoid; } thead { display: table-header-group; } .no-print { display: none; } }
+                </style></head><body><h1>銲接參數報表</h1>`;
+            
+            reportHtml += `<div class="section"><h2>基礎參數</h2><div class="grid-container">`;
+            for (const key in baseParamFields) {
+                const field = baseParamFields[key];
+                let value = base[key] || 'N/A';
+                if (key === 'recordTime' && base[key]) {
+                    value = parseCustomDate(base[key]).toLocaleString('zh-TW', { hour12: false });
+                }
+                reportHtml += `<div class="grid-item"><strong>${field.label}:</strong> ${value}</div>`;
+            }
+            reportHtml += `</div></div>`;
+            
+            if (base.imagesBefore?.length > 0) {
+                 reportHtml += `<div class="section"><h3>銲接前照片</h3><div class="image-gallery">${base.imagesBefore.map(url => `<img src="${url}">`).join('')}</div></div>`;
+            }
+            if (base.imagesAfter?.length > 0) {
+                 reportHtml += `<div class="section"><h3>銲接後照片</h3><div class="image-gallery">${base.imagesAfter.map(url => `<img src="${url}">`).join('')}</div></div>`;
+            }
+
+            reportHtml += `<div class="section"><h2>多層道參數</h2>`;
+            if (relatedMultiPass.length > 0) {
+                reportHtml += `<table><thead><tr>`;
+                const headers = ['layer', 'pass', 'mode', 'current', 'voltage', 'travelSpeed', 'weaveWidth', 'weaveFreq', 'elevationAngle', 'directionAngle', 'dwellTimeLeft', 'dwellTimeRight', 'x', 'y', 'z', 'rx', 'ry', 'rz', 'notes'];
+                headers.forEach(key => { reportHtml += `<th>${multiPassParamFields[key].label}</th>`; });
+                reportHtml += `</tr></thead><tbody>`;
+                relatedMultiPass.forEach(p => {
+                    reportHtml += `<tr>`;
+                    headers.forEach(key => { reportHtml += `<td>${p[key] !== undefined && p[key] !== null ? p[key] : ''}</td>`; });
+                    reportHtml += `</tr>`;
+                });
+                reportHtml += `</tbody></table>`;
+            } else {
+                reportHtml += `<p>無多層道參數資料。</p>`;
+            }
+            reportHtml += `</div><div class="no-print" style="text-align:center; margin-top: 20px;"><button onclick="window.print()">列印</button></div></body></html>`;
+            
+            reportWindow.document.write(reportHtml);
+            reportWindow.document.close();
+        }
+
+        // --- 初始化 ---
+        async function initializeAppWithAuth() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                storage = getStorage(app);
+
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        setupRealtimeListeners();
+                    } else {
+                        if(baseParamsUnsubscribe) baseParamsUnsubscribe();
+                        if(multiPassParamsUnsubscribe) multiPassParamsUnsubscribe();
+                        baseParams = [];
+                        multiPassParams = [];
+                        renderBaseParamsList();
+                    }
+                });
+                
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                } else {
+                    setupRealtimeListeners();
+                }
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                const loadingEl = document.getElementById('loading-indicator');
+                if(loadingEl) loadingEl.innerHTML = `<p class="col-span-full text-center p-10 text-red-500">Firebase 初始化失敗: ${error.message}</p>`;
+            }
+        }
+        
+        function prepareImageDeletion(url, thumbId) {
+            if (!imagesToDelete.includes(url)) {
+                imagesToDelete.push(url);
+            }
+            const thumbEl = document.getElementById(thumbId);
+            if(thumbEl) {
+                thumbEl.style.opacity = '0.3';
+                thumbEl.style.pointerEvents = 'none';
+            }
+        }
+
+        function showImageViewer(src) {
+            const viewer = document.getElementById('image-viewer');
+            viewer.querySelector('img').src = src;
+            viewer.classList.remove('hidden');
+        }
+
+        // Expose functions to global scope
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.showDetail = showDetail;
+        window.closeDetailPanel = closeDetailPanel;
+        window.deleteRecord = deleteRecord;
+        window.exportReport = exportReport;
+        window.addPassRowToTable = addPassRowToTable;
+        window.removePassRow = removePassRow;
+        window.duplicateRow = duplicateRow;
+        window.prepareImageDeletion = prepareImageDeletion;
+        window.showImageViewer = showImageViewer;
+        
+        document.getElementById('data-form').addEventListener('submit', handleFormSubmit);
+
+        // Start the app
+        initializeAppWithAuth();
+    </script>
+</body>
+</html>
+
+
+
+
+

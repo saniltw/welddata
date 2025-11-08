@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>焊接材料查詢與管理系統</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts & Material Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0f2f5; }
+        .view { transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out; }
+        .view-hidden { opacity: 0; transform: translateY(20px); position: absolute; pointer-events: none; }
+        .tab-button.active { border-color: #3b82f6; background-color: #3b82f6; color: white; }
+        .modal-backdrop { transition: opacity 0.3s ease-in-out; }
+        select:disabled, input:disabled { background-color: #e5e7eb; cursor: not-allowed; }
+        .profile-btn { @apply p-2 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500; }
+        .table-cell { @apply px-4 py-3 border-b border-gray-200 text-sm; }
+        .table-header { @apply px-4 py-3 border-b-2 border-gray-300 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider; }
+        .action-btn { @apply p-1 rounded-md hover:bg-gray-200 transition-colors; }
+        .query-tab { @apply px-4 py-2 text-sm font-medium rounded-md cursor-pointer; }
+        .query-tab.active { @apply bg-blue-600 text-white shadow; }
+        .query-tab:not(.active) { @apply bg-gray-200 text-gray-600 hover:bg-gray-300; }
+        .weld-material-tab { @apply px-3 py-1.5 text-sm font-medium rounded-md cursor-pointer transition-colors duration-200; }
+        .collapsible-content { max-height: 1000px; transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out; overflow: hidden; }
+        .collapsible-content.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <!-- 全螢幕載入動畫 -->
+    <div id="loader" class="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500"></div>
+            <p id="loader-text" class="mt-4 text-lg font-semibold text-gray-700">資料載入中...</p>
+        </div>
+    </div>
+
+    <!-- 訊息提示框 -->
+    <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 translate-y-[-20px] transition-all duration-300 z-50">
+        <p id="toast-message"></p>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- 頁首 -->
+        <header class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center">
+                    <span class="material-icons text-4xl text-blue-600 mr-3">engineering</span>
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800">焊接材料查詢與管理系統</h1>
+                </div>
+                <nav class="flex items-center bg-gray-100 p-1 rounded-lg">
+                    <button id="query-view-btn" class="px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors duration-300 active">
+                        <span class="material-icons align-middle mr-1 text-base">search</span>查詢視圖
+                    </button>
+                    <button id="admin-view-btn" class="px-4 py-2 text-sm font-medium rounded-md focus:outline-none transition-colors duration-300">
+                        <span class="material-icons align-middle mr-1 text-base">settings</span>管理視圖
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- 視圖容器 -->
+        <main class="relative">
+            <!-- 查詢視圖 -->
+            <div id="query-view" class="view">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <div class="mb-6 border-b border-gray-200">
+                        <nav class="flex space-x-2" aria-label="Tabs">
+                            <button id="specific-query-tab" class="query-tab active">依鋼板規格查詢</button>
+                            <button id="general-query-tab" class="query-tab">業務常用查詢</button>
+                        </nav>
+                    </div>
+
+                    <!-- 依鋼板規格查詢內容 -->
+                    <div id="specific-query-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                            <div class="space-y-4">
+                                <h3 class="font-semibold text-lg">鋼板 1</h3>
+                                <div>
+                                    <label for="query-category-1" class="block text-sm font-medium text-gray-700 mb-1">大類</label>
+                                    <select id="query-category-1" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="query-spec-1" class="block text-sm font-medium text-gray-700 mb-1">規範</label>
+                                    <select id="query-spec-1" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" disabled></select>
+                                </div>
+                                <div>
+                                    <label for="query-grade-1" class="block text-sm font-medium text-gray-700 mb-1">等級</label>
+                                    <select id="query-grade-1" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" disabled></select>
+                                </div>
+                            </div>
+                            <div class="space-y-4">
+                                <h3 class="font-semibold text-lg">鋼板 2 (可選)</h3>
+                                <div>
+                                    <label for="query-category-2" class="block text-sm font-medium text-gray-700 mb-1">大類</label>
+                                    <select id="query-category-2" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                               <div>
+                                    <label for="query-spec-2" class="block text-sm font-medium text-gray-700 mb-1">規範</label>
+                                    <select id="query-spec-2" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" disabled></select>
+                                </div>
+                                <div>
+                                    <label for="query-grade-2" class="block text-sm font-medium text-gray-700 mb-1">等級</label>
+                                    <select id="query-grade-2" class="w-full p-2 border border-gray-300 rounded-md shadow-sm" disabled></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 業務常用查詢內容 -->
+                    <div id="general-query-content" class="hidden">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                            <div>
+                                <label for="general-category-1" class="block text-sm font-medium text-gray-700 mb-1">材料類型 1</label>
+                                <select id="general-category-1" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
+                            </div>
+                            <div>
+                                <label for="general-category-2" class="block text-sm font-medium text-gray-700 mb-1">材料類型 2</label>
+                                <select id="general-category-2" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="query-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center">
+                        <span class="material-icons mr-2">search</span>查詢
+                    </button>
+                </div>
+
+                <!-- 查詢結果 -->
+                <div id="query-results" class="mt-8 bg-white p-6 rounded-xl shadow-md min-h-[150px] flex items-center justify-center">
+                    <p class="text-gray-500">請選擇條件以查詢建議焊材。</p>
+                </div>
+            </div>
+
+            <!-- 管理視圖 -->
+            <div id="admin-view" class="view view-hidden">
+                <div class="space-y-8">
+                     <!-- 焊接材料資料庫管理 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 id="weld-material-form-title" class="text-xl font-bold mb-4">焊接材料資料庫管理</h2>
+                        <form id="add-weld-material-form" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-4 bg-gray-50 rounded-lg border mb-6">
+                             <div>
+                                <label for="new-weld-steel-type" class="block text-sm font-medium text-gray-700">銲材鋼種</label>
+                                <input id="new-weld-steel-type" type="text" placeholder="例如: 碳鋼" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label for="new-weld-method" class="block text-sm font-medium text-gray-700">焊接方法</label>
+                                <input id="new-weld-method" type="text" placeholder="例如: FCAW" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label for="new-weld-spec" class="block text-sm font-medium text-gray-700">規範</label>
+                                <input id="new-weld-spec" type="text" placeholder="例如: A5.20 E71T-1C" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label for="new-weld-name" class="block text-sm font-medium text-gray-700">品名</label>
+                                <input id="new-weld-name" type="text" placeholder="例如: KFX-71T" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button type="submit" id="submit-weld-material-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">新增焊材</button>
+                                <button type="button" id="cancel-edit-weld-material-btn" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 hidden">取消</button>
+                            </div>
+                        </form>
+                        
+                        <!-- 焊接材料分頁 -->
+                         <div class="space-y-2 mt-6">
+                            <div class="border-b border-gray-200">
+                                <nav id="weld-steel-type-tabs" class="flex flex-wrap gap-2 p-2" aria-label="Tabs"></nav>
+                            </div>
+                            <div class="bg-gray-50">
+                                 <nav id="weld-method-tabs" class="flex flex-wrap gap-2 p-2" aria-label="Tabs"></nav>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto mt-4">
+                            <table class="min-w-full bg-white">
+                                <thead><tr>
+                                    <th class="table-header">銲材鋼種</th><th class="table-header">焊接方法</th><th class="table-header">規範</th><th class="table-header">品名</th><th class="table-header">操作</th>
+                                </tr></thead>
+                                <tbody id="weld-materials-table"></tbody>
+                            </table>
+                        </div>
+                        <div id="weld-materials-pagination" class="mt-4 flex justify-between items-center text-sm"></div>
+                    </div>
+
+                    <!-- 鋼材大類管理 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">鋼材大類管理</h2>
+                            <button id="add-category-btn" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600">新增大類</button>
+                        </div>
+                        <div id="category-list" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+                    </div>
+
+                    <!-- 鋼板基本資料管理 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 id="grade-form-title" class="text-xl font-bold mb-4">鋼板基本資料管理</h2>
+                        <form id="add-grade-form" class="space-y-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="new-grade-category" class="block text-sm font-medium text-gray-700">大類</label>
+                                    <select id="new-grade-category" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <label for="new-grade-spec" class="block text-sm font-medium text-gray-700">規範</label>
+                                    <input id="new-grade-spec" type="text" placeholder="例如: CNS" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                                </div>
+                                <div>
+                                    <label for="new-grade-type" class="block text-sm font-medium text-gray-700">等級</label>
+                                    <input id="new-grade-type" type="text" placeholder="例如: SM490A" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                                </div>
+                            </div>
+                            <div>
+                                 <label class="block text-sm font-medium text-gray-700">基礎焊材 (可新增多筆)</label>
+                                 <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mt-1 items-center">
+                                    <select id="rod-grade-steel-type" class="w-full p-2 border border-gray-300 rounded-md"><option value="">選擇鋼種</option></select>
+                                    <select id="rod-grade-method" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇方法</option></select>
+                                    <select id="rod-grade-spec" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇規範</option></select>
+                                    <select id="new-grade-rod-selector" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇品名</option></select>
+                                    <button type="button" id="add-rod-to-grade-btn" class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"><span class="material-icons">add</span></button>
+                                 </div>
+                                 <div id="selected-grade-rods-list" class="mt-2 space-y-2"></div>
+                            </div>
+                            <div>
+                                <label for="new-grade-notes" class="block text-sm font-medium text-gray-700">注意事項</label>
+                                <input id="new-grade-notes" type="text" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                             <div class="flex items-center space-x-2 pt-2">
+                                <button type="submit" id="submit-grade-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">新增</button>
+                                <button type="button" id="cancel-edit-grade-btn" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 hidden">取消</button>
+                            </div>
+                        </form>
+                        <div class="space-y-2 mt-6">
+                            <div class="border-b border-gray-200">
+                                <nav id="grade-category-tabs" class="flex flex-wrap gap-2 p-2" aria-label="Tabs"></nav>
+                            </div>
+                            <div class="bg-gray-50">
+                                 <nav id="grade-spec-tabs" class="flex flex-wrap gap-2 p-2" aria-label="Tabs"></nav>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto mt-4">
+                            <table class="min-w-full bg-white">
+                                <thead><tr>
+                                    <th class="table-header">大類</th><th class="table-header">規範</th><th class="table-header">等級</th><th class="table-header">基礎焊材</th><th class="table-header">注意事項</th><th class="table-header">操作</th>
+                                </tr></thead>
+                                <tbody id="steel-grades-table"></tbody>
+                            </table>
+                        </div>
+                        <div id="steel-grades-pagination" class="mt-4 flex justify-between items-center text-sm"></div>
+                    </div>
+
+                    <!-- 鋼板搭配資料管理 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 id="combination-form-title" class="text-xl font-bold mb-4">鋼板搭配資料管理</h2>
+                        <form id="add-combination-form" class="space-y-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-4">
+                                    <h3 class="font-semibold text-gray-800">鋼板 1</h3>
+                                    <div>
+                                        <label for="combo-category-1" class="block text-sm font-medium text-gray-700">大類</label>
+                                        <select id="combo-category-1" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></select>
+                                    </div>
+                                     <div>
+                                        <label for="combo-spec-1" class="block text-sm font-medium text-gray-700">規範</label>
+                                        <select id="combo-spec-1" required class="mt-1 w-full p-2 border border-gray-300 rounded-md" disabled></select>
+                                    </div>
+                                     <div>
+                                        <label for="combo-grade-1" class="block text-sm font-medium text-gray-700">等級</label>
+                                        <select id="combo-grade-1" required class="mt-1 w-full p-2 border border-gray-300 rounded-md" disabled></select>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <h3 class="font-semibold text-gray-800">鋼板 2</h3>
+                                    <div>
+                                        <label for="combo-category-2" class="block text-sm font-medium text-gray-700">大類</label>
+                                        <select id="combo-category-2" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></select>
+                                    </div>
+                                     <div>
+                                        <label for="combo-spec-2" class="block text-sm font-medium text-gray-700">規範</label>
+                                        <select id="combo-spec-2" required class="mt-1 w-full p-2 border border-gray-300 rounded-md" disabled></select>
+                                    </div>
+                                     <div>
+                                        <label for="combo-grade-2" class="block text-sm font-medium text-gray-700">等級</label>
+                                        <select id="combo-grade-2" required class="mt-1 w-full p-2 border border-gray-300 rounded-md" disabled></select>
+                                    </div>
+                                </div>
+                            </div>
+                             <div>
+                                 <label class="block text-sm font-medium text-gray-700">搭配焊材 (可新增多筆)</label>
+                                  <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mt-1 items-center">
+                                    <select id="rod-combo-steel-type" class="w-full p-2 border border-gray-300 rounded-md"><option value="">選擇鋼種</option></select>
+                                    <select id="rod-combo-method" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇方法</option></select>
+                                    <select id="rod-combo-spec" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇規範</option></select>
+                                    <select id="combo-rod-selector" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇品名</option></select>
+                                    <button type="button" id="add-rod-to-combo-btn" class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"><span class="material-icons">add</span></button>
+                                 </div>
+                                 <div id="selected-combo-rods-list" class="mt-2 space-y-2"></div>
+                            </div>
+                            <div>
+                                <label for="combo-notes" class="block text-sm font-medium text-gray-700">注意事項</label>
+                                <input id="combo-notes" type="text" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div class="flex items-center space-x-2 pt-2">
+                                <button type="submit" id="submit-combination-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">新增</button>
+                                <button type="button" id="cancel-edit-combination-btn" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 hidden">取消</button>
+                            </div>
+                        </form>
+                        <div class="overflow-x-auto">
+                             <table class="min-w-full bg-white">
+                                <thead><tr>
+                                    <th class="table-header">鋼板 1</th><th class="table-header">鋼板 2</th><th class="table-header">搭配焊材</th><th class="table-header">注意事項</th><th class="table-header">操作</th>
+                                </tr></thead>
+                                <tbody id="combinations-table"></tbody>
+                            </table>
+                        </div>
+                        <div id="combinations-pagination" class="mt-4 flex justify-between items-center text-sm"></div>
+                    </div>
+
+                    <!-- 通用類型搭配管理 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 id="general-combination-form-title" class="text-xl font-bold mb-4">通用類型搭配管理</h2>
+                        <form id="add-general-combination-form" class="space-y-4 p-4 bg-gray-50 rounded-lg border mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="general-combo-category-1" class="block text-sm font-medium text-gray-700">材料類型 1</label>
+                                    <select id="general-combo-category-1" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <label for="general-combo-category-2" class="block text-sm font-medium text-gray-700">材料類型 2</label>
+                                    <select id="general-combo-category-2" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></select>
+                                </div>
+                            </div>
+                             <div>
+                                 <label class="block text-sm font-medium text-gray-700">通用建議焊材 (可新增多筆)</label>
+                                  <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mt-1 items-center">
+                                    <select id="rod-general-combo-steel-type" class="w-full p-2 border border-gray-300 rounded-md"><option value="">選擇鋼種</option></select>
+                                    <select id="rod-general-combo-method" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇方法</option></select>
+                                    <select id="rod-general-combo-spec" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇規範</option></select>
+                                    <select id="general-combo-rod-selector" class="w-full p-2 border border-gray-300 rounded-md" disabled><option value="">選擇品名</option></select>
+                                    <button type="button" id="add-rod-to-general-combo-btn" class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"><span class="material-icons">add</span></button>
+                                 </div>
+                                 <div id="selected-general-combo-rods-list" class="mt-2 space-y-2"></div>
+                            </div>
+                            <div>
+                                <label for="general-combo-notes" class="block text-sm font-medium text-gray-700">注意事項</label>
+                                <input id="general-combo-notes" type="text" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div class="flex items-center space-x-2 pt-2">
+                                <button type="submit" id="submit-general-combination-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">新增</button>
+                                <button type="button" id="cancel-edit-general-combination-btn" class="w-full bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 hidden">取消</button>
+                            </div>
+                        </form>
+                        <div class="overflow-x-auto">
+                             <table class="min-w-full bg-white">
+                                <thead><tr>
+                                    <th class="table-header">材料類型 1</th><th class="table-header">材料類型 2</th><th class="table-header">建議焊材</th><th class="table-header">注意事項</th><th class="table-header">操作</th>
+                                </tr></thead>
+                                <tbody id="general-combinations-table"></tbody>
+                            </table>
+                        </div>
+                        <div id="general-combinations-pagination" class="mt-4 flex justify-between items-center text-sm"></div>
+                    </div>
+                    
+                     <!-- 檔案匯入 -->
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <h2 class="text-xl font-bold mb-4">匯入大量資料</h2>
+                        <div class="p-4 bg-gray-100 rounded-lg border mb-6">
+                            <h3 class="font-semibold text-gray-800 mb-2">從文字貼上大量焊接材料</h3>
+                            <p class="text-sm text-gray-600 mb-4">
+                                請在下方文字框貼上 <code class="bg-gray-200 px-1 rounded">.json</code> 格式的文字。內容必須包含一個名為 "weldMaterials" 的陣列。匯入的資料將會<strong class="text-red-600">新增</strong>到現有資料庫中，不會覆蓋舊資料。
+                            </p>
+                            <div class="flex flex-col gap-4">
+                                <textarea id="weld-material-json-input" rows="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm" placeholder='在這裡貼上 JSON 文字...'></textarea>
+                                <button id="import-weld-materials-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 self-end">
+                                    <span class="material-icons align-middle text-base mr-1">upload</span>
+                                    匯入焊材
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-gray-100 rounded-lg border">
+                            <h3 class="font-semibold text-gray-800 mb-2">從文字貼上大量鋼板資料</h3>
+                            <p class="text-sm text-gray-600 mb-4">
+                                請貼上 <code class="bg-gray-200 px-1 rounded">.json</code> 格式文字。內容需有名為 "steelGrades" 的陣列。
+                                每筆資料需包含 <code class="bg-gray-200 px-1 rounded">categoryName</code>, <code class="bg-gray-200 px-1 rounded">spec</code>, <code class="bg-gray-200 px-1 rounded">grade</code>。
+                                可選填 <code class="bg-gray-200 px-1 rounded">notes</code> 和 <code class="bg-gray-200 px-1 rounded">baseWeldingRodNames</code> (焊材品名陣列)。
+                                系統會根據名稱自動查找對應的大類與焊材ID。
+                            </p>
+                            <div class="flex flex-col gap-4">
+                                <textarea id="steel-grade-json-input" rows="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm" placeholder='在這裡貼上 JSON 文字...'></textarea>
+                                <button id="import-steel-grades-btn" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 self-end">
+                                    <span class="material-icons align-middle text-base mr-1">upload</span>
+                                    匯入鋼板資料
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 設定檔管理 (移至頁尾) -->
+        <footer class="container mx-auto p-4 md:p-8 max-w-7xl">
+             <div class="mt-6 bg-white rounded-xl shadow-md">
+                <div id="profile-header" class="flex justify-between items-center p-4 cursor-pointer">
+                    <h3 class="text-lg font-semibold text-gray-700">設定檔管理</h3>
+                    <button id="toggle-profile-btn-footer" class="profile-btn">
+                        <span id="profile-toggle-icon-footer" class="material-icons transition-transform duration-300">expand_less</span>
+                    </button>
+                </div>
+                <div id="profile-content-footer" class="p-4 pt-0 collapsible-content">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex-grow">
+                            <label for="profile-selector-footer" class="sr-only">目前設定檔</label>
+                            <select id="profile-selector-footer" class="w-full md:w-auto p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="add-profile-btn-footer" class="profile-btn" title="新增設定檔"><span class="material-icons text-green-600">add_circle</span></button>
+                            <button id="rename-profile-btn-footer" class="profile-btn" title="重新命名"><span class="material-icons text-yellow-600">drive_file_rename_outline</span></button>
+                            <button id="delete-profile-btn-footer" class="profile-btn" title="刪除設定檔"><span class="material-icons text-red-600">delete_forever</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- 確認視窗 (Modal) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-40 hidden modal-backdrop">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                     <span class="material-icons text-yellow-600">warning_amber</span>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">確認操作</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p id="confirm-modal-message" class="text-sm text-gray-500"></p>
+                </div>
+                <div class="items-center px-4 py-3 space-x-4">
+                    <button id="cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">取消</button>
+                    <button id="confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">確認</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, collection, getDocs, doc, setDoc, getDoc, writeBatch, deleteDoc, updateDoc, addDoc, serverTimestamp, query, where
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQgRhLmIpvw0JGuPOW2XjU5AHZBVElWUs",
+            authDomain: "steel-be35e.firebaseapp.com",
+            projectId: "steel-be35e",
+            storageBucket: "steel-be35e.appspot.com",
+            messagingSenderId: "1012651895591",
+            appId: "1:1012651895591:web:ede0a9a4ad76e9af3ad702",
+        };
+
+        // DOM 元素
+        const dom = {
+            loader: document.getElementById('loader'),
+            loaderText: document.getElementById('loader-text'),
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toast-message'),
+            queryViewBtn: document.getElementById('query-view-btn'),
+            adminViewBtn: document.getElementById('admin-view-btn'),
+            queryView: document.getElementById('query-view'),
+            adminView: document.getElementById('admin-view'),
+            // Query View
+            specificQueryTab: document.getElementById('specific-query-tab'),
+            generalQueryTab: document.getElementById('general-query-tab'),
+            specificQueryContent: document.getElementById('specific-query-content'),
+            generalQueryContent: document.getElementById('general-query-content'),
+            queryBtn: document.getElementById('query-btn'),
+            queryResults: document.getElementById('query-results'),
+            queryCategory1: document.getElementById('query-category-1'),
+            querySpec1: document.getElementById('query-spec-1'),
+            queryGrade1: document.getElementById('query-grade-1'),
+            queryCategory2: document.getElementById('query-category-2'),
+            querySpec2: document.getElementById('query-spec-2'),
+            queryGrade2: document.getElementById('query-grade-2'),
+            generalCategory1: document.getElementById('general-category-1'),
+            generalCategory2: document.getElementById('general-category-2'),
+            // Profile
+            profileHeader: document.getElementById('profile-header'),
+            profileContent: document.getElementById('profile-content-footer'),
+            profileToggleIcon: document.getElementById('profile-toggle-icon-footer'),
+            profileSelector: document.getElementById('profile-selector-footer'),
+            addProfileBtn: document.getElementById('add-profile-btn-footer'),
+            renameProfileBtn: document.getElementById('rename-profile-btn-footer'),
+            deleteProfileBtn: document.getElementById('delete-profile-btn-footer'),
+            // Modal
+            confirmModal: document.getElementById('confirm-modal'),
+            confirmModalMessage: document.getElementById('confirm-modal-message'),
+            confirmBtn: document.getElementById('confirm-btn'),
+            cancelBtn: document.getElementById('cancel-btn'),
+            // Admin view elements
+            weldMaterialFormTitle: document.getElementById('weld-material-form-title'),
+            addWeldMaterialForm: document.getElementById('add-weld-material-form'),
+            submitWeldMaterialBtn: document.getElementById('submit-weld-material-btn'),
+            cancelEditWeldMaterialBtn: document.getElementById('cancel-edit-weld-material-btn'),
+            weldMaterialJsonInput: document.getElementById('weld-material-json-input'),
+            importWeldMaterialsBtn: document.getElementById('import-weld-materials-btn'),
+            steelGradeJsonInput: document.getElementById('steel-grade-json-input'),
+            importSteelGradesBtn: document.getElementById('import-steel-grades-btn'),
+            weldSteelTypeTabs: document.getElementById('weld-steel-type-tabs'),
+            weldMethodTabs: document.getElementById('weld-method-tabs'),
+            weldMaterialsTable: document.getElementById('weld-materials-table'),
+            weldMaterialsPagination: document.getElementById('weld-materials-pagination'),
+            addCategoryBtn: document.getElementById('add-category-btn'),
+            categoryList: document.getElementById('category-list'),
+            gradeFormTitle: document.getElementById('grade-form-title'),
+            addGradeForm: document.getElementById('add-grade-form'),
+            submitGradeBtn: document.getElementById('submit-grade-btn'),
+            cancelEditGradeBtn: document.getElementById('cancel-edit-grade-btn'),
+            newGradeCategory: document.getElementById('new-grade-category'),
+            rodGradeSteelType: document.getElementById('rod-grade-steel-type'),
+            rodGradeMethod: document.getElementById('rod-grade-method'),
+            rodGradeSpec: document.getElementById('rod-grade-spec'),
+            newGradeRodSelector: document.getElementById('new-grade-rod-selector'),
+            addRodToGradeBtn: document.getElementById('add-rod-to-grade-btn'),
+            selectedGradeRodsList: document.getElementById('selected-grade-rods-list'),
+            steelGradesTable: document.getElementById('steel-grades-table'),
+            steelGradesPagination: document.getElementById('steel-grades-pagination'),
+            gradeCategoryTabs: document.getElementById('grade-category-tabs'),
+            gradeSpecTabs: document.getElementById('grade-spec-tabs'),
+            combinationFormTitle: document.getElementById('combination-form-title'),
+            addCombinationForm: document.getElementById('add-combination-form'),
+            submitCombinationBtn: document.getElementById('submit-combination-btn'),
+            cancelEditCombinationBtn: document.getElementById('cancel-edit-combination-btn'),
+            comboCategory1: document.getElementById('combo-category-1'),
+            comboSpec1: document.getElementById('combo-spec-1'),
+            comboGrade1: document.getElementById('combo-grade-1'),
+            comboCategory2: document.getElementById('combo-category-2'),
+            comboSpec2: document.getElementById('combo-spec-2'),
+            comboGrade2: document.getElementById('combo-grade-2'),
+            rodComboSteelType: document.getElementById('rod-combo-steel-type'),
+            rodComboMethod: document.getElementById('rod-combo-method'),
+            rodComboSpec: document.getElementById('rod-combo-spec'),
+            comboRodSelector: document.getElementById('combo-rod-selector'),
+            addRodToComboBtn: document.getElementById('add-rod-to-combo-btn'),
+            selectedComboRodsList: document.getElementById('selected-combo-rods-list'),
+            combinationsTable: document.getElementById('combinations-table'),
+            combinationsPagination: document.getElementById('combinations-pagination'),
+            // General combinations
+            generalCombinationFormTitle: document.getElementById('general-combination-form-title'),
+            addGeneralCombinationForm: document.getElementById('add-general-combination-form'),
+            submitGeneralCombinationBtn: document.getElementById('submit-general-combination-btn'),
+            cancelEditGeneralCombinationBtn: document.getElementById('cancel-edit-general-combination-btn'),
+            generalComboCategory1: document.getElementById('general-combo-category-1'),
+            generalComboCategory2: document.getElementById('general-combo-category-2'),
+            rodGeneralComboSteelType: document.getElementById('rod-general-combo-steel-type'),
+            rodGeneralComboMethod: document.getElementById('rod-general-combo-method'),
+            rodGeneralComboSpec: document.getElementById('rod-general-combo-spec'),
+            generalComboRodSelector: document.getElementById('general-combo-rod-selector'),
+            addRodToGeneralComboBtn: document.getElementById('add-rod-to-general-combo-btn'),
+            selectedGeneralComboRodsList: document.getElementById('selected-general-combo-rods-list'),
+            generalCombinationsTable: document.getElementById('general-combinations-table'),
+            generalCombinationsPagination: document.getElementById('general-combinations-pagination'),
+        };
+
+        // 應用程式狀態
+        const state = {
+            currentView: 'query',
+            activeQueryTab: 'specific',
+            profiles: [],
+            activeProfileId: null,
+            weldMaterials: [], 
+            categories: [],
+            steelGrades: [],
+            combinations: [],
+            generalCombinations: [],
+            editingItem: { type: null, id: null },
+            editingGradeRods: [],
+            editingComboRods: [],
+            editingGeneralComboRods: [],
+            activeSteelTypeTab: 'All',
+            activeWeldMethodTab: 'All',
+            activeGradeCategoryTab: 'All',
+            activeGradeSpecTab: 'All',
+            isProfileCollapsed: false,
+            confirmCallback: null,
+            pagination: {
+                weldMaterials: { currentPage: 1, pageSize: 10 },
+                steelGrades: { currentPage: 1, pageSize: 10 },
+                combinations: { currentPage: 1, pageSize: 10 },
+                generalCombinations: { currentPage: 1, pageSize: 10 },
+            },
+        };
+
+        // Firebase 服務
+        let app, auth, db;
+        const collections = {
+            profiles: 'weldingProfiles_v6',
+            weldMaterials: 'weldMaterials',
+            categories: 'steelCategories',
+            grades: 'steelGrades',
+            combinations: 'steelCombinations',
+            generalCombinations: 'generalCombinations',
+        };
+
+        // ===== 核心功能 =====
+
+        function showLoader(text = '資料載入中...') { 
+            dom.loaderText.textContent = text;
+            dom.loader.style.opacity = '1'; 
+            dom.loader.style.pointerEvents = 'auto'; 
+        }
+        function hideLoader() { dom.loader.style.opacity = '0'; dom.loader.style.pointerEvents = 'none'; }
+        
+        function showToast(message, type = 'success') {
+            dom.toastMessage.textContent = message;
+            dom.toast.className = `fixed top-5 right-5 text-white py-2 px-4 rounded-lg shadow-lg opacity-100 translate-y-0 transition-all duration-300 z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+            setTimeout(() => {
+                dom.toast.className = dom.toast.className.replace('opacity-100 translate-y-0', 'opacity-0 translate-y-[-20px]');
+            }, 3000);
+        }
+        
+        // 取得所有設定檔
+        async function fetchAllProfiles() {
+            showLoader('正在取得設定檔...');
+            try {
+                const profilesSnap = await getDocs(collection(db, collections.profiles));
+                if (profilesSnap.empty) {
+                    await firstTimeSetup();
+                    return fetchAllProfiles();
+                }
+                
+                state.profiles = profilesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                dom.profileSelector.innerHTML = '';
+                state.profiles.forEach(p => dom.profileSelector.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+
+                const lastProfile = localStorage.getItem('lastActiveProfile_v6');
+                state.activeProfileId = state.profiles.some(p => p.id === lastProfile) ? lastProfile : state.profiles[0]?.id;
+
+                if (state.activeProfileId) {
+                    dom.profileSelector.value = state.activeProfileId;
+                    await fetchAllDataForProfile(state.activeProfileId);
+                } else {
+                    showToast('找不到任何設定檔', 'error');
+                }
+            } catch (error) {
+                 console.error("取得設定檔失敗:", error);
+                 showToast('取得設定檔失敗。', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+        
+        // 取得指定設定檔的所有資料
+        async function fetchAllDataForProfile(profileId) {
+            if (!profileId) {
+                clearAllData();
+                renderUI();
+                return;
+            };
+            const profileName = state.profiles.find(p=>p.id === profileId)?.name || '';
+            showLoader(`正在載入設定檔: ${profileName}`);
+            try {
+                const profileRef = doc(db, collections.profiles, profileId);
+                const [weldMaterialsSnap, categoriesSnap, gradesSnap, combinationsSnap, generalCombinationsSnap] = await Promise.all([
+                    getDocs(collection(profileRef, collections.weldMaterials)),
+                    getDocs(collection(profileRef, collections.categories)),
+                    getDocs(collection(profileRef, collections.grades)),
+                    getDocs(collection(profileRef, collections.combinations)),
+                    getDocs(collection(profileRef, collections.generalCombinations))
+                ]);
+                
+                state.weldMaterials = weldMaterialsSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                state.categories = categoriesSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                state.steelGrades = gradesSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                state.combinations = combinationsSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                state.generalCombinations = generalCombinationsSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                renderUI();
+                
+            } catch (error) {
+                console.error(`讀取設定檔 ${profileId} 資料時發生錯誤:`, error);
+                showToast('讀取設定檔資料失敗。', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+        
+        function clearAllData() {
+            state.weldMaterials = [];
+            state.categories = [];
+            state.steelGrades = [];
+            state.combinations = [];
+            state.generalCombinations = [];
+        }
+
+        function renderUI() {
+            renderQueryView();
+            renderAdminView();
+        }
+
+        // 首次設定
+        async function firstTimeSetup() {
+            showToast("偵測到無任何設定檔，正在建立預設設定檔...");
+            const profileRef = await addDoc(collection(db, collections.profiles), { name: '預設設定檔', createdAt: serverTimestamp() });
+            const profileId = profileRef.id;
+            const profilePath = doc(db, collections.profiles, profileId);
+
+            const batch = writeBatch(db);
+            
+            const rod1Ref = doc(collection(profilePath, collections.weldMaterials));
+            batch.set(rod1Ref, { steelType: '碳鋼', method: 'SMAW', spec: 'AWS A5.1', name: 'E7018' });
+            const rod4Ref = doc(collection(profilePath, collections.weldMaterials));
+            batch.set(rod4Ref, { steelType: '不銹鋼', method: 'SMAW', spec: 'AWS A5.4', name: 'E309-16' });
+            const cat1Ref = doc(collection(profilePath, collections.categories));
+            batch.set(cat1Ref, { name: '碳鋼' });
+            const cat2Ref = doc(collection(profilePath, collections.categories));
+            batch.set(cat2Ref, { name: '不銹鋼' });
+            const grade1Ref = doc(collection(profilePath, collections.grades));
+            batch.set(grade1Ref, { categoryId: cat1Ref.id, spec: 'ASTM', grade: 'A36', baseWeldingRodIds: [rod1Ref.id], notes: '標準碳鋼' });
+            const grade3Ref = doc(collection(profilePath, collections.grades));
+            batch.set(grade3Ref, { categoryId: cat2Ref.id, spec: 'JIS', grade: 'SUS304', baseWeldingRodIds: [], notes: '' });
+            
+            const generalComboRef = doc(collection(profilePath, collections.generalCombinations));
+            const sortedCatIds = [cat1Ref.id, cat2Ref.id].sort();
+            batch.set(generalComboRef, { category1Id: sortedCatIds[0], category2Id: sortedCatIds[1], weldingRodIds: [rod4Ref.id], notes: '異材焊接通用建議' });
+
+            await batch.commit();
+            showToast("預設設定檔建立完成！", 'success');
+        }
+
+        // ===== 視圖切換 =====
+        function switchView(viewName) {
+            state.currentView = viewName;
+            dom.queryView.classList.toggle('view-hidden', viewName !== 'query');
+            dom.adminView.classList.toggle('view-hidden', viewName !== 'admin');
+            dom.queryViewBtn.classList.toggle('active', viewName === 'query');
+            dom.adminViewBtn.classList.toggle('active', viewName === 'admin');
+        }
+        
+        function switchQueryTab(tabName) {
+            state.activeQueryTab = tabName;
+            dom.specificQueryTab.classList.toggle('active', tabName === 'specific');
+            dom.generalQueryTab.classList.toggle('active', tabName === 'general');
+            dom.specificQueryContent.classList.toggle('hidden', tabName !== 'specific');
+            dom.generalQueryContent.classList.toggle('hidden', tabName !== 'general');
+            dom.queryResults.innerHTML = '<p class="text-gray-500">請選擇條件以查詢建議焊材。</p>';
+        }
+
+        // ===== 查詢視圖邏輯 =====
+        function renderQueryView() {
+            // Specific Query
+            const catOptions = ['<option value="">請選擇大類</option>', ...state.categories.map(c => `<option value="${c.id}">${c.name}</option>`)].join('');
+            dom.queryCategory1.innerHTML = catOptions;
+            dom.queryCategory2.innerHTML = catOptions;
+            resetQuerySelection(1);
+            resetQuerySelection(2);
+
+            // General Query
+            dom.generalCategory1.innerHTML = catOptions;
+            dom.generalCategory2.innerHTML = catOptions;
+
+            dom.queryResults.innerHTML = '<p class="text-gray-500">請選擇條件以查詢建議焊材。</p>';
+        }
+
+        function populateQuerySpecSelect(num) {
+            const categoryId = dom[`queryCategory${num}`].value;
+            const specSelect = dom[`querySpec${num}`];
+            const gradeSelect = dom[`queryGrade${num}`];
+
+            if (!categoryId) {
+                resetQuerySelection(num);
+                return;
+            }
+            
+            specSelect.disabled = false;
+            gradeSelect.innerHTML = '<option value="">請先選規範</option>';
+            gradeSelect.disabled = true;
+
+            const specs = [...new Set(state.steelGrades.filter(g => g.categoryId === categoryId).map(g => g.spec))];
+            specSelect.innerHTML = ['<option value="">請選擇規範</option>', ...specs.sort().map(s => `<option value="${s}">${s}</option>`)].join('');
+        }
+        
+        function populateQueryGradeSelect(num) {
+            const categoryId = dom[`queryCategory${num}`].value;
+            const spec = dom[`querySpec${num}`].value;
+            const gradeSelect = dom[`queryGrade${num}`];
+
+            if (!spec) {
+                gradeSelect.innerHTML = '<option value="">請先選規範</option>';
+                gradeSelect.disabled = true;
+                return;
+            }
+
+            gradeSelect.disabled = false;
+            const grades = state.steelGrades.filter(g => g.categoryId === categoryId && g.spec === spec);
+            gradeSelect.innerHTML = ['<option value="">請選擇等級</option>', ...grades.sort((a,b) => a.grade.localeCompare(b.grade)).map(g => `<option value="${g.id}">${g.grade}</option>`)].join('');
+        }
+
+        function resetQuerySelection(num) {
+            dom[`querySpec${num}`].innerHTML = '<option value="">請先選大類</option>';
+            dom[`querySpec${num}`].disabled = true;
+            dom[`queryGrade${num}`].innerHTML = '<option value="">請先選規範</option>';
+            dom[`queryGrade${num}`].disabled = true;
+        }
+        
+        function findCombination() {
+            if (state.activeQueryTab === 'specific') {
+                findSpecificCombination();
+            } else {
+                findGeneralCombination();
+            }
+        }
+
+        function findSpecificCombination() {
+            const grade1Id = dom.queryGrade1.value;
+            const grade2Id = dom.queryGrade2.value;
+
+            if (!grade1Id) {
+                dom.queryResults.innerHTML = '<p class="text-gray-500">請至少選擇 鋼板 1 的完整規格。</p>';
+                return;
+            }
+
+            const grade1 = state.steelGrades.find(g => g.id === grade1Id);
+            
+            // Single plate query
+            if (!grade2Id) {
+                const title = formatGradeText(grade1);
+                const resultType = '基礎焊材';
+                displayResults(title, resultType, grade1.baseWeldingRodIds || [], grade1.notes);
+                return;
+            }
+            
+            // Two plates query
+            const grade2 = state.steelGrades.find(g => g.id === grade2Id);
+            let resultRodIds = [], resultNotes = '', resultType = '';
+
+            if (grade1Id === grade2Id) {
+                resultRodIds = grade1.baseWeldingRodIds || [];
+                resultNotes = grade1.notes;
+                resultType = '基礎焊材';
+            } else {
+                const sortedIds = [grade1Id, grade2Id].sort();
+                const combination = state.combinations.find(c => c.grade1Id === sortedIds[0] && c.grade2Id === sortedIds[1]);
+                if (combination) {
+                    resultRodIds = combination.weldingRodIds || [];
+                    resultNotes = combination.notes;
+                    resultType = '特定搭配焊材';
+                }
+            }
+
+            const title = `${formatGradeText(grade1)} + ${formatGradeText(grade2)}`;
+            displayResults(title, resultType, resultRodIds, resultNotes);
+        }
+
+        function findGeneralCombination() {
+            const cat1Id = dom.generalCategory1.value;
+            const cat2Id = dom.generalCategory2.value;
+
+            if (!cat1Id || !cat2Id) {
+                dom.queryResults.innerHTML = '<p class="text-gray-500">請選擇兩種材料類型以查詢建議焊材。</p>';
+                return;
+            }
+            
+            const sortedIds = [cat1Id, cat2Id].sort();
+            const combination = state.generalCombinations.find(c => c.category1Id === sortedIds[0] && c.category2Id === sortedIds[1]);
+            
+            const cat1 = state.categories.find(c => c.id === cat1Id);
+            const cat2 = state.categories.find(c => c.id === cat2Id);
+            const title = `${cat1.name} + ${cat2.name}`;
+            const resultType = '通用建議焊材';
+            
+            if (combination) {
+                 displayResults(title, resultType, combination.weldingRodIds, combination.notes);
+            } else {
+                 displayResults(title, resultType, [], '');
+            }
+        }
+        
+        function formatGradeText(g) {
+            return `${state.categories.find(c => c.id === g.categoryId)?.name} ${g.spec}-${g.grade}`;
+        }
+
+        function getRodColor(method = '') {
+            const upperMethod = method.toUpperCase();
+            switch (upperMethod) {
+                case 'SMAW':
+                    return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200', strongText: 'text-blue-600' };
+                case 'FCAW':
+                    return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200', strongText: 'text-green-600' };
+                case 'GMAW':
+                    return { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200', strongText: 'text-amber-600' };
+                case 'GTAW':
+                    return { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200', strongText: 'text-indigo-600' };
+                default:
+                    return { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200', strongText: 'text-gray-600' };
+            }
+        }
+
+        function displayResults(title, type, rodIds, notes) {
+            const weldMaterials = rodIds.map(id => state.weldMaterials.find(wm => wm.id === id)).filter(Boolean);
+
+            if (weldMaterials.length > 0) {
+                const materialsHtml = weldMaterials.map(weldMaterial => {
+                    const color = getRodColor(weldMaterial.method);
+                    return `<div class="${color.bg} ${color.border} border p-3 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-center">
+                            <div><span class="text-xs ${color.text} block opacity-75">銲材鋼種</span><strong class="${color.strongText}">${weldMaterial.steelType}</strong></div>
+                            <div><span class="text-xs ${color.text} block opacity-75">焊接方法</span><strong class="${color.strongText}">${weldMaterial.method}</strong></div>
+                            <div><span class="text-xs ${color.text} block opacity-75">規範</span><strong class="${color.strongText}">${weldMaterial.spec}</strong></div>
+                            <div><span class="text-xs ${color.text} block opacity-75">品名</span><strong class="${color.strongText}">${weldMaterial.name}</strong></div>
+                        </div>
+                    </div>`
+                }).join('');
+
+                dom.queryResults.innerHTML = `
+                    <div class="w-full text-left space-y-4">
+                        <div>
+                            <p class="text-sm text-gray-500">${title}</p>
+                            <p class="text-sm font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full inline-block">${type}</p>
+                        </div>
+                        <div class="space-y-3">
+                            <h3 class="text-lg font-bold text-gray-800">建議焊材</h3>
+                            ${materialsHtml}
+                        </div>
+                        ${notes ? `<div class="p-4 border rounded-lg bg-yellow-50">
+                             <h3 class="text-lg font-bold text-yellow-800">注意事項</h3>
+                             <p class="text-gray-700 mt-1">${notes}</p>
+                        </div>` : ''}
+                    </div>
+                `;
+            } else {
+                dom.queryResults.innerHTML = `<p class="text-red-600">找不到 ${title} 的搭配資料。</p>`;
+            }
+        }
+        
+        // ===== 管理視圖邏輯 =====
+
+        function getTabColorClasses(type, name) {
+            const defaultColors = { inactive: 'bg-gray-200 text-gray-700 hover:bg-gray-300', active: 'bg-gray-600 text-white' };
+            let colors;
+            switch (type) {
+                case 'steelType':
+                case 'category':
+                    const lowerName = name.toLowerCase();
+                    if (lowerName.includes('不銹鋼') || lowerName.includes('stainless')) {
+                        colors = { inactive: 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200', active: 'bg-cyan-600 text-white' };
+                    } else if (lowerName.includes('合金')) {
+                        colors = { inactive: 'bg-orange-100 text-orange-800 hover:bg-orange-200', active: 'bg-orange-600 text-white' };
+                    } else { // Carbon steel and default
+                        colors = defaultColors;
+                    }
+                    break;
+                case 'method':
+                    const upperMethod = name.toUpperCase();
+                    switch (upperMethod) {
+                        case 'SMAW': colors = { inactive: 'bg-blue-100 text-blue-800 hover:bg-blue-200', active: 'bg-blue-600 text-white' }; break;
+                        case 'FCAW': colors = { inactive: 'bg-green-100 text-green-800 hover:bg-green-200', active: 'bg-green-600 text-white' }; break;
+                        case 'GMAW': colors = { inactive: 'bg-amber-100 text-amber-800 hover:bg-amber-200', active: 'bg-amber-600 text-white' }; break;
+                        case 'GTAW': colors = { inactive: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200', active: 'bg-indigo-600 text-white' }; break;
+                        default: colors = defaultColors;
+                    }
+                    break;
+                default: // For spec tabs, etc.
+                    colors = { inactive: 'bg-slate-100 text-slate-700 hover:bg-slate-200', active: 'bg-slate-500 text-white' };
+            }
+            if (name === 'All') {
+                return { inactive: 'bg-white text-gray-800 hover:bg-gray-50 border border-gray-300', active: 'bg-black text-white' };
+            }
+            return colors;
+        }
+
+        function renderPaginationControls(containerId, dataType, totalItems, currentPage, pageSize) {
+            const container = dom[containerId];
+            if (totalItems <= pageSize) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.ceil(totalItems / pageSize);
+
+            container.innerHTML = `
+                <span class="text-sm text-gray-700">
+                    顯示第 ${totalItems > 0 ? (currentPage - 1) * pageSize + 1 : 0} 至 ${Math.min(currentPage * pageSize, totalItems)} 項，共 ${totalItems} 項
+                </span>
+                <div class="inline-flex mt-2 xs:mt-0">
+                    <button data-type="${dataType}" data-action="prev" class="pagination-btn inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-l hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage === 1 ? 'disabled' : ''}>
+                        <span class="material-icons text-base mr-1">keyboard_arrow_left</span>
+                        上一頁
+                    </button>
+                    <button data-type="${dataType}" data-action="next" class="pagination-btn inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-700 border-0 border-l border-gray-600 rounded-r hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage === totalPages ? 'disabled' : ''}>
+                        下一頁
+                        <span class="material-icons text-base ml-1">keyboard_arrow_right</span>
+                    </button>
+                </div>
+            `;
+        }
+
+
+        function renderAdminView() {
+            renderWeldMaterials();
+            renderCategories();
+            renderSteelGrades();
+            renderCombinations();
+            renderGeneralCombinations();
+            populateAdminRodSelectors();
+        }
+        
+        function formatRodsList(rodIds) {
+            if (!rodIds || rodIds.length === 0) return '<span class="text-gray-400">無</span>';
+            return `<div class="flex flex-col space-y-1">${rodIds.map(rodId => {
+                const rod = state.weldMaterials.find(wm => wm.id === rodId);
+                if (!rod) return '';
+                const color = getRodColor(rod.method);
+                return `<span class="inline-block ${color.bg} ${color.text} text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${rod.method}/${rod.name}</span>`;
+            }).join('')}</div>`;
+        }
+
+        function renderWeldMaterials() {
+            const steelTypes = ['All', ...new Set(state.weldMaterials.map(wm => wm.steelType))];
+            dom.weldSteelTypeTabs.innerHTML = steelTypes.map(st => {
+                 const colors = getTabColorClasses('steelType', st);
+                 const classes = state.activeSteelTypeTab === st ? colors.active : colors.inactive;
+                 return `<button data-steel-type="${st}" class="weld-material-tab ${classes}">${st}</button>`;
+            }).join('');
+
+            const materialsBySteelType = state.activeSteelTypeTab === 'All'
+                ? state.weldMaterials
+                : state.weldMaterials.filter(wm => wm.steelType === state.activeSteelTypeTab);
+
+            const methods = ['All', ...new Set(materialsBySteelType.map(wm => wm.method))];
+             dom.weldMethodTabs.innerHTML = methods.map(m => {
+                 const colors = getTabColorClasses('method', m);
+                 const classes = state.activeWeldMethodTab === m ? colors.active : colors.inactive;
+                 return `<button data-method="${m}" class="weld-material-tab ${classes}">${m}</button>`;
+            }).join('');
+
+            const filteredMaterials = state.activeWeldMethodTab === 'All'
+                ? materialsBySteelType
+                : materialsBySteelType.filter(wm => wm.method === state.activeWeldMethodTab);
+            
+            const { currentPage, pageSize } = state.pagination.weldMaterials;
+            const totalItems = filteredMaterials.length;
+            const paginatedItems = filteredMaterials.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+            dom.weldMaterialsTable.innerHTML = paginatedItems.map(wm => `
+                <tr>
+                    <td class="table-cell">${wm.steelType}</td><td class="table-cell">${wm.method}</td><td class="table-cell">${wm.spec}</td><td class="table-cell">${wm.name}</td>
+                    <td class="table-cell"><div class="flex space-x-2">
+                        <button data-id="${wm.id}" data-type="weldMaterial" class="action-btn edit-btn"><span class="material-icons text-blue-600 text-base">edit</span></button>
+                        <button data-id="${wm.id}" data-type="weldMaterial" class="action-btn delete-btn"><span class="material-icons text-red-500 text-base">delete</span></button>
+                    </div></td>
+                </tr>`).join('');
+            renderPaginationControls('weldMaterialsPagination', 'weldMaterials', totalItems, currentPage, pageSize);
+        }
+
+        function renderCategories() {
+            dom.categoryList.innerHTML = state.categories.map(c => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded-md">
+                    <span>${c.name}</span>
+                    <div class="flex space-x-2">
+                         <button data-id="${c.id}" data-type="category" class="action-btn edit-btn"><span class="material-icons text-blue-600 text-base">edit</span></button>
+                         <button data-id="${c.id}" data-type="category" class="action-btn delete-btn"><span class="material-icons text-red-500 text-base">delete</span></button>
+                    </div>
+                </div>`).join('');
+            
+            const catOptions = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            dom.newGradeCategory.innerHTML = catOptions;
+            dom.generalComboCategory1.innerHTML = ['<option value="">請選擇類型</option>', catOptions].join('');
+            dom.generalComboCategory2.innerHTML = ['<option value="">請選擇類型</option>', catOptions].join('');
+        }
+
+        function renderSteelGrades() {
+            const categories = ['All', ...state.categories.map(c => c.name)];
+            dom.gradeCategoryTabs.innerHTML = categories.map(cName => {
+                const colors = getTabColorClasses('category', cName);
+                const classes = state.activeGradeCategoryTab === cName ? colors.active : colors.inactive;
+                return `<button type="button" data-category-name="${cName}" class="weld-material-tab grade-category-tab ${classes}">${cName}</button>`;
+            }).join('');
+
+            const gradesByCategory = state.activeGradeCategoryTab === 'All'
+                ? state.steelGrades
+                : state.steelGrades.filter(g => {
+                    const category = state.categories.find(cat => cat.id === g.categoryId);
+                    return category && category.name === state.activeGradeCategoryTab;
+                });
+
+            const specs = ['All', ...new Set(gradesByCategory.map(g => g.spec))];
+            dom.gradeSpecTabs.innerHTML = specs.map(sName => {
+                const colors = getTabColorClasses('spec', sName);
+                const classes = state.activeGradeSpecTab === sName ? colors.active : colors.inactive;
+                return `<button type="button" data-spec-name="${sName}" class="weld-material-tab grade-spec-tab ${classes}">${sName}</button>`;
+            }).join('');
+
+            const filteredGrades = state.activeGradeSpecTab === 'All'
+                ? gradesByCategory
+                : gradesByCategory.filter(g => g.spec === state.activeGradeSpecTab);
+
+            const { currentPage, pageSize } = state.pagination.steelGrades;
+            const totalItems = filteredGrades.length;
+            const paginatedItems = filteredGrades.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+            dom.steelGradesTable.innerHTML = paginatedItems.map(g => {
+                const categoryName = state.categories.find(c => c.id === g.categoryId)?.name || '未知';
+                return `<tr>
+                    <td class="table-cell">${categoryName}</td>
+                    <td class="table-cell">${g.spec}</td>
+                    <td class="table-cell">${g.grade}</td>
+                    <td class="table-cell">${formatRodsList(g.baseWeldingRodIds)}</td>
+                    <td class="table-cell">${g.notes || ''}</td>
+                    <td class="table-cell"><div class="flex space-x-2">
+                        <button data-id="${g.id}" data-type="grade" class="action-btn edit-btn"><span class="material-icons text-blue-600 text-base">edit</span></button>
+                        <button data-id="${g.id}" data-type="grade" class="action-btn delete-btn"><span class="material-icons text-red-500 text-base">delete</span></button>
+                    </div></td>
+                </tr>`;
+            }).join('');
+            renderPaginationControls('steelGradesPagination', 'steelGrades', totalItems, currentPage, pageSize);
+        }
+        
+        function renderCombinations() {
+            const catOptions = ['<option value="">請選擇大類</option>', ...state.categories.map(c => `<option value="${c.id}">${c.name}</option>`)].join('');
+            dom.comboCategory1.innerHTML = catOptions;
+            dom.comboCategory2.innerHTML = catOptions;
+
+            const { currentPage, pageSize } = state.pagination.combinations;
+            const totalItems = state.combinations.length;
+            const paginatedItems = state.combinations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+            dom.combinationsTable.innerHTML = paginatedItems.map(c => {
+                const grade1 = state.steelGrades.find(g => g.id === c.grade1Id);
+                const grade2 = state.steelGrades.find(g => g.id === c.grade2Id);
+                if (!grade1 || !grade2) return '';
+                return `<tr>
+                    <td class="table-cell">${formatGradeText(grade1)}</td>
+                    <td class="table-cell">${formatGradeText(grade2)}</td>
+                    <td class="table-cell">${formatRodsList(c.weldingRodIds)}</td>
+                    <td class="table-cell">${c.notes || ''}</td>
+                    <td class="table-cell"><div class="flex space-x-2">
+                        <button data-id="${c.id}" data-type="combination" class="action-btn edit-btn"><span class="material-icons text-blue-600 text-base">edit</span></button>
+                        <button data-id="${c.id}" data-type="combination" class="action-btn delete-btn"><span class="material-icons text-red-500 text-base">delete</span></button>
+                    </div></td>
+                </tr>`;
+            }).join('');
+            renderPaginationControls('combinationsPagination', 'combinations', totalItems, currentPage, pageSize);
+        }
+        
+        function renderGeneralCombinations() {
+            const { currentPage, pageSize } = state.pagination.generalCombinations;
+            const totalItems = state.generalCombinations.length;
+            const paginatedItems = state.generalCombinations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+            
+            dom.generalCombinationsTable.innerHTML = paginatedItems.map(c => {
+                const cat1 = state.categories.find(cat => cat.id === c.category1Id);
+                const cat2 = state.categories.find(cat => cat.id === c.category2Id);
+                if (!cat1 || !cat2) return '';
+                 return `<tr>
+                    <td class="table-cell">${cat1.name}</td>
+                    <td class="table-cell">${cat2.name}</td>
+                    <td class="table-cell">${formatRodsList(c.weldingRodIds)}</td>
+                    <td class="table-cell">${c.notes || ''}</td>
+                    <td class="table-cell"><div class="flex space-x-2">
+                        <button data-id="${c.id}" data-type="generalCombination" class="action-btn edit-btn"><span class="material-icons text-blue-600 text-base">edit</span></button>
+                        <button data-id="${c.id}" data-type="generalCombination" class="action-btn delete-btn"><span class="material-icons text-red-500 text-base">delete</span></button>
+                    </div></td>
+                </tr>`;
+            }).join('');
+            renderPaginationControls('generalCombinationsPagination', 'generalCombinations', totalItems, currentPage, pageSize);
+        }
+
+        function populateAdminRodSelectors() {
+            const steelTypes = ['', ...new Set(state.weldMaterials.map(wm => wm.steelType))];
+            const options = steelTypes.map(st => `<option value="${st}">${st || '選擇鋼種'}</option>`).join('');
+            dom.rodGradeSteelType.innerHTML = options;
+            dom.rodComboSteelType.innerHTML = options;
+            dom.rodGeneralComboSteelType.innerHTML = options;
+        }
+
+        function handleAdminRodSteelTypeChange(type) {
+            let steelTypeEl, methodEl, specEl, finalEl;
+            if(type === 'grade') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGradeSteelType, dom.rodGradeMethod, dom.rodGradeSpec, dom.newGradeRodSelector]; }
+            else if(type === 'combo') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodComboSteelType, dom.rodComboMethod, dom.rodComboSpec, dom.comboRodSelector]; }
+            else { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGeneralComboSteelType, dom.rodGeneralComboMethod, dom.rodGeneralComboSpec, dom.generalComboRodSelector]; }
+
+            const selectedSteelType = steelTypeEl.value;
+            methodEl.disabled = !selectedSteelType;
+            specEl.disabled = true;
+            finalEl.disabled = true;
+            methodEl.innerHTML = '<option value="">選擇方法</option>';
+            specEl.innerHTML = '<option value="">選擇規範</option>';
+            finalEl.innerHTML = '<option value="">選擇品名</option>';
+            
+            if (selectedSteelType) {
+                const methods = [...new Set(state.weldMaterials.filter(wm => wm.steelType === selectedSteelType).map(wm => wm.method))];
+                methodEl.innerHTML = ['<option value="">選擇方法</option>', ...methods.sort().map(m => `<option value="${m}">${m}</option>`)].join('');
+            }
+        }
+        
+        function handleAdminRodMethodChange(type) {
+            let steelTypeEl, methodEl, specEl, finalEl;
+            if(type === 'grade') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGradeSteelType, dom.rodGradeMethod, dom.rodGradeSpec, dom.newGradeRodSelector]; }
+            else if(type === 'combo') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodComboSteelType, dom.rodComboMethod, dom.rodComboSpec, dom.comboRodSelector]; }
+            else { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGeneralComboSteelType, dom.rodGeneralComboMethod, dom.rodGeneralComboSpec, dom.generalComboRodSelector]; }
+
+            const selectedSteelType = steelTypeEl.value;
+            const selectedMethod = methodEl.value;
+            specEl.disabled = !selectedMethod;
+            finalEl.disabled = true;
+            specEl.innerHTML = '<option value="">選擇規範</option>';
+            finalEl.innerHTML = '<option value="">選擇品名</option>';
+
+            if (selectedMethod) {
+                const specs = [...new Set(state.weldMaterials.filter(wm => wm.steelType === selectedSteelType && wm.method === selectedMethod).map(wm => wm.spec))];
+                specEl.innerHTML = ['<option value="">選擇規範</option>', ...specs.sort().map(s => `<option value="${s}">${s}</option>`)].join('');
+            }
+        }
+        
+        function handleAdminRodSpecChange(type) {
+            let steelTypeEl, methodEl, specEl, finalEl;
+            if(type === 'grade') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGradeSteelType, dom.rodGradeMethod, dom.rodGradeSpec, dom.newGradeRodSelector]; }
+            else if(type === 'combo') { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodComboSteelType, dom.rodComboMethod, dom.rodComboSpec, dom.comboRodSelector]; }
+            else { [steelTypeEl, methodEl, specEl, finalEl] = [dom.rodGeneralComboSteelType, dom.rodGeneralComboMethod, dom.rodGeneralComboSpec, dom.generalComboRodSelector]; }
+
+            const selectedSteelType = steelTypeEl.value;
+            const selectedMethod = methodEl.value;
+            const selectedSpec = specEl.value;
+            finalEl.disabled = !selectedSpec;
+            finalEl.innerHTML = '<option value="">選擇品名</option>';
+
+            if (selectedSpec) {
+                const rods = state.weldMaterials.filter(wm => wm.steelType === selectedSteelType && wm.method === selectedMethod && wm.spec === selectedSpec);
+                finalEl.innerHTML = ['<option value="">選擇品名</option>', ...rods.map(r => `<option value="${r.id}">${r.name}</option>`)].join('');
+            }
+        }
+
+
+        // --- Admin Form Handlers ---
+        async function handleWeldMaterialSubmit(e) {
+            e.preventDefault();
+            const newData = {
+                steelType: document.getElementById('new-weld-steel-type').value.trim(),
+                method: document.getElementById('new-weld-method').value.trim(),
+                spec: document.getElementById('new-weld-spec').value.trim(),
+                name: document.getElementById('new-weld-name').value.trim(),
+            };
+            const { id, type } = state.editingItem;
+            const profileRef = doc(db, collections.profiles, state.activeProfileId);
+            if (id && type === 'weldMaterial') {
+                await updateDoc(doc(profileRef, collections.weldMaterials, id), newData);
+            } else {
+                await addDoc(collection(profileRef, collections.weldMaterials), newData);
+            }
+            cancelEdit();
+            await fetchAllDataForProfile(state.activeProfileId);
+        }
+
+        async function handleAddCategory() {
+            const name = prompt("請輸入新的大類名稱：");
+            if (name && name.trim()) {
+                await addDoc(collection(doc(db, collections.profiles, state.activeProfileId), collections.categories), { name: name.trim() });
+                await fetchAllDataForProfile(state.activeProfileId);
+            }
+        }
+
+        async function handleGradeSubmit(e) {
+            e.preventDefault();
+            const newData = {
+                categoryId: dom.newGradeCategory.value,
+                spec: document.getElementById('new-grade-spec').value.trim(),
+                grade: document.getElementById('new-grade-type').value.trim(),
+                baseWeldingRodIds: state.editingGradeRods,
+                notes: document.getElementById('new-grade-notes').value.trim(),
+            };
+            const { id, type } = state.editingItem;
+            const profileRef = doc(db, collections.profiles, state.activeProfileId);
+            if (id && type === 'grade') {
+                await updateDoc(doc(profileRef, collections.grades, id), newData);
+            } else {
+                await addDoc(collection(profileRef, collections.grades), newData);
+            }
+            cancelEdit();
+            await fetchAllDataForProfile(state.activeProfileId);
+        }
+        
+        async function handleCombinationSubmit(e) {
+            e.preventDefault();
+            const grade1Id = dom.comboGrade1.value;
+            const grade2Id = dom.comboGrade2.value;
+            
+            if (!grade1Id || !grade2Id) { showToast('請選擇完整的鋼板規格', 'error'); return; }
+            if (grade1Id === grade2Id) { showToast('不能選擇兩個相同的鋼板。', 'error'); return; }
+            
+            const sortedIds = [grade1Id, grade2Id].sort();
+            const newData = {
+                grade1Id: sortedIds[0],
+                grade2Id: sortedIds[1],
+                weldingRodIds: state.editingComboRods,
+                notes: document.getElementById('combo-notes').value.trim(),
+            };
+            const { id, type } = state.editingItem;
+            const profileRef = doc(db, collections.profiles, state.activeProfileId);
+            if (id && type === 'combination') {
+                await updateDoc(doc(profileRef, collections.combinations, id), newData);
+            } else {
+                await addDoc(collection(profileRef, collections.combinations), newData);
+            }
+            cancelEdit();
+            await fetchAllDataForProfile(state.activeProfileId);
+        }
+        
+        async function handleGeneralCombinationSubmit(e) {
+            e.preventDefault();
+            const cat1Id = dom.generalComboCategory1.value;
+            const cat2Id = dom.generalComboCategory2.value;
+            if (cat1Id === cat2Id) { showToast('不能選擇兩個相同的類型。', 'error'); return; }
+
+            const sortedIds = [cat1Id, cat2Id].sort();
+            const newData = {
+                category1Id: sortedIds[0],
+                category2Id: sortedIds[1],
+                weldingRodIds: state.editingGeneralComboRods,
+                notes: document.getElementById('general-combo-notes').value.trim(),
+            };
+            const { id, type } = state.editingItem;
+            const profileRef = doc(db, collections.profiles, state.activeProfileId);
+             if (id && type === 'generalCombination') {
+                await updateDoc(doc(profileRef, collections.generalCombinations, id), newData);
+            } else {
+                await addDoc(collection(profileRef, collections.generalCombinations), newData);
+            }
+            cancelEdit();
+            await fetchAllDataForProfile(state.activeProfileId);
+        }
+
+
+        function handleAdminAction(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+            const { id, type, steelType, method, action } = target.dataset;
+
+            // Delete logic
+            if (target.matches('.delete-btn')) {
+                let coll, message;
+                if (type === 'weldMaterial') { coll = collections.weldMaterials; message = '確定刪除此焊材？相關鋼板資料將失去對應。'; }
+                else if (type === 'category') { coll = collections.categories; message = '確定刪除此大類？底下所有鋼板及搭配資料將被刪除。'; }
+                else if (type === 'grade') { coll = collections.grades; message = '確定刪除此鋼板？相關搭配資料將被刪除。'; }
+                else if (type === 'combination') { coll = collections.combinations; message = '確定刪除此搭配資料？'; }
+                else if (type === 'generalCombination') { coll = collections.generalCombinations; message = '確定刪除此通用搭配資料？'; }
+                else return;
+                
+                showConfirmModal(message, async () => {
+                    showLoader('刪除中...');
+                    const profileRef = doc(db, collections.profiles, state.activeProfileId);
+                    const batch = writeBatch(db);
+                    if (type === 'category') {
+                        const gradesToDelete = state.steelGrades.filter(g => g.categoryId === id);
+                        for(const grade of gradesToDelete) {
+                            const combosToDelete = state.combinations.filter(c => c.grade1Id === grade.id || c.grade2Id === grade.id);
+                            combosToDelete.forEach(c => batch.delete(doc(profileRef, collections.combinations, c.id)));
+                            batch.delete(doc(profileRef, collections.grades, grade.id));
+                        }
+                    } else if (type === 'grade') {
+                        const combosToDelete = state.combinations.filter(c => c.grade1Id === id || c.grade2Id === id);
+                        combosToDelete.forEach(c => batch.delete(doc(profileRef, collections.combinations, c.id)));
+                    }
+                    batch.delete(doc(profileRef, coll, id));
+                    await batch.commit();
+                    showToast('刪除成功', 'success');
+                    await fetchAllDataForProfile(state.activeProfileId);
+                });
+                return;
+            } 
+            
+            // Edit logic
+            if (target.matches('.edit-btn')) {
+                if (type === 'category') {
+                    const item = state.categories.find(i => i.id === id);
+                    const newName = prompt('請輸入新的大類名稱:', item.name);
+                    if (newName && newName.trim()) {
+                        updateDoc(doc(db, collections.profiles, state.activeProfileId, collections.categories, id), { name: newName.trim() })
+                            .then(() => fetchAllDataForProfile(state.activeProfileId));
+                    }
+                    cancelEdit();
+                    return; 
+                }
+                
+                state.editingItem = { id, type };
+                if (type === 'weldMaterial') {
+                    const item = state.weldMaterials.find(i => i.id === id);
+                    document.getElementById('new-weld-steel-type').value = item.steelType;
+                    document.getElementById('new-weld-method').value = item.method;
+                    document.getElementById('new-weld-spec').value = item.spec;
+                    document.getElementById('new-weld-name').value = item.name;
+                    dom.weldMaterialFormTitle.textContent = '編輯焊接材料';
+                    dom.submitWeldMaterialBtn.textContent = '更新';
+                    dom.cancelEditWeldMaterialBtn.classList.remove('hidden');
+                } else if (type === 'grade') {
+                    const item = state.steelGrades.find(i => i.id === id);
+                    state.editingGradeRods = [...(item.baseWeldingRodIds || [])];
+                    renderSelectedRodsList('grade');
+                    dom.newGradeCategory.value = item.categoryId;
+                    document.getElementById('new-grade-spec').value = item.spec;
+                    document.getElementById('new-grade-type').value = item.grade;
+                    document.getElementById('new-grade-notes').value = item.notes;
+                    dom.gradeFormTitle.textContent = '編輯鋼板基本資料';
+                    dom.submitGradeBtn.textContent = '更新';
+                    dom.cancelEditGradeBtn.classList.remove('hidden');
+                } else if (type === 'combination') {
+                    const item = state.combinations.find(i => i.id === id);
+                    state.editingComboRods = [...(item.weldingRodIds || [])];
+                    renderSelectedRodsList('combo');
+                    const g1 = state.steelGrades.find(g => g.id === item.grade1Id);
+                    const g2 = state.steelGrades.find(g => g.id === item.grade2Id);
+                    if(g1) {
+                        dom.comboCategory1.value = g1.categoryId;
+                        populateComboSpecSelect(1);
+                        dom.comboSpec1.value = g1.spec;
+                        populateComboGradeSelect(1);
+                        dom.comboGrade1.value = g1.id;
+                    }
+                    if(g2) {
+                        dom.comboCategory2.value = g2.categoryId;
+                        populateComboSpecSelect(2);
+                        dom.comboSpec2.value = g2.spec;
+                        populateComboGradeSelect(2);
+                        dom.comboGrade2.value = g2.id;
+                    }
+
+                    document.getElementById('combo-notes').value = item.notes;
+                    dom.combinationFormTitle.textContent = '編輯鋼板搭配資料';
+                    dom.submitCombinationBtn.textContent = '更新';
+                    dom.cancelEditCombinationBtn.classList.remove('hidden');
+                } else if (type === 'generalCombination') {
+                    const item = state.generalCombinations.find(i => i.id === id);
+                    state.editingGeneralComboRods = [...(item.weldingRodIds || [])];
+                    renderSelectedRodsList('generalCombo');
+                    dom.generalComboCategory1.value = item.category1Id;
+                    dom.generalComboCategory2.value = item.category2Id;
+                    document.getElementById('general-combo-notes').value = item.notes;
+                    dom.generalCombinationFormTitle.textContent = '編輯通用類型搭配';
+                    dom.submitGeneralCombinationBtn.textContent = '更新';
+                    dom.cancelEditGeneralCombinationBtn.classList.remove('hidden');
+                }
+                return;
+            } 
+            
+            // Tab logic for Weld Materials
+            if (target.matches('.weld-material-tab') && !target.matches('.grade-category-tab, .grade-spec-tab')) {
+                if (steelType) {
+                    state.activeSteelTypeTab = steelType;
+                    state.activeWeldMethodTab = 'All';
+                } else if (method) {
+                    state.activeWeldMethodTab = method;
+                }
+                state.pagination.weldMaterials.currentPage = 1;
+                renderWeldMaterials();
+                return;
+            } 
+            
+            // Pagination logic
+            if (target.matches('.pagination-btn')) {
+                const paginationState = state.pagination[type];
+                if (action === 'prev') {
+                    if (paginationState.currentPage > 1) paginationState.currentPage--;
+                } else if (action === 'next') {
+                    paginationState.currentPage++;
+                }
+
+                switch(type) {
+                    case 'weldMaterials': renderWeldMaterials(); break;
+                    case 'steelGrades': renderSteelGrades(); break;
+                    case 'combinations': renderCombinations(); break;
+                    case 'generalCombinations': renderGeneralCombinations(); break;
+                }
+            }
+        }
+
+        function renderSelectedRodsList(type) {
+            let listEl, rodIds;
+            if (type === 'grade') { listEl = dom.selectedGradeRodsList; rodIds = state.editingGradeRods; }
+            else if (type === 'combo') { listEl = dom.selectedComboRodsList; rodIds = state.editingComboRods; }
+            else { listEl = dom.selectedGeneralComboRodsList; rodIds = state.editingGeneralComboRods; }
+            
+            listEl.innerHTML = rodIds.map((rodId, index) => {
+                const rod = state.weldMaterials.find(wm => wm.id === rodId);
+                if (!rod) return '';
+                return `<div class="flex items-center justify-between p-2 bg-gray-200 rounded-md">
+                            <span class="text-sm">${rod.steelType} / ${rod.method} / ${rod.spec} / ${rod.name}</span>
+                            <button type="button" data-index="${index}" data-type="${type}" class="remove-rod-btn text-red-500 hover:text-red-700">
+                                <span class="material-icons text-base">remove_circle_outline</span>
+                            </button>
+                        </div>`;
+            }).join('');
+        }
+        
+        function handleAddRod(type) {
+            let selector, targetArray;
+            if (type === 'grade') { selector = dom.newGradeRodSelector; targetArray = state.editingGradeRods; }
+            else if (type === 'combo') { selector = dom.comboRodSelector; targetArray = state.editingComboRods; }
+            else { selector = dom.generalComboRodSelector; targetArray = state.editingGeneralComboRods; }
+
+            const rodId = selector.value;
+            if (!rodId) return;
+            
+            if (!targetArray.includes(rodId)) {
+                targetArray.push(rodId);
+                renderSelectedRodsList(type);
+            } else {
+                showToast('此焊材已新增', 'error');
+            }
+            selector.value = '';
+        }
+
+        function handleRemoveRod(e) {
+            const target = e.target.closest('.remove-rod-btn');
+            if (!target) return;
+            const { index, type } = target.dataset;
+            
+            let targetArray;
+            if (type === 'grade') { targetArray = state.editingGradeRods; }
+            else if (type === 'combo') { targetArray = state.editingComboRods; }
+            else { targetArray = state.editingGeneralComboRods; }
+
+            targetArray.splice(index, 1);
+            renderSelectedRodsList(type);
+        }
+
+        function cancelEdit() {
+            state.editingItem = { id: null, type: null };
+            state.editingGradeRods = [];
+            state.editingComboRods = [];
+            state.editingGeneralComboRods = [];
+            renderSelectedRodsList('grade');
+            renderSelectedRodsList('combo');
+            renderSelectedRodsList('generalCombo');
+            // Reset forms...
+            dom.weldMaterialFormTitle.textContent = '焊接材料資料庫管理'; dom.addWeldMaterialForm.reset();
+            dom.submitWeldMaterialBtn.textContent = '新增焊材'; dom.cancelEditWeldMaterialBtn.classList.add('hidden');
+            dom.gradeFormTitle.textContent = '鋼板基本資料管理'; dom.addGradeForm.reset();
+            dom.submitGradeBtn.textContent = '新增'; dom.cancelEditGradeBtn.classList.add('hidden');
+            dom.combinationFormTitle.textContent = '鋼板搭配資料管理'; dom.addCombinationForm.reset();
+            resetComboSelection(1); resetComboSelection(2);
+            dom.submitCombinationBtn.textContent = '新增'; dom.cancelEditCombinationBtn.classList.add('hidden');
+            dom.generalCombinationFormTitle.textContent = '通用類型搭配管理'; dom.addGeneralCombinationForm.reset();
+            dom.submitGeneralCombinationBtn.textContent = '新增'; dom.cancelEditGeneralCombinationBtn.classList.add('hidden');
+        }
+        
+        async function handleImportWeldMaterials() {
+            const jsonText = dom.weldMaterialJsonInput.value.trim();
+            if (!jsonText) {
+                showToast('請先貼上 JSON 文字', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(jsonText);
+
+                if (!data.weldMaterials || !Array.isArray(data.weldMaterials)) {
+                    throw new Error('JSON 格式錯誤，必須包含一個名為 "weldMaterials" 的陣列。');
+                }
+
+                const materialsToImport = data.weldMaterials;
+                for (const material of materialsToImport) {
+                    if (!material.steelType || !material.method || !material.spec || !material.name) {
+                        throw new Error('陣列中的物件缺少必要欄位 (steelType, method, spec, name)。');
+                    }
+                }
+                
+                showLoader(`正在匯入 ${materialsToImport.length} 筆資料...`);
+
+                const profileRef = doc(db, collections.profiles, state.activeProfileId);
+                const batch = writeBatch(db);
+
+                materialsToImport.forEach(material => {
+                    const newDocRef = doc(collection(profileRef, collections.weldMaterials));
+                    
+                    let specString = '';
+                    if (typeof material.spec === 'string') {
+                        specString = material.spec.trim();
+                    } else if (typeof material.spec === 'object' && material.spec !== null) {
+                        specString = Object.entries(material.spec)
+                                           .map(([key, value]) => `${key.toUpperCase()}: ${value}`)
+                                           .join(' | ');
+                    }
+
+                    batch.set(newDocRef, {
+                        steelType: material.steelType.trim(),
+                        method: material.method.trim(),
+                        spec: specString,
+                        name: material.name.trim(),
+                    });
+                });
+
+                await batch.commit();
+                
+                dom.weldMaterialJsonInput.value = '';
+                showToast(`成功新增 ${materialsToImport.length} 筆焊接材料資料`, 'success');
+                await fetchAllDataForProfile(state.activeProfileId);
+
+            } catch (error) {
+                console.error("匯入失敗:", error);
+                if (error instanceof SyntaxError) {
+                    showToast(`匯入失敗: JSON 格式無效，請檢查您的文字內容。`, 'error');
+                } else {
+                    showToast(`匯入失敗: ${error.message}`, 'error');
+                }
+                hideLoader();
+            }
+        }
+
+        async function handleImportSteelGrades() {
+            const jsonText = dom.steelGradeJsonInput.value.trim();
+            if (!jsonText) {
+                showToast('請先貼上鋼板資料的 JSON 文字', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(jsonText);
+
+                if (!data.steelGrades || !Array.isArray(data.steelGrades)) {
+                    throw new Error('JSON 格式錯誤，必須包含一個名為 "steelGrades" 的陣列。');
+                }
+                
+                showLoader(`正在預處理 ${data.steelGrades.length} 筆資料...`);
+
+                // Step 1: Find and create missing categories
+                const uniqueCategoryNames = [...new Set(data.steelGrades.map(item => item.categoryName?.trim()).filter(Boolean))];
+                const existingCategoryNames = state.categories.map(c => c.name);
+                const newCategoryNames = uniqueCategoryNames.filter(name => !existingCategoryNames.includes(name));
+
+                if (newCategoryNames.length > 0) {
+                    showLoader(`偵測到 ${newCategoryNames.length} 個新大類，正在建立...`);
+                    const profileRef = doc(db, collections.profiles, state.activeProfileId);
+                    const categoryBatch = writeBatch(db);
+                    newCategoryNames.forEach(name => {
+                        const newCatRef = doc(collection(profileRef, collections.categories));
+                        categoryBatch.set(newCatRef, { name });
+                    });
+                    await categoryBatch.commit();
+                    showToast(`成功建立 ${newCategoryNames.length} 個新大類`, 'success');
+                    
+                    // Refresh local state to include the new categories
+                    showLoader('正在重新整理資料...');
+                    await fetchAllDataForProfile(state.activeProfileId);
+                }
+
+                // Step 2: Process and import steel grades
+                showLoader(`正在處理 ${data.steelGrades.length} 筆鋼板資料...`);
+                
+                const gradesToImport = [];
+                const errors = [];
+
+                for (let i = 0; i < data.steelGrades.length; i++) {
+                    const item = data.steelGrades[i];
+                    const { categoryName, spec, grade, notes, baseWeldingRodNames } = item;
+
+                    if (!categoryName || !spec || !grade) {
+                        errors.push(`第 ${i + 1} 筆資料缺少必要欄位 (categoryName, spec, grade)。`);
+                        continue;
+                    }
+
+                    // Find category ID from the now-updated state
+                    const category = state.categories.find(c => c.name === categoryName.trim());
+                    if (!category) {
+                        // This should theoretically not happen anymore, but as a safeguard:
+                        errors.push(`第 ${i + 1} 筆資料的大類 "${categoryName}" 建立失敗或找不到。`);
+                        continue;
+                    }
+
+                    // Find welding rod IDs from names
+                    let baseWeldingRodIds = [];
+                    if (baseWeldingRodNames && Array.isArray(baseWeldingRodNames)) {
+                        for (const rodName of baseWeldingRodNames) {
+                            const rod = state.weldMaterials.find(wm => wm.name === rodName.trim());
+                            if (rod) {
+                                if (!baseWeldingRodIds.includes(rod.id)) {
+                                    baseWeldingRodIds.push(rod.id);
+                                }
+                            } else {
+                                errors.push(`第 ${i + 1} 筆資料的焊材品名 "${rodName}" 找不到對應資料。`);
+                            }
+                        }
+                    }
+                    
+                    gradesToImport.push({
+                        categoryId: category.id,
+                        spec: spec.trim(),
+                        grade: grade.trim(),
+                        notes: notes ? notes.trim() : '',
+                        baseWeldingRodIds: baseWeldingRodIds,
+                    });
+                }
+
+                if (errors.length > 0) {
+                    const errorMessage = "匯入過程中有錯誤發生，請檢查主控台(Console)以獲得詳細資訊。";
+                    showToast(errorMessage, 'error');
+                    console.error("匯入錯誤:", errors);
+                    hideLoader();
+                    return;
+                }
+
+                if (gradesToImport.length === 0) {
+                     showToast('沒有可匯入的有效資料。', 'error');
+                     hideLoader();
+                     return;
+                }
+
+                // Step 3: Batch write to Firestore
+                showLoader(`正在寫入 ${gradesToImport.length} 筆資料到資料庫...`);
+                const profileRef = doc(db, collections.profiles, state.activeProfileId);
+                const batch = writeBatch(db);
+
+                gradesToImport.forEach(gradeData => {
+                    const newDocRef = doc(collection(profileRef, collections.grades));
+                    batch.set(newDocRef, gradeData);
+                });
+
+                await batch.commit();
+                
+                dom.steelGradeJsonInput.value = '';
+                showToast(`成功新增 ${gradesToImport.length} 筆鋼板資料`, 'success');
+                await fetchAllDataForProfile(state.activeProfileId);
+
+            } catch (error) {
+                console.error("匯入鋼板資料失敗:", error);
+                if (error instanceof SyntaxError) {
+                    showToast(`匯入失敗: JSON 格式無效，請檢查您的文字內容。`, 'error');
+                } else {
+                    showToast(`匯入失敗: ${error.message}`, 'error');
+                }
+            } finally {
+                hideLoader();
+            }
+        }
+
+
+        function showConfirmModal(message, onConfirm) { /* ...unchanged... */ }
+        function closeConfirmModal() { /* ...unchanged... */ }
+        function handleConfirm() { /* ...unchanged... */ }
+        
+        // ===== 設定檔管理 =====
+        function toggleProfileSection() {
+            state.isProfileCollapsed = !state.isProfileCollapsed;
+            localStorage.setItem('isProfileCollapsed_v6', state.isProfileCollapsed);
+            updateProfileSectionUI();
+        }
+
+        function updateProfileSectionUI() {
+            dom.profileContent.classList.toggle('collapsed', state.isProfileCollapsed);
+            dom.profileToggleIcon.style.transform = state.isProfileCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        async function handleProfileChange(e) { /* ... */ }
+        async function handleAddProfile() { /* ... */ }
+        async function handleRenameProfile() { /* ... */ }
+        async function handleDeleteProfile() { /* ... */ }
+
+        // ===== 初始化 =====
+        function initApp() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                onAuthStateChanged(auth, user => user ? fetchAllProfiles() : signInAnonymously(auth));
+            } catch (e) { console.error("Firebase 初始化失敗:", e); showToast("Firebase 初始化失敗", "error"); }
+            
+            // Profile section toggle
+            state.isProfileCollapsed = localStorage.getItem('isProfileCollapsed_v6') === 'true';
+            updateProfileSectionUI();
+            dom.profileHeader.addEventListener('click', toggleProfileSection);
+
+            // View & Tab Switching
+            dom.queryViewBtn.addEventListener('click', () => switchView('query'));
+            dom.adminViewBtn.addEventListener('click', () => switchView('admin'));
+            dom.specificQueryTab.addEventListener('click', () => switchQueryTab('specific'));
+            dom.generalQueryTab.addEventListener('click', () => switchQueryTab('general'));
+
+            // Querying
+            dom.queryBtn.addEventListener('click', findCombination);
+            dom.queryCategory1.addEventListener('change', () => populateQuerySpecSelect(1));
+            dom.querySpec1.addEventListener('change', () => populateQueryGradeSelect(1));
+            dom.queryCategory2.addEventListener('change', () => populateQuerySpecSelect(2));
+            dom.querySpec2.addEventListener('change', () => populateQueryGradeSelect(2));
+
+            // Profile Management
+            dom.profileSelector.addEventListener('change', handleProfileChange);
+            dom.addProfileBtn.addEventListener('click', handleAddProfile);
+            dom.renameProfileBtn.addEventListener('click', handleRenameProfile);
+            dom.deleteProfileBtn.addEventListener('click', handleDeleteProfile);
+
+            // Admin Forms & Import
+            dom.addWeldMaterialForm.addEventListener('submit', handleWeldMaterialSubmit);
+            dom.importWeldMaterialsBtn.addEventListener('click', handleImportWeldMaterials);
+            dom.importSteelGradesBtn.addEventListener('click', handleImportSteelGrades);
+            dom.cancelEditWeldMaterialBtn.addEventListener('click', cancelEdit);
+            dom.addCategoryBtn.addEventListener('click', handleAddCategory);
+            dom.addGradeForm.addEventListener('submit', handleGradeSubmit);
+            dom.cancelEditGradeBtn.addEventListener('click', cancelEdit);
+            dom.addCombinationForm.addEventListener('submit', handleCombinationSubmit);
+            dom.cancelEditCombinationBtn.addEventListener('click', cancelEdit);
+            dom.addGeneralCombinationForm.addEventListener('submit', handleGeneralCombinationSubmit);
+            dom.cancelEditGeneralCombinationBtn.addEventListener('click', cancelEdit);
+            
+             // Admin Combo Selectors
+            dom.comboCategory1.addEventListener('change', () => populateComboSpecSelect(1));
+            dom.comboSpec1.addEventListener('change', () => populateComboGradeSelect(1));
+            dom.comboCategory2.addEventListener('change', () => populateComboSpecSelect(2));
+            dom.comboSpec2.addEventListener('change', () => populateComboGradeSelect(2));
+
+            // Admin Rod Selectors
+            dom.rodGradeSteelType.addEventListener('change', () => handleAdminRodSteelTypeChange('grade'));
+            dom.rodGradeMethod.addEventListener('change', () => handleAdminRodMethodChange('grade'));
+            dom.rodGradeSpec.addEventListener('change', () => handleAdminRodSpecChange('grade'));
+            dom.rodComboSteelType.addEventListener('change', () => handleAdminRodSteelTypeChange('combo'));
+            dom.rodComboMethod.addEventListener('change', () => handleAdminRodMethodChange('combo'));
+            dom.rodComboSpec.addEventListener('change', () => handleAdminRodSpecChange('combo'));
+            dom.rodGeneralComboSteelType.addEventListener('change', () => handleAdminRodSteelTypeChange('generalCombo'));
+            dom.rodGeneralComboMethod.addEventListener('change', () => handleAdminRodMethodChange('generalCombo'));
+            dom.rodGeneralComboSpec.addEventListener('change', () => handleAdminRodSpecChange('generalCombo'));
+
+            // Admin Actions & Rod Management
+            dom.adminView.addEventListener('click', handleAdminAction);
+            
+            // Listeners for steel grade filtering tabs
+            dom.gradeCategoryTabs.addEventListener('click', e => {
+                const target = e.target.closest('button[data-category-name]');
+                if (!target) return;
+                const categoryName = target.dataset.categoryName;
+                if (state.activeGradeCategoryTab !== categoryName) {
+                    state.activeGradeCategoryTab = categoryName;
+                    state.activeGradeSpecTab = 'All'; // Reset spec filter
+                    state.pagination.steelGrades.currentPage = 1;
+                    renderSteelGrades();
+                }
+            });
+
+            dom.gradeSpecTabs.addEventListener('click', e => {
+                const target = e.target.closest('button[data-spec-name]');
+                if (!target) return;
+                const specName = target.dataset.specName;
+                if (state.activeGradeSpecTab !== specName) {
+                    state.activeGradeSpecTab = specName;
+                    state.pagination.steelGrades.currentPage = 1;
+                    renderSteelGrades();
+                }
+            });
+
+            dom.addRodToGradeBtn.addEventListener('click', () => handleAddRod('grade'));
+            dom.selectedGradeRodsList.addEventListener('click', handleRemoveRod);
+            dom.addRodToComboBtn.addEventListener('click', () => handleAddRod('combo'));
+            dom.selectedComboRodsList.addEventListener('click', handleRemoveRod);
+            dom.addRodToGeneralComboBtn.addEventListener('click', () => handleAddRod('generalCombo'));
+            dom.selectedGeneralComboRodsList.addEventListener('click', handleRemoveRod);
+            
+            // Modal
+            dom.cancelBtn.addEventListener('click', closeConfirmModal);
+            dom.confirmBtn.addEventListener('click', handleConfirm);
+        }
+        
+        // Re-attaching the unchanged functions
+        showConfirmModal = function(message, onConfirm) { dom.confirmModalMessage.textContent = message; state.confirmCallback = onConfirm; dom.confirmModal.classList.remove('hidden'); }
+        closeConfirmModal = function() { dom.confirmModal.classList.add('hidden'); state.confirmCallback = null; }
+        handleConfirm = function() { if (typeof state.confirmCallback === 'function') state.confirmCallback(); closeConfirmModal(); }
+        handleProfileChange = async function(e) { state.activeProfileId = e.target.value; localStorage.setItem('lastActiveProfile_v6', state.activeProfileId); await fetchAllDataForProfile(state.activeProfileId); }
+        handleAddProfile = async function() { const name = prompt("請輸入新的設定檔名稱："); if (name && name.trim()) { const profileRef = await addDoc(collection(db, collections.profiles), { name: name.trim(), createdAt: serverTimestamp() }); await fetchAllProfiles(); dom.profileSelector.value = profileRef.id; await handleProfileChange({ target: { value: profileRef.id } }); } }
+        handleRenameProfile = async function() { const p = state.profiles.find(p => p.id === state.activeProfileId); if (!p) return; const newName = prompt("請輸入新的名稱：", p.name); if (newName && newName.trim() && newName.trim() !== p.name) { await updateDoc(doc(db, collections.profiles, state.activeProfileId), { name: newName.trim() }); await fetchAllProfiles(); } }
+        handleDeleteProfile = async function() { if (state.profiles.length <= 1) { showToast('無法刪除最後一個設定檔。', 'error'); return; } showConfirmModal(`確定要永久刪除「${state.profiles.find(p => p.id === state.activeProfileId).name}」設定檔及其所有資料嗎？`, async () => { const profileRef = doc(db, collections.profiles, state.activeProfileId); const subCollections = Object.values(collections).slice(1); for(const sc of subCollections) { const snapshot = await getDocs(collection(profileRef, sc)); const batch = writeBatch(db); snapshot.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); } await deleteDoc(profileRef); localStorage.removeItem('lastActiveProfile_v6'); await fetchAllProfiles(); }); }
+        
+        function populateComboSpecSelect(num) {
+            const categoryId = dom[`comboCategory${num}`].value;
+            const specSelect = dom[`comboSpec${num}`];
+            const gradeSelect = dom[`comboGrade${num}`];
+
+            if (!categoryId) {
+                resetComboSelection(num);
+                return;
+            }
+            
+            specSelect.disabled = false;
+            gradeSelect.innerHTML = '<option value="">請先選規範</option>';
+            gradeSelect.disabled = true;
+
+            const specs = [...new Set(state.steelGrades.filter(g => g.categoryId === categoryId).map(g => g.spec))];
+            specSelect.innerHTML = ['<option value="">請選擇規範</option>', ...specs.sort().map(s => `<option value="${s}">${s}</option>`)].join('');
+        }
+
+        function populateComboGradeSelect(num) {
+            const categoryId = dom[`comboCategory${num}`].value;
+            const spec = dom[`comboSpec${num}`].value;
+            const gradeSelect = dom[`comboGrade${num}`];
+
+            if (!spec) {
+                gradeSelect.innerHTML = '<option value="">請先選規範</option>';
+                gradeSelect.disabled = true;
+                return;
+            }
+
+            gradeSelect.disabled = false;
+            const grades = state.steelGrades.filter(g => g.categoryId === categoryId && g.spec === spec);
+            gradeSelect.innerHTML = ['<option value="">請選擇等級</option>', ...grades.sort((a,b) => a.grade.localeCompare(b.grade)).map(g => `<option value="${g.id}">${g.grade}</option>`)].join('');
+        }
+        function resetComboSelection(num) {
+            dom[`comboCategory${num}`].value = '';
+            dom[`comboSpec${num}`].innerHTML = '<option value="">請先選大類</option>';
+            dom[`comboSpec${num}`].disabled = true;
+            dom[`comboGrade${num}`].innerHTML = '<option value="">請先選規範</option>';
+            dom[`comboGrade${num}`].disabled = true;
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
+

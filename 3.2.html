@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧資料擷取 (核對與分組版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .file-drop-area {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .file-drop-area.dragover {
+            background-color: #e0f2fe;
+            border-color: #0284c7;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s;
+            margin-bottom: 1.5rem;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+        .copy-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2d3748;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            z-index: 1050;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .copy-toast.show {
+            opacity: 1;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            text-align: center;
+            max-width: 400px;
+        }
+        .file-group {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            border: 1px solid #f3f4f6;
+        }
+        .data-section {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">智慧資料擷取 (核對與分組版)</h1>
+            <p class="mt-2 text-md text-gray-600">上傳檔案後自動分組與標示類型，讓您輕鬆核對，一鍵分析。</p>
+        </header>
+
+        <main id="main-content">
+            <!-- File Upload Section -->
+            <div id="upload-section" class="bg-white p-6 rounded-xl shadow-lg">
+                <div class="flex flex-col items-center">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 text-center">1. 上傳報告檔案 (JPG/PNG & PDF)</h3>
+                    <div id="drop-area" class="w-full file-drop-area border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center text-center bg-gray-50 cursor-pointer">
+                        <input type="file" id="file-input" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                        <svg class="w-16 h-16 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                        </svg>
+                        <p class="mt-4 text-gray-600">將所有檔案拖曳至此或點擊上傳</p>
+                    </div>
+                    <div id="file-list-container" class="w-full mt-4">
+                        <h4 class="font-semibold mb-2">待處理檔案群組:</h4>
+                        <div id="file-list" class="space-y-4">
+                            <p id="no-files-text" class="text-gray-500 text-sm text-center py-4">尚未上傳任何檔案。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <button id="start-processing-btn" class="bg-sky-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-sky-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                        開始分析
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Section -->
+            <div id="loading-section" class="hidden text-center p-8 mt-8">
+                <div class="loader mx-auto"></div>
+                <p id="loading-text" class="mt-4 text-lg font-medium text-gray-700">AI 正在分析資料，請稍候...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="result-section" class="hidden mt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">分析結果</h2>
+                    <div class="flex items-center gap-4 mt-4 md:mt-0">
+                        <button id="copy-all-json-btn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition duration-300 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" /><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H4z" /></svg>
+                            複製全部 JSON
+                        </button>
+                        <button id="reset-btn" class="bg-gray-700 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-800 transition duration-300">重新開始</button>
+                    </div>
+                </div>
+                <div id="results-container"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- DOM Element Selection ---
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const fileListDiv = document.getElementById('file-list');
+        const noFilesText = document.getElementById('no-files-text');
+        const startBtn = document.getElementById('start-processing-btn');
+        
+        const uploadSection = document.getElementById('upload-section');
+        const loadingSection = document.getElementById('loading-section');
+        const loadingText = document.getElementById('loading-text');
+        const resultSection = document.getElementById('result-section');
+        const resultsContainer = document.getElementById('results-container');
+        
+        const copyAllJsonBtn = document.getElementById('copy-all-json-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // --- Global State ---
+        let fileQueue = [];
+        let allGroupedResults = [];
+
+        // --- Event Listeners Setup ---
+        function setupEventListeners() {
+            dropArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => handleFileSelection(e.target.files));
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false));
+            ['dragleave', 'drop'].forEach(eventName => dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false));
+            
+            dropArea.addEventListener('drop', (e) => handleFileSelection(e.dataTransfer.files), false);
+
+            startBtn.addEventListener('click', startProcessing);
+            copyAllJsonBtn.addEventListener('click', copyAllJsonToClipboard);
+            resetBtn.addEventListener('click', resetUI);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // --- Custom Modal for Alerts ---
+        function showAlert(message) {
+            const modalBackdrop = document.createElement('div');
+            modalBackdrop.className = 'modal-backdrop';
+            
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            
+            const messageP = document.createElement('p');
+            messageP.textContent = message;
+            messageP.className = 'mb-4 text-lg';
+            
+            const closeButton = document.createElement('button');
+            closeButton.textContent = '關閉';
+            closeButton.className = 'bg-sky-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-sky-700 transition duration-300';
+            closeButton.onclick = () => document.body.removeChild(modalBackdrop);
+            
+            modalContent.appendChild(messageP);
+            modalContent.appendChild(closeButton);
+            modalBackdrop.appendChild(modalContent);
+            document.body.appendChild(modalBackdrop);
+        }
+
+        // --- UI and File Handling ---
+        function handleFileSelection(files) {
+            if (!files || files.length === 0) return;
+            
+            Array.from(files).forEach(file => {
+                if (!fileQueue.some(f => f.name === file.name && f.size === file.size)) {
+                    fileQueue.push(file);
+                }
+            });
+            
+            renderGroupedFileList();
+            checkProcessButtonState();
+        }
+
+        function getFileGroupId(fileName) {
+            const parts = fileName.split('.');
+            if (parts.length > 1 && parts[0].trim() !== '') {
+                return parts[0].trim();
+            }
+            return fileName.replace(/\.(jpg|jpeg|png|pdf)$/i, '');
+        }
+
+        function getFileType(fileName) {
+            const lowerCaseName = fileName.toLowerCase();
+            if (lowerCaseName.endsWith('.pdf') || lowerCaseName.includes('chem')) {
+                return { type: '化學成分', color: 'bg-red-100 text-red-800' };
+            }
+            if (lowerCaseName.includes('mech') || lowerCaseName.includes('impact') || lowerCaseName.endsWith('.jpg') || lowerCaseName.endsWith('.jpeg') || lowerCaseName.endsWith('.png')) {
+                return { type: '機械性質', color: 'bg-blue-100 text-blue-800' };
+            }
+            return { type: '未知類型', color: 'bg-gray-100 text-gray-800' };
+        }
+
+        function renderGroupedFileList() {
+            fileListDiv.innerHTML = '';
+            if (fileQueue.length === 0) {
+                fileListDiv.appendChild(noFilesText);
+                return;
+            }
+            noFilesText.remove();
+
+            const fileGroups = new Map();
+            fileQueue.forEach(file => {
+                const groupId = getFileGroupId(file.name);
+                if (!fileGroups.has(groupId)) {
+                    fileGroups.set(groupId, []);
+                }
+                fileGroups.get(groupId).push(file);
+            });
+
+            fileGroups.forEach((files, groupId) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'file-group';
+                
+                let groupContent = `<h5 class="font-bold mb-2 text-gray-700">${groupId}</h5><div class="space-y-2">`;
+                
+                files.forEach(file => {
+                    const fileTypeInfo = getFileType(file.name);
+                    groupContent += `
+                        <div class="file-item text-sm">
+                            <div class="flex items-center gap-2 flex-grow overflow-hidden">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full ${fileTypeInfo.color}">${fileTypeInfo.type}</span>
+                                <span class="truncate" title="${file.name}">${file.name}</span>
+                            </div>
+                            <button class="text-gray-400 hover:text-red-600 p-1 rounded-full" onclick="removeFileByName('${file.name}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                groupContent += `</div>`;
+                groupDiv.innerHTML = groupContent;
+                fileListDiv.appendChild(groupDiv);
+            });
+        }
+
+        function removeFileByName(fileName) {
+            fileQueue = fileQueue.filter(f => f.name !== fileName);
+            renderGroupedFileList();
+            checkProcessButtonState();
+        }
+        
+        function checkProcessButtonState() {
+            startBtn.disabled = fileQueue.length === 0;
+        }
+
+        // --- Core Processing Logic ---
+        async function startProcessing() {
+            if (fileQueue.length === 0) {
+                showAlert("請至少上傳一份報告檔案。");
+                return;
+            }
+            
+            uploadSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            startBtn.disabled = true;
+            allGroupedResults = [];
+            resultsContainer.innerHTML = '';
+
+            const fileGroups = new Map();
+            fileQueue.forEach(file => {
+                const groupId = getFileGroupId(file.name);
+                if (!fileGroups.has(groupId)) {
+                    fileGroups.set(groupId, []);
+                }
+                fileGroups.get(groupId).push(file);
+            });
+            const groupsToProcess = Array.from(fileGroups.entries()).map(([id, files]) => ({ id, files }));
+
+
+            for (let i = 0; i < groupsToProcess.length; i++) {
+                const group = groupsToProcess[i];
+                loadingText.textContent = `正在處理組別 ${i + 1} / ${groupsToProcess.length}: ${group.id}`;
+                
+                try {
+                    const fileObjects = await Promise.all(group.files.map(file => fileToObject(file)));
+                    const resultData = await callGeminiApi(fileObjects);
+                    
+                    const resultEntry = {
+                        groupId: group.id,
+                        sourceFiles: group.files.map(f => f.name),
+                        data: resultData
+                    };
+                    allGroupedResults.push(resultEntry);
+                    createResultCard(resultEntry);
+
+                } catch (error) {
+                    console.error(`處理組別 ${group.id} 時發生錯誤:`, error);
+                    const errorEntry = {
+                        groupId: group.id,
+                        sourceFiles: group.files.map(f => f.name),
+                        error: error.message
+                    };
+                    allGroupedResults.push(errorEntry);
+                    createResultCard(errorEntry);
+                }
+            }
+            
+            loadingSection.classList.add('hidden');
+            resultSection.classList.remove('hidden');
+        }
+
+        function fileToObject(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve({
+                    mimeType: file.type,
+                    data: reader.result.split(',')[1]
+                });
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function callGeminiApi(fileObjs) {
+            const apiKey = ""; // Keep this empty
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const prompt = `你是一位專業的資料分析師，專門從金屬材料測試報告中擷取數據。
+請分析以下提供的所有檔案，它們都屬於同一個材料編號。請將所有檔案的資訊整合後，回傳一份合併的JSON結果。
+- 根據檔案內容，嚴格按照指定的JSON格式與順序回傳結果。
+- 只填寫你在檔案中找到的資料對應的區塊。如果某個區塊 (例如 "化學成分") 的資料完全不存在於任何檔案中，請在JSON中省略該區塊的key。
+- 如果找不到某個特定欄位的資料，請使用空字串 ""。
+- **重要規則**：在「衝擊試驗」部分，\`實測值\`和\`平均值\`欄位**絕對不能**包含單位 'J'，只能是純數字。溫度單位 '°C' 或 '℃' 必須放在獨立的\`單位\`欄位中。
+- 所有數值應為純數字字串 (或包含 '<' 的極限值字串)。`;
+            
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    "機械性質": {
+                        type: "OBJECT",
+                        properties: { "抗拉強度": { "type": "STRING" }, "降伏強度": { "type": "STRING" }, "延伸率": { "type": "STRING" } }
+                    },
+                    "衝擊試驗": {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: { "測試溫度": { "type": "STRING" }, "單位": { "type": "STRING" }, "實測值": { "type": "ARRAY", "items": { "type": "STRING" } }, "平均值": { "type": "STRING" } }
+                        }
+                    },
+                    "化學成分": {
+                        type: "OBJECT",
+                        properties: { "C": { "type": "STRING" }, "Si": { "type": "STRING" }, "Mn": { "type": "STRING" }, "P": { "type": "STRING" }, "S": { "type": "STRING" }, "Cr": { "type": "STRING" }, "Ni": { "type": "STRING" }, "Mo": { "type": "STRING" }, "Al": { "type": "STRING" }, "Cu": { "type": "STRING" }, "Co": { "type": "STRING" }, "Ti": { "type": "STRING" }, "Nb": { "type": "STRING" }, "V": { "type": "STRING" }, "W": { "type": "STRING" }, "B": { "type": "STRING" }, "Sn": { "type": "STRING" }, "Zr": { "type": "STRING" }, "Fe": { "type": "STRING" } }
+                    }
+                }
+            };
+
+            const parts = [{ text: prompt }];
+            fileObjs.forEach(fileObj => {
+                parts.push({ inlineData: fileObj });
+            });
+
+            const payload = {
+                contents: [{ role: "user", parts: parts }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(`API 請求失敗: ${response.status} ${response.statusText}. ${errorBody}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) {
+                return JSON.parse(result.candidates[0].content.parts[0].text);
+            }
+            
+            throw new Error("從API收到的回應格式不正確或為空。");
+        }
+        
+        // --- Result Display, Copy & Reset ---
+        function createResultCard(resultEntry) {
+            const card = document.createElement('div');
+            card.className = 'result-card';
+            card.dataset.jsonData = JSON.stringify(resultEntry, null, 2);
+
+            let sourceFilesHTML = resultEntry.sourceFiles.map(name => {
+                const fileTypeInfo = getFileType(name);
+                return `<li class="flex items-center gap-2 text-xs text-gray-600 truncate"><span class="px-1.5 py-0.5 text-xs font-medium rounded-full ${fileTypeInfo.color}">${fileTypeInfo.type}</span> <span title="${name}">${name}</span></li>`
+            }).join('');
+
+            let headerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold mb-1 text-gray-800">${resultEntry.groupId}</h3>
+                        <ul class="pl-1 space-y-1">${sourceFilesHTML}</ul>
+                    </div>
+                    <button onclick="copySingleJson(event)" class="text-sm bg-blue-100 text-blue-700 font-semibold py-1 px-3 rounded-full hover:bg-blue-200 transition-colors whitespace-nowrap">複製此項 JSON</button>
+                </div>
+            `;
+
+            let contentHTML = '';
+            if (resultEntry.error) {
+                contentHTML = `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+                                  <p class="font-bold">分析失敗</p>
+                                  <p>${resultEntry.error}</p>
+                               </div>`;
+            } else {
+                const data = resultEntry.data;
+                let dataContainer = '<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">';
+                let hasData = false;
+
+                if (data.機械性質 || (data.衝擊試驗 && data.衝擊試驗.length > 0)) {
+                    hasData = true;
+                    let mechHTML = '<div class="data-section space-y-4">';
+                    if (data.機械性質) {
+                        const mechProps = data.機械性質;
+                        mechHTML += `<div><h4 class="text-lg font-bold mb-3 text-sky-700">機械性質</h4>
+                                    <ul class="space-y-2 text-sm">
+                                        <li class="flex justify-between"><strong>抗拉強度:</strong> <span class="text-gray-600">${mechProps.抗拉強度 || 'N/A'} MPa</span></li>
+                                        <li class="flex justify-between"><strong>降伏強度:</strong> <span class="text-gray-600">${mechProps.降伏強度 || 'N/A'} MPa</span></li>
+                                        <li class="flex justify-between"><strong>延伸率:</strong> <span class="text-gray-600">${mechProps.延伸率 || 'N/A'} %</span></li>
+                                    </ul></div>`;
+                    }
+                    if (data.衝擊試驗 && data.衝擊試驗.length > 0) {
+                        mechHTML += `<div><h4 class="text-lg font-bold mb-3 text-sky-700">衝擊試驗</h4>`;
+                        data.衝擊試驗.forEach(test => {
+                            const tempUnit = test.單位 || '';
+                            const values = (test.實測值 || []).map(v => v ? `${v} J` : 'N/A').join(', ');
+                            const avg = test.平均值 ? `${test.平均值} J` : 'N/A';
+                            mechHTML += `<div class="mb-3 pb-3 border-b last:border-b-0 text-sm">
+                                            <p><strong>測試溫度:</strong> ${test.測試溫度 || 'N/A'}${tempUnit}</p>
+                                            <p><strong>實測值:</strong> ${values}</p>
+                                            <p><strong>平均值:</strong> ${avg}</p>
+                                        </div>`;
+                        });
+                        mechHTML += `</div>`;
+                    }
+                    mechHTML += '</div>';
+                    dataContainer += mechHTML;
+                }
+
+                if (data.化學成分) {
+                    hasData = true;
+                    const chemOrder = ["C", "Si", "Mn", "P", "S", "Cr", "Ni", "Mo", "Al", "Cu", "Co", "Ti", "Nb", "V", "W", "B", "Sn", "Zr", "Fe"];
+                    const chemData = data.化學成分;
+                    let chemHTML = '<div class="data-section lg:col-span-2">';
+                    chemHTML += `<h4 class="text-lg font-bold mb-3 text-sky-700">化學成分</h4>
+                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">`;
+                    chemOrder.forEach(key => {
+                         if (chemData.hasOwnProperty(key) && chemData[key]) {
+                            const value = chemData[key];
+                            let displayValue = value.includes('<') ? value : `${value} %`;
+                            chemHTML += `<div class="flex justify-between border-b"><strong>${key}:</strong> <span class="text-gray-600">${displayValue}</span></div>`;
+                         }
+                    });
+                    chemHTML += `</div></div>`;
+                    dataContainer += chemHTML;
+                }
+                
+                dataContainer += '</div>';
+                
+                if (hasData) {
+                    contentHTML = dataContainer;
+                } else {
+                    contentHTML = `<p class="text-gray-500 p-4 bg-gray-50 rounded">在此檔案中未偵測到可辨識的資料。</p>`;
+                }
+            }
+            
+            card.innerHTML = headerHTML + contentHTML;
+            resultsContainer.appendChild(card);
+        }
+
+        function copySingleJson(event) {
+            const card = event.target.closest('.result-card');
+            const jsonString = card.dataset.jsonData;
+            copyTextToClipboard(jsonString, '此項結果的 JSON 已成功複製！');
+        }
+
+        function copyAllJsonToClipboard() {
+            if (allGroupedResults.length === 0) return;
+            const jsonString = JSON.stringify(allGroupedResults, null, 2);
+            copyTextToClipboard(jsonString, '所有結果的 JSON 已成功複製！');
+        }
+
+        function copyTextToClipboard(text, successMessage) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed'; // Prevent scrolling to bottom of page in MS Edge.
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(successMessage);
+            } catch (err) {
+                console.error('無法複製文字: ', err);
+                showAlert('複製失敗，您的瀏覽器可能不支援此操作。');
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.className = 'copy-toast';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+
+        function resetUI() {
+            fileQueue = [];
+            allGroupedResults = [];
+            
+            fileInput.value = '';
+            renderGroupedFileList();
+            
+            startBtn.disabled = true;
+            
+            uploadSection.classList.remove('hidden');
+            loadingSection.classList.add('hidden');
+            resultSection.classList.add('hidden');
+            resultsContainer.innerHTML = '';
+        }
+        
+        // --- Initial Setup ---
+        setupEventListeners();
+
+    </script>
+</body>
+</html>

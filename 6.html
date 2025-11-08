@@ -1,0 +1,2668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鋼板及零件庫存管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- QR Code Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- Excel Export Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Sortable.js for Drag-and-Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Inter', 'Noto Sans TC', sans-serif; 
+            background-color: #f8fafc;
+        }
+        .tab-btn-active {
+            color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .modal { transition: opacity 0.3s ease-in-out; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .toast { transition: all 0.3s ease-in-out; }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border: 1px solid #e5e7eb;
+        }
+        .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        #qr-scanner-modal video {
+            width: 100%;
+            height: auto;
+            max-height: 70vh;
+            border-radius: 0.5rem;
+        }
+        #scanner-viewfinder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 60%;
+            padding-bottom: 60%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            border: 2px solid white;
+            border-radius: 1rem;
+        }
+        .sortable-ghost {
+            background-color: #eef2ff;
+            opacity: 0.7;
+        }
+        .sortable-chosen {
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <!-- 讀取遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center z-[100]">
+        <div class="spinner"></div>
+        <p id="loading-text" class="mt-4 text-slate-600">資料載入中...</p>
+    </div>
+
+    <!-- 主容器 -->
+    <div id="app-container" class="container mx-auto max-w-7xl p-4 sm:p-6 md:p-8">
+        <header class="mb-6">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800">鋼板及零件庫存管理</h1>
+            <p class="text-slate-500 mt-2">一個管理庫存品項進出的簡易系統。</p>
+        </header>
+
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex -mb-px space-x-2 sm:space-x-6 overflow-x-auto">
+                <button onclick="switchTab('overview')" id="tab-btn-overview" class="px-1 py-3 font-semibold text-sm border-b-2 tab-btn-active whitespace-nowrap">庫存總覽</button>
+                <button onclick="switchTab('report')" id="tab-btn-report" class="px-1 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-500 hover:text-indigo-600 hover:border-gray-300 whitespace-nowrap">庫存報表</button>
+                <button onclick="switchTab('history')" id="tab-btn-history" class="px-1 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-500 hover:text-indigo-600 hover:border-gray-300 whitespace-nowrap">交易歷史</button>
+                <button onclick="switchTab('personnel')" id="tab-btn-personnel" class="px-1 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-500 hover:text-indigo-600 hover:border-gray-300 whitespace-nowrap">人員管理</button>
+                <button onclick="switchTab('combination')" id="tab-btn-combination" class="px-1 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-500 hover:text-indigo-600 hover:border-gray-300 whitespace-nowrap">組合品項</button>
+            </nav>
+        </div>
+
+        <!-- 庫存總覽 Tab -->
+        <div id="tab-content-overview">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                <div class="relative w-full sm:w-auto flex-grow">
+                    <input type="text" id="search-input" placeholder="搜尋目前分類下的品項..." class="w-full p-2 pl-10 border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                </div>
+                <div class="grid grid-cols-2 sm:flex w-full sm:w-auto gap-2">
+                    <button onclick="showQRScanner()" class="w-full sm:w-auto bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-sky-700 transition-colors flex-shrink-0 text-sm">掃描QR</button>
+                    <button onclick="showCombinationDeductionModal()" class="w-full sm:w-auto bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex-shrink-0 text-sm">組合扣料</button>
+                    <button onclick="showItemEditor()" class="col-span-2 w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex-shrink-0 text-sm">新增品項</button>
+                </div>
+            </div>
+            
+            <div id="main-category-tabs" class="flex flex-wrap items-center gap-2 mb-4"></div>
+            <div id="sub-category-tabs-container" class="mb-4 hidden">
+                <div class="border-b border-gray-200">
+                    <nav id="sub-category-tabs" class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto" aria-label="Tabs"></nav>
+                </div>
+            </div>
+
+            <div id="inventory-list-container" class="overflow-x-auto">
+                <!-- 庫存表格將動態生成於此 -->
+            </div>
+        </div>
+
+        <!-- 庫存報表 Tab -->
+        <div id="tab-content-report" class="hidden">
+            <div class="flex justify-end mb-4">
+                <button onclick="exportReportToXLSX()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    匯出 Excel 報表
+                </button>
+            </div>
+            <div id="report-main-category-tabs" class="flex flex-wrap items-center gap-2 mb-4"></div>
+            <div id="inventory-report-container" class="overflow-x-auto">
+                <!-- 報表表格將動態生成於此 -->
+            </div>
+        </div>
+
+        <!-- 交易歷史 Tab -->
+        <div id="tab-content-history" class="hidden">
+             <div class="card p-4 sm:p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div><label class="block text-sm font-medium text-slate-600">開始日期</label><input type="date" id="report-start-date" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">結束日期</label><input type="date" id="report-end-date" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">篩選品項</label><select id="report-item-filter" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"><option value="all">所有品項</option></select></div>
+                    <div><label class="block text-sm font-medium text-slate-600">交易類型</label><select id="report-type-filter" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"><option value="all">所有類型</option><option value="in">入庫</option><option value="out">出庫</option><option value="adjustment">庫存調整</option></select></div>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="generateTransactionReport()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">產生報表</button>
+                    <button id="export-csv-btn" onclick="exportHistoryToCSV()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg disabled:bg-slate-400 hover:bg-green-700 transition-colors" disabled>匯出 CSV</button>
+                </div>
+                <div id="transaction-history-container" class="mt-6">
+                    <p class="text-slate-500 text-center">請設定篩選條件並產生報表。</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 人員管理 Tab -->
+        <div id="tab-content-personnel" class="hidden">
+            <div class="flex justify-end mb-4">
+                <button onclick="showPersonnelEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors">新增人員</button>
+            </div>
+            <div id="personnel-list-container" class="overflow-x-auto">
+                <!-- 人員表格將動態生成於此 -->
+            </div>
+        </div>
+
+        <!-- 組合品項 Tab -->
+        <div id="tab-content-combination" class="hidden">
+            <div class="flex justify-end mb-4">
+                <button onclick="showCombinationEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors">新增組合品項</button>
+            </div>
+            <div id="combination-list-container">
+                <!-- 組合品項列表將動態生成於此 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 品項編輯 Modal -->
+    <div id="item-editor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <h2 id="item-editor-title" class="text-xl sm:text-2xl font-semibold mb-6 text-slate-800 flex-shrink-0">新增品項</h2>
+            <div class="overflow-y-auto space-y-4 pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">品號 (ID)</label>
+                        <div class="mt-1 flex gap-2">
+                            <input type="text" id="edit-item-id" class="block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <button type="button" onclick="generateItemId()" class="bg-indigo-100 text-indigo-800 font-semibold py-2 px-3 rounded-lg hover:bg-indigo-200 transition-colors text-sm whitespace-nowrap">自動產生</button>
+                        </div>
+                        <p id="id-duplicate-warning" class="text-red-600 text-sm mt-1 hidden">此品號已存在！</p>
+                    </div>
+                    <div><label class="block text-sm font-medium text-slate-600">品名</label><input type="text" id="edit-item-name" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">大類</label>
+                        <select id="edit-item-mainCategory" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                        <input type="text" id="edit-item-mainCategory-new" class="mt-2 hidden w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="請輸入新的大類名稱">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">小類</label>
+                        <select id="edit-item-subCategory" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                        <input type="text" id="edit-item-subCategory-new" class="mt-2 hidden w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="請輸入新的小類名稱">
+                    </div>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">保管人</label>
+                        <select id="edit-item-custodian" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"><option value="">無</option></select>
+                    </div>
+                 </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div><label class="block text-sm font-medium text-slate-600">長度</label><input type="number" id="edit-item-spec-length" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" placeholder="mm"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">寬度</label><input type="number" id="edit-item-spec-width" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" placeholder="mm"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">厚度</label><input type="number" id="edit-item-spec-thickness" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" placeholder="mm"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">直徑</label><input type="number" id="edit-item-spec-diameter" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" placeholder="mm"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-slate-600">供應商</label><input type="text" id="edit-item-supplier" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">存放位置</label><input type="text" id="edit-item-location" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">用途說明</label>
+                    <textarea id="edit-item-usage-description" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" rows="3" placeholder="請說明此品項的用途或相關備註..."></textarea>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div id="initial-quantity-wrapper"><label class="block text-sm font-medium text-slate-600">初始數量</label><input type="number" id="edit-item-initial-quantity" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" value="0"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">安全庫存</label><input type="number" id="edit-item-safety-stock" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0" value="0"></div>
+                    <div><label class="block text-sm font-medium text-slate-600">單位</label><input type="text" id="edit-item-unit" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="例如: 片, kg, 個"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">產品圖片</label>
+                    <div class="mt-2 flex items-center gap-4">
+                        <img id="image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border border-slate-200">
+                        <div class="space-y-2 w-full">
+                            <button type="button" onclick="triggerImageInput(false)" class="w-full text-sm bg-white border border-slate-300 rounded-md px-4 py-2 hover:bg-slate-50">從檔案上傳</button>
+                            <button type="button" onclick="triggerImageInput(true)" class="w-full text-sm bg-indigo-500 text-white rounded-md px-4 py-2 hover:bg-indigo-600">直接拍照</button>
+                            <button type="button" onclick="removeImage()" class="w-full text-sm text-red-600 hover:text-red-800 pt-1">移除圖片</button>
+                            <input type="file" id="edit-item-image" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-4 flex-shrink-0">
+                <button id="editor-qrcode-btn" type="button" class="w-full sm:w-auto bg-gray-200 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors hidden">產生 QR Code</button>
+                <div class="flex w-full sm:w-auto ml-auto space-x-3">
+                    <button onclick="closeItemEditor()" class="flex-1 sm:flex-none bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                    <button onclick="saveItem()" id="item-editor-save-btn" class="flex-1 sm:flex-none bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="btn-text">儲存品項</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 交易 Modal -->
+    <div id="transaction-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full" onclick="event.stopPropagation()">
+            <h2 id="transaction-title" class="text-2xl font-semibold mb-6 text-slate-800">庫存交易</h2>
+            <div class="space-y-4">
+                <p><strong>品項:</strong> <span id="transaction-item-name"></span></p>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">操作人員</label>
+                    <select id="transaction-operator" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                </div>
+                <div><label for="transaction-quantity" class="block text-sm font-medium text-slate-600">數量</label><input type="number" id="transaction-quantity" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="0"></div>
+                <div><label class="block text-sm font-medium text-slate-600">備註 (選填)</label><textarea id="transaction-notes" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" rows="3"></textarea></div>
+            </div>
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closeTransactionModal()" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                <button onclick="processTransaction()" id="transaction-confirm-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg">確認</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 人員編輯 Modal -->
+    <div id="personnel-editor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full" onclick="event.stopPropagation()">
+            <h2 id="personnel-editor-title" class="text-2xl font-semibold mb-6 text-slate-800">新增人員</h2>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-medium text-slate-600">員工編號</label><input type="text" id="edit-personnel-id" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+                <div><label class="block text-sm font-medium text-slate-600">姓名</label><input type="text" id="edit-personnel-name" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></div>
+            </div>
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closePersonnelEditor()" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                <button onclick="savePersonnel()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 組合品項編輯 Modal -->
+    <div id="combination-editor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <h2 id="combination-editor-title" class="text-2xl font-semibold mb-6 text-slate-800 flex-shrink-0">新增組合品項</h2>
+            <div class="overflow-y-auto pr-2 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">組合品號 (ID)</label>
+                        <input type="text" id="edit-combo-id" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-slate-50" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600">組合品名</label>
+                        <input type="text" id="edit-combo-name" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-slate-700 border-b pb-2 mb-3">包含零件</h3>
+                    <div id="combo-parts-list" class="space-y-3">
+                        <!-- Dynamic parts rows will be inserted here -->
+                    </div>
+                    <button onclick="addComboPartRow()" class="mt-3 text-sm bg-indigo-100 text-indigo-800 font-semibold py-2 px-4 rounded-lg hover:bg-indigo-200 transition-colors">＋ 新增零件</button>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end space-x-3 flex-shrink-0">
+                <button onclick="closeCombinationEditor()" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                <button onclick="saveCombinationItem()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">儲存組合</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 組合扣料 Modal -->
+    <div id="combination-deduction-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-semibold mb-6 text-slate-800">組合扣料作業</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">選擇組合品項</label>
+                    <select id="combo-deduction-select" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                </div>
+                <div id="combo-deduction-summary" class="p-3 bg-slate-50 rounded-md border text-sm text-slate-600 hidden">
+                    <!-- Summary of parts will be shown here -->
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">扣料組數</label>
+                    <input type="number" id="combo-deduction-sets" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="1" value="1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">操作人員</label>
+                    <select id="combo-deduction-operator" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">備註 (選填)</label>
+                    <textarea id="combo-deduction-notes" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closeCombinationDeductionModal()" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                <button onclick="processCombinationDeduction()" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">確認扣料</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 類別編輯 Modal -->
+    <div id="category-editor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full" onclick="event.stopPropagation()">
+            <h2 id="category-editor-title" class="text-2xl font-semibold mb-6 text-slate-800">編輯類別名稱</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600">類別名稱</label>
+                    <input type="text" id="edit-category-name" class="mt-1 block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="mt-8 flex justify-between items-center">
+                <button id="category-delete-btn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">刪除類別</button>
+                <div class="flex space-x-3">
+                    <button onclick="closeCategoryEditor()" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                    <button id="category-save-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors">儲存變更</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code 掃描 Modal -->
+    <div id="qr-scanner-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center p-4 z-[70] hidden">
+        <div class="relative w-full max-w-md" onclick="event.stopPropagation()">
+            <video id="qr-video" playsinline></video>
+            <div id="scanner-viewfinder"></div>
+            <canvas id="qr-canvas" class="hidden"></canvas>
+        </div>
+        <button onclick="closeQRScanner()" class="mt-6 bg-white text-slate-800 font-semibold py-2 px-6 rounded-lg">取消</button>
+    </div>
+
+    <!-- 掃描後動作選擇 Modal -->
+    <div id="scan-action-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[80] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-800">掃描成功</h2>
+            <p class="mb-6 text-slate-600">請選擇要對品項 <strong id="scanned-item-name" class="text-slate-800"></strong> 執行的動作：</p>
+            <div class="flex flex-col gap-3">
+                <button id="scan-action-in-btn" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">入庫</button>
+                <button id="scan-action-out-btn" class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">出庫</button>
+                <button id="scan-action-adj-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">庫存調整</button>
+            </div>
+            <button onclick="closeScanActionModal()" class="w-full mt-3 bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300">取消</button>
+        </div>
+    </div>
+
+    <!-- QR Code 類型選擇 Modal -->
+    <div id="qr-action-selector-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[90] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-800">選擇 QR Code 類型</h2>
+            <p class="mb-6 text-slate-600">為品項 <strong id="qr-selector-item-name" class="text-slate-800"></strong> 產生專屬功能的 QR Code。</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="generateActionQRCode('in')" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">入庫專用 QR Code</button>
+                <button onclick="generateActionQRCode('out')" class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">出庫專用 QR Code</button>
+                <button onclick="generateActionQRCode('adjustment')" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">庫存調整專用 QR Code</button>
+                <button onclick="generateActionQRCode(null)" class="w-full bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600">通用 QR Code (掃描後選擇)</button>
+            </div>
+            <button onclick="closeQrActionSelector()" class="w-full mt-4 bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300">取消</button>
+        </div>
+    </div>
+
+    <!-- QR Code 產生 Modal -->
+    <div id="qr-code-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full text-center" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-800">品項 QR Code</h2>
+            <div id="qr-code-container" class="p-4 bg-white inline-block">
+                <!-- QR Code Canvas and Item Name will be generated here -->
+            </div>
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button onclick="closeQRCodeModal()" class="w-full bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">關閉</button>
+                <button id="qr-download-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">下載</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 確認對話框 Modal -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[130] hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <p id="confirm-modal-text" class="text-lg mb-6 text-slate-700"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirm-modal-cancel" class="bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">取消</button>
+                <button id="confirm-modal-confirm" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知 Toast 容器 -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[110] space-y-3 w-full max-w-xs sm:max-w-sm"></div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, getDoc, updateDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // --- Firebase 設定 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPpMCssbitCn2wE7WEqefL2czjIsRuyBw",
+            authDomain: "checklist-20250825.firebaseapp.com",
+            databaseURL: "https://checklist-20250825-default-rtdb.firebaseio.com",
+            projectId: "checklist-20250825",
+            storageBucket: "checklist-20250825.appspot.com",
+            messagingSenderId: "899658463753",
+            appId: "1:899658463753:web:71819671db2cdf6bf4d6d8",
+            measurementId: "G-FH3F97BZ7F"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- 本地資料快取 ---
+        let inventoryDatabase = {};
+        let transactionHistory = [];
+        let personnelDatabase = {};
+        let combinationItemsDatabase = {};
+        let mainCategoriesStore = new Map();
+        let subCategoriesStore = new Map();
+
+        // --- 全域狀態 ---
+        let currentTab = 'overview';
+        let currentlyEditingId = null;
+        let currentlyEditingPersonnelId = null;
+        let currentlyEditingCombinationId = null;
+        let currentTransaction = { itemId: null, type: null };
+        let confirmCallback = null;
+        let reportData = [];
+        let categoryMap = {};
+        let selectedMainCategory = null;
+        let selectedSubCategory = null;
+        let selectedReportCategory = null;
+        let videoStream = null;
+        let urlParamHandled = false; // Flag to handle URL parameter only once
+        let qrGenerationItemId = null; // To hold itemId for QR generation
+        let editedItemImageData = null; // To hold new/resized image data for the editor
+
+
+        // --- 初始化 & 資料監聽 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            startRealtimeListeners();
+            setupEventListeners();
+        });
+
+        function startRealtimeListeners() {
+            onSnapshot(collection(db, "personnel"), (snapshot) => {
+                personnelDatabase = {};
+                snapshot.forEach(doc => { personnelDatabase[doc.id] = { id: doc.id, ...doc.data() }; });
+                if (currentTab === 'personnel') {
+                    renderPersonnelTab();
+                }
+            });
+
+            onSnapshot(collection(db, "inventory_items"), (snapshot) => {
+                let newData = {};
+                snapshot.forEach(doc => { newData[doc.id] = { id: doc.id, ...doc.data() }; });
+                inventoryDatabase = newData;
+                buildAndReconcileCategories(); // This will now also trigger renders
+                
+                populateReportItemFilter();
+                document.getElementById('loading-overlay').classList.add('hidden');
+                
+                // Handle item ID and action from URL parameters on initial data load
+                if (!urlParamHandled) {
+                    console.log("系統：正在檢查網址參數...");
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const itemIdFromUrl = urlParams.get('itemId');
+                    const actionFromUrl = urlParams.get('action');
+                    console.log(`系統：找到品號(itemId): ${itemIdFromUrl}, 操作(action): ${actionFromUrl}`);
+
+
+                    if (itemIdFromUrl && inventoryDatabase[itemIdFromUrl]) {
+                        console.log("系統：品號存在於資料庫中。");
+                        const item = inventoryDatabase[itemIdFromUrl];
+                        
+                        if (actionFromUrl && ['in', 'out', 'adjustment'].includes(actionFromUrl)) {
+                            console.log("系統：找到特定操作指令，正在開啟交易視窗...");
+                            // If a specific action is provided, go directly to the transaction modal
+                            setTimeout(() => {
+                                showTransactionModal(item.id, actionFromUrl);
+                            }, 100);
+                        } else {
+                            console.log("系統：未找到特定操作指令或指令無效，正在開啟通用選擇視窗...");
+                            // Otherwise, show the general action selection modal
+                            setTimeout(() => {
+                                showScanActionModal(item);
+                            }, 100);
+                        }
+                        urlParamHandled = true; // Prevent re-triggering
+                    } else {
+                         console.log("系統：網址中沒有有效的品號，或該品號不存在於資料庫中。");
+                    }
+                }
+
+            }, (error) => {
+                console.error("Error fetching inventory items: ", error);
+                document.getElementById('loading-text').textContent = "無法載入庫存資料，請檢查網路連線。";
+            });
+
+            onSnapshot(collection(db, "combination_items"), (snapshot) => {
+                combinationItemsDatabase = {};
+                snapshot.forEach(doc => { combinationItemsDatabase[doc.id] = { id: doc.id, ...doc.data() }; });
+                if (currentTab === 'combination') {
+                    renderCombinationTab();
+                }
+            });
+
+            onSnapshot(collection(db, "inventory_transactions"), (snapshot) => {
+                transactionHistory = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                if(currentTab === 'history' && document.getElementById('report-start-date').value) {
+                    generateTransactionReport();
+                }
+            });
+
+            // Listeners for category collections
+            onSnapshot(collection(db, "inventory_main_categories"), (snapshot) => {
+                mainCategoriesStore.clear();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    mainCategoriesStore.set(data.name, { id: doc.id, ...data });
+                });
+                buildAndReconcileCategories(); // Re-run reconciliation
+            });
+
+            onSnapshot(collection(db, "inventory_sub_categories"), (snapshot) => {
+                subCategoriesStore.clear();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!subCategoriesStore.has(data.mainCategoryName)) {
+                        subCategoriesStore.set(data.mainCategoryName, new Map());
+                    }
+                    subCategoriesStore.get(data.mainCategoryName).set(data.name, { id: doc.id, ...data });
+                });
+                buildAndReconcileCategories(); // Re-run reconciliation
+            });
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                renderFilteredItemsTable();
+            });
+
+            // Add live validation for the item ID input
+            document.getElementById('edit-item-id').addEventListener('input', () => {
+                const idInput = document.getElementById('edit-item-id');
+                const warningEl = document.getElementById('id-duplicate-warning');
+                const saveButton = document.querySelector('#item-editor-modal button[onclick="saveItem()"]');
+                const id = idInput.value.trim();
+
+                if (!currentlyEditingId && id && inventoryDatabase[id]) {
+                    warningEl.classList.remove('hidden');
+                    idInput.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                    saveButton.disabled = true;
+                    saveButton.classList.add('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
+                    saveButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                } else {
+                    warningEl.classList.add('hidden');
+                    idInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+                    saveButton.disabled = false;
+                    saveButton.classList.remove('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
+                    saveButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === "Escape") {
+                    closeItemEditor();
+                    closeTransactionModal();
+                    closeQRCodeModal();
+                    closeQrActionSelector();
+                    closeCategoryEditor();
+                    closeQRScanner();
+                    closeScanActionModal();
+                    closePersonnelEditor();
+                    closeCombinationEditor();
+                    closeCombinationDeductionModal();
+                }
+            });
+            document.getElementById('confirm-modal-cancel').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                confirmCallback = null;
+            });
+            document.getElementById('confirm-modal-confirm').addEventListener('click', () => {
+                if (confirmCallback) {
+                    confirmCallback();
+                }
+                document.getElementById('confirm-modal').classList.add('hidden');
+                confirmCallback = null;
+            });
+            document.getElementById('edit-item-image').addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const saveBtn = document.getElementById('item-editor-save-btn');
+                const preview = document.getElementById('image-preview');
+                const originalSrc = preview.src;
+                
+                preview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=處理中...';
+                saveBtn.disabled = true; // Disable button during processing
+
+                try {
+                    const resizedDataUrl = await resizeImage(file);
+                    preview.src = resizedDataUrl;
+                    editedItemImageData = resizedDataUrl;
+                    showToast('圖片準備完成', 'success');
+                } catch (error) {
+                    console.error("Image processing error:", error);
+                    showToast('圖片處理失敗，請嘗試其他圖片', 'error');
+                    preview.src = originalSrc;
+                    editedItemImageData = null;
+                } finally {
+                    saveBtn.disabled = false; // Re-enable button
+                }
+            });
+        }
+
+        // --- Tab 切換 ---
+        window.switchTab = function(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-btn-"]').forEach(el => el.classList.remove('tab-btn-active'));
+            
+            document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tabName}`).classList.add('tab-btn-active');
+            
+            if (tabName === 'overview') {
+                renderOverviewTab();
+            } else if (tabName === 'personnel') {
+                renderPersonnelTab();
+            } else if (tabName === 'combination') {
+                renderCombinationTab();
+            } else if (tabName === 'report') {
+                renderReportTab();
+            }
+        }
+        
+        // --- 庫存總覽渲染 ---
+        function renderOverviewTab() {
+            const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => a.order - b.order);
+            const mainTabsContainer = document.getElementById('main-category-tabs');
+            mainTabsContainer.innerHTML = '';
+
+            if (mainCategories.length === 0) {
+                document.getElementById('inventory-list-container').innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">尚未建立任何品項或類別。</p></div>`;
+                document.getElementById('sub-category-tabs-container').classList.add('hidden');
+                return;
+            }
+
+            if (!selectedMainCategory || !mainCategoriesStore.has(selectedMainCategory)) {
+                selectedMainCategory = mainCategories.length > 0 ? mainCategories[0].name : null;
+            }
+            
+            mainCategories.forEach(cat => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative group flex items-center cursor-grab';
+                wrapper.dataset.categoryName = cat.name;
+
+                const isActive = cat.name === selectedMainCategory;
+                const btn = document.createElement('button');
+                btn.textContent = cat.name;
+                btn.className = `px-4 py-2 text-sm font-semibold rounded-full transition-colors ${isActive ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-700 hover:bg-slate-100 border'}`;
+                btn.onclick = () => selectMainCategory(cat.name);
+                
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
+                editBtn.className = 'ml-1 p-1 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors cursor-pointer';
+                editBtn.title = `編輯「${cat.name}」`;
+                editBtn.onclick = (e) => { e.stopPropagation(); showCategoryEditor(false, cat.name); };
+
+                wrapper.appendChild(btn);
+                wrapper.appendChild(editBtn);
+                mainTabsContainer.appendChild(wrapper);
+            });
+
+            // Init Sortable.js for Main Categories
+            new Sortable(mainTabsContainer, {
+                animation: 150,
+                onEnd: handleMainCategorySort
+            });
+
+            renderSubCategories();
+        }
+
+        async function handleMainCategorySort(evt) {
+            const container = evt.target;
+            const children = Array.from(container.children);
+            const batch = writeBatch(db);
+
+            children.forEach((child, index) => {
+                const catName = child.dataset.categoryName;
+                if (catName && mainCategoriesStore.has(catName)) {
+                    const catData = mainCategoriesStore.get(catName);
+                    const docRef = doc(db, "inventory_main_categories", catData.id);
+                    batch.update(docRef, { order: index });
+                }
+            });
+
+            try {
+                await batch.commit();
+                showToast('大類排序已儲存', 'success');
+            } catch (e) {
+                console.error("Error saving main category order: ", e);
+                showToast('儲存排序失敗', 'error');
+            }
+        }
+
+        window.selectMainCategory = function(categoryName) {
+            selectedMainCategory = categoryName;
+            selectedSubCategory = null; 
+            renderOverviewTab();
+        }
+
+        function renderSubCategories() {
+            const subCatContainer = document.getElementById('sub-category-tabs-container');
+            const subCatTabs = document.getElementById('sub-category-tabs');
+            subCatTabs.innerHTML = '';
+
+            const subCategoriesMap = subCategoriesStore.get(selectedMainCategory);
+            if (!subCategoriesMap || subCategoriesMap.size === 0) {
+                 subCatContainer.classList.add('hidden');
+                 selectedSubCategory = null; // No sub-categories exist
+                 renderFilteredItemsTable();
+                 return;
+            }
+
+            const subCategories = Array.from(subCategoriesMap.values()).sort((a,b) => a.order - b.order);
+
+            if (subCategories.length > 0) {
+                subCatContainer.classList.remove('hidden');
+                
+                // Find a valid selectedSubCategory if current one is invalid
+                const subCategoryNames = subCategories.map(s => s.name);
+                if (!selectedSubCategory || !subCategoryNames.includes(selectedSubCategory)) {
+                    selectedSubCategory = subCategoryNames[0];
+                }
+
+                subCategories.forEach(subCat => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'relative group flex items-center cursor-grab';
+                    wrapper.dataset.categoryName = subCat.name;
+
+                    const isActive = subCat.name === selectedSubCategory;
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = subCat.name;
+                    link.className = `whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${isActive ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+                    link.onclick = (e) => {
+                        e.preventDefault();
+                        selectSubCategory(subCat.name);
+                    };
+
+                    const editBtn = document.createElement('button');
+                    editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
+                    editBtn.className = 'ml-1 p-1 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors cursor-pointer';
+                    editBtn.title = `編輯「${subCat.name}」`;
+                    editBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); showCategoryEditor(true, subCat.name); };
+                    
+                    wrapper.appendChild(link);
+                    if (subCat.name !== '未分類') {
+                      wrapper.appendChild(editBtn);
+                    }
+                    subCatTabs.appendChild(wrapper);
+                });
+
+                // Init Sortable.js for Sub Categories
+                new Sortable(subCatTabs, {
+                    animation: 150,
+                    onEnd: handleSubCategorySort
+                });
+
+            } else {
+                subCatContainer.classList.add('hidden');
+                selectedSubCategory = null;
+            }
+
+            renderFilteredItemsTable();
+        }
+
+        async function handleSubCategorySort(evt) {
+            const container = evt.target;
+            const children = Array.from(container.children);
+            const batch = writeBatch(db);
+
+            children.forEach((child, index) => {
+                const catName = child.dataset.categoryName;
+                if (catName && subCategoriesStore.has(selectedMainCategory) && subCategoriesStore.get(selectedMainCategory).has(catName)) {
+                    const catData = subCategoriesStore.get(selectedMainCategory).get(catName);
+                    const docRef = doc(db, "inventory_sub_categories", catData.id);
+                    batch.update(docRef, { order: index });
+                }
+            });
+
+            try {
+                await batch.commit();
+                showToast('小類排序已儲存', 'success');
+            } catch (e) {
+                console.error("Error saving sub-category order: ", e);
+                showToast('儲存排序失敗', 'error');
+            }
+        }
+
+
+        window.selectSubCategory = function(subCategoryName) {
+            selectedSubCategory = subCategoryName;
+            const subCatTabs = document.getElementById('sub-category-tabs');
+            subCatTabs.querySelectorAll('a').forEach(link => {
+                const isActive = link.textContent === subCategoryName;
+                link.classList.toggle('border-indigo-500', isActive);
+                link.classList.toggle('text-indigo-600', isActive);
+                link.classList.toggle('border-transparent', !isActive);
+                link.classList.toggle('text-gray-500', !isActive);
+            });
+            renderFilteredItemsTable();
+        }
+
+        function renderFilteredItemsTable() {
+            const container = document.getElementById('inventory-list-container');
+            container.innerHTML = '';
+            const filterText = document.getElementById('search-input').value.toLowerCase();
+            
+            let items = Object.values(inventoryDatabase).filter(item => {
+                if (item.mainCategory !== selectedMainCategory) return false;
+                
+                const subCat = item.subCategory || '未分類';
+                if (selectedSubCategory && subCat !== selectedSubCategory) return false;
+
+                if (filterText) {
+                    return (item.id && item.id.toLowerCase().includes(filterText)) ||
+                           (item.name && item.name.toLowerCase().includes(filterText)) ||
+                           (item.custodianName && item.custodianName.toLowerCase().includes(filterText)) ||
+                           (item.usage_description && item.usage_description.toLowerCase().includes(filterText));
+                }
+                return true;
+            }).sort((a,b) => (a.order || 0) - (b.order || 0)); // Sort by custom order
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">在此分類下找不到符合條件的品項。</p></div>`;
+                return;
+            }
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm text-left text-gray-500 card';
+            table.innerHTML = `
+                <thead class="text-xs text-gray-700 uppercase bg-slate-50">
+                    <tr>
+                        <th scope="col" class="pl-2 pr-1 py-3 w-4"></th>
+                        <th scope="col" class="px-2 sm:px-4 py-3"></th>
+                        <th scope="col" class="px-2 sm:px-4 py-3">品名 / 品號</th>
+                        <th scope="col" class="px-2 sm:px-4 py-3 hidden md:table-cell">保管人</th>
+                        <th scope="col" class="px-2 sm:px-4 py-3 hidden lg:table-cell">規格</th>
+                        <th scope="col" class="px-2 sm:px-4 py-3">庫存</th>
+                        <th scope="col" class="px-2 sm:px-4 py-3 hidden md:table-cell">位置</th>
+                        <th scope="col" class="px-2 sm:px-4 py-3 text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            items.forEach(item => {
+                const quantity = item.quantity || 0;
+                const safetyStock = item.safetyStock || 0;
+                let stockStatusColor = 'text-slate-700';
+                if (quantity <= safetyStock) stockStatusColor = 'text-red-500 font-bold';
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-200 hover:bg-slate-50 align-middle';
+                tr.dataset.itemId = item.id; // Add item ID for sorting
+                tr.innerHTML = `
+                    <td class="pl-2 pr-1 py-2 drag-handle text-slate-400 cursor-grab hover:text-slate-600" title="拖曳排序">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 3a1 1 0 000 2h1a1 1 0 100-2H5zM9 3a1 1 0 000 2h1a1 1 0 100-2H9zM13 3a1 1 0 000 2h1a1 1 0 100-2h-1zM5 7a1 1 0 000 2h1a1 1 0 100-2H5zM9 7a1 1 0 000 2h1a1 1 0 100-2H9zM13 7a1 1 0 000 2h1a1 1 0 100-2h-1zM5 11a1 1 0 000 2h1a1 1 0 100-2H5zM9 11a1 1 0 000 2h1a1 1 0 100-2H9zM13 11a1 1 0 000 2h1a1 1 0 100-2h-1zM5 15a1 1 0 000 2h1a1 1 0 100-2H5zM9 15a1 1 0 000 2h1a1 1 0 100-2H9zM13 15a1 1 0 000 2h1a1 1 0 100-2h-1z" clip-rule="evenodd" /></svg>
+                    </td>
+                    <td class="p-2">
+                        <img src="${item.imageUrl || 'https://placehold.co/40x40/e2e8f0/94a3b8?text=無'}" class="w-10 h-10 object-cover rounded-md">
+                    </td>
+                    <td class="px-2 sm:px-4 py-2">
+                        <div class="font-medium text-gray-900">${item.name || '未命名'}</div>
+                        <div class="text-gray-500 text-xs">${item.id}</div>
+                    </td>
+                    <td class="px-2 sm:px-4 py-2 hidden md:table-cell">${item.custodianName || '未指定'}</td>
+                    <td class="px-2 sm:px-4 py-2 hidden lg:table-cell">${formatSpecifications(item)}</td>
+                    <td class="px-2 sm:px-4 py-2">
+                        <div class="text-lg font-semibold ${stockStatusColor}">${quantity}</div>
+                        <div class="text-xs text-gray-400">安全: ${safetyStock}</div>
+                    </td>
+                    <td class="px-2 sm:px-4 py-2 hidden md:table-cell">${item.location || 'N/A'}</td>
+                    <td class="px-2 sm:px-4 py-2 text-right">
+                        <div class="flex justify-end items-center gap-1 flex-wrap">
+                            <button onclick="showTransactionModal('${item.id}', 'in')" title="入庫" class="p-1.5 bg-green-100 text-green-800 rounded-md hover:bg-green-200"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg></button>
+                            <button onclick="showTransactionModal('${item.id}', 'out')" title="出庫" class="p-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg></button>
+                            <button onclick="showTransactionModal('${item.id}', 'adjustment')" title="調整" class="p-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 4a1 1 0 000 2h6a1 1 0 100-2H7zM7 9a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm5 3a1 1 0 100 2H8a1 1 0 100-2h4z" clip-rule="evenodd" /></svg></button>
+                            <button onclick="showItemEditor('${item.id}')" title="編輯" class="p-1.5 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                            <button onclick="deleteItem('${item.id}')" title="刪除" class="p-1.5 bg-red-100 text-red-800 rounded-md hover:bg-red-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
+                        </div>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+            container.appendChild(table);
+
+            // Initialize Sortable.js
+            new Sortable(tbody, {
+                animation: 150,
+                handle: '.drag-handle', // Specify the drag handle class
+                onEnd: () => handleItemSort(tbody)
+            });
+        }
+
+        async function handleItemSort(tbody) {
+            const rows = tbody.querySelectorAll('tr[data-item-id]');
+            const batch = writeBatch(db);
+            let order = 0;
+
+            rows.forEach(row => {
+                const itemId = row.dataset.itemId;
+                if (itemId) {
+                    const itemRef = doc(db, "inventory_items", itemId);
+                    batch.update(itemRef, { order: order });
+                    order++;
+                }
+            });
+
+            try {
+                await batch.commit();
+                showToast('排序已儲存', 'success');
+            } catch (e) {
+                console.error("Error saving sort order: ", e);
+                showToast('儲存排序失敗', 'error');
+                // The onSnapshot will automatically correct the UI, 
+                // but it might flicker. This is safer than a failed optimistic update.
+            }
+        }
+
+        function formatSpecifications(item) {
+            let parts = [];
+            if (item.spec_length) parts.push(`長:${item.spec_length}`);
+            if (item.spec_width) parts.push(`寬:${item.spec_width}`);
+            if (item.spec_thickness) parts.push(`厚:${item.spec_thickness}`);
+            if (item.spec_diameter) parts.push(`直:${item.spec_diameter}`);
+            return parts.length > 0 ? parts.join(' ') : 'N/A';
+        }
+        
+        // --- 類別管理 ---
+        window.showCategoryEditor = function(isSubCategory, oldName) {
+            const modal = document.getElementById('category-editor-modal');
+            const title = document.getElementById('category-editor-title');
+            const nameInput = document.getElementById('edit-category-name');
+            const saveBtn = document.getElementById('category-save-btn');
+            const deleteBtn = document.getElementById('category-delete-btn');
+
+            title.textContent = `編輯${isSubCategory ? '小' : '大'}類名稱`;
+            nameInput.value = oldName;
+
+            saveBtn.onclick = () => handleSaveCategory(isSubCategory, oldName);
+            deleteBtn.onclick = () => handleDeleteCategory(isSubCategory, oldName);
+
+            modal.classList.remove('hidden');
+            nameInput.focus();
+        }
+
+        window.closeCategoryEditor = function() {
+            document.getElementById('category-editor-modal').classList.add('hidden');
+        }
+
+        async function handleSaveCategory(isSubCategory, oldName) {
+            const newName = document.getElementById('edit-category-name').value.trim();
+            if (!newName || newName === oldName) {
+                closeCategoryEditor();
+                return;
+            }
+
+            // 檢查新名稱是否已存在
+            if (!isSubCategory && mainCategoriesStore.has(newName)) {
+                showToast(`大類 "${newName}" 已存在`, 'error');
+                return;
+            }
+            if (isSubCategory && subCategoriesStore.has(selectedMainCategory) && subCategoriesStore.get(selectedMainCategory).has(newName)) {
+                showToast(`此大類下已有小類 "${newName}"`, 'error');
+                return;
+            }
+            
+            const batch = writeBatch(db);
+            const fieldToUpdate = isSubCategory ? 'subCategory' : 'mainCategory';
+            let itemsToUpdate = [];
+
+            if (isSubCategory) {
+                 itemsToUpdate = Object.values(inventoryDatabase).filter(item => item.mainCategory === selectedMainCategory && (item.subCategory || '未分類') === oldName);
+            } else {
+                 itemsToUpdate = Object.values(inventoryDatabase).filter(item => item.mainCategory === oldName);
+            }
+            
+            if (itemsToUpdate.length > 0) {
+                const catStore = isSubCategory ? subCategoriesStore.get(selectedMainCategory) : mainCategoriesStore;
+                if (!catStore) return;
+                const catData = catStore.get(oldName);
+                if (!catData) return;
+
+                const catRef = doc(db, isSubCategory ? "inventory_sub_categories" : "inventory_main_categories", catData.id);
+                batch.update(catRef, { name: newName });
+                
+                // Update all items referencing this category
+                itemsToUpdate.forEach(item => {
+                    const docRef = doc(db, "inventory_items", item.id);
+                    batch.update(docRef, { [fieldToUpdate]: newName });
+                });
+
+                // If it's a main category, update sub-categories referencing it
+                if (!isSubCategory) {
+                    const subCatMap = subCategoriesStore.get(oldName);
+                    if (subCatMap) {
+                        subCatMap.forEach(subCat => {
+                            const subCatRef = doc(db, "inventory_sub_categories", subCat.id);
+                            batch.update(subCatRef, { mainCategoryName: newName });
+                        });
+                    }
+                }
+
+                try {
+                    await batch.commit();
+                    // Update local state
+                    if (!isSubCategory) {
+                        selectedMainCategory = newName;
+                        if (currentTab === 'report') selectedReportCategory = newName;
+                    } else {
+                        selectedSubCategory = newName;
+                    }
+                    showToast('類別名稱更新成功', 'success');
+                } catch (e) {
+                    console.error('Category update failed:', e);
+                    showToast('類別更新失敗', 'error');
+                }
+            } else {
+                showToast('沒有品項屬於此類別，名稱未被儲存', 'info');
+            }
+            closeCategoryEditor();
+        }
+
+        function handleDeleteCategory(isSubCategory, name) {
+            let itemsUsingCategory = [];
+            if (isSubCategory) {
+                itemsUsingCategory = Object.values(inventoryDatabase).filter(item => item.mainCategory === selectedMainCategory && (item.subCategory || '未分類') === name);
+            } else {
+                itemsUsingCategory = Object.values(inventoryDatabase).filter(item => item.mainCategory === name);
+            }
+
+            if (itemsUsingCategory.length > 0) {
+                showToast(`無法刪除！尚有 ${itemsUsingCategory.length} 個品項屬於此類別。`, 'error');
+                return;
+            }
+
+            showConfirm(`確定要刪除空的類別 "${name}" 嗎？此操作無法復原。`, async () => {
+                const catStore = isSubCategory ? subCategoriesStore.get(selectedMainCategory) : mainCategoriesStore;
+                if (!catStore) return;
+                const catData = catStore.get(name);
+                if (!catData) return;
+
+                try {
+                    await deleteDoc(doc(db, isSubCategory ? "inventory_sub_categories" : "inventory_main_categories", catData.id));
+                    
+                    if (isSubCategory && selectedSubCategory === name) {
+                        selectedSubCategory = null;
+                    } else if (!isSubCategory && selectedMainCategory === name) {
+                        selectedMainCategory = null;
+                        if (currentTab === 'report') selectedReportCategory = null;
+                    }
+                    
+                    showToast(`類別 "${name}" 已刪除。`, 'success');
+                    closeCategoryEditor();
+                    // Data will refresh via onSnapshot
+                } catch (e) {
+                    console.error("Error deleting category: ", e);
+                    showToast('刪除類別失敗', 'error');
+                }
+            });
+        }
+
+
+        // --- 品號(ID)自動產生 ---
+        window.generateItemId = function() {
+            document.getElementById('edit-item-id').value = 'ITEM-' + Date.now();
+        }
+
+        // --- 圖片上傳/拍照 ---
+        window.triggerImageInput = function(useCamera) {
+            const imageInput = document.getElementById('edit-item-image');
+            if (useCamera) {
+                imageInput.setAttribute('capture', 'environment');
+            } else {
+                imageInput.removeAttribute('capture');
+            }
+            imageInput.click();
+        }
+
+        // --- 新增：移除圖片 ---
+        window.removeImage = function() {
+            document.getElementById('image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片';
+            document.getElementById('edit-item-image').value = '';
+            editedItemImageData = "__DELETE__"; // Special flag to indicate removal
+        }
+
+        // --- 新增：圖片壓縮函式 ---
+        function resizeImage(file, maxWidth = 800, maxHeight = 800) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 使用 JPEG 格式以獲得更好的壓縮效果
+                        resolve(canvas.toDataURL('image/jpeg', 0.8)); 
+                    };
+                    img.onerror = (error) => reject(error);
+                };
+                reader.onerror = (error) => reject(error);
+            });
+        }
+
+        let isReconciling = false;
+        async function buildAndReconcileCategories() {
+            if (isReconciling) return;
+            isReconciling = true;
+
+            const categoryMap = {}; // Build from items
+            for (const item of Object.values(inventoryDatabase)) {
+                if (item.mainCategory) {
+                    if (!categoryMap[item.mainCategory]) {
+                        categoryMap[item.mainCategory] = new Set();
+                    }
+                    const subCat = item.subCategory || '未分類';
+                    categoryMap[item.mainCategory].add(subCat);
+                }
+            }
+
+            const batch = writeBatch(db);
+            let needsCommit = false;
+            const now = Date.now();
+
+            for (const mainCatName in categoryMap) {
+                if (!mainCategoriesStore.has(mainCatName)) {
+                    const ref = doc(collection(db, "inventory_main_categories"));
+                    batch.set(ref, { name: mainCatName, order: now });
+                    needsCommit = true;
+                    // console.log(`Reconciling: Adding main category ${mainCatName}`);
+                }
+                
+                const subCats = categoryMap[mainCatName];
+                for (const subCatName of subCats) {
+                    if (!subCategoriesStore.get(mainCatName)?.has(subCatName)) {
+                         const ref = doc(collection(db, "inventory_sub_categories"));
+                         batch.set(ref, { name: subCatName, mainCategoryName: mainCatName, order: now });
+                         needsCommit = true;
+                        //  console.log(`Reconciling: Adding sub category ${mainCatName} -> ${subCatName}`);
+                    }
+                }
+            }
+
+            if (needsCommit) {
+                try {
+                    await batch.commit();
+                    // console.log("Reconciliation batch committed.");
+                } catch (e) {
+                    console.error("Category reconciliation failed: ", e);
+                }
+            } else {
+                 // console.log("No reconciliation needed.");
+            }
+
+            isReconciling = false;
+            
+            // Always render after check
+            if (currentTab === 'overview') {
+                renderOverviewTab();
+            }
+            if (currentTab === 'report') {
+                renderReportTab();
+            }
+        }
+
+
+        function buildCategoryMap() {
+            // This function is now effectively replaced by buildAndReconcileCategories
+            // and the stores (mainCategoriesStore, subCategoriesStore).
+            // We just need to ensure the old references are updated.
+            
+            // Build a compatible map for old functions that might still use it
+            categoryMap = {};
+            mainCategoriesStore.forEach((value, key) => {
+                categoryMap[key] = [];
+                const subMap = subCategoriesStore.get(key);
+                if (subMap) {
+                    categoryMap[key] = Array.from(subMap.keys()).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                }
+            });
+        }
+
+        window.showItemEditor = function(itemId = null) {
+            currentlyEditingId = itemId;
+            const modal = document.getElementById('item-editor-modal');
+            const idInput = document.getElementById('edit-item-id');
+            const initialQtyWrapper = document.getElementById('initial-quantity-wrapper');
+            const qrBtn = document.getElementById('editor-qrcode-btn');
+            const warningEl = document.getElementById('id-duplicate-warning');
+            const saveButton = document.querySelector('#item-editor-modal button[onclick="saveItem()"]');
+
+            // Reset validation/warning state on open
+            warningEl.classList.add('hidden');
+            idInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+            saveButton.disabled = false;
+            saveButton.classList.remove('bg-slate-400', 'cursor-not-allowed', 'hover:bg-slate-400');
+            saveButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            
+            modal.querySelectorAll('input, select, textarea').forEach(el => {
+                if(el.type !== 'file') el.value = '';
+            });
+            modal.querySelectorAll('input[type="number"]').forEach(el => el.value = '');
+            document.getElementById('edit-item-initial-quantity').value = '0';
+            document.getElementById('edit-item-safety-stock').value = '0';
+            document.getElementById('image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片';
+            document.getElementById('edit-item-image').value = '';
+            editedItemImageData = null; // 重置圖片狀態
+
+            const mainCatSelect = document.getElementById('edit-item-mainCategory');
+            const mainCatNewInput = document.getElementById('edit-item-mainCategory-new');
+            const subCatSelect = document.getElementById('edit-item-subCategory');
+            const subCatNewInput = document.getElementById('edit-item-subCategory-new');
+
+            const mainCategories = Array.from(mainCategoriesStore.keys()).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+            mainCatSelect.innerHTML = `<option value="">請選擇或新增...</option>`;
+            mainCategories.forEach(cat => { mainCatSelect.innerHTML += `<option value="${cat}">${cat}</option>`; });
+            mainCatSelect.innerHTML += `<option value="__new__">＋ 新增大類</option>`;
+
+            // Populate custodian dropdown
+            const custodianSelect = document.getElementById('edit-item-custodian');
+            custodianSelect.innerHTML = '<option value="">未指定</option>';
+            Object.values(personnelDatabase)
+                .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'))
+                .forEach(p => {
+                    custodianSelect.innerHTML += `<option value="${p.id}">${p.name} (${p.id})</option>`;
+                });
+
+            function updateSubCategoryDropdown() {
+                const selectedMain = mainCatSelect.value;
+                const isNewMain = selectedMain === '__new__';
+                
+                mainCatNewInput.classList.toggle('hidden', !isNewMain);
+                if (isNewMain) mainCatNewInput.focus();
+
+                subCatSelect.innerHTML = `<option value="">請選擇或新增...</option>`;
+                subCatSelect.disabled = !selectedMain;
+                
+                if (selectedMain && !isNewMain && subCategoriesStore.has(selectedMain)) {
+                    const subCats = Array.from(subCategoriesStore.get(selectedMain).keys()).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                    subCats.forEach(cat => {
+                        subCatSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                    });
+                }
+                subCatSelect.innerHTML += `<option value="__new__">＋ 新增小類</option>`;
+                subCatNewInput.classList.add('hidden');
+                subCatNewInput.value = '';
+            }
+            
+            mainCatSelect.onchange = updateSubCategoryDropdown;
+            subCatSelect.onchange = () => {
+                const isNewSub = subCatSelect.value === '__new__';
+                subCatNewInput.classList.toggle('hidden', !isNewSub);
+                if (isNewSub) subCatNewInput.focus();
+            };
+
+            if (itemId) {
+                const item = inventoryDatabase[itemId];
+                document.getElementById('item-editor-title').textContent = '編輯品項';
+                idInput.value = item.id;
+                idInput.disabled = true;
+                document.getElementById('edit-item-name').value = item.name || '';
+                
+                document.getElementById('edit-item-spec-length').value = item.spec_length || '';
+                document.getElementById('edit-item-spec-width').value = item.spec_width || '';
+                document.getElementById('edit-item-spec-thickness').value = item.spec_thickness || '';
+                document.getElementById('edit-item-spec-diameter').value = item.spec_diameter || '';
+
+                document.getElementById('edit-item-supplier').value = item.supplier || '';
+                document.getElementById('edit-item-location').value = item.location || '';
+                document.getElementById('edit-item-usage-description').value = item.usage_description || '';
+                document.getElementById('edit-item-safety-stock').value = item.safetyStock || '0';
+                document.getElementById('edit-item-unit').value = item.unit || '';
+                custodianSelect.value = item.custodianId || '';
+                if (item.imageUrl) {
+                    document.getElementById('image-preview').src = item.imageUrl;
+                }
+                initialQtyWrapper.classList.add('hidden');
+                
+                mainCatSelect.value = item.mainCategory || '';
+                updateSubCategoryDropdown();
+                subCatSelect.value = item.subCategory || '';
+                
+                qrBtn.classList.remove('hidden');
+                qrBtn.onclick = () => showQrActionSelector(itemId);
+                
+            } else {
+                document.getElementById('item-editor-title').textContent = '新增品項';
+                idInput.disabled = false;
+                initialQtyWrapper.classList.remove('hidden');
+                updateSubCategoryDropdown();
+                qrBtn.classList.add('hidden');
+            }
+            modal.classList.remove('hidden');
+        }
+
+        window.closeItemEditor = function() {
+            document.getElementById('item-editor-modal').classList.add('hidden');
+            currentlyEditingId = null;
+            editedItemImageData = null; // 關閉時清除圖片資料
+        }
+
+        function getBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        const parseNumberOrNull = (val) => {
+            if (val === null || String(val).trim() === '') return null;
+            const num = parseFloat(val);
+            return isNaN(num) ? null : num;
+        };
+
+        window.saveItem = async function() {
+            const saveBtn = document.getElementById('item-editor-save-btn');
+            const spinner = saveBtn.querySelector('svg');
+            const btnText = saveBtn.querySelector('.btn-text');
+            
+            // Start loading state
+            saveBtn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = '儲存中...';
+
+            try {
+                const id = document.getElementById('edit-item-id').value.trim();
+                const name = document.getElementById('edit-item-name').value.trim();
+                if (!id || !name) {
+                    showToast('品號和品名為必填欄位', 'error');
+                    return;
+                }
+
+                if (!currentlyEditingId && inventoryDatabase[id]) {
+                    showToast('此品號已存在，請使用不同的品號', 'error');
+                    return;
+                }
+
+                const getSelectValue = (selectEl, newInEl) => {
+                    const val = selectEl.value === '__new__' ? newInEl.value.trim() : selectEl.value;
+                    return val || '';
+                };
+
+                const custodianId = document.getElementById('edit-item-custodian').value;
+                const custodian = personnelDatabase[custodianId];
+
+                const itemData = {
+                    name: name,
+                    mainCategory: getSelectValue(document.getElementById('edit-item-mainCategory'), document.getElementById('edit-item-mainCategory-new')),
+                    subCategory: getSelectValue(document.getElementById('edit-item-subCategory'), document.getElementById('edit-item-subCategory-new')),
+                    custodianId: custodian ? custodian.id : '',
+                    custodianName: custodian ? custodian.name : '',
+                    spec_length: parseNumberOrNull(document.getElementById('edit-item-spec-length').value),
+                    spec_width: parseNumberOrNull(document.getElementById('edit-item-spec-width').value),
+                    spec_thickness: parseNumberOrNull(document.getElementById('edit-item-spec-thickness').value),
+                    spec_diameter: parseNumberOrNull(document.getElementById('edit-item-spec-diameter').value),
+                    supplier: document.getElementById('edit-item-supplier').value.trim(),
+                    location: document.getElementById('edit-item-location').value.trim(),
+                    usage_description: document.getElementById('edit-item-usage-description').value.trim(),
+                    safetyStock: Number(document.getElementById('edit-item-safety-stock').value) || 0,
+                    unit: document.getElementById('edit-item-unit').value.trim(),
+                    lastUpdated: serverTimestamp()
+                };
+                if (!itemData.mainCategory) {
+                    showToast('大類為必填欄位', 'error');
+                    return;
+                }
+                if (!itemData.subCategory) {
+                    itemData.subCategory = '未分類'; // Default to '未分類'
+                }
+
+                if (editedItemImageData === "__DELETE__") {
+                    itemData.imageUrl = null;
+                } else if (editedItemImageData) {
+                    itemData.imageUrl = editedItemImageData;
+                } else if (currentlyEditingId) {
+                    itemData.imageUrl = inventoryDatabase[currentlyEditingId].imageUrl || null;
+                } else {
+                    itemData.imageUrl = null;
+                }
+
+                const isNewItem = !currentlyEditingId;
+                const initialQuantity = Number(document.getElementById('edit-item-initial-quantity').value) || 0;
+                if (isNewItem) {
+                    itemData.quantity = initialQuantity;
+                    itemData.order = Date.now(); // Set initial order for new items
+                }
+
+                const batch = writeBatch(db);
+                const itemRef = doc(db, "inventory_items", id);
+                
+                batch.set(itemRef, itemData, { merge: true });
+
+                if (isNewItem && initialQuantity > 0) {
+                    const transactionRef = doc(collection(db, "inventory_transactions"));
+                    batch.set(transactionRef, {
+                        itemId: id, itemName: itemData.name, type: 'in', quantity: initialQuantity,
+                        notes: '初始庫存建立', timestamp: serverTimestamp(),
+                        quantityBefore: 0, quantityAfter: initialQuantity,
+                        operatorId: '', operatorName: '系統' // Default for initial creation
+                    });
+                }
+                
+                await batch.commit();
+                showToast('品項資料儲存成功', 'success');
+                closeItemEditor();
+            } catch (e) {
+                console.error("Error saving item: ", e);
+                showToast('儲存失敗，請檢查網路連線', 'error');
+            } finally {
+                // Revert button state
+                saveBtn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = '儲存品項';
+            }
+        }
+        
+        window.deleteItem = function(itemId) {
+            const item = inventoryDatabase[itemId];
+            if (item.quantity > 0) {
+                 showToast('庫存數量不為零，無法刪除', 'error');
+                 return;
+            }
+             showConfirm(`確定要刪除品項 [${item.name}] 嗎？此操作無法復原。`, async () => {
+                try {
+                    await deleteDoc(doc(db, "inventory_items", itemId));
+                    showToast('品項刪除成功', 'success');
+                } catch (e) {
+                    console.error("Error deleting item: ", e);
+                    showToast('刪除失敗', 'error');
+                }
+            }, '確定刪除');
+        }
+        
+        // --- 庫存交易 ---
+        window.showTransactionModal = function(itemId, type) {
+            const item = inventoryDatabase[itemId];
+            if (!item) return;
+
+            currentTransaction = { itemId, type };
+            
+            document.getElementById('transaction-item-name').textContent = `${item.name} (${item.id})`;
+            const title = document.getElementById('transaction-title');
+            const btn = document.getElementById('transaction-confirm-btn');
+            const quantityLabel = document.querySelector('#transaction-modal label[for="transaction-quantity"]');
+            const quantityInput = document.getElementById('transaction-quantity');
+
+            // Populate operator dropdown
+            const operatorSelect = document.getElementById('transaction-operator');
+            operatorSelect.innerHTML = '<option value="">請選擇操作人員...</option>';
+            Object.values(personnelDatabase)
+                .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'))
+                .forEach(p => {
+                    operatorSelect.innerHTML += `<option value="${p.id}">${p.name} (${p.id})</option>`;
+                });
+
+            if (type === 'in') {
+                title.textContent = '入庫作業';
+                btn.textContent = '確認入庫';
+                btn.className = 'bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700';
+                quantityLabel.textContent = '入庫數量';
+                quantityInput.placeholder = '';
+            } else if (type === 'out') {
+                title.textContent = '出庫作業';
+                btn.textContent = '確認出庫';
+                btn.className = 'bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-700';
+                quantityLabel.textContent = '出庫數量';
+                quantityInput.placeholder = '';
+            } else if (type === 'adjustment') {
+                title.textContent = '庫存調整';
+                btn.textContent = '確認調整';
+                btn.className = 'bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700';
+                quantityLabel.textContent = '調整後新數量';
+                quantityInput.placeholder = `目前庫存: ${item.quantity || 0}`;
+            }
+
+            document.getElementById('transaction-quantity').value = '';
+            document.getElementById('transaction-notes').value = '';
+            document.getElementById('transaction-modal').classList.remove('hidden');
+            document.getElementById('transaction-operator').focus();
+        }
+        
+        window.closeTransactionModal = function() {
+            document.getElementById('transaction-modal').classList.add('hidden');
+            currentTransaction = { itemId: null, type: null };
+        }
+
+        window.processTransaction = async function() {
+            const { itemId, type } = currentTransaction;
+            if (!itemId || !type) return;
+            
+            const operatorId = document.getElementById('transaction-operator').value;
+            if (!operatorId) {
+                showToast('請選擇操作人員', 'error');
+                return;
+            }
+            const operator = personnelDatabase[operatorId];
+
+            const quantity = Number(document.getElementById('transaction-quantity').value);
+            
+            if (type === 'adjustment') {
+                if (isNaN(quantity) || quantity < 0) {
+                    showToast('請輸入有效的調整後數量 (必須大於或等於 0)', 'error');
+                    return;
+                }
+            } else { // 'in' or 'out'
+                if (isNaN(quantity) || quantity <= 0) {
+                    showToast('請輸入有效的數量 (必須大於 0)', 'error');
+                    return;
+                }
+            }
+
+            const notes = document.getElementById('transaction-notes').value.trim();
+            const itemRef = doc(db, "inventory_items", itemId);
+
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const itemDoc = await transaction.get(itemRef);
+                    if (!itemDoc.exists()) {
+                        throw "品項不存在！";
+                    }
+
+                    const currentQuantity = itemDoc.data().quantity || 0;
+                    let newQuantity;
+                    let loggedQuantity;
+
+                    if (type === 'in') {
+                        newQuantity = currentQuantity + quantity;
+                        loggedQuantity = quantity;
+                    } else if (type === 'out') {
+                        if (quantity > currentQuantity) {
+                            throw `出庫數量 (${quantity}) 大於目前庫存 (${currentQuantity})！`;
+                        }
+                        newQuantity = currentQuantity - quantity;
+                        loggedQuantity = quantity;
+                    } else if (type === 'adjustment') {
+                        newQuantity = quantity;
+                        loggedQuantity = newQuantity - currentQuantity;
+                    }
+                    
+                    transaction.update(itemRef, { 
+                        quantity: newQuantity,
+                        lastUpdated: serverTimestamp()
+                    });
+
+                    const transactionRef = doc(collection(db, "inventory_transactions"));
+                    transaction.set(transactionRef, {
+                        itemId: itemId,
+                        itemName: itemDoc.data().name,
+                        type: type,
+                        quantity: loggedQuantity,
+                        notes: notes,
+                        timestamp: serverTimestamp(),
+                        quantityBefore: currentQuantity,
+                        quantityAfter: newQuantity,
+                        operatorId: operator.id,
+                        operatorName: operator.name
+                    });
+                });
+                
+                const successMessage = type === 'in' ? '入庫成功' : type === 'out' ? '出庫成功' : '庫存調整成功';
+                showToast(successMessage, 'success');
+                closeTransactionModal();
+
+            } catch (e) {
+                console.error("Transaction failed: ", e);
+                showToast(`交易失敗: ${e.toString()}`, 'error');
+            }
+        }
+        
+        // --- 人員管理 ---
+        function renderPersonnelTab() {
+            const container = document.getElementById('personnel-list-container');
+            const personnelList = Object.values(personnelDatabase).sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+            
+            if (personnelList.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">尚未建立任何人員資料。</p></div>`;
+                return;
+            }
+            
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm text-left text-gray-500 card';
+            table.innerHTML = `<thead class="text-xs text-gray-700 uppercase bg-slate-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3">員工編號</th>
+                    <th scope="col" class="px-6 py-3">姓名</th>
+                    <th scope="col" class="px-6 py-3 text-right">操作</th>
+                </tr>
+            </thead><tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            
+            personnelList.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-200 hover:bg-slate-50 align-middle';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${p.id}</td>
+                    <td class="px-6 py-4">${p.name}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex justify-end items-center gap-2">
+                            <button onclick="showPersonnelEditor('${p.id}')" title="編輯" class="p-1.5 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                            <button onclick="deletePersonnel('${p.id}')" title="刪除" class="p-1.5 bg-red-100 text-red-800 rounded-md hover:bg-red-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
+                        </div>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+
+        window.showPersonnelEditor = function(personnelId = null) {
+            currentlyEditingPersonnelId = personnelId;
+            const modal = document.getElementById('personnel-editor-modal');
+            const idInput = document.getElementById('edit-personnel-id');
+            const nameInput = document.getElementById('edit-personnel-name');
+            const title = document.getElementById('personnel-editor-title');
+            
+            if (personnelId) {
+                const person = personnelDatabase[personnelId];
+                title.textContent = '編輯人員';
+                idInput.value = person.id;
+                idInput.disabled = true;
+                nameInput.value = person.name;
+            } else {
+                title.textContent = '新增人員';
+                idInput.value = '';
+                idInput.disabled = false;
+                nameInput.value = '';
+            }
+            modal.classList.remove('hidden');
+        }
+
+        window.closePersonnelEditor = function() {
+            document.getElementById('personnel-editor-modal').classList.add('hidden');
+            currentlyEditingPersonnelId = null;
+        }
+
+        window.savePersonnel = async function() {
+            const id = document.getElementById('edit-personnel-id').value.trim();
+            const name = document.getElementById('edit-personnel-name').value.trim();
+
+            if (!id || !name) {
+                showToast('員工編號和姓名為必填欄位', 'error');
+                return;
+            }
+
+            if (!currentlyEditingPersonnelId && personnelDatabase[id]) {
+                showToast('此員工編號已存在', 'error');
+                return;
+            }
+
+            const personData = { name: name, lastUpdated: serverTimestamp() };
+            
+            try {
+                await setDoc(doc(db, "personnel", id), personData, { merge: true });
+                showToast('人員資料儲存成功', 'success');
+                closePersonnelEditor();
+            } catch (e) {
+                console.error("Error saving personnel: ", e);
+                showToast('儲存失敗', 'error');
+            }
+        }
+        
+        window.deletePersonnel = async function(personnelId) {
+            const person = personnelDatabase[personnelId];
+            
+            const itemsInCustody = Object.values(inventoryDatabase).filter(item => item.custodianId === personnelId);
+            if (itemsInCustody.length > 0) {
+                showToast(`無法刪除！${person.name} 仍是 ${itemsInCustody.length} 個品項的保管人。`, 'error');
+                return;
+            }
+
+            showConfirm(`確定要刪除人員 [${person.name}] 嗎？`, async () => {
+                try {
+                    await deleteDoc(doc(db, "personnel", personnelId));
+                    showToast('人員刪除成功', 'success');
+                } catch(e) {
+                    console.error("Error deleting personnel: ", e);
+                    showToast('刪除失敗', 'error');
+                }
+            }, '確定刪除');
+        }
+
+        // --- 組合品項管理 ---
+        function renderCombinationTab() {
+            const container = document.getElementById('combination-list-container');
+            const comboList = Object.values(combinationItemsDatabase).sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+            
+            if (comboList.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">尚未建立任何組合品項。</p></div>`;
+                return;
+            }
+            
+            container.innerHTML = comboList.map(combo => {
+                const partsHtml = (combo.parts || [])
+                    .map(part => `<li class="flex justify-between items-center"><span class="text-slate-600">${part.itemName || '未知品項'} (${part.itemId})</span> <span class="font-medium text-slate-800">${part.quantity} ${inventoryDatabase[part.itemId]?.unit || ''}</span></li>`)
+                    .join('');
+
+                return `
+                <div class="card p-4 mb-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-800">${combo.name}</h3>
+                            <p class="text-sm text-slate-500">${combo.id}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <button onclick="showCombinationEditor('${combo.id}')" title="編輯" class="p-1.5 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                            <button onclick="deleteCombinationItem('${combo.id}')" title="刪除" class="p-1.5 bg-red-100 text-red-800 rounded-md hover:bg-red-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
+                        </div>
+                    </div>
+                    <div class="mt-4 border-t pt-3">
+                        <p class="text-sm font-medium text-slate-500 mb-2">包含零件:</p>
+                        <ul class="space-y-1 text-sm">${partsHtml}</ul>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        
+        window.showCombinationEditor = function(comboId = null) {
+            currentlyEditingCombinationId = comboId;
+            const modal = document.getElementById('combination-editor-modal');
+            const title = document.getElementById('combination-editor-title');
+            const idInput = document.getElementById('edit-combo-id');
+            const nameInput = document.getElementById('edit-combo-name');
+            const partsList = document.getElementById('combo-parts-list');
+            partsList.innerHTML = '';
+
+            if (comboId) {
+                const combo = combinationItemsDatabase[comboId];
+                title.textContent = '編輯組合品項';
+                idInput.value = combo.id;
+                nameInput.value = combo.name;
+                (combo.parts || []).forEach(part => addComboPartRow(part.itemId, part.quantity));
+            } else {
+                title.textContent = '新增組合品項';
+                idInput.value = 'COMBO-' + Date.now();
+                nameInput.value = '';
+                addComboPartRow(); // Add one empty row to start
+            }
+            modal.classList.remove('hidden');
+        }
+
+        window.closeCombinationEditor = function() {
+            document.getElementById('combination-editor-modal').classList.add('hidden');
+            currentlyEditingCombinationId = null;
+        }
+
+        window.addComboPartRow = function(itemId = '', quantity = 1) {
+            const list = document.getElementById('combo-parts-list');
+            const row = document.createElement('div');
+            // Using grid for better alignment on different screen sizes and adding a top border for separation
+            row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 items-center combo-part-row border-t pt-3 first:border-t-0 first:pt-0';
+            
+            // Main Category Select (col-span-3)
+            const mainCatHtml = `<div class="md:col-span-3"><select class="combo-part-main-cat-select block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"><option value="">選擇大類...</option></select></div>`;
+            
+            // Sub Category Select (col-span-3)
+            const subCatHtml = `<div class="md:col-span-3"><select class="combo-part-sub-cat-select block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select" disabled><option value="">選擇小類...</option></select></div>`;
+            
+            // Item Select (col-span-4)
+            const itemHtml = `<div class="md:col-span-4"><select class="combo-part-item-select block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select" disabled><option value="">選擇零件...</option></select></div>`;
+            
+            // Quantity and Delete Button (col-span-2)
+            const controlsHtml = `<div class="md:col-span-2 flex items-center gap-2"><input type="number" class="combo-part-quantity-input p-2 w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" min="1" value="${quantity}"><button onclick="this.closest('.combo-part-row').remove()" class="p-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 flex-shrink-0"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg></button></div>`;
+
+            row.innerHTML = mainCatHtml + subCatHtml + itemHtml + controlsHtml;
+            list.appendChild(row);
+
+            const mainCatSelect = row.querySelector('.combo-part-main-cat-select');
+            const subCatSelect = row.querySelector('.combo-part-sub-cat-select');
+            const itemSelect = row.querySelector('.combo-part-item-select');
+
+            // Populate main categories
+            const mainCategories = Array.from(mainCategoriesStore.keys()).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+            mainCategories.forEach(cat => {
+                mainCatSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            // Event listener for main category change
+            mainCatSelect.addEventListener('change', () => {
+                const selectedMain = mainCatSelect.value;
+                subCatSelect.innerHTML = '<option value="">選擇小類...</option>';
+                itemSelect.innerHTML = '<option value="">選擇零件...</option>';
+                itemSelect.disabled = true;
+
+                if (selectedMain && subCategoriesStore.has(selectedMain)) {
+                    subCatSelect.disabled = false;
+                    const subCats = Array.from(subCategoriesStore.get(selectedMain).keys()).sort((a,b) => a.localeCompare(b, 'zh-Hant'));
+                    subCats.forEach(subCat => {
+                        subCatSelect.innerHTML += `<option value="${subCat}">${subCat}</option>`;
+                    });
+                     // '未分類' should be in the store if it exists
+                } else {
+                    subCatSelect.disabled = true;
+                }
+            });
+
+            // Event listener for sub category change
+            subCatSelect.addEventListener('change', () => {
+                const selectedMain = mainCatSelect.value;
+                const selectedSub = subCatSelect.value;
+                itemSelect.innerHTML = '<option value="">選擇零件...</option>';
+
+                if (selectedMain && selectedSub) {
+                    const filteredItems = Object.values(inventoryDatabase).filter(item => 
+                        item.mainCategory === selectedMain && (item.subCategory || '未分類') === selectedSub
+                    ).sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+                    
+                    if(filteredItems.length > 0) {
+                        itemSelect.disabled = false;
+                        filteredItems.forEach(item => {
+                            itemSelect.innerHTML += `<option value="${item.id}">${item.name} (${item.id})</option>`;
+                        });
+                    } else {
+                         itemSelect.innerHTML = '<option value="">此分類無零件</option>';
+                         itemSelect.disabled = true;
+                    }
+                } else {
+                    itemSelect.disabled = true;
+                }
+            });
+            
+            // Logic for editing an existing item
+            if (itemId) {
+                const item = inventoryDatabase[itemId];
+                if (item) {
+                    mainCatSelect.value = item.mainCategory;
+                    mainCatSelect.dispatchEvent(new Event('change'));
+                    
+                    setTimeout(() => {
+                        subCatSelect.value = item.subCategory || '未分類';
+                        subCatSelect.dispatchEvent(new Event('change'));
+
+                        setTimeout(() => {
+                            itemSelect.value = itemId;
+                        }, 50);
+                    }, 50);
+                }
+            }
+        }
+
+        window.saveCombinationItem = async function() {
+            const id = document.getElementById('edit-combo-id').value;
+            const name = document.getElementById('edit-combo-name').value.trim();
+            if (!name) {
+                showToast('請輸入組合品名', 'error');
+                return;
+            }
+
+            const parts = [];
+            const rows = document.querySelectorAll('.combo-part-row');
+            let hasError = false;
+            rows.forEach(row => {
+                const itemId = row.querySelector('.combo-part-item-select').value;
+                const quantity = parseInt(row.querySelector('.combo-part-quantity-input').value, 10);
+                if (itemId && quantity > 0) {
+                    const item = inventoryDatabase[itemId];
+                    parts.push({ itemId, itemName: item.name, quantity });
+                } else {
+                    // Only consider it an error if some fields are filled but not all
+                    const mainCat = row.querySelector('.combo-part-main-cat-select').value;
+                    if(mainCat) { // If a category was selected, but no item, it's an incomplete row
+                       hasError = true;
+                    }
+                }
+            });
+
+            if (hasError) {
+                showToast('請完整填寫所有零件的品項和數量 (必須大於0)', 'error');
+                return;
+            }
+            if (parts.length === 0) {
+                 showToast('一個組合品項至少需要包含一個零件', 'error');
+                 return;
+            }
+
+            const comboData = { 
+                id, 
+                name, 
+                parts,
+                lastUpdated: serverTimestamp()
+            };
+
+            try {
+                await setDoc(doc(db, "combination_items", id), comboData);
+                showToast('組合品項儲存成功', 'success');
+                closeCombinationEditor();
+            } catch (e) {
+                console.error("Error saving combination item:", e);
+                showToast('儲存失敗', 'error');
+            }
+        }
+
+        window.deleteCombinationItem = function(comboId) {
+            const combo = combinationItemsDatabase[comboId];
+            showConfirm(`確定要刪除組合品項 [${combo.name}] 嗎？此操作無法復原。`, async () => {
+                try {
+                    await deleteDoc(doc(db, "combination_items", comboId));
+                    showToast('組合品項刪除成功', 'success');
+                } catch(e) {
+                    console.error("Error deleting combination item:", e);
+                    showToast('刪除失敗', 'error');
+                }
+            }, '確定刪除');
+        }
+
+        // --- 組合扣料作業 ---
+        window.showCombinationDeductionModal = function() {
+            const modal = document.getElementById('combination-deduction-modal');
+            const select = document.getElementById('combo-deduction-select');
+            const operatorSelect = document.getElementById('combo-deduction-operator');
+            const summaryDiv = document.getElementById('combo-deduction-summary');
+
+            // Populate combination select
+            select.innerHTML = '<option value="">請選擇組合品項...</option>';
+            Object.values(combinationItemsDatabase)
+                .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'))
+                .forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+            
+            // Populate operator select
+            operatorSelect.innerHTML = '<option value="">請選擇操作人員...</option>';
+            Object.values(personnelDatabase)
+                .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'))
+                .forEach(p => {
+                    operatorSelect.innerHTML += `<option value="${p.id}">${p.name} (${p.id})</option>`;
+                });
+            
+            select.onchange = () => {
+                const comboId = select.value;
+                if (comboId) {
+                    const combo = combinationItemsDatabase[comboId];
+                    const partsHtml = (combo.parts || []).map(p => `<li>${p.itemName}: ${p.quantity} ${inventoryDatabase[p.itemId]?.unit || ''}</li>`).join('');
+                    summaryDiv.innerHTML = `<p class="font-semibold mb-1">每組包含：</p><ul class="list-disc list-inside">${partsHtml}</ul>`;
+                    summaryDiv.classList.remove('hidden');
+                } else {
+                    summaryDiv.classList.add('hidden');
+                }
+            };
+
+            summaryDiv.classList.add('hidden');
+            document.getElementById('combo-deduction-sets').value = 1;
+            document.getElementById('combo-deduction-notes').value = '';
+
+            modal.classList.remove('hidden');
+        }
+
+        window.closeCombinationDeductionModal = function() {
+            document.getElementById('combination-deduction-modal').classList.add('hidden');
+        }
+        
+        window.processCombinationDeduction = async function() {
+            const comboId = document.getElementById('combo-deduction-select').value;
+            const sets = parseInt(document.getElementById('combo-deduction-sets').value, 10);
+            const operatorId = document.getElementById('combo-deduction-operator').value;
+            const notes = document.getElementById('combo-deduction-notes').value.trim();
+
+            if (!comboId) { showToast('請選擇一個組合品項', 'error'); return; }
+            if (!operatorId) { showToast('請選擇操作人員', 'error'); return; }
+            if (isNaN(sets) || sets <= 0) { showToast('請輸入有效的組數 (必須大於0)', 'error'); return; }
+
+            const combo = combinationItemsDatabase[comboId];
+            const operator = personnelDatabase[operatorId];
+            
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const checkPromises = combo.parts.map(part => {
+                        const itemRef = doc(db, "inventory_items", part.itemId);
+                        return transaction.get(itemRef);
+                    });
+                    const itemDocs = await Promise.all(checkPromises);
+
+                    for (let i = 0; i < combo.parts.length; i++) {
+                        const part = combo.parts[i];
+                        const itemDoc = itemDocs[i];
+
+                        if (!itemDoc.exists()) {
+                            throw `零件 "${part.itemName}" (ID: ${part.itemId}) 已不存在於庫存中。`;
+                        }
+
+                        const currentQuantity = itemDoc.data().quantity || 0;
+                        const neededQuantity = part.quantity * sets;
+                        
+                        if (currentQuantity < neededQuantity) {
+                            throw `零件 "${part.itemName}" 庫存不足！ (需要: ${neededQuantity}, 現有: ${currentQuantity})`;
+                        }
+                    }
+
+                    // All checks passed, now perform updates and log transactions
+                    for (let i = 0; i < combo.parts.length; i++) {
+                        const part = combo.parts[i];
+                        const itemDoc = itemDocs[i];
+                        const itemRef = itemDoc.ref;
+                        
+                        const currentQuantity = itemDoc.data().quantity || 0;
+                        const quantityToDeduct = part.quantity * sets;
+                        const newQuantity = currentQuantity - quantityToDeduct;
+
+                        // 1. Update inventory item quantity
+                        transaction.update(itemRef, { 
+                            quantity: newQuantity,
+                            lastUpdated: serverTimestamp()
+                        });
+
+                        // 2. Create a transaction log for this part
+                        const transactionRef = doc(collection(db, "inventory_transactions"));
+                        transaction.set(transactionRef, {
+                            itemId: part.itemId,
+                            itemName: part.itemName,
+                            type: 'out',
+                            quantity: quantityToDeduct,
+                            notes: `組合扣料: ${combo.name} (${sets}組) ${notes}`,
+                            timestamp: serverTimestamp(),
+                            quantityBefore: currentQuantity,
+                            quantityAfter: newQuantity,
+                            operatorId: operator.id,
+                            operatorName: operator.name
+                        });
+                    }
+                });
+
+                showToast(`組合 [${combo.name}] x ${sets}組 扣料成功`, 'success');
+                closeCombinationDeductionModal();
+
+            } catch (e) {
+                console.error("Combination deduction failed:", e);
+                showToast(`扣料失敗: ${e.toString()}`, 'error');
+            }
+        }
+
+
+        // --- QR Code 相關功能 ---
+        function stopVideoStream() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+        }
+        
+        window.showQRScanner = async function() {
+            const modal = document.getElementById('qr-scanner-modal');
+            const video = document.getElementById('qr-video');
+            modal.classList.remove('hidden');
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                video.srcObject = videoStream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    scanQRCode();
+                };
+            } catch (err) {
+                console.error("Camera Error:", err);
+                showToast('無法啟動相機', 'error');
+                closeQRScanner();
+            }
+        }
+
+        window.closeQRScanner = function() {
+            stopVideoStream();
+            document.getElementById('qr-scanner-modal').classList.add('hidden');
+        }
+
+        function scanQRCode() {
+            if (!videoStream) return;
+            
+            const video = document.getElementById('qr-video');
+            const canvas = document.getElementById('qr-canvas');
+            const context = canvas.getContext('2d');
+
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    handleScannedCode(code.data);
+                } else {
+                    requestAnimationFrame(scanQRCode);
+                }
+            } else {
+                requestAnimationFrame(scanQRCode);
+            }
+        }
+
+        function handleScannedCode(scannedData) {
+            closeQRScanner();
+            
+            let itemId = scannedData;
+            let action = null;
+            // Check if the scanned data is a URL and extract parameters
+            try {
+                const url = new URL(scannedData);
+                if (url.searchParams.has('itemId')) {
+                    itemId = url.searchParams.get('itemId');
+                }
+                 if (url.searchParams.has('action')) {
+                    action = url.searchParams.get('action');
+                }
+            } catch (e) {
+                // Not a valid URL, assume it's just the item ID
+            }
+
+            const item = inventoryDatabase[itemId];
+            if (item) {
+                if(action && ['in', 'out', 'adjustment'].includes(action)) {
+                    showTransactionModal(item.id, action);
+                } else {
+                    showScanActionModal(item);
+                }
+            } else {
+                showToast(`品號 "${itemId}" 不存在`, 'error');
+            }
+        }
+
+        function showScanActionModal(item) {
+            document.getElementById('scanned-item-name').textContent = item.name;
+            document.getElementById('scan-action-in-btn').onclick = () => {
+                closeScanActionModal();
+                showTransactionModal(item.id, 'in');
+            };
+            document.getElementById('scan-action-out-btn').onclick = () => {
+                closeScanActionModal();
+                showTransactionModal(item.id, 'out');
+            };
+            document.getElementById('scan-action-adj-btn').onclick = () => {
+                closeScanActionModal();
+                showTransactionModal(item.id, 'adjustment');
+            };
+            document.getElementById('scan-action-modal').classList.remove('hidden');
+        }
+
+        window.closeScanActionModal = function() {
+            document.getElementById('scan-action-modal').classList.add('hidden');
+        }
+        
+        window.showQrActionSelector = function(itemId) {
+            const item = inventoryDatabase[itemId];
+            if (!item) return;
+            qrGenerationItemId = itemId;
+            document.getElementById('qr-selector-item-name').textContent = item.name;
+            document.getElementById('qr-action-selector-modal').classList.remove('hidden');
+        }
+        
+        window.closeQrActionSelector = function() {
+            document.getElementById('qr-action-selector-modal').classList.add('hidden');
+            qrGenerationItemId = null;
+        }
+
+        window.generateActionQRCode = function(action) {
+            if (qrGenerationItemId) {
+                const itemIdToGenerate = qrGenerationItemId; // 儲存品號
+                closeQrActionSelector(); // 這會清除全域變數
+                showQRCodeModal(itemIdToGenerate, action); // 使用儲存的品號
+            }
+        }
+
+        window.showQRCodeModal = function(itemId, action = null) {
+            const item = inventoryDatabase[itemId];
+            if (!item) {
+                showToast('找不到品項', 'error');
+                return;
+            }
+
+            const modal = document.getElementById('qr-code-modal');
+            const container = document.getElementById('qr-code-container');
+            const downloadBtn = document.getElementById('qr-download-btn');
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+
+            const itemNameEl = document.createElement('p');
+            itemNameEl.textContent = item.name;
+            itemNameEl.className = 'font-semibold text-slate-800 mt-2';
+            container.appendChild(itemNameEl);
+            
+            let url = `https://saniltw.i234.me/tools.html?itemId=${item.id}`; // Replace with actual URL
+            if (action) {
+                url += `&action=${action}`;
+            }
+
+            QRCode.toCanvas(canvas, url, { width: 200, margin: 2 }, function (error) {
+                if (error) {
+                    console.error(error);
+                    showToast('產生 QR Code 失敗', 'error');
+                    container.innerHTML = '<p class="text-red-500">產生失敗</p>';
+                    return;
+                }
+            });
+            
+            downloadBtn.onclick = () => downloadQRCode(itemId, action);
+            modal.classList.remove('hidden');
+        }
+
+        window.closeQRCodeModal = function() {
+            document.getElementById('qr-code-modal').classList.add('hidden');
+        }
+
+        async function downloadQRCode(itemId, action = null) {
+            const item = inventoryDatabase[itemId];
+            
+            try {
+                // Create a temporary canvas to generate the QR for download
+                const tempCanvas = document.createElement('canvas');
+                let url = `https://saniltw.i234.me/tools.html?itemId=${item.id}`; // Replace with actual URL
+                if (action) {
+                    url += `&action=${action}`;
+                }
+                
+                await QRCode.toCanvas(tempCanvas, url, { width: 256, margin: 2 });
+                
+                const itemName = item.name;
+                const PADDING = 20;
+                const FONT_SIZE = 16;
+                
+                const combinedCanvas = document.createElement('canvas');
+                const ctx = combinedCanvas.getContext('2d');
+
+                const qrWidth = tempCanvas.width;
+                const qrHeight = tempCanvas.height;
+                const textHeight = FONT_SIZE + 10;
+
+                combinedCanvas.width = qrWidth + PADDING * 2;
+                combinedCanvas.height = qrHeight + textHeight + PADDING * 2;
+
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+                ctx.drawImage(tempCanvas, PADDING, PADDING);
+                ctx.fillStyle = 'black';
+                ctx.font = `bold ${FONT_SIZE}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(itemName, combinedCanvas.width / 2, qrHeight + PADDING + FONT_SIZE);
+                
+                const dataUrl = combinedCanvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                const actionText = action ? `_${action.toUpperCase()}` : '_通用';
+                link.download = `QR_${item.id}_${item.name}${actionText}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (e) {
+                console.error("Download QR Code failed:", e);
+                showToast('下載失敗', 'error');
+            }
+        }
+
+
+        // --- 報表功能 (交易歷史) ---
+        function populateReportItemFilter() {
+            const select = document.getElementById('report-item-filter');
+            select.innerHTML = '<option value="all">所有品項</option>';
+            Object.values(inventoryDatabase)
+                .sort((a,b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'))
+                .forEach(item => {
+                    select.innerHTML += `<option value="${item.id}">${item.name} (${item.id})</option>`;
+                });
+        }
+        
+        window.generateTransactionReport = function() {
+            const startDate = document.getElementById('report-start-date').value;
+            const endDate = document.getElementById('report-end-date').value;
+            const itemId = document.getElementById('report-item-filter').value;
+            const type = document.getElementById('report-type-filter').value;
+            
+            if (!startDate || !endDate) {
+                showToast('請選擇開始與結束日期', 'error');
+                return;
+            }
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            reportData = transactionHistory.filter(record => {
+                if (!record.timestamp || !record.timestamp.toDate) return false;
+                const recordDate = record.timestamp.toDate();
+                
+                const dateMatch = recordDate >= start && recordDate <= end;
+                const itemMatch = (itemId === 'all' || record.itemId === itemId);
+                const typeMatch = (type === 'all' || record.type === type);
+
+                return dateMatch && itemMatch && typeMatch;
+            }).sort((a,b) => b.timestamp.toDate() - a.timestamp.toDate());
+
+            const container = document.getElementById('transaction-history-container');
+            const exportBtn = document.getElementById('export-csv-btn');
+
+            if (reportData.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-center">在此期間內找不到任何交易紀錄。</p>';
+                exportBtn.disabled = true;
+                return;
+            }
+            
+            let tableHTML = `<div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-slate-50"><tr><th scope="col" class="px-2 sm:px-4 py-3">日期時間</th><th scope="col" class="px-2 sm:px-4 py-3">品項</th><th scope="col" class="px-2 sm:px-4 py-3">類型</th><th scope="col" class="px-2 sm:px-4 py-3">數量</th><th scope="col" class="px-2 sm:px-4 py-3">操作人員</th><th scope="col" class="px-2 sm:px-4 py-3">備註</th></tr></thead><tbody>`;
+
+            reportData.forEach(r => {
+                const typeText = r.type === 'in' ? '<span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">入庫</span>'
+                                 : r.type === 'out' ? '<span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">出庫</span>'
+                                 : r.type === 'adjustment' ? '<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">調整</span>'
+                                 : r.type;
+                const quantityText = r.type === 'adjustment' ? (r.quantity > 0 ? `+${r.quantity}`: r.quantity) : r.quantity;
+                tableHTML += `<tr class="border-b border-gray-200 hover:bg-slate-50"><td class="px-2 sm:px-4 py-2">${r.timestamp.toDate().toLocaleString()}</td><td class="px-2 sm:px-4 py-2">${r.itemName} (${r.itemId})</td><td class="px-2 sm:px-4 py-2">${typeText}</td><td class="px-2 sm:px-4 py-2">${quantityText}</td><td class="px-2 sm:px-4 py-2">${r.operatorName || 'N/A'}</td><td class="px-2 sm:px-4 py-2">${r.notes || ''}</td></tr>`;
+            });
+            tableHTML += `</tbody></table></div>`;
+            container.innerHTML = tableHTML;
+            exportBtn.disabled = false;
+        }
+        
+        window.exportHistoryToCSV = function() {
+            if (reportData.length === 0) return;
+
+            const downloadCsv = () => {
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                const headers = ["日期時間", "品號", "品名", "類型", "数量", "交易前数量", "交易後数量", "操作人員編號", "操作人員姓名", "備註"];
+                csvContent += headers.join(",") + "\r\n";
+
+                reportData.forEach(r => {
+                    let typeText;
+                    switch(r.type) {
+                        case 'in': typeText = "入庫"; break;
+                        case 'out': typeText = "出庫"; break;
+                        case 'adjustment': typeText = "庫存調整"; break;
+                        default: typeText = r.type;
+                    }
+                    const row = [
+                        `"${r.timestamp.toDate().toLocaleString()}"`,
+                        `"${r.itemId}"`,
+                        `"${r.itemName}"`,
+                        typeText,
+                        r.quantity,
+                        r.quantityBefore,
+                        r.quantityAfter,
+                        `"${r.operatorId || ''}"`,
+                        `"${r.operatorName || ''}"`,
+                        `"${(r.notes || '').replace(/"/g, '""')}"`
+                    ];
+                    csvContent += row.join(",") + "\r\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement('a');
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `庫存交易歷史_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            showConfirm(`報表包含 ${reportData.length} 筆交易紀錄。要立即下載 CSV 檔嗎？`, downloadCsv, "立即下載");
+        }
+
+        // --- 新增：庫存報表 Tab ---
+        function renderReportTab() {
+            const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => a.order - b.order).map(c => c.name);
+            const mainTabsContainer = document.getElementById('report-main-category-tabs');
+            mainTabsContainer.innerHTML = '';
+
+            if (mainCategories.length === 0) {
+                document.getElementById('inventory-report-container').innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">沒有任何類別可供報告。</p></div>`;
+                return;
+            }
+
+            if (!selectedReportCategory || !mainCategories.includes(selectedReportCategory)) {
+                selectedReportCategory = mainCategories[0];
+            }
+
+            mainCategories.forEach(cat => {
+                const isActive = cat === selectedReportCategory;
+                const btn = document.createElement('button');
+                btn.textContent = cat;
+                btn.className = `px-4 py-2 text-sm font-semibold rounded-full transition-colors ${isActive ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-700 hover:bg-slate-100 border'}`;
+                btn.onclick = () => {
+                    selectedReportCategory = cat;
+                    renderReportTab(); // Re-render the whole tab to update active state and table
+                };
+                mainTabsContainer.appendChild(btn);
+            });
+
+            renderReportTable(selectedReportCategory);
+        }
+        
+        function renderReportTable(categoryName) {
+            const container = document.getElementById('inventory-report-container');
+            const items = Object.values(inventoryDatabase)
+                .filter(item => item.mainCategory === categoryName);
+            
+            if (items.length === 0) {
+                container.innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">此類別下沒有品項。</p></div>`;
+                return;
+            }
+
+            // Group items by sub-category
+            const groupedItems = items.reduce((acc, item) => {
+                const subCat = item.subCategory || '未分類';
+                if (!acc[subCat]) {
+                    acc[subCat] = [];
+                }
+                acc[subCat].push(item);
+                return acc;
+            }, {});
+
+            const subCatOrderMap = new Map();
+            if (subCategoriesStore.has(categoryName)) {
+                subCategoriesStore.get(categoryName).forEach((data, name) => {
+                    subCatOrderMap.set(name, data.order);
+                });
+            }
+
+            const sortedSubCategories = Object.keys(groupedItems).sort((a, b) => {
+                const orderA = subCatOrderMap.get(a) ?? Infinity; // Unsorted items go to end
+                const orderB = subCatOrderMap.get(b) ?? Infinity;
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+                return a.localeCompare(b, 'zh-Hant');
+            });
+
+            const table = document.createElement('table');
+            table.className = 'w-full text-sm text-left text-gray-500 card';
+            table.innerHTML = `
+                <thead class="text-xs text-gray-700 uppercase bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3">圖片</th>
+                        <th class="px-4 py-3">品號/品名</th>
+                        <th class="px-4 py-3">規格</th>
+                        <th class="px-4 py-3">庫存</th>
+                        <th class="px-4 py-3">保管人</th>
+                        <th class="px-4 py-3">位置</th>
+                        <th class="px-4 py-3">供應商</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+
+            sortedSubCategories.forEach(subCat => {
+                // Add sub-category header row
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = `<td colspan="7" class="px-4 py-2 bg-slate-100 font-semibold text-slate-800">${subCat}</td>`;
+                tbody.appendChild(headerRow);
+
+                // Sort items within the sub-category by custom order and add them
+                groupedItems[subCat]
+                    .sort((a,b) => (a.order || 0) - (b.order || 0))
+                    .forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-gray-200 last-of-type:border-b-0 hover:bg-slate-50 align-middle';
+                        tr.innerHTML = `
+                            <td class="p-2">
+                                <img src="${item.imageUrl || 'https://placehold.co/50x50/e2e8f0/94a3b8?text=無'}" class="w-12 h-12 object-cover rounded-md">
+                            </td>
+                            <td class="px-4 py-2">
+                                <div class="font-medium text-gray-900">${item.name || '未命名'}</div>
+                                <div class="text-gray-500 text-xs">${item.id}</div>
+                            </td>
+                            <td class="px-4 py-2">${formatSpecifications(item)}</td>
+                            <td class="px-4 py-2">${item.quantity || 0} ${item.unit || ''}</td>
+                            <td class="px-4 py-2">${item.custodianName || '未指定'}</td>
+                            <td class="px-4 py-2">${item.location || 'N/A'}</td>
+                            <td class="px-4 py-2">${item.supplier || 'N/A'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+            });
+
+            container.innerHTML = '';
+            container.appendChild(table);
+        }
+        
+        window.exportReportToXLSX = function() {
+            const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => a.order - b.order).map(c => c.name);
+            if(mainCategories.length === 0) {
+                showToast("沒有資料可匯出", "info");
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            mainCategories.forEach(category => {
+                const itemsInCategory = Object.values(inventoryDatabase)
+                    .filter(item => item.mainCategory === category)
+                    .sort((a, b) => {
+                        const subCatA = a.subCategory || '未分類';
+                        const subCatB = b.subCategory || '未分類';
+                        
+                        const subCatOrderA = subCategoriesStore.get(category)?.get(subCatA)?.order ?? Infinity;
+                        const subCatOrderB = subCategoriesStore.get(category)?.get(subCatB)?.order ?? Infinity;
+
+                        if (subCatOrderA !== subCatOrderB) {
+                            return subCatOrderA - subCatOrderB;
+                        }
+                        
+                        return (a.order || 0) - (b.order || 0);
+                    });
+                
+                if (itemsInCategory.length > 0) {
+                    const reportJson = itemsInCategory.map(item => ({
+                        "品號": item.id,
+                        "品名": item.name,
+                        "大類": item.mainCategory,
+                        "小類": item.subCategory || '未分類',
+                        "保管人": item.custodianName || '',
+                        "長度(mm)": item.spec_length || '',
+                        "寬度(mm)": item.spec_width || '',
+                        "厚度(mm)": item.spec_thickness || '',
+                        "直徑(mm)": item.spec_diameter || '',
+                        "目前庫存": item.quantity || 0,
+                        "單位": item.unit || '',
+                        "安全庫存": item.safetyStock || 0,
+                        "存放位置": item.location || '',
+                        "供應商": item.supplier || '',
+                    }));
+                    
+                    const ws = XLSX.utils.json_to_sheet(reportJson);
+                    // Sanitize sheet name
+                    const sheetName = category.replace(/[\*\?:\/\\\[\]]/g, "_").substring(0, 31);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                }
+            });
+            
+            if (wb.SheetNames.length === 0) {
+                 showToast("所有類別都沒有品項，無法匯出", "info");
+                return;
+            }
+
+            showConfirm(`報表已準備就緒，包含 ${wb.SheetNames.length} 個工作表。要立即下載嗎？`, () => {
+                try {
+                    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `庫存總覽報表_${new Date().toISOString().slice(0,10)}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch(e) {
+                    console.error("Excel export failed: ", e);
+                    showToast("匯出Excel失敗", "error");
+                }
+            }, "立即下載");
+        }
+
+
+        // --- UI 輔助函式 ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            let bgColor, icon;
+            switch (type) {
+                case 'success': bgColor = 'bg-green-600'; icon = '✓'; break;
+                case 'error': bgColor = 'bg-red-600'; icon = '✗'; break;
+                default: bgColor = 'bg-indigo-600'; icon = 'ℹ️';
+            }
+            const toastHtml = `<div id="${toastId}" class="toast ${bgColor} text-white rounded-lg shadow-lg p-4 flex items-center transform translate-x-full opacity-0"><span class="font-bold mr-3 text-lg">${icon}</span><span>${message}</span></div>`;
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            const toastElement = document.getElementById(toastId);
+            setTimeout(() => { toastElement.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toastElement.classList.add('opacity-0');
+                setTimeout(() => toastElement.remove(), 300);
+            }, 4000);
+        }
+
+        function showConfirm(message, onConfirm, confirmText = '確定') {
+            document.getElementById('confirm-modal-text').textContent = message;
+            document.getElementById('confirm-modal-confirm').textContent = confirmText;
+            confirmCallback = onConfirm;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>
