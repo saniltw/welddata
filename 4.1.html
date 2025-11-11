@@ -1847,6 +1847,7 @@
                         card.innerHTML = `
                             <span class="serial-number">序號: ${record.serialNumber}</span>
                             <p class="project-name">${record.projectName}</p>
+                            <p class="text-sm text-gray-700 mt-1">${record.manufacturer || '未指定廠商'}</p>
                             <p class="text-sm text-gray-500 mt-2">${dateLabel}: ${dateValue}</p>
                         `;
                         cardsContainer.appendChild(card);
