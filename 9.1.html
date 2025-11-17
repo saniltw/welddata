@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 Sortable.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <style>
         body {
@@ -31,6 +33,15 @@
         .tab-inactive:hover {
             border-color: #d1d5db; /* gray-300 */
             color: #4b5563; /* gray-700 */
+        }
+        /* 拖曳樣式 */
+        .drag-handle {
+            cursor: move; /* grab */
+        }
+        /* 拖曳時的佔位符樣式 */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #dbeafe; /* blue-100 */
         }
     </style>
 </head>
@@ -404,15 +415,15 @@
                                 <div class="col-span-3"><label class="block text-xs font-medium text-gray-600">移行速度 (cpm)</label></div>
                                 <div class="col-span-1"></div>
                             </div>
-                            <div id="pqrProcedureHeader" class="hidden grid grid-cols-12 gap-x-2 gap-y-2 items-center mb-2">
+                            <div id="pqrProcedureHeader" class="hidden grid grid-cols-9 gap-x-2 gap-y-2 items-center mb-2">
                                 <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">道/層</label></div>
                                 <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">安培(A)</label></div>
                                 <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">電壓(V)</label></div>
-                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">銲道長度</label></div>
-                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">移行速度</label></div>
-                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">銲接時間</label></div>
-                                <div class="col-span-2"><label class="block text-xs font-medium text-gray-600">入熱量</label></div>
-                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">層間溫度</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">銲道長度 (mm)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">移行速度 (cpm)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">銲接時間 (sec)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">入熱量 (KJ/mm)</label></div>
+                                <div class="col-span-1"><label class="block text-xs font-medium text-gray-600">層間溫度 (℃)</label></div>
                                 <div class="col-span-1"></div>
                             </div>
                             <div id="weldingProcedureRows" class="space-y-2">
@@ -623,7 +634,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, deleteDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         // Your web app's Firebase configuration
@@ -734,6 +745,8 @@
         const searchInput = document.getElementById('searchInput');
 
         // Make functions globally accessible
+        // We will move these inside DOMContentLoaded to ensure scope is correct when called from HTML
+        /*
         window.showTab = showTab;
         window.openModalForActiveTab = openModalForActiveTab;
         window.openItemModal = openItemModal;
@@ -757,7 +770,52 @@
         window.saveSettings = saveSettings;
         window.addOptionToSetting = addOptionToSetting;
         window.duplicateProcedureRow = duplicateProcedureRow;
+        window.calculatePqrRow = calculatePqrRow;
+        */
         
+        /**
+         * 初始化 Sortable.js
+         * @param {HTMLElement} tbody - 要使其可排序的 tbody 元素
+         * @param {string} collectionName - 'wps' 或 'pqr'
+         */
+        function initSortable(tbody, collectionName) {
+            if (!tbody) return;
+            new Sortable(tbody, {
+                handle: '.drag-handle', // 拖曳握把的 class
+                animation: 150,
+                ghostClass: 'sortable-ghost', // 拖曳時佔位符的 class
+                onEnd: (evt) => {
+                    // 當拖曳結束時
+                    const rows = Array.from(evt.target.querySelectorAll('tr'));
+                    updateSortIndices(rows, collectionName);
+                }
+            });
+        }
+
+        /**
+         * 更新 Firestore 中的排序索引
+         * @param {Array<HTMLElement>} rows - 排序後的 tr 元素陣列
+         * @param {string} collectionName - 'wps' 或 'pqr'
+         */
+        async function updateSortIndices(rows, collectionName) {
+            const batch = writeBatch(db);
+            rows.forEach((row, index) => {
+                const id = row.dataset.id;
+                if (id) {
+                    const docRef = doc(db, collectionName, id);
+                    batch.update(docRef, { sortIndex: index });
+                }
+            });
+
+            try {
+                await batch.commit();
+                console.log('Sort order updated.');
+            } catch (e) {
+                console.error('Error updating sort order: ', e);
+                alert('排序更新失敗。');
+            }
+        }
+
         function showTab(tabName) {
             activeTab = tabName;
             const wpsTab = document.getElementById('tab-wps');
@@ -820,12 +878,14 @@
             sortedGroupKeys.forEach(process => {
                 const wpsItems = groupedData[process];
                 const groupContainer = document.createElement('div');
+                const processKey = process.replace(/[^a-zA-Z0-9]/g, '-') || 'uncategorized'; // 建立安全的 ID
                 groupContainer.innerHTML = `
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">${process}</h2>
                     <div class="bg-white rounded-lg shadow-md overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead class="bg-gray-100 text-xs text-gray-700 uppercase">
                                 <tr>
+                                    <th scope="col" class="px-2 py-3 w-10"></th> <!-- 拖曳握把欄 -->
                                     <th scope="col" class="px-6 py-3">WPS 編號</th>
                                     <th scope="col" class="px-6 py-3">母材規格</th>
                                     <th scope="col" class="px-6 py-3">厚度 (mm)</th>
@@ -833,9 +893,14 @@
                                     <th scope="col" class="px-6 py-3 text-right">操作</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200">
+                            <tbody id="tbody-wps-${processKey}" class="divide-y divide-gray-200">
                                 ${wpsItems.map(wps => `
-                                    <tr class="hover:bg-gray-50">
+                                    <tr class="hover:bg-gray-50" data-id="${wps.id}">
+                                        <td class="px-2 py-4 text-center drag-handle text-gray-400 hover:text-gray-700 cursor-move">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 6a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 10a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 14a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                            </svg>
+                                        </td>
                                         <td class="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">${wps.wpsNo}</td>
                                         <td class="px-6 py-4 text-gray-600">${wps.baseMetalSpec1} ${wps.baseMetalSpec2 ? ` / ${wps.baseMetalSpec2}` : ''}</td>
                                         <td class="px-6 py-4 text-gray-600">${wps.baseMetalThickness1} ${wps.baseMetalThickness2 ? ` / ${wps.baseMetalThickness2}` : ''}</td>
@@ -851,6 +916,10 @@
                     </div>
                 `;
                 wpsGroupedList.appendChild(groupContainer);
+                
+                // 為這個新的 tbody 初始化 Sortable
+                const tbody = document.getElementById(`tbody-wps-${processKey}`);
+                initSortable(tbody, 'wps');
             });
         }
         
@@ -879,12 +948,14 @@
             sortedGroupKeys.forEach(process => {
                 const pqrItems = groupedData[process];
                 const groupContainer = document.createElement('div');
+                const processKey = process.replace(/[^a-zA-Z0-9]/g, '-') || 'uncategorized'; // 建立安全的 ID
                 groupContainer.innerHTML = `
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">${process}</h2>
                     <div class="bg-white rounded-lg shadow-md overflow-x-auto">
                         <table class="w-full text-sm text-left">
                             <thead class="bg-gray-100 text-xs text-gray-700 uppercase">
                                 <tr>
+                                    <th scope="col" class="px-2 py-3 w-10"></th> <!-- 拖曳握把欄 -->
                                     <th scope="col" class="px-6 py-3">PQR 編號</th>
                                     <th scope="col" class="px-6 py-3">對應 WPS 編號</th>
                                     <th scope="col" class="px-6 py-3">母材規格</th>
@@ -892,9 +963,14 @@
                                     <th scope="col" class="px-6 py-3 text-right">操作</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200">
+                            <tbody id="tbody-pqr-${processKey}" class="divide-y divide-gray-200">
                                 ${pqrItems.map(pqr => `
-                                    <tr class="hover:bg-gray-50">
+                                    <tr class="hover:bg-gray-50" data-id="${pqr.id}">
+                                        <td class="px-2 py-4 text-center drag-handle text-gray-400 hover:text-gray-700 cursor-move">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 6a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 10a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 14a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm5 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                            </svg>
+                                        </td>
                                         <td class="px-6 py-4 font-medium text-blue-600 whitespace-nowrap">${pqr.pqrNo}</td>
                                         <td class="px-6 py-4 text-gray-600">${pqr.wpsNo || '-'}</td>
                                         <td class="px-6 py-4 text-gray-600">${pqr.baseMetalSpec1} ${pqr.baseMetalSpec2 ? ` / ${pqr.baseMetalSpec2}` : ''}</td>
@@ -910,6 +986,10 @@
                     </div>
                 `;
                 pqrGroupedList.appendChild(groupContainer);
+
+                // 為這個新的 tbody 初始化 Sortable
+                const tbody = document.getElementById(`tbody-pqr-${processKey}`);
+                initSortable(tbody, 'pqr');
             });
         }
         
@@ -1225,7 +1305,58 @@
             if (!row || activeTab !== 'pqr') return;
             
             const newRow = row.cloneNode(true);
+            // Re-bind events on new row
+            newRow.querySelector('.proc-amps')?.addEventListener('input', (e) => calculatePqrRow(e.target.closest('.procedure-row')));
+            newRow.querySelector('.proc-volts')?.addEventListener('input', (e) => calculatePqrRow(e.target.closest('.procedure-row')));
+            newRow.querySelector('.proc-weldLength')?.addEventListener('input', (e) => calculatePqrRow(e.target.closest('.procedure-row')));
+            newRow.querySelector('.proc-weldingTime')?.addEventListener('input', (e) => calculatePqrRow(e.target.closest('.procedure-row')));
+            newRow.querySelector('.proc-travelSpeed')?.addEventListener('input', (e) => calculatePqrRow(e.target.closest('.procedure-row')));
+            
             row.after(newRow);
+        }
+
+        function calculatePqrRow(rowElement) {
+            if (!rowElement) return;
+
+            const ampsEl = rowElement.querySelector('.proc-amps');
+            const voltsEl = rowElement.querySelector('.proc-volts');
+            const lenEl = rowElement.querySelector('.proc-weldLength');
+            const timeEl = rowElement.querySelector('.proc-weldingTime');
+            const speedEl = rowElement.querySelector('.proc-travelSpeed');
+            const heatEl = rowElement.querySelector('.proc-heatInput');
+
+            if (!ampsEl || !voltsEl || !lenEl || !timeEl || !speedEl || !heatEl) return;
+
+            const a = parseFloat(ampsEl.value) || 0;
+            const v = parseFloat(voltsEl.value) || 0;
+            const len = parseFloat(lenEl.value) || 0;
+            const time = parseFloat(timeEl.value) || 0;
+            
+            let speed = parseFloat(speedEl.value) || 0;
+            
+            // 1. Calculate Travel Speed (cpm) if length and time are provided
+            // (mm / s) * 60s/min / 10mm/cm = cm/min
+            if (len > 0 && time > 0) {
+                speed = (len / time) * 6;
+                speedEl.value = speed.toFixed(2);
+            }
+
+            // 2. Calculate Heat Input (KJ/mm)
+            // (A * V * 60s/min) / (Speed_cpm * 10 mm/cm * 1000 J/KJ)
+            // = (A * V * 6) / (Speed_cpm * 1000)
+            if (a > 0 && v > 0 && speed > 0) {
+                const heat = (a * v * 6) / (speed * 1000);
+                heatEl.value = heat.toFixed(3);
+            } 
+            // Alternative calculation if length and time are present (more direct)
+            // (A * V * s) / (1000 J/KJ * mm) = KJ/mm
+            else if (a > 0 && v > 0 && len > 0 && time > 0) {
+                 const heat = (a * v * time) / (1000 * len);
+                 heatEl.value = heat.toFixed(3);
+            }
+            else {
+                heatEl.value = ''; // Not enough data
+            }
         }
 
         function addProcedureRow(data = {}) {
@@ -1233,7 +1364,11 @@
             const row = document.createElement('div');
             const isPQR = activeTab === 'pqr';
             
-            row.className = 'grid grid-cols-12 gap-x-2 gap-y-2 items-center procedure-row';
+            if (isPQR) {
+                row.className = 'grid grid-cols-9 gap-x-2 gap-y-2 items-center procedure-row';
+            } else {
+                row.className = 'grid grid-cols-12 gap-x-2 gap-y-2 items-center procedure-row';
+            }
             
             if (isPQR) {
                  row.innerHTML = `
@@ -1241,22 +1376,22 @@
                         <input type="text" class="proc-passLayer block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.passLayer || ''}">
                     </div>
                     <div class="col-span-1">
-                        <input type="text" class="proc-amps block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.amps || ''}">
+                        <input type="text" class="proc-amps block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.amps || ''}" oninput="calculatePqrRow(this.closest('.procedure-row'))">
                     </div>
                     <div class="col-span-1">
-                        <input type="text" class="proc-volts block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.volts || ''}">
+                        <input type="text" class="proc-volts block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.volts || ''}" oninput="calculatePqrRow(this.closest('.procedure-row'))">
                     </div>
                     <div class="col-span-1">
-                        <input type="text" class="proc-weldLength block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldLength || ''}" placeholder="mm">
+                        <input type="text" class="proc-weldLength block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldLength || ''}" placeholder="mm" oninput="calculatePqrRow(this.closest('.procedure-row'))">
                     </div>
-                    <div class="col-span-2">
-                        <input type="text" class="proc-travelSpeed block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.travelSpeed || ''}" placeholder="cpm">
+                    <div class="col-span-1">
+                        <input type="text" class="proc-travelSpeed block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.travelSpeed || ''}" placeholder="cpm" oninput="calculatePqrRow(this.closest('.procedure-row'))">
                     </div>
-                    <div class="col-span-2">
-                        <input type="text" class="proc-weldingTime block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldingTime || ''}" placeholder="sec">
+                    <div class="col-span-1">
+                        <input type="text" class="proc-weldingTime block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.weldingTime || ''}" placeholder="sec" oninput="calculatePqrRow(this.closest('.procedure-row'))">
                     </div>
-                    <div class="col-span-2">
-                        <input type="text" class="proc-heatInput block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.heatInput || ''}" placeholder="KJ/mm">
+                    <div class="col-span-1">
+                        <input type="text" class="proc-heatInput block w-full rounded-md border-gray-300 shadow-sm text-sm bg-gray-100" value="${data.heatInput || ''}" placeholder="KJ/mm" readonly>
                     </div>
                     <div class="col-span-1">
                         <input type="text" class="proc-interpassTemp block w-full rounded-md border-gray-300 shadow-sm text-sm" value="${data.interpassTemp || ''}" placeholder="℃">
@@ -1538,6 +1673,14 @@
             delete dataToSave.id; // Firestore handles its own IDs
             
             const collectionName = activeTab === 'pqr' ? 'pqr' : 'wps';
+
+            // 如果是新項目，賦予一個 sortIndex 
+            if (!id) {
+                const dataArray = activeTab === 'pqr' ? pqrData : wpsData;
+                // 獲取目前最大的 sortIndex 並 +1
+                const maxIndex = dataArray.length > 0 ? Math.max(...dataArray.map(i => i.sortIndex || 0)) : -1;
+                dataToSave.sortIndex = maxIndex + 1;
+            }
 
             try {
                  if (id) {
@@ -2166,7 +2309,29 @@
         function setupListeners() {
             if (wpsUnsubscribe) wpsUnsubscribe();
             wpsUnsubscribe = onSnapshot(collection(db, "wps"), (snapshot) => {
-                wpsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                
+                // 檢查是否需要重新索引 (例如，舊資料沒有 sortIndex)
+                const needsIndexing = items.some(item => item.sortIndex === undefined);
+                if (needsIndexing && items.length > 0) {
+                    console.log("WPS data needs re-indexing...");
+                    // 根據 wpsNo 排序
+                    items.sort((a, b) => (a.wpsNo || '').localeCompare(b.wpsNo || '', undefined, { numeric: true }));
+                    // 批量更新索引
+                    const batch = writeBatch(db);
+                    items.forEach((item, index) => {
+                        item.sortIndex = index; // 本地賦值
+                        const docRef = doc(db, "wps", item.id);
+                        batch.update(docRef, { sortIndex: index });
+                    });
+                    batch.commit().then(() => console.log("WPS re-indexing complete."));
+                    wpsData = items; // 使用
+                } else {
+                    // 根據已有的 sortIndex 排序
+                    items.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+                    wpsData = items;
+                }
+
                 if (activeTab === 'wps') {
                     filterActiveList();
                 }
@@ -2174,7 +2339,28 @@
 
             if (pqrUnsubscribe) pqrUnsubscribe();
             pqrUnsubscribe = onSnapshot(collection(db, "pqr"), (snapshot) => {
-                pqrData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+                // 檢查是否需要重新索引
+                const needsIndexing = items.some(item => item.sortIndex === undefined);
+                if (needsIndexing && items.length > 0) {
+                    console.log("PQR data needs re-indexing...");
+                    // 根據 pqrNo 排序
+                    items.sort((a, b) => (a.pqrNo || '').localeCompare(b.pqrNo || '', undefined, { numeric: true }));
+                    const batch = writeBatch(db);
+                    items.forEach((item, index) => {
+                        item.sortIndex = index;
+                        const docRef = doc(db, "pqr", item.id);
+                        batch.update(docRef, { sortIndex: index });
+                    });
+                    batch.commit().then(() => console.log("PQR re-indexing complete."));
+                    pqrData = items;
+                } else {
+                    // 根據已有的 sortIndex 排序
+                    items.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+                    pqrData = items;
+                }
+                
                 if (activeTab === 'pqr') {
                    filterActiveList();
                 }
@@ -2231,9 +2417,10 @@
                 <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                </button>
-            `;
+                                    </svg>
+                                </button>
+                            </div>
+                        `;
             list.appendChild(newItem);
             input.value = '';
             input.focus();
@@ -2272,7 +2459,35 @@
         }
 
         // Initial render
-        window.onload = async () => { 
+        // window.onload = async () => { 
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Assign functions to global window object HERE
+            // so they are definitely available for HTML onclick handlers
+            window.showTab = showTab;
+            window.openModalForActiveTab = openModalForActiveTab;
+            window.openItemModal = openItemModal;
+            window.duplicateItem = duplicateItem;
+            window.closeItemModal = closeItemModal;
+            window.saveItem = saveItem;
+            window.deleteItem = deleteItem;
+            window.previewReport = previewReport;
+            window.backToEdit = backToEdit;
+            window.printReport = printReport;
+            window.addProcedureRow = addProcedureRow;
+            window.toggleTestResults = toggleTestResults;
+            window.addAllWeldTensileRow = addAllWeldTensileRow;
+            window.addTransverseTensileRow = addTransverseTensileRow;
+            window.addImpactRow = addImpactRow;
+            window.calculateImpactAverage = calculateImpactAverage;
+            window.addBendRow = addBendRow;
+            window.filterActiveList = filterActiveList;
+            window.openSettingsModal = openSettingsModal;
+            window.closeSettingsModal = closeSettingsModal;
+            window.saveSettings = saveSettings;
+            window.addOptionToSetting = addOptionToSetting;
+            window.duplicateProcedureRow = duplicateProcedureRow;
+            window.calculatePqrRow = calculatePqrRow;
+
             setupImageUpload('drawingUpload', 'drawingPreviewContainer', 'drawingPreview', 'removeDrawingBtn', (b64) => currentDrawingBase64 = b64);
             setupImageUpload('pqrSketchUpload', 'pqrSketchPreviewContainer', 'pqrSketchPreview', 'removePqrSketchBtn', (b64) => currentPqrSketchBase64 = b64);
             
@@ -2300,7 +2515,7 @@
                     });
                 }
             });
-        };
+        });
 
         // Close modal on escape key
         window.addEventListener('keydown', (e) => {
