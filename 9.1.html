@@ -85,8 +85,14 @@
             </button>
         </div>
 
+        <!-- Loading Indicator -->
+        <div id="globalLoading" class="text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="mt-4 text-gray-600 font-medium">資料載入中，請稍候...</p>
+        </div>
+
         <!-- WPS Content -->
-        <div id="wps-content">
+        <div id="wps-content" class="hidden">
             <div id="wpsGroupedList" class="space-y-8">
                 <!-- WPS tables will be inserted here by JavaScript -->
             </div>
@@ -662,6 +668,8 @@
         let wpsUnsubscribe = null;
         let pqrUnsubscribe = null;
         let dropdownOptions = {};
+        let isWpsLoaded = false; // New flag
+        let isPqrLoaded = false; // New flag
         
         const optionKeyMap = {
             'baseMetalSpec1': 'baseMetalSpec',
@@ -823,6 +831,7 @@
             const wpsContent = document.getElementById('wps-content');
             const pqrContent = document.getElementById('pqr-content');
             const addButtonText = document.getElementById('addButtonText');
+            const loadingEl = document.getElementById('globalLoading');
 
             const activeClasses = ['tab-active'];
             const inactiveClasses = ['tab-inactive'];
@@ -833,27 +842,45 @@
                 pqrTab.classList.remove(...activeClasses);
                 pqrTab.classList.add(...inactiveClasses);
                 
-                wpsContent.style.display = 'block';
-                pqrContent.style.display = 'none';
+                // Only show content if loaded, otherwise keep loading or wait for snapshot
+                if (isWpsLoaded) {
+                    loadingEl.classList.add('hidden');
+                    wpsContent.classList.remove('hidden');
+                    renderWPSGroups();
+                } else {
+                    loadingEl.classList.remove('hidden');
+                    wpsContent.classList.add('hidden');
+                }
+                pqrContent.classList.add('hidden');
+
                 searchInput.placeholder = '依WPS編號、銲接方式或母材搜尋...';
                 addButtonText.innerText = '新增 WPS';
-                renderWPSGroups();
             } else { // pqr
                 pqrTab.classList.remove(...inactiveClasses);
                 pqrTab.classList.add(...activeClasses);
                 wpsTab.classList.remove(...activeClasses);
                 wpsTab.classList.add(...inactiveClasses);
 
-                pqrContent.style.display = 'block';
-                wpsContent.style.display = 'none';
+                if (isPqrLoaded) {
+                    loadingEl.classList.add('hidden');
+                    pqrContent.classList.remove('hidden');
+                    renderPQRGroups();
+                } else {
+                    loadingEl.classList.remove('hidden');
+                    pqrContent.classList.add('hidden');
+                }
+                wpsContent.classList.add('hidden');
+                
                 searchInput.placeholder = '依PQR編號、WPS編號或母材搜尋...';
                 addButtonText.innerText = '新增 PQR';
-                renderPQRGroups();
             }
             filterActiveList();
         }
 
         function renderWPSGroups(data = wpsData) {
+            // Don't render "No results" if we haven't loaded data yet
+            if (!isWpsLoaded) return;
+
             wpsGroupedList.innerHTML = '';
             const groupedData = data.reduce((acc, wps) => {
                 const key = wps.weldingProcess || '未分類';
@@ -924,6 +951,9 @@
         }
         
         function renderPQRGroups(data = pqrData) {
+            // Don't render "No results" if we haven't loaded data yet
+            if (!isPqrLoaded) return;
+
             pqrGroupedList.innerHTML = '';
             const groupedData = data.reduce((acc, pqr) => {
                 const key = pqr.weldingProcess || '未分類';
@@ -2307,45 +2337,53 @@
 
 
         function setupListeners() {
+            const loadingEl = document.getElementById('globalLoading');
+
             if (wpsUnsubscribe) wpsUnsubscribe();
             wpsUnsubscribe = onSnapshot(collection(db, "wps"), (snapshot) => {
                 const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                 
-                // 檢查是否需要重新索引 (例如，舊資料沒有 sortIndex)
+                // ... re-indexing logic ...
                 const needsIndexing = items.some(item => item.sortIndex === undefined);
                 if (needsIndexing && items.length > 0) {
-                    console.log("WPS data needs re-indexing...");
-                    // 根據 wpsNo 排序
+                     // ... existing sorting logic ...
                     items.sort((a, b) => (a.wpsNo || '').localeCompare(b.wpsNo || '', undefined, { numeric: true }));
-                    // 批量更新索引
                     const batch = writeBatch(db);
                     items.forEach((item, index) => {
-                        item.sortIndex = index; // 本地賦值
+                        item.sortIndex = index;
                         const docRef = doc(db, "wps", item.id);
                         batch.update(docRef, { sortIndex: index });
                     });
-                    batch.commit().then(() => console.log("WPS re-indexing complete."));
-                    wpsData = items; // 使用
+                    batch.commit();
+                    wpsData = items;
                 } else {
-                    // 根據已有的 sortIndex 排序
                     items.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
                     wpsData = items;
                 }
 
+                // Mark WPS as loaded
+                isWpsLoaded = true;
+
                 if (activeTab === 'wps') {
+                    loadingEl.classList.add('hidden');
+                    document.getElementById('wps-content').classList.remove('hidden');
                     filterActiveList();
                 }
+            }, (error) => {
+                console.error("Error fetching WPS data:", error);
+                // Still mark loaded to show error state/empty state if needed
+                isWpsLoaded = true; 
+                loadingEl.classList.add('hidden');
             });
 
             if (pqrUnsubscribe) pqrUnsubscribe();
             pqrUnsubscribe = onSnapshot(collection(db, "pqr"), (snapshot) => {
                 const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
-                // 檢查是否需要重新索引
+                // ... re-indexing logic ...
                 const needsIndexing = items.some(item => item.sortIndex === undefined);
                 if (needsIndexing && items.length > 0) {
-                    console.log("PQR data needs re-indexing...");
-                    // 根據 pqrNo 排序
+                    // ... existing sorting logic ...
                     items.sort((a, b) => (a.pqrNo || '').localeCompare(b.pqrNo || '', undefined, { numeric: true }));
                     const batch = writeBatch(db);
                     items.forEach((item, index) => {
@@ -2353,17 +2391,25 @@
                         const docRef = doc(db, "pqr", item.id);
                         batch.update(docRef, { sortIndex: index });
                     });
-                    batch.commit().then(() => console.log("PQR re-indexing complete."));
+                    batch.commit();
                     pqrData = items;
                 } else {
-                    // 根據已有的 sortIndex 排序
                     items.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
                     pqrData = items;
                 }
                 
+                // Mark PQR as loaded
+                isPqrLoaded = true;
+
                 if (activeTab === 'pqr') {
-                   filterActiveList();
+                    loadingEl.classList.add('hidden');
+                    document.getElementById('pqr-content').classList.remove('hidden');
+                    filterActiveList();
                 }
+            }, (error) => {
+                console.error("Error fetching PQR data:", error);
+                isPqrLoaded = true;
+                loadingEl.classList.add('hidden');
             });
         }
         
