@@ -196,7 +196,7 @@
     <div class="max-w-7xl mx-auto">
         <!-- 頁首 -->
         <header class="flex justify-between items-center mb-8 flex-wrap gap-4">
-            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">樣品儀表板</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">樣品庫存儀表板</h1>
             <div class="flex items-center gap-2 sm:gap-3">
                  <button id="scanSearchBtn" class="bg-indigo-600 text-white font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-indigo-700 whitespace-nowrap text-sm sm:text-base flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
@@ -437,6 +437,56 @@
             <div id="sampleDetailFooter" class="p-4 sm:p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3"></div>
         </div>
     </div>
+    
+    <!-- Edit Sample Modal (新增的修改視窗) -->
+    <div id="editSampleModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200">
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-800">修改樣品資料</h2>
+                <button class="close-modal-btn text-slate-500 hover:text-slate-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-4 sm:p-6 overflow-y-auto" style="max-height: 80vh;">
+                <form id="edit-sample-form" class="space-y-6">
+                    <input type="hidden" id="editSampleId">
+                    <input type="hidden" id="editSampleCollection"> <!-- 用來判斷是在 inventory 還是 staging -->
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="editSampleName" class="block text-sm font-medium text-slate-600 mb-1">樣品名稱</label>
+                            <input type="text" id="editSampleName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                        </div>
+                         <div>
+                             <label for="editWireDiameter" class="block text-sm font-medium text-slate-600 mb-1">線徑</label>
+                             <input type="text" id="editWireDiameter" required class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border border-slate-200 rounded-lg bg-slate-50">
+                        <p class="text-sm text-slate-500 mb-4">詳細規格資料：</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">適用標準</label><input type="text" id="editApplicableStandard" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">製造商</label><input type="text" id="editManufacturer" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">配方代號</label><input type="text" id="editFormulaCode" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">製程明細</label><input type="text" id="editProcessDetails" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">爐號</label><input type="text" id="editFurnaceNo" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                            <div><label class="block text-sm font-medium text-slate-600 mb-1">批號</label><input type="text" id="editBatchNo" class="w-full px-4 py-2 border border-slate-300 rounded-lg"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="editModifiedBy" class="block text-sm font-medium text-slate-600 mb-1">修改人員 (記錄於歷史)</label>
+                        <select id="editModifiedBy" required class="w-full px-4 py-2 border border-slate-300 rounded-lg"></select>
+                    </div>
+
+                    <div class="text-right flex justify-end gap-3 pt-4">
+                        <button type="button" class="close-modal-btn bg-slate-200 text-slate-700 font-semibold px-6 py-2.5 rounded-lg hover:bg-slate-300">取消</button>
+                        <button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-md hover:bg-indigo-700">儲存修改</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
      <!-- Batch Action Modal -->
     <div id="batchActionModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 modal-content modal-content-hidden">
@@ -620,8 +670,10 @@
                 qrScanner: document.getElementById('qrScannerModal'),
                 report: document.getElementById('reportModal'),
                 reportFilter: document.getElementById('reportFilterModal'),
+                editSample: document.getElementById('editSampleModal'), // Added Edit Modal
             };
             const addSampleForm = document.getElementById('add-sample-form');
+            const editSampleForm = document.getElementById('edit-sample-form'); // Added Edit Form
             const storageCabinetSelect = document.getElementById('storageCabinet');
             const storageShelfSelect = document.getElementById('storageShelf');
             const storagePositionSelect = document.getElementById('storagePosition');
@@ -1275,13 +1327,38 @@
                     }
                 }
                 
+                // --- Modified Footer Logic for Edit Button ---
+                footerContainer.innerHTML = ''; // Clear existing buttons
+                
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'flex gap-3';
+
+                // 1. Add "Edit Details" button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'bg-slate-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-slate-700';
+                editBtn.textContent = '修改明細';
+                editBtn.addEventListener('click', () => {
+                    closeModal(modals.sampleDetail);
+                    openEditSampleModal(sample); // Call new function
+                });
+                btnGroup.appendChild(editBtn);
+
+                // 2. Existing "Stage" logic
                 const sampleIsInInventory = sampleInventory.some(s => s.id === sample.id);
                 if (sampleIsInInventory) {
-                    footerContainer.innerHTML = `<button id="detailStageBtn" class="bg-amber-500 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-amber-600">移至暫存區</button>`;
-                    footerContainer.querySelector('#detailStageBtn').addEventListener('click', () => { closeModal(modals.sampleDetail); openActionModal('stage', sample); });
-                } else {
-                    footerContainer.innerHTML = '';
+                    const stageBtn = document.createElement('button');
+                    stageBtn.id = 'detailStageBtn';
+                    stageBtn.className = 'bg-amber-500 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-amber-600';
+                    stageBtn.textContent = '移至暫存區';
+                    stageBtn.addEventListener('click', () => { 
+                        closeModal(modals.sampleDetail); 
+                        openActionModal('stage', sample); 
+                    });
+                    btnGroup.appendChild(stageBtn);
                 }
+                
+                footerContainer.appendChild(btnGroup);
+                // --- End Modification ---
 
                 openModal(modals.sampleDetail);
             }
@@ -1296,7 +1373,8 @@
                     else if (log.action === '移至暫存' || log.action === '批次移至暫存') actionClass = 'text-amber-600';
                     else if (log.action === '放回儲位') actionClass = 'text-sky-600';
                     else if (log.action === '移動') { actionClass = 'text-blue-600'; locationInfo = `<span class="text-xs text-slate-400 block">${log.fromLocation}</span> → ${log.toLocation}`; }
-                    
+                    else if (log.action === '資料修改') actionClass = 'text-purple-600'; // Color for edit action
+
                     let sampleNameDisplay = log.sampleName;
                     if(log.action.startsWith('批次')) {
                         sampleNameDisplay = `批次操作 (${log.count} 個)`;
@@ -1308,7 +1386,19 @@
             }
 
             function renderAllHistoryTables() {
-                document.getElementById('historyTab-add').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '放入'));
+                // Modified to include '資料修改' in 'add' tab or separate tab? 
+                // For now, let's put '資料修改' in the 'Add' tab or create logic to display it.
+                // Or simply filter based on action.
+                // Let's assume user might want to see edits in "Add" or maybe "Move". 
+                // Currently code filters strictly. Let's add '資料修改' to '新增' tab for visibility or just leave it if it doesn't fit.
+                // A better approach is to add logic to show it in a relevant tab or all. 
+                // For simplicity, I'll add it to '新增' (Add/Edit) conceptually or just let it be logged.
+                // The current filters are strict string matching. 
+                // Let's add it to '新增' tab for now as it's metadata related.
+                
+                const addAndEditLogs = historyLog.filter(l => l.action === '放入' || l.action === '資料修改');
+                
+                document.getElementById('historyTab-add').innerHTML = createHistoryTableHTML(addAndEditLogs);
                 document.getElementById('historyTab-stage').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '移至暫存' || l.action === '批次移至暫存'));
                 document.getElementById('historyTab-return').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '放回儲位'));
                 document.getElementById('historyTab-move').innerHTML = createHistoryTableHTML(historyLog.filter(l => l.action === '移動'));
@@ -1681,6 +1771,85 @@
                 }
             }
 
+            // --- Edit Sample Functions ---
+            function openEditSampleModal(sample) {
+                // 1. 填入現有資料
+                document.getElementById('editSampleId').value = sample.id;
+                document.getElementById('editSampleName').value = sample.sampleName || '';
+                document.getElementById('editWireDiameter').value = sample.wireDiameter || '';
+                
+                document.getElementById('editApplicableStandard').value = sample.applicableStandard || '';
+                document.getElementById('editManufacturer').value = sample.manufacturer || '';
+                document.getElementById('editFormulaCode').value = sample.formulaCode || '';
+                document.getElementById('editProcessDetails').value = sample.processDetails || '';
+                document.getElementById('editFurnaceNo').value = sample.furnaceNo || '';
+                document.getElementById('editBatchNo').value = sample.batchNo || '';
+
+                // 2. 判斷是在 Inventory 還是 Staging
+                const isInventory = sampleInventory.some(s => s.id === sample.id);
+                document.getElementById('editSampleCollection').value = isInventory ? 'inventory' : 'staging';
+
+                // 3. 填入人員選單
+                const editPersonSelect = document.getElementById('editModifiedBy');
+                editPersonSelect.innerHTML = '<option value="">--- 請選擇修改人員 ---</option>';
+                (systemConfig.personnel || []).forEach(p => {
+                    editPersonSelect.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+
+                openModal(modals.editSample);
+            }
+
+            async function handleEditSubmit(e) {
+                e.preventDefault();
+                const form = e.target;
+                const sampleId = form.editSampleId.value;
+                const collectionName = form.editSampleCollection.value; // 'inventory' or 'staging'
+                const modifiedBy = form.editModifiedBy.value;
+
+                if (!modifiedBy) {
+                    showNotification('請選擇修改人員！');
+                    return;
+                }
+
+                // 收集更新的資料
+                const updatedData = {
+                    sampleName: form.editSampleName.value.trim(),
+                    wireDiameter: form.editWireDiameter.value.trim(),
+                    applicableStandard: form.editApplicableStandard.value.trim(),
+                    manufacturer: form.editManufacturer.value.trim(),
+                    formulaCode: form.editFormulaCode.value.trim(),
+                    processDetails: form.editProcessDetails.value.trim(),
+                    furnaceNo: form.editFurnaceNo.value.trim(),
+                    batchNo: form.editBatchNo.value.trim(),
+                    lastModifiedBy: modifiedBy,
+                    lastModifiedAt: serverTimestamp() // 記錄最後修改時間
+                };
+
+                try {
+                    const collectionPath = collectionName === 'inventory' ? 'sampleSystem/data/inventory' : 'sampleSystem/data/staging';
+                    const docRef = doc(db, collectionPath, sampleId);
+
+                    // 使用 setDoc + merge: true 來進行更新 (等同於 update)
+                    await setDoc(docRef, updatedData, { merge: true });
+
+                    // 寫入歷史紀錄
+                    await logAction({
+                        action: '資料修改',
+                        person: modifiedBy,
+                        sampleName: updatedData.sampleName,
+                        details: `修改資料 (線徑:${updatedData.wireDiameter}, 廠商:${updatedData.manufacturer}...)`,
+                        storageLocation: collectionName === 'inventory' ? '庫存區' : '暫存區' // 這裡只記錄大致位置，若要精確可再抓取原資料
+                    });
+
+                    showNotification(`樣品 "${updatedData.sampleName}" 資料已更新。`);
+                    closeModal(modals.editSample);
+
+                } catch (error) {
+                    console.error("Update failed: ", error);
+                    showNotification("資料更新失敗，請稍後再試。");
+                }
+            }
+
             function handleMoveFromStaging(sample) {
                 const moveModal = modals.moveSample;
                 moveModal.querySelector('#moveSampleId').value = sample.id;
@@ -1999,6 +2168,7 @@
             actionForm.addEventListener('submit', handleActionFormSubmit);
             batchActionForm.addEventListener('submit', handleBatchStageSubmit);
             batchFinalizeForm.addEventListener('submit', handleBatchFinalizeSubmit);
+            editSampleForm.addEventListener('submit', handleEditSubmit); // Register edit form
             storageCabinetSelect.addEventListener('change', updateAddShelves);
             storageShelfSelect.addEventListener('change', updateAddPositions);
             document.getElementById('moveStorageCabinet').addEventListener('change', updateMoveShelves);
