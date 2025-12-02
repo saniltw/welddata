@@ -1285,16 +1285,17 @@
                             ctx.textAlign = 'center';
                             
                             // Truncate text if needed for canvas
-                            let sampleName = sample.sampleName;
+                            // --- 修改處：將顯示文字改為 品名 + 線徑 ---
+                            let displayText = `${sample.sampleName} ${sample.wireDiameter || ''}`.trim();
                             const maxWidth = canvas.width - (padding * 2);
-                            if (ctx.measureText(sampleName).width > maxWidth) {
-                                while (ctx.measureText(sampleName + '...').width > maxWidth) {
-                                    sampleName = sampleName.slice(0, -1);
+                            if (ctx.measureText(displayText).width > maxWidth) {
+                                while (ctx.measureText(displayText + '...').width > maxWidth) {
+                                    displayText = displayText.slice(0, -1);
                                 }
-                                sampleName += '...';
+                                displayText += '...';
                             }
                             
-                            ctx.fillText(sampleName, canvas.width / 2, qrSize + padding + fontSize);
+                            ctx.fillText(displayText, canvas.width / 2, qrSize + padding + fontSize);
                             
                             const finalDataURL = canvas.toDataURL('image/png');
                             
@@ -1310,7 +1311,11 @@
                             newDownloadBtn.addEventListener('click', () => {
                                 const link = document.createElement('a');
                                 link.href = finalDataURL;
-                                link.download = `${sample.sampleName.replace(/[^a-z0-9]/gi, '_') || 'qrcode'}.png`;
+                                // --- 修改處: 檔名改為 位置_品名_線徑 ---
+                                const safeLocation = (sample.storageLocation || 'NoLoc').replace(/[\\/:*?"<>|]/g, '_');
+                                const safeName = (sample.sampleName || 'qrcode').replace(/[\\/:*?"<>|]/g, '_');
+                                const safeDiameter = (sample.wireDiameter || '').replace(/[\\/:*?"<>|]/g, '_');
+                                link.download = `${safeLocation}_${safeName}${safeDiameter ? '_' + safeDiameter : ''}.png`;
                                 document.body.appendChild(link);
                                 link.click();
                                 document.body.removeChild(link);
@@ -1616,16 +1621,17 @@
                                 ctx.textAlign = 'center';
                                 
                                 // Truncate text if needed for canvas
-                                let sampleName = sample.sampleName;
+                                // --- 修改處：批次下載時，顯示文字也改為 品名 + 線徑 ---
+                                let displayText = `${sample.sampleName} ${sample.wireDiameter || ''}`.trim();
                                 const maxWidth = canvas.width - (padding * 2);
-                                if (ctx.measureText(sampleName).width > maxWidth) {
-                                    while (ctx.measureText(sampleName + '...').width > maxWidth) {
-                                        sampleName = sampleName.slice(0, -1);
+                                if (ctx.measureText(displayText).width > maxWidth) {
+                                    while (ctx.measureText(displayText + '...').width > maxWidth) {
+                                        displayText = displayText.slice(0, -1);
                                     }
-                                    sampleName += '...';
+                                    displayText += '...';
                                 }
                                 
-                                ctx.fillText(sampleName, canvas.width / 2, qrSize + padding + fontSize);
+                                ctx.fillText(displayText, canvas.width / 2, qrSize + padding + fontSize);
                                 
                                 // Get blob
                                 canvas.toBlob((blob) => {
@@ -1648,7 +1654,11 @@
                 const promises = samplesToDownload.map(async (sample) => {
                     try {
                         const blob = await createQrWithText(sample);
-                        const fileName = (sample.sampleName || sample.id).replace(/[^a-z0-9_.-]/gi, '_') + '.png';
+                        // --- 修改處: 檔名改為 位置_品名_線徑 ---
+                        const safeLocation = (sample.storageLocation || 'NoLoc').replace(/[\\/:*?"<>|]/g, '_');
+                        const safeName = (sample.sampleName || sample.id).replace(/[\\/:*?"<>|]/g, '_');
+                        const safeDiameter = (sample.wireDiameter || '').replace(/[\\/:*?"<>|]/g, '_');
+                        const fileName = `${safeLocation}_${safeName}${safeDiameter ? '_' + safeDiameter : ''}.png`;
                         zip.file(fileName, blob);
                     } catch (err) {
                         console.error(`無法為樣品 "${sample.sampleName}" 產生 QR Code:`, err);
