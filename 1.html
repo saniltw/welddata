@@ -6,11 +6,14 @@
     <title>專案進度追蹤儀表板</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <style>
         body {
             font-family: 'Inter', '微軟正黑體', 'Microsoft JhengHei', sans-serif;
         }
         .hidden { display: none; }
+        
+        /* Toast Notification Animation (Enter, Stay, Leave) */
         @keyframes fade-in-out {
             0% { opacity: 0; transform: translateY(-20px); }
             10% { opacity: 1; transform: translateY(0); }
@@ -20,6 +23,25 @@
         .animate-fade-in-out {
             animation: fade-in-out 3s forwards;
         }
+
+        /* Modal Entry Animation (Enter only) */
+        @keyframes modal-in {
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-modal-in {
+            animation: modal-in 0.3s ease-out forwards;
+        }
+
+        /* Sticky Header styles */
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f9fafb; /* bg-gray-50 */
+            z-index: 10;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
         /* PDF and Print Styles */
         #report-content-wrapper, #report-content-wrapper * {
             font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
@@ -37,56 +59,72 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div id="app" class="p-4 sm:p-6 lg:p-8">
+    <div id="app" class="p-4 sm:p-6 lg:p-8 h-screen flex flex-col">
         <!-- Toast Notification -->
-        <div id="toast-notification" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg"></div>
+        <div id="toast-notification" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg z-50"></div>
 
-        <div class="max-w-7xl mx-auto">
-            <header class="mb-8">
-                <h1 class="text-3xl font-bold text-gray-900">專案進度儀表板</h1>
-                <p class="text-gray-600 mt-1">即時追蹤所有任務的最新狀態。</p>
+        <div class="max-w-7xl mx-auto w-full flex-1 flex flex-col min-h-0">
+            <header class="mb-6 flex-shrink-0">
+                <div class="flex justify-between items-start flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900">專案進度儀表板</h1>
+                        <p class="text-gray-600 mt-1">即時追蹤所有任務的最新狀態與協作進度。</p>
+                    </div>
+                    <!-- User Info / Status -->
+                    <div class="text-right text-xs text-gray-500 bg-white p-2 rounded shadow-sm">
+                        <p>ID: <span id="user-id" class="font-mono">連接中...</span></p>
+                    </div>
+                </div>
             </header>
 
-            <main>
+            <main class="flex-1 flex flex-col min-h-0">
                 <!-- Stats Cards -->
-                <div id="stats-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div id="stats-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 flex-shrink-0">
                     <!-- Stat cards will be injected here -->
+                    <div class="col-span-full text-center py-4 text-gray-400">載入數據中...</div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="mb-6 flex justify-end gap-2 flex-wrap">
-                    <button id="btn-show-report" class="flex items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h1v-4a1 1 0 011-1h8a1 1 0 011 1v4h1a2 2 0 002-2v-6a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" /></svg>
-                        產生報表
-                    </button>
-                    <button id="btn-show-schedule" class="flex items-center bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
-                        會議記錄排程
-                    </button>
-                    <button id="btn-show-settings" class="flex items-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.532 1.532 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.532 1.532 0 01-.947-2.287c1.561-.379-1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>
-                        設定
-                    </button>
-                    <button id="btn-add-task" class="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                        新增任務
-                    </button>
+                <div class="mb-4 flex justify-between items-center flex-wrap gap-3 flex-shrink-0">
+                    <!-- Search Bar -->
+                    <div class="relative w-full md:w-64">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="search-input" class="pl-10 block w-full shadow-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2" placeholder="搜尋專案、內容或人員...">
+                    </div>
+
+                    <div class="flex gap-2 flex-wrap justify-end flex-1">
+                        <button id="btn-show-report" class="flex items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors duration-300">
+                            <i class="fas fa-file-alt mr-2"></i> 產生報表
+                        </button>
+                        <button id="btn-show-schedule" class="flex items-center bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-300">
+                            <i class="fas fa-calendar-alt mr-2"></i> 會議記錄排程
+                        </button>
+                        <button id="btn-show-settings" class="flex items-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors duration-300">
+                            <i class="fas fa-cog mr-2"></i> 設定
+                        </button>
+                        <button id="btn-add-task" class="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
+                            <i class="fas fa-plus mr-2"></i> 新增任務
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Main Table -->
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                    <div id="loading-spinner" class="flex justify-center items-center p-8">
+                <div class="bg-white rounded-xl shadow-lg flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div id="loading-spinner" class="flex justify-center items-center p-8 absolute inset-0 bg-white z-20">
                         <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
                     </div>
-                    <div id="dashboard-table-container" class="hidden">
+                    
+                    <div id="dashboard-table-container" class="hidden flex flex-col h-full">
                         <!-- Table Filters -->
-                        <div class="p-4 bg-gray-50 border-b flex items-center justify-between flex-wrap gap-4">
+                        <div class="p-4 bg-gray-50 border-b flex items-center justify-between flex-wrap gap-4 flex-shrink-0">
                             <div class="flex items-center space-x-4 flex-wrap gap-y-2">
-                                <label class="flex items-center space-x-2">
+                                <label class="flex items-center space-x-2 cursor-pointer select-none">
                                     <input type="checkbox" id="filter-show-completed" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                                     <span class="text-sm text-gray-700">顯示已完成</span>
                                 </label>
-                                <label class="flex items-center space-x-2">
+                                <label class="flex items-center space-x-2 cursor-pointer select-none">
                                     <input type="checkbox" id="filter-show-paused" class="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500" />
                                     <span class="text-sm text-gray-700">顯示暫停</span>
                                 </label>
@@ -94,33 +132,35 @@
                             <div class="flex items-center space-x-4 flex-wrap gap-y-2">
                                 <div class="flex items-center space-x-2">
                                     <label for="person-filter" class="text-sm text-gray-700">主要人員:</label>
-                                    <select id="person-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-1">
+                                    <select id="person-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="all">全部人員</option>
                                     </select>
                                 </div>
                                 <div class="flex items-center space-x-2">
-                                    <label for="sort-select" class="text-sm text-gray-700">排序方式:</label>
-                                    <select id="sort-select" class="border-gray-300 rounded-md shadow-sm text-sm p-1">
-                                        <option value="createdAt_desc">建立時間 (新到舊)</option>
-                                        <option value="createdAt_asc">建立時間 (舊到新)</option>
-                                        <option value="startDate_desc">專案總體開始日 (新到舊)</option>
-                                        <option value="startDate_asc">專案總體開始日 (舊到新)</option>
+                                    <label for="sort-select" class="text-sm text-gray-700">排序:</label>
+                                    <select id="sort-select" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="createdAt_desc">建立時間 (新→舊)</option>
+                                        <option value="createdAt_asc">建立時間 (舊→新)</option>
+                                        <option value="startDate_desc">開始日 (新→舊)</option>
+                                        <option value="startDate_asc">開始日 (舊→新)</option>
                                         <option value="projectName_asc">專案名稱</option>
                                         <option value="projectCategory_asc">專案類別</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
-                        <div class="overflow-x-auto">
+                        
+                        <!-- Scrollable Table Area -->
+                        <div class="overflow-auto flex-1 relative">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">專案名稱</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">專案類別</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">處理項目詳情</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">總體進度</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">總進行天數</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">專案名稱</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">類別</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">處理項目詳情</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">總體進度</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">天數</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="dashboard-table-body" class="bg-white divide-y divide-gray-200">
@@ -128,122 +168,127 @@
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Table Footer/Count -->
+                        <div class="bg-gray-50 px-6 py-2 text-xs text-gray-500 text-right border-t flex-shrink-0">
+                            顯示 <span id="displayed-count">0</span> / 共 <span id="total-count">0</span> 筆專案
+                        </div>
                     </div>
                 </div>
             </main>
-            <footer class="text-center text-gray-500 mt-8 text-sm">
-                <p>您的使用者 ID: <span id="user-id">正在驗證...</span></p>
-                <p>使用此 ID 與團隊成員共享與協作。</p>
-            </footer>
         </div>
     </div>
 
-    <!-- Modals (hidden by default) -->
+    <!-- Modals -->
+    
     <!-- Task Form Modal -->
-    <div id="task-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div id="task-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col animate-modal-in">
             <form id="task-form" class="flex flex-col flex-1 min-h-0">
-                <h2 id="task-form-title" class="text-2xl font-bold mb-6">新增任務</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="task-form-title" class="text-2xl font-bold text-gray-800">新增任務</h2>
+                    <button type="button" class="btn-cancel-task-form text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
                 <div class="flex-grow overflow-y-auto pr-4 space-y-4">
                     <input type="hidden" id="task-id">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案名稱</label>
-                            <input type="text" id="projectName" name="projectName" class="w-full border-gray-300 rounded-lg shadow-sm" required />
+                            <input type="text" id="projectName" name="projectName" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案類別</label>
                             <div class="flex items-center gap-2">
-                                <select id="projectCategory" name="projectCategory" class="flex-grow border-gray-300 rounded-lg shadow-sm"></select>
-                                <button type="button" id="btn-toggle-new-category" class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full text-sm font-bold">+</button>
+                                <select id="projectCategory" name="projectCategory" class="flex-grow border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                                <button type="button" id="btn-toggle-new-category" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-bold text-gray-600 transition-colors">+</button>
                             </div>
                             <div id="new-category-container" class="hidden mt-2 flex gap-2">
                                 <input type="text" id="new-category-input" placeholder="新類別名稱" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm" />
-                                <button type="button" id="btn-add-new-category" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">新增</button>
+                                <button type="button" id="btn-add-new-category" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600">新增</button>
                             </div>
                         </div>
                     </div>
                     
-                    <div id="content-items-container" class="space-y-3 p-4 border border-gray-200 rounded-lg">
+                    <div id="content-items-container" class="space-y-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
                         <!-- Content items will be injected here -->
                     </div>
-                    <button type="button" id="btn-add-content-item" class="mt-2 flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" /></svg>
-                        新增處理內容
+                    <button type="button" id="btn-add-content-item" class="mt-2 w-full py-2 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 hover:border-blue-500 transition-colors flex justify-center items-center gap-2">
+                        <i class="fas fa-plus"></i> 新增處理內容
                     </button>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                          <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案總體開始日</label>
-                            <input type="date" id="startDate" name="startDate" class="w-full border-gray-300 rounded-lg shadow-sm" />
+                            <input type="date" id="startDate" name="startDate" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案總體預計完成日</label>
-                            <input type="date" id="estimatedCompletionDate" name="estimatedCompletionDate" class="w-full border-gray-300 rounded-lg shadow-sm" />
+                            <input type="date" id="estimatedCompletionDate" name="estimatedCompletionDate" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案總體進度</label>
-                            <select id="status" name="status" class="w-full border-gray-300 rounded-lg shadow-sm"></select>
+                            <select id="status" name="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
                         </div>
                          <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">備註事項</label>
-                            <textarea id="remarks" name="remarks" rows="2" class="w-full border-gray-300 rounded-lg shadow-sm"></textarea>
+                            <textarea id="remarks" name="remarks" rows="2" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3 pt-4 border-t">
-                    <button type="button" id="btn-cancel-task-form" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button>
-                    <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">儲存任務</button>
+                    <button type="button" class="btn-cancel-task-form bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">取消</button>
+                    <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 shadow-md transition-colors">儲存任務</button>
                 </div>
             </form>
         </div>
     </div>
     
     <!-- Settings Modal -->
-    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] flex flex-col animate-modal-in">
             <form id="settings-form" class="flex flex-col flex-1 min-h-0">
-                <h2 class="text-2xl font-bold mb-6">設定</h2>
+                <h2 class="text-2xl font-bold mb-6">系統設定</h2>
                 <div class="flex-grow overflow-y-auto pr-4 space-y-6">
                     <!-- Project Categories Management -->
-                    <div class="p-4 border rounded-lg">
-                        <h3 class="font-semibold text-lg mb-2">專案類別管理</h3>
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" id="settings-new-category" placeholder="新增類別" class="flex-grow border-gray-300 rounded-lg shadow-sm" />
-                            <button type="button" id="settings-add-category" class="bg-blue-500 text-white px-4 py-2 rounded-lg">新增</button>
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center gap-2"><i class="fas fa-tag text-blue-500"></i> 專案類別管理</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="settings-new-category" placeholder="新增類別" class="flex-grow border-gray-300 rounded-lg shadow-sm p-2 text-sm" />
+                            <button type="button" id="settings-add-category" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium">新增</button>
                         </div>
                         <div id="settings-categories-list" class="flex flex-wrap gap-2"></div>
                     </div>
                     <!-- Status Options Management -->
-                    <div class="p-4 border rounded-lg">
-                        <h3 class="font-semibold text-lg mb-2">進度項目管理</h3>
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" id="settings-new-status" placeholder="新增進度" class="flex-grow border-gray-300 rounded-lg shadow-sm" />
-                            <button type="button" id="settings-add-status" class="bg-blue-500 text-white px-4 py-2 rounded-lg">新增</button>
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center gap-2"><i class="fas fa-tasks text-yellow-500"></i> 進度項目管理</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="settings-new-status" placeholder="新增進度" class="flex-grow border-gray-300 rounded-lg shadow-sm p-2 text-sm" />
+                            <button type="button" id="settings-add-status" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium">新增</button>
                         </div>
                         <div id="settings-statuses-list" class="flex flex-wrap gap-2"></div>
                     </div>
                     <!-- Personnel Management -->
-                    <div class="p-4 border rounded-lg">
-                        <h3 class="font-semibold text-lg mb-2">組別與人員管理</h3>
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center gap-2"><i class="fas fa-users text-green-500"></i> 組別與人員管理</h3>
                         <div class="flex gap-2 mb-4">
-                            <input type="text" id="settings-new-group" placeholder="新增組別" class="flex-grow border-gray-300 rounded-lg shadow-sm" />
-                            <button type="button" id="settings-add-group" class="bg-blue-500 text-white px-4 py-2 rounded-lg">新增</button>
+                            <input type="text" id="settings-new-group" placeholder="新增組別" class="flex-grow border-gray-300 rounded-lg shadow-sm p-2 text-sm" />
+                            <button type="button" id="settings-add-group" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium">新增</button>
                         </div>
                         <div id="settings-personnel-list" class="space-y-4"></div>
                     </div>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3 pt-4 border-t">
                     <button type="button" id="btn-cancel-settings" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button>
-                    <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">儲存設定</button>
+                    <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 shadow-md">儲存設定</button>
                 </div>
             </form>
         </div>
     </div>
     
     <!-- Report Modal -->
-    <div id="report-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div id="report-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-6xl max-h-[90vh] flex flex-col animate-modal-in">
             <div class="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-y-2">
                 <h2 class="text-2xl font-bold">專案報表</h2>
                 <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -251,22 +296,19 @@
                     <select id="report-category-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-2"></select>
                     <select id="report-status-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-2"></select>
                     <select id="report-person-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-2"></select>
-                    <button id="btn-download-csv" class="flex items-center bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                        下載 CSV
+                    <button id="btn-download-csv" class="flex items-center bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 shadow-sm">
+                        <i class="fas fa-file-csv mr-2"></i> CSV
                     </button>
-                    <button id="btn-print-report" class="flex items-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h1v-4a1 1 0 011-1h8a1 1 0 011 1v4h1a2 2 0 002-2v-6a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm-2 6H9v4h4v-4z" clip-rule="evenodd"></path></svg>
-                        列印報表
+                    <button id="btn-print-report" class="flex items-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-700 shadow-sm">
+                         <i class="fas fa-print mr-2"></i> 列印
                     </button>
-                    <button id="btn-download-pdf" class="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h1v-4a1 1 0 011-1h8a1 1 0 011 1v4h1a2 2 0 002-2v-6a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" /></svg>
-                        下載 PDF
+                    <button id="btn-download-pdf" class="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 shadow-sm">
+                         <i class="fas fa-file-pdf mr-2"></i> PDF
                     </button>
                     <button id="btn-close-report" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">關閉</button>
                 </div>
             </div>
-            <div id="report-content-wrapper" class="overflow-y-auto flex-1 min-h-0 bg-white p-2">
+            <div id="report-content-wrapper" class="overflow-y-auto flex-1 min-h-0 bg-white p-4 border rounded shadow-inner">
                 <div class="text-center mb-6">
                     <h1 class="text-xl font-bold">專案進度報表</h1>
                     <p id="report-date" class="text-sm text-gray-600"></p>
@@ -274,10 +316,10 @@
                 <table class="min-w-full border-collapse border border-gray-300 report-table">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">專案名稱</th>
-                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">類別</th>
-                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">總體進度</th>
-                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">項目內容</th>
+                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700 w-1/4">專案名稱</th>
+                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700 w-1/6">類別</th>
+                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700 w-1/12">總體進度</th>
+                            <th class="border border-gray-300 p-2 text-left text-sm font-semibold text-gray-700">項目內容詳情</th>
                         </tr>
                     </thead>
                     <tbody id="report-table-body"></tbody>
@@ -287,28 +329,28 @@
     </div>
     
     <!-- Schedule Modal -->
-    <div id="schedule-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div id="schedule-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col animate-modal-in">
             <h2 class="text-2xl font-bold mb-4">設定會議記錄人員輪值</h2>
             <div class="flex-1 min-h-0 overflow-y-auto pr-2">
-                <div class="p-4 border rounded-lg mb-6">
+                <div class="p-4 border rounded-lg mb-6 bg-gray-50">
                     <h3 class="font-semibold text-lg mb-3">輪值人員列表</h3>
-                    <p class="text-sm text-gray-500 mb-3">在此新增或移除輪值人員。系統將會依照列表順序自動循環排班。</p>
+                    <p class="text-sm text-gray-500 mb-3">系統將會依照列表順序自動循環排班。</p>
                     <div class="flex items-center gap-2 mb-4">
                         <select id="schedule-person-to-add" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm p-2"></select>
                         <button id="schedule-btn-add-person" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600">新增</button>
                     </div>
-                    <div id="schedule-rotation-list" class="space-y-2"></div>
+                    <div id="schedule-rotation-list" class="space-y-2 max-h-40 overflow-y-auto"></div>
                 </div>
                 <div class="p-4 border rounded-lg">
                     <h3 class="font-semibold text-lg mb-3">自動排程預覽與調整</h3>
-                    <p class="text-sm text-gray-500 mb-3">系統會依據週次自動循環排班。如果本週人員不正確，您可以在此微調整體排班順序。</p>
+                    <p class="text-sm text-gray-500 mb-3">可在此微調整體排班順序 (Offset)。</p>
                     <div id="schedule-preview-list" class="space-y-1"></div>
                 </div>
             </div>
             <div class="mt-6 flex justify-end space-x-3 pt-4 border-t">
                 <button type="button" id="btn-cancel-schedule" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button>
-                <button type="button" id="btn-save-schedule" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">儲存輪值設定</button>
+                <button type="button" id="btn-save-schedule" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 shadow-md">儲存輪值設定</button>
             </div>
         </div>
     </div>
@@ -316,19 +358,31 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, remove, serverTimestamp, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, onValue, set, push, remove, serverTimestamp, update, query, orderByChild } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        // --- Firebase Config ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDZMH8jbae1H7n3F5GJ8IeNMpuYhV0hxzQ",
-            authDomain: "rd202507229.firebaseapp.com",
-            databaseURL: "https://rd202507229-default-rtdb.firebaseio.com",
-            projectId: "rd202507229",
-            storageBucket: "rd202507229.appspot.com",
-            messagingSenderId: "893455158003",
-            appId: "1:893455158003:web:98a775db491d2fc8724586",
-        };
+        // --- Firebase Config & Auth ---
+        let app, db, auth, userId, appId;
+        
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDZMH8jbae1H7n3F5GJ8IeNMpuYhV0hxzQ",
+                authDomain: "rd202507229.firebaseapp.com",
+                databaseURL: "https://rd202507229-default-rtdb.firebaseio.com",
+                projectId: "rd202507229",
+                storageBucket: "rd202507229.appspot.com",
+                messagingSenderId: "893455158003",
+                appId: "1:893455158003:web:98a775db491d2fc8724586",
+            };
+            appId = firebaseConfig.projectId;
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getDatabase(app);
+            signInAnonymously(auth).catch(e => console.error("Auth failed:", e));
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+            document.getElementById('loading-spinner').innerHTML = `<p class="text-red-500 font-bold">Firebase 初始化失敗</p>`;
+        }
 
         // --- Default Data ---
         const DEFAULT_CONFIG = {
@@ -339,9 +393,10 @@
                 '加工組': ['王志新'],
                 '其他': ['王正賢', '邱耀賢', '莊立旋']
             },
-            projectCategories: ['碳鋼包藥開發', '碳鋼包藥改善', '設備'],
+            projectCategories: ['碳鋼包藥開發', '碳鋼包藥改善', '設備', '測試'],
             statusOptions: ['尚未開始', '進行中', '已完成', '暫停']
         };
+        
         const EXCEL_RAW_DATA = [
             { name: "KTVN 火嘴磨耗設備", content: "設計", group: "銲接課", person: "哀聖哲", date: "2024-05-01" },
             { name: "銲接室空間整理", content: "規劃", group: "銲接課", person: "哀聖哲", date: "2024-09-01" },
@@ -352,32 +407,15 @@
             { name: "樣品防潮箱", content: "規劃", group: "銲接課", person: "陳冠彰", date: "2024-10-01" },
             { name: "長榮混合氣實心", content: "測試比較報告", group: "開發課", person: "張家銘", date: "2024-10-01" },
             { name: "308(-196°C)測試(蓬萊巨濤)", content: "銲線設計", group: "開發課", person: "林仕哲", date: "2024-10-27" },
-            { name: "2594測試(長江中車)", content: "調整配方", group: "開發課", person: "林仕哲", date: "2025-03-31" },
-            { name: "2594測試", content: "", group: "銲接課", person: "陳冠彰", date: "2025-06-04" },
-            { name: "銑床與車床保護裝置規劃", content: "", group: "加工組", person: "王志新", date: "2025-06-13" },
-            { name: "洗床與車台使用安全守則", content: "", group: "開發課", person: "潘豐城", date: "2025-06-13" },
-            { name: "陽光780與 960測試", content: "待機械性質數據", group: "開發課", person: "潘豐城", date: "2025-06-20" },
-            { name: "琉新銲材測試", content: "", group: "銲接課", person: "陳冠彰", date: "2025-06-25" },
-            { name: "中鋼構銲材測試", content: "SES", group: "銲接課", person: "陳冠彰", date: "2025-07-03" },
-            { name: "中龍電溶渣銲接測試", content: "", group: "銲接課", person: "陳冠彰", date: "2025-06-27" },
-            { name: "二氧化鋯進料檢驗", content: "", group: "開發課", person: "石宇志", date: "2025-06-27" },
-            { name: "KFW-312 機械性能測試", content: "調整配方、銲接條件", group: "開發課", person: "林仕哲", date: "2025-06-30" },
-            { name: "2594藥粉準備", content: "", group: "開發課", person: "林仕哲", date: "2025-07-01" },
-            { name: "KX-71T 擴散氫", content: "", group: "開發課", person: "林仕哲", date: "2025-07-01" },
-            { name: "旭智成型前截面製作", content: "", group: "開發課", person: "林仕哲", date: "2025-07-01" },
+            { name: "2594測試(長江中車)", content: "調整配方", group: "開發課", person: "林仕哲", date: "2025-03-31" }
         ];
         
         // --- Global State ---
-        let db, auth, userId, appId;
         let allTasks = [];
-        let config = {
-            projectCategories: [],
-            personnelData: {},
-            statusOptions: []
-        };
+        let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
         let recorderSchedule = { rotation: [], offset: 0 };
         let currentTaskToEdit = null;
-        let contentItemCounter = 0; // For unique IDs in the form
+        let contentItemCounter = 0; 
 
         // --- DOM Elements ---
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -388,24 +426,25 @@
         const reportModal = document.getElementById('report-modal');
         const scheduleModal = document.getElementById('schedule-modal');
         const taskForm = document.getElementById('task-form');
+        const searchInput = document.getElementById('search-input');
 
         // --- Helper Functions ---
         const getStatusColor = (status) => {
             switch (status) {
-                case '已完成': return 'bg-green-100 text-green-800';
-                case '進行中': return 'bg-blue-100 text-blue-800';
-                case '暫停': return 'bg-yellow-100 text-yellow-800';
-                default: return 'bg-gray-100 text-gray-800';
+                case '已完成': return 'bg-green-100 text-green-800 border-green-200';
+                case '進行中': return 'bg-blue-100 text-blue-800 border-blue-200';
+                case '暫停': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                default: return 'bg-gray-100 text-gray-800 border-gray-200';
             }
         };
 
         const getWeekKey = (date) => {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
             const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-            return `${d.getUTCFullYear()}-${String(weekNo).padStart(2, '0')}`;
+            return `${d.getFullYear()}-${String(weekNo).padStart(2, '0')}`;
         };
 
         const calculateDaysInProgress = (task) => {
@@ -420,17 +459,147 @@
             return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
         };
         
-        const showToast = (message) => {
+        const showToast = (message, type = 'success') => {
             const toast = document.getElementById('toast-notification');
             toast.textContent = message;
+            toast.className = `hidden fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg z-50 animate-fade-in-out font-bold ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
             toast.classList.remove('hidden');
-            toast.classList.add('animate-fade-in-out');
             setTimeout(() => {
                 toast.classList.add('hidden');
-                toast.classList.remove('animate-fade-in-out');
             }, 3000);
         };
         
+        const toggleModal = (id, show) => {
+            const el = document.getElementById(id);
+            if(show) { el.classList.remove('hidden'); setTimeout(()=>el.querySelector('div').classList.remove('opacity-0'), 10); } 
+            else { el.classList.add('hidden'); }
+        };
+
+        // --- Enhanced Settings Logic ---
+        const openSettingsModal = () => {
+            // 1. Deep copy config for local editing
+            const tempConfig = JSON.parse(JSON.stringify(config));
+            
+            // 2. Render function closure
+            const render = () => {
+                // Categories
+                document.getElementById('settings-categories-list').innerHTML = tempConfig.projectCategories.map(c => `
+                    <span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">
+                        ${c} <button type="button" data-action="delete-category" data-value="${c}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
+                    </span>
+                `).join('');
+
+                // Statuses
+                document.getElementById('settings-statuses-list').innerHTML = tempConfig.statusOptions.map(s => `
+                    <span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">
+                        ${s} <button type="button" data-action="delete-status" data-value="${s}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
+                    </span>
+                `).join('');
+
+                // Personnel
+                document.getElementById('settings-personnel-list').innerHTML = Object.entries(tempConfig.personnelData).map(([group, people]) => `
+                    <div class="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-gray-700">${group}</h4>
+                            <button type="button" data-action="delete-group" data-group="${group}" class="text-red-500 text-sm hover:text-red-700 hover:underline">刪除組別</button>
+                        </div>
+                        <div class="pl-0 sm:pl-4">
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" placeholder="新增人員" id="input-person-${group}" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm p-2" />
+                                <button type="button" data-action="add-person" data-group="${group}" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 shadow-sm">加入</button>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                ${people.map(person => `
+                                    <span class="flex items-center gap-2 bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">
+                                        ${person} <button type="button" data-action="delete-person" data-group="${group}" data-person="${person}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            // 3. Initial Render
+            render();
+
+            // 4. Setup Event Listeners
+            const form = document.getElementById('settings-form');
+            form.onclick = (e) => {
+                const target = e.target;
+                const action = target.dataset.action;
+                
+                // Header Add Buttons
+                if (target.id === 'settings-add-category') {
+                    const val = document.getElementById('settings-new-category').value.trim();
+                    if (val && !tempConfig.projectCategories.includes(val)) {
+                        tempConfig.projectCategories.push(val);
+                        document.getElementById('settings-new-category').value = '';
+                        render();
+                    }
+                } else if (target.id === 'settings-add-status') {
+                    const val = document.getElementById('settings-new-status').value.trim();
+                    if (val && !tempConfig.statusOptions.includes(val)) {
+                        tempConfig.statusOptions.push(val);
+                        document.getElementById('settings-new-status').value = '';
+                        render();
+                    }
+                } else if (target.id === 'settings-add-group') {
+                    const val = document.getElementById('settings-new-group').value.trim();
+                    if (val && !tempConfig.personnelData[val]) {
+                        tempConfig.personnelData[val] = [];
+                        document.getElementById('settings-new-group').value = '';
+                        render();
+                    }
+                }
+                
+                // Dynamic Actions
+                if (!action) return;
+
+                if (action === 'delete-category') {
+                    tempConfig.projectCategories = tempConfig.projectCategories.filter(c => c !== target.dataset.value);
+                    render();
+                } else if (action === 'delete-status') {
+                    tempConfig.statusOptions = tempConfig.statusOptions.filter(s => s !== target.dataset.value);
+                    render();
+                } else if (action === 'delete-group') {
+                    if(confirm(`確定要刪除 ${target.dataset.group} 嗎？`)) {
+                        delete tempConfig.personnelData[target.dataset.group];
+                        render();
+                    }
+                } else if (action === 'add-person') {
+                    const group = target.dataset.group;
+                    const input = document.getElementById(`input-person-${group}`);
+                    const val = input.value.trim();
+                    if (val && !tempConfig.personnelData[group].includes(val)) {
+                        tempConfig.personnelData[group].push(val);
+                        input.value = '';
+                        render();
+                    }
+                } else if (action === 'delete-person') {
+                    const { group, person } = target.dataset;
+                    tempConfig.personnelData[group] = tempConfig.personnelData[group].filter(p => p !== person);
+                    render();
+                }
+            };
+
+            // 5. Save Handler
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                set(ref(db, `artifacts/${appId}/public/data/app_config`), tempConfig);
+                toggleModal('settings-modal', false);
+                showToast('設定已更新');
+            };
+
+            toggleModal('settings-modal', true);
+        };
+
+        const openScheduleModal = () => {
+            renderSchedulePreview();
+            toggleModal('schedule-modal', true);
+        };
+        
+        // ... (CSV, Print, RenderApp logic remains the same) ...
         const downloadCSV = () => {
             const year = document.getElementById('report-year-filter').value;
             const category = document.getElementById('report-category-filter').value;
@@ -445,7 +614,7 @@
             );
             
             if (filtered.length === 0) {
-                showToast("沒有可匯出的資料。");
+                showToast("沒有可匯出的資料。", 'error');
                 return;
             }
 
@@ -454,44 +623,20 @@
                 "項目內容", "項目開始日", "項目結束日", "項目進度", "主要人員", "協助人員", "備註"
             ];
             
-            let csvContent = "\uFEFF"; // BOM for Excel to read UTF-8 correctly
+            let csvContent = "\uFEFF"; 
             csvContent += headers.join(',') + '\r\n';
 
             filtered.forEach(task => {
                 const escapeCSV = (field) => `"${(field || '').toString().replace(/"/g, '""')}"`;
-
                 if (task.contentItems && task.contentItems.length > 0) {
                     task.contentItems.forEach(item => {
                         const mainPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '主要').map(p => p.name).join('; ');
                         const assistingPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '協助').map(p => p.name).join('; ');
-
-                        const row = [
-                            task.projectName,
-                            task.projectCategory,
-                            task.startDate,
-                            task.estimatedCompletionDate,
-                            task.status,
-                            item.content,
-                            item.startDate,
-                            item.endDate,
-                            item.status,
-                            mainPersonnel,
-                            assistingPersonnel,
-                            task.remarks
-                        ].map(escapeCSV).join(',');
+                        const row = [task.projectName, task.projectCategory, task.startDate, task.estimatedCompletionDate, task.status, item.content, item.startDate, item.endDate, item.status, mainPersonnel, assistingPersonnel, task.remarks].map(escapeCSV).join(',');
                         csvContent += row + '\r\n';
                     });
                 } else {
-                    // Handle tasks without content items
-                    const row = [
-                        task.projectName,
-                        task.projectCategory,
-                        task.startDate,
-                        task.estimatedCompletionDate,
-                        task.status,
-                        "", "", "", "", "", "",
-                        task.remarks
-                    ].map(escapeCSV).join(',');
+                    const row = [task.projectName, task.projectCategory, task.startDate, task.estimatedCompletionDate, task.status, "", "", "", "", "", "", task.remarks].map(escapeCSV).join(',');
                     csvContent += row + '\r\n';
                 }
             });
@@ -500,123 +645,72 @@
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
-            link.setAttribute("download", "專案進度報表.csv");
-            link.style.visibility = 'hidden';
+            link.setAttribute("download", `專案進度報表_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(url);
         };
 
         const printReport = () => {
             const reportContent = document.getElementById('report-content-wrapper').innerHTML;
             const printWindow = window.open('', '_blank');
-            
-            printWindow.document.write('<html><head><title>專案進度報表</title>');
-            printWindow.document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
             printWindow.document.write(`
+                <html><head><title>專案進度報表</title>
                 <style>
-                    body { 
-                        font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif !important;
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                    }
-                    @page {
-                        size: A4 landscape;
-                        margin: 15mm;
-                    }
-                    .report-table { 
-                        font-size: 10px; 
-                        width: 100%;
-                        border-collapse: collapse;
-                    }
-                    .report-table th, .report-table td { 
-                        padding: 4px 6px; 
-                        border: 1px solid #ccc !important; 
-                        text-align: left;
-                    }
-                    .report-table thead {
-                        background-color: #f3f4f6 !important;
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                    }
-                    .report-table td table {
-                        font-size: 9px;
-                    }
-                    .report-table td table tr {
-                        border-top: 1px solid #eee !important;
-                    }
-                     #report-date { display: block; } /* Ensure report date is visible */
+                    body { font-family: "Microsoft JhengHei", sans-serif !important; -webkit-print-color-adjust: exact !important; }
+                    @page { size: A4 landscape; margin: 10mm; }
+                    table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+                    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+                    th { background-color: #f3f4f6; }
                 </style>
+                </head><body>${reportContent}<script>window.onload = function() { window.print(); window.close(); }<\/script></body></html>
             `);
-            printWindow.document.write('</head><body>');
-            printWindow.document.write(reportContent);
-            printWindow.document.write(`
-                <script>
-                    window.addEventListener('load', function() {
-                        setTimeout(function() { 
-                            window.print(); 
-                            window.close(); 
-                        }, 750); // Increased timeout for complex reports
-                    });
-                <\/script>
-            `);
-            printWindow.document.write('</body></html>');
             printWindow.document.close();
         };
 
-        // --- Render Functions ---
         const renderApp = () => {
             renderStatsCards();
             renderDashboardTable();
-            // Modals are rendered on-demand when opened
         };
         
         const renderStatsCards = () => {
             const container = document.getElementById('stats-cards-container');
-            
             const allSubItems = allTasks.flatMap(t => t.contentItems || []);
             const completedProjects = allTasks.filter(t => t.status === '已完成').length;
-            const completedSubItems = allSubItems.filter(item => item.status === '已完成').length;
-            const inProgressSubItems = allSubItems.filter(item => item.status === '進行中').length;
-            const pausedSubItems = allSubItems.filter(item => item.status === '暫停').length;
-            const notStartedProjects = allTasks.filter(t => t.status === '尚未開始').length;
-            const notStartedSubItems = allSubItems.filter(item => item.status === '尚未開始').length;
+            const inProgressProjects = allTasks.filter(t => t.status === '進行中').length;
+            const pausedProjects = allTasks.filter(t => t.status === '暫停').length;
             
-            const today = new Date();
-            const nextWeekDate = new Date();
-            nextWeekDate.setDate(today.getDate() + 7);
-            const thisWeekKey = getWeekKey(today);
-            const nextWeekKey = getWeekKey(nextWeekDate);
-            
-            let thisWeeksRecorder = '未排定';
-            let nextWeeksRecorder = '未排定';
+            // Schedule Logic
+            let thisWeeksRecorder = '未排定', nextWeeksRecorder = '未排定';
             const { rotation = [], offset = 0 } = recorderSchedule;
             if (Array.isArray(rotation) && rotation.length > 0) {
-                const thisWeekNumber = parseInt(thisWeekKey.split('-')[1], 10);
-                const nextWeekNumber = parseInt(nextWeekKey.split('-')[1], 10);
-                const totalPeople = rotation.length;
-                thisWeeksRecorder = rotation[((thisWeekNumber - 1 + offset) % totalPeople + totalPeople) % totalPeople];
-                nextWeeksRecorder = rotation[((nextWeekNumber - 1 + offset) % totalPeople + totalPeople) % totalPeople];
+                const today = new Date();
+                const thisWeekKey = getWeekKey(today);
+                const nextWeekKey = getWeekKey(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
+                
+                const thisWeekNum = parseInt(thisWeekKey.split('-')[1], 10) || 1;
+                const nextWeekNum = parseInt(nextWeekKey.split('-')[1], 10) || 2;
+                const total = rotation.length;
+                thisWeeksRecorder = rotation[((thisWeekNum - 1 + offset) % total + total) % total];
+                nextWeeksRecorder = rotation[((nextWeekNum - 1 + offset) % total + total) % total];
             }
 
-            const stats = [
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "專案完成率", value: `${completedProjects} / ${allTasks.length}` },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>`, title: "項目 未完成/已完成", value: `${allSubItems.length - completedSubItems} / ${completedSubItems}` },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "進行中項目", value: inProgressSubItems },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "暫停項目", value: pausedSubItems },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "尚未開始 (專案)", value: notStartedProjects },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "尚未開始 (項目)", value: notStartedSubItems },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "本週記錄人員", value: thisWeeksRecorder },
-                { icon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, title: "下週記錄人員", value: nextWeeksRecorder }
+            const cards = [
+                { color: 'blue', icon: 'fa-chart-pie', title: '專案總數', value: allTasks.length, sub: `進行中: ${inProgressProjects}` },
+                { color: 'green', icon: 'fa-check-circle', title: '已完成專案', value: completedProjects, sub: `完成率: ${allTasks.length ? Math.round((completedProjects/allTasks.length)*100) : 0}%` },
+                { color: 'yellow', icon: 'fa-pause-circle', title: '暫停中專案', value: pausedProjects, sub: '待重啟' },
+                { color: 'indigo', icon: 'fa-user-clock', title: '本週記錄', value: thisWeeksRecorder, sub: `下週: ${nextWeeksRecorder}` }
             ];
-            
-            container.innerHTML = stats.map(stat => `
-                <div class="bg-white p-4 rounded-xl shadow-lg flex items-center">
-                    <div class="mr-4">${stat.icon}</div>
+
+            container.innerHTML = cards.map(c => `
+                <div class="bg-white p-4 rounded-xl shadow border-l-4 border-${c.color}-500 flex items-center justify-between">
                     <div>
-                        <div class="text-gray-500 text-sm">${stat.title}</div>
-                        <div class="text-2xl font-bold text-gray-900">${stat.value}</div>
+                        <div class="text-gray-500 text-xs font-semibold uppercase tracking-wide">${c.title}</div>
+                        <div class="text-2xl font-bold text-gray-800 mt-1">${c.value}</div>
+                        <div class="text-xs text-gray-400 mt-1">${c.sub}</div>
+                    </div>
+                    <div class="bg-${c.color}-100 p-3 rounded-full text-${c.color}-600">
+                        <i class="fas ${c.icon} text-xl"></i>
                     </div>
                 </div>
             `).join('');
@@ -627,87 +721,93 @@
             const showPaused = document.getElementById('filter-show-paused').checked;
             const sortCriteria = document.getElementById('sort-select').value;
             const selectedPerson = document.getElementById('person-filter').value;
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
 
-            // Update main personnel filter options
-            const personnelSet = new Set();
-            allTasks.forEach(task => task.contentItems?.forEach(item => item.assignedPersonnel?.forEach(person => {
-                if (person.role === '主要') personnelSet.add(person.name);
+            const existingOptions = new Set();
+            allTasks.forEach(t => t.contentItems?.forEach(i => i.assignedPersonnel?.forEach(p => {
+                if(p.role === '主要') existingOptions.add(p.name);
             })));
-            const mainPersonnelList = ['all', ...Array.from(personnelSet).sort()];
-            document.getElementById('person-filter').innerHTML = mainPersonnelList.map(p => 
-                `<option value="${p}" ${p === selectedPerson ? 'selected' : ''}>${p === 'all' ? '全部人員' : p}</option>`
-            ).join('');
-
-            let filteredTasks = allTasks;
-            if (!showCompleted) filteredTasks = filteredTasks.filter(task => task.status !== '已完成');
-            if (!showPaused) filteredTasks = filteredTasks.filter(task => task.status !== '暫停');
-            if (selectedPerson !== 'all') {
-                filteredTasks = filteredTasks.filter(task => 
-                    task.contentItems?.some(item => 
-                        item.assignedPersonnel?.some(p => p.role === '主要' && p.name === selectedPerson)
-                    )
-                );
+            const currentSelected = document.getElementById('person-filter').value;
+            let optionsHtml = `<option value="all">全部人員</option>`;
+            Array.from(existingOptions).sort().forEach(p => {
+                optionsHtml += `<option value="${p}" ${p === currentSelected ? 'selected' : ''}>${p}</option>`;
+            });
+            if (document.getElementById('person-filter').innerHTML !== optionsHtml) {
+                 document.getElementById('person-filter').innerHTML = optionsHtml;
             }
 
-            const sortedTasks = [...filteredTasks].sort((a, b) => {
+            let filteredTasks = allTasks.filter(task => {
+                if (!showCompleted && task.status === '已完成') return false;
+                if (!showPaused && task.status === '暫停') return false;
+                if (selectedPerson !== 'all') {
+                    const hasPerson = task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.role === '主要' && p.name === selectedPerson));
+                    if (!hasPerson) return false;
+                }
+                if (searchTerm) {
+                    const inName = task.projectName.toLowerCase().includes(searchTerm);
+                    const inCat = task.projectCategory.toLowerCase().includes(searchTerm);
+                    const inContent = task.contentItems?.some(i => i.content.toLowerCase().includes(searchTerm));
+                    const inPerson = task.contentItems?.some(i => i.assignedPersonnel?.some(p => p.name.toLowerCase().includes(searchTerm)));
+                    if (!inName && !inCat && !inContent && !inPerson) return false;
+                }
+                return true;
+            });
+
+            filteredTasks.sort((a, b) => {
                 switch (sortCriteria) {
+                    case 'startDate_desc': return (new Date(b.startDate || 0)) - (new Date(a.startDate || 0));
+                    case 'startDate_asc': return (new Date(a.startDate || 0)) - (new Date(b.startDate || 0));
+                    case 'projectName_asc': return a.projectName.localeCompare(b.projectName, 'zh-Hant');
+                    case 'projectCategory_asc': return a.projectCategory.localeCompare(b.projectCategory, 'zh-Hant');
                     case 'createdAt_asc': return (a.createdAt || 0) - (b.createdAt || 0);
-                    case 'startDate_desc': return new Date(b.startDate) - new Date(a.startDate);
-                    case 'startDate_asc': return new Date(a.startDate) - new Date(b.startDate);
-                    case 'projectName_asc': return a.projectName.localeCompare(b.projectName);
-                    case 'projectCategory_asc': return a.projectCategory.localeCompare(b.projectCategory);
-                    case 'createdAt_desc': default: return (b.createdAt || 0) - (a.createdAt || 0);
+                    default: return (b.createdAt || 0) - (a.createdAt || 0);
                 }
             });
 
-            if (sortedTasks.length === 0 && allTasks.length > 0) {
-                 dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">沒有符合篩選條件的任務。</td></tr>`;
-            } else if (allTasks.length === 0) {
-                dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">目前沒有任何任務，請點擊「新增任務」來建立第一筆資料。</td></tr>`;
+            document.getElementById('displayed-count').textContent = filteredTasks.length;
+            document.getElementById('total-count').textContent = allTasks.length;
+
+            if (filteredTasks.length === 0) {
+                 dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 bg-gray-50">沒有符合條件的任務。</td></tr>`;
             } else {
-                dashboardTableBody.innerHTML = sortedTasks.map(task => {
-                    const visibleContentItems = task.contentItems?.filter(item => {
-                        if (!showCompleted && item.status === '已完成') return false;
-                        if (!showPaused && item.status === '暫停') return false;
-                        return true;
+                dashboardTableBody.innerHTML = filteredTasks.map(task => {
+                    const visibleItems = task.contentItems?.filter(item => {
+                         return true;
                     }) || [];
 
-                    const contentItemsHtml = (visibleContentItems && visibleContentItems.length > 0) ? visibleContentItems.map((item, index) => {
-                        const originalIndex = task.contentItems.findIndex(originalItem => originalItem === item);
-                        const mainPersonnel = item.assignedPersonnel?.filter(p => p.role === '主要').map(p => `<span class="bg-green-200 text-green-800 text-xs font-semibold px-2 py-0.5 rounded-full">${p.name}</span>`).join(' ') || '<span>-</span>';
-                        const assistingPersonnel = item.assignedPersonnel?.filter(p => p.role === '協助').map(p => `<span class="bg-blue-200 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">${p.name}</span>`).join(' ') || '<span>-</span>';
-                        
-                        return `
-                            <div class="p-2 rounded ${index > 0 ? "mt-2 border-t border-gray-200" : ""}">
+                    const contentHtml = visibleItems.length > 0 ? visibleItems.map((item, idx) => {
+                         const mainP = item.assignedPersonnel?.filter(p => p.role === '主要').map(p => p.name).join(', ') || '-';
+                         const asstP = item.assignedPersonnel?.filter(p => p.role === '協助').map(p => p.name).join(', ');
+                         const dateRange = (item.startDate || item.endDate) ? `<span class="text-gray-400 mx-1">|</span> ${item.startDate||'?'}~${item.endDate||'?'}` : '';
+                         
+                         return `
+                            <div class="mb-2 last:mb-0 p-2 rounded hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
                                 <div class="flex justify-between items-start">
-                                    <p class="font-semibold text-gray-800 flex-1">${item.content || '未填寫內容'}</p>
-                                    <div class="ml-2">
-                                        ${createStatusBadge(item.status, task.id, originalIndex)}
-                                    </div>
+                                    <div class="font-medium text-gray-800 text-sm">${item.content}</div>
+                                    ${createStatusBadge(item.status, task.id, idx)}
                                 </div>
-                                <div class="text-xs text-gray-600 mt-1 space-y-1">
-                                    <div class="flex items-center flex-wrap gap-x-2"><span class="font-medium">主要：</span>${mainPersonnel}</div>
-                                    <div class="flex items-center flex-wrap gap-x-2"><span class="font-medium">協助：</span>${assistingPersonnel}</div>
-                                    <p><span class="font-medium">時程：</span>${item.startDate || 'N/A'} ~ ${item.endDate || 'N/A'}</p>
+                                <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                                    <div class="flex items-center"><i class="fas fa-user-circle mr-1 text-blue-400"></i> ${mainP}</div>
+                                    ${asstP ? `<div class="flex items-center"><i class="fas fa-hands-helping mr-1 text-green-400"></i> ${asstP}</div>` : ''}
+                                    <div class="flex items-center"><i class="far fa-calendar-alt mr-1 text-gray-400"></i> ${dateRange}</div>
                                 </div>
                             </div>
-                        `;
-                    }).join('') : `<span class="text-gray-400 italic">所有可見項目皆已完成/暫停或無項目</span>`;
+                         `;
+                    }).join('') : `<span class="text-gray-400 italic text-sm">無細項內容</span>`;
 
                     const days = calculateDaysInProgress(task);
-                    const daysClass = days > 15 ? 'text-red-600 font-bold' : 'text-gray-500';
-
+                    
                     return `
-                        <tr class="hover:bg-gray-50 transition-colors" data-task-id="${task.id}">
-                            <td class="px-6 py-4 align-top whitespace-nowrap text-base font-bold text-gray-900">${task.projectName}</td>
-                            <td class="px-6 py-4 align-top whitespace-nowrap text-sm text-gray-500">${task.projectCategory}</td>
-                            <td class="px-6 py-4 align-top whitespace-normal text-sm text-gray-500 max-w-2xl"><div class="space-y-3">${contentItemsHtml}</div></td>
-                            <td class="px-6 py-4 align-top whitespace-nowrap text-sm">${createStatusBadge(task.status, task.id)}</td>
-                            <td class="px-6 py-4 align-top whitespace-nowrap text-sm font-medium ${daysClass}">${days}</td>
-                            <td class="px-6 py-4 align-top whitespace-nowrap text-sm font-medium">
-                                <div class="flex flex-col items-center space-y-2">
-                                    <button class="btn-edit-task text-indigo-600 hover:text-indigo-900" title="編輯"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button>
-                                    <button class="btn-delete-task text-red-600 hover:text-red-900" title="刪除"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>
+                        <tr class="hover:bg-blue-50 transition-colors group" data-task-id="${task.id}">
+                            <td class="px-6 py-4 align-top text-gray-900 font-bold">${task.projectName}</td>
+                            <td class="px-6 py-4 align-top text-sm text-gray-600"><span class="bg-gray-100 px-2 py-1 rounded text-xs">${task.projectCategory}</span></td>
+                            <td class="px-6 py-4 align-top">${contentHtml}</td>
+                            <td class="px-6 py-4 align-top">${createStatusBadge(task.status, task.id)}</td>
+                            <td class="px-6 py-4 align-top text-sm text-gray-600 font-mono">${days}</td>
+                            <td class="px-6 py-4 align-top">
+                                <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="btn-edit-task bg-indigo-50 text-indigo-600 p-2 rounded hover:bg-indigo-100" title="編輯"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-delete-task bg-red-50 text-red-600 p-2 rounded hover:bg-red-100" title="刪除"><i class="fas fa-trash-alt"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -716,626 +816,380 @@
             }
         };
 
-        const createStatusBadge = (currentStatus, taskId, itemIndex = null) => {
-            const optionsHtml = config.statusOptions.map(status => 
-                `<li><a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-status="${status}">${status}</a></li>`
-            ).join('');
-
+        const createStatusBadge = (status, taskId, itemIndex = null) => {
             return `
-                <div class="relative status-badge-wrapper">
-                    <button class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full cursor-pointer ${getStatusColor(currentStatus)}">
-                        ${currentStatus}
+                <div class="relative status-badge-wrapper inline-block">
+                    <button class="px-3 py-1 text-xs font-bold rounded-full border cursor-pointer ${getStatusColor(status)} shadow-sm hover:opacity-80 transition-opacity whitespace-nowrap">
+                        ${status}
                     </button>
-                    <div class="status-popover hidden absolute z-10 mt-2 w-32 bg-white rounded-md shadow-lg border">
-                        <ul class="py-1 max-h-40 overflow-y-auto" data-task-id="${taskId}" data-item-index="${itemIndex !== null ? itemIndex : ''}">
-                            ${optionsHtml}
+                    <div class="status-popover hidden absolute z-50 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 left-0">
+                        <ul class="py-1 text-sm" data-task-id="${taskId}" data-item-index="${itemIndex !== null ? itemIndex : ''}">
+                            ${config.statusOptions.map(s => `
+                                <li><a href="#" class="block px-4 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700" data-status="${s}">${s}</a></li>
+                            `).join('')}
                         </ul>
                     </div>
                 </div>
             `;
         };
 
-        // --- Event Handlers & Modal Logic ---
-        
-        // Task Form
-        const openTaskForm = (task = null) => {
-            currentTaskToEdit = task;
-            taskForm.reset();
-            document.getElementById('task-id').value = task ? task.id : '';
-            document.getElementById('task-form-title').textContent = task ? '編輯任務' : '新增任務';
-            
-            // Populate selects
-            const categorySelect = document.getElementById('projectCategory');
-            categorySelect.innerHTML = config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
-            const statusSelect = document.getElementById('status');
-            statusSelect.innerHTML = config.statusOptions.map(s => `<option value="${s}">${s}</option>`).join('');
-
-            if (task) {
-                document.getElementById('projectName').value = task.projectName || '';
-                categorySelect.value = task.projectCategory || '';
-                document.getElementById('startDate').value = task.startDate || '';
-                document.getElementById('estimatedCompletionDate').value = task.estimatedCompletionDate || '';
-                statusSelect.value = task.status || '進行中';
-                document.getElementById('remarks').value = task.remarks || '';
-                renderContentItems(task.contentItems || []);
-            } else {
-                document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
-                statusSelect.value = '進行中';
-                renderContentItems([{ content: '', assignedPersonnel: [], startDate: '', endDate: '', status: '進行中' }]);
-            }
-
-            taskFormModal.classList.remove('hidden');
-        };
-
-        const renderContentItems = (items) => {
-            const container = document.getElementById('content-items-container');
-            container.innerHTML = '';
-            contentItemCounter = 0;
-            items.forEach(item => addContentItemToForm(item));
-        };
-
-        const addContentItemToForm = (item = null) => {
-            const newItemId = `item-${contentItemCounter++}`;
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'p-3 bg-gray-50 rounded-md border border-gray-200 space-y-4';
-            itemDiv.id = newItemId;
-            itemDiv.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <label class="block text-sm font-medium text-gray-700">處理項目 #${contentItemCounter}</label>
-                    <button type="button" class="btn-remove-content-item text-red-500 hover:text-red-700" title="移除此項目">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
-                    </button>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">處理內容</label>
-                    <textarea data-field="content" rows="2" class="w-full border-gray-300 rounded-lg shadow-sm">${item?.content || ''}</textarea>
-                </div>
-                <!-- Personnel Manager will be built here -->
-                <div class="personnel-manager p-2 border border-gray-200 rounded-lg">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">人員指派</label>
-                    <div class="grid grid-cols-3 gap-2 mb-2">
-                        <select data-field="personnel-role" class="border-gray-300 rounded-lg shadow-sm text-sm p-2">
-                            <option value="主要">主要</option>
-                            <option value="協助">協助</option>
-                        </select>
-                        <select data-field="personnel-group" class="border-gray-300 rounded-lg shadow-sm text-sm p-2">
-                            ${Object.keys(config.personnelData).map(g => `<option value="${g}">${g}</option>`).join('')}
-                        </select>
-                        <select data-field="personnel-name" class="border-gray-300 rounded-lg shadow-sm text-sm p-2">
-                            <!-- Options populated by group select -->
-                        </select>
-                    </div>
-                    <div data-field="personnel-assigned-list" class="p-2 bg-gray-100 rounded-lg min-h-[40px] flex flex-wrap gap-2"></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">項目開始日</label>
-                        <input type="date" data-field="startDate" value="${item?.startDate || ''}" class="w-full border-gray-300 rounded-lg shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">項目結束日</label>
-                        <input type="date" data-field="endDate" value="${item?.endDate || ''}" class="w-full border-gray-300 rounded-lg shadow-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">項目進度</label>
-                        <select data-field="status" class="w-full border-gray-300 rounded-lg shadow-sm">
-                           ${config.statusOptions.map(s => `<option value="${s}" ${item?.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-            `;
-            document.getElementById('content-items-container').appendChild(itemDiv);
-            updatePersonnelManager(itemDiv, item?.assignedPersonnel || []);
-            if (document.querySelectorAll('#content-items-container > div').length <= 1) {
-                itemDiv.querySelector('.btn-remove-content-item').classList.add('hidden');
-            }
-        };
-
-        const updatePersonnelManager = (container, assignedPersonnel) => {
-            const groupSelect = container.querySelector('[data-field="personnel-group"]');
-            const nameSelect = container.querySelector('[data-field="personnel-name"]');
-            const listContainer = container.querySelector('[data-field="personnel-assigned-list"]');
-            
-            const selectedGroup = groupSelect.value;
-            nameSelect.innerHTML = `<option value="">選擇人員...</option>` + (config.personnelData[selectedGroup] || []).map(p => `<option value="${p}">${p}</option>`).join('');
-
-            listContainer.innerHTML = assignedPersonnel.map(p => `
-                <span class="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${p.role === '主要' ? 'bg-green-200 text-green-800' : 'bg-blue-200 text-blue-800'}" data-name="${p.name}" data-role="${p.role}">
-                    ${p.role}: ${p.name}
-                    <button type="button" class="font-bold ml-1 btn-remove-person">&times;</button>
-                </span>
-            `).join('');
-            listContainer.dataset.assigned = JSON.stringify(assignedPersonnel);
-        };
-        
-        // Report Modal
-        const openReportModal = () => {
-            // Populate filters
-            const years = ['all', ...Array.from(new Set(allTasks.map(t => t.startDate?.substring(0, 4)).filter(Boolean))).sort((a,b)=>b-a)];
-            document.getElementById('report-year-filter').innerHTML = years.map(y => `<option value="${y}">${y === 'all' ? '全部年份' : `${y}年`}</option>`).join('');
-            document.getElementById('report-category-filter').innerHTML = ['all', ...config.projectCategories].map(c => `<option value="${c}">${c === 'all' ? '全部分類' : c}</option>`).join('');
-            document.getElementById('report-status-filter').innerHTML = ['all', ...config.statusOptions].map(s => `<option value="${s}">${s === 'all' ? '全部進度' : s}</option>`).join('');
-            const personnel = ['all', ...Array.from(new Set(allTasks.flatMap(t => t.contentItems || []).flatMap(i => i.assignedPersonnel || []).map(p => p.name)))].sort();
-            document.getElementById('report-person-filter').innerHTML = personnel.map(p => `<option value="${p}">${p === 'all' ? '全部人員' : p}</option>`).join('');
-
-            renderReportTable();
-            reportModal.classList.remove('hidden');
-        };
-
-        const renderReportTable = () => {
-            const year = document.getElementById('report-year-filter').value;
-            const category = document.getElementById('report-category-filter').value;
-            const status = document.getElementById('report-status-filter').value;
-            const person = document.getElementById('report-person-filter').value;
-
-            const filtered = allTasks.filter(task => 
-                (year === 'all' || (task.startDate && task.startDate.startsWith(year))) &&
-                (category === 'all' || task.projectCategory === category) &&
-                (status === 'all' || task.status === status) &&
-                (person === 'all' || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person)))
-            );
-
-            document.getElementById('report-date').textContent = `產生日期：${new Date().toLocaleDateString()}`;
-            const body = document.getElementById('report-table-body');
-            if (filtered.length > 0) {
-                 body.innerHTML = filtered.map(task => `
-                    <tr>
-                        <td class="border border-gray-300 p-2 align-top">
-                            <div class="font-bold text-gray-900">${task.projectName}</div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <p>開始：${task.startDate || 'N/A'}</p>
-                                <p>預計：${task.estimatedCompletionDate || 'N/A'}</p>
-                            </div>
-                        </td>
-                        <td class="border border-gray-300 p-2 align-top text-sm">${task.projectCategory}</td>
-                        <td class="border border-gray-300 p-2 align-top text-sm">${task.status}</td>
-                        <td class="border border-gray-300 p-2 align-top">
-                            ${(task.contentItems && task.contentItems.length > 0) ? `
-                                <table class="w-full text-sm"><tbody>
-                                ${task.contentItems.map(item => `
-                                    <tr class="border-t">
-                                        <td class="py-2 pr-2 flex-grow">${item.content || '-'}</td>
-                                        <td class="py-2 pr-2 whitespace-nowrap">${(item.assignedPersonnel || []).map(p => `<div class="text-xs ${p.role === '主要' ? 'font-bold' : ''}">${p.name}</div>`).join('')}</td>
-                                        <td class="py-2 whitespace-nowrap">${item.status}</td>
-                                    </tr>
-                                `).join('')}
-                                </tbody></table>` : `<span class="text-gray-400">無</span>`}
-                        </td>
-                    </tr>
-                `).join('');
-            } else {
-                body.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">在選定的條件下沒有資料。</td></tr>`;
-            }
-        };
-        
-        // --- App Initialization ---
+        // --- Interaction Logic ---
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getDatabase(app);
-                auth = getAuth(app);
-                appId = firebaseConfig.projectId;
-
-                onAuthStateChanged(auth, async (user) => {
+            if (auth) {
+                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        document.getElementById('user-id').textContent = userId;
-                        // Start listeners after authentication
-                        setupDataListeners();
+                        document.getElementById('user-id').textContent = userId.substring(0,6) + '...';
+                        initDataListeners();
                     } else {
-                        await signInAnonymously(auth);
+                        document.getElementById('user-id').textContent = '未登入';
                     }
                 });
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
-                loadingSpinner.innerHTML = `<p class="text-red-500">Firebase 初始化失敗，請檢查主控台錯誤。</p>`;
+            } else {
+                console.error("Firebase auth not initialized");
+                loadingSpinner.innerHTML = `<p class="text-red-500 font-bold">系統連線失敗</p>`;
             }
-            
+
             setupEventListeners();
         });
-        
-        const processSeedData = (rawData) => {
-            const projects = {};
-            rawData.forEach(item => {
-                const { name, content, group, person, date } = item;
-                if (!name) return;
 
-                if (!projects[name]) {
-                    projects[name] = {
-                        projectName: name,
-                        startDate: date,
-                        projectCategory: '未分類',
-                        status: '尚未開始',
-                        estimatedCompletionDate: '',
-                        remarks: '',
-                        contentItems: [],
-                        createdAt: serverTimestamp()
-                    };
-                }
-
-                if (new Date(date) < new Date(projects[name].startDate)) {
-                    projects[name].startDate = date;
-                }
-
-                projects[name].contentItems.push({
-                    content: content || '請填寫處理內容',
-                    assignedPersonnel: person && group ? [{ name: `${group.replace('課', '組')} - ${person}`, role: '主要' }] : [],
-                    startDate: date,
-                    endDate: '',
-                    status: '尚未開始'
-                });
-            });
-            return Object.values(projects);
-        };
-        
-        function setupDataListeners() {
-            const configRef = ref(db, `artifacts/${appId}/public/data/app_config`);
-            onValue(configRef, (snapshot) => {
-                const configData = snapshot.val();
-                if (configData) {
-                    config = configData;
+        function initDataListeners() {
+            onValue(ref(db, `artifacts/${appId}/public/data/app_config`), (snap) => {
+                if (snap.exists()) {
+                    config = snap.val();
                 } else {
-                    set(configRef, DEFAULT_CONFIG);
-                    config = DEFAULT_CONFIG;
+                    set(ref(db, `artifacts/${appId}/public/data/app_config`), DEFAULT_CONFIG);
                 }
-                renderApp();
+                renderApp(); 
             });
 
-            const scheduleRef = ref(db, `artifacts/${appId}/public/data/recorder_schedule`);
-            onValue(scheduleRef, (snapshot) => {
-                const scheduleData = snapshot.val();
-                if (scheduleData) {
-                    recorderSchedule = { 
-                        rotation: scheduleData.rotation || (Array.isArray(scheduleData) ? scheduleData : []),
-                        offset: scheduleData.offset || 0 
-                    };
+            onValue(ref(db, `artifacts/${appId}/public/data/recorder_schedule`), (snap) => {
+                if (snap.exists()) {
+                    const val = snap.val();
+                    recorderSchedule = { rotation: val.rotation || [], offset: val.offset || 0 };
                 }
                 renderStatsCards();
             });
 
             const tasksRef = ref(db, `artifacts/${appId}/public/data/tasks`);
-            onValue(tasksRef, (snapshot) => {
-                const tasksData = snapshot.val();
-                if (!tasksData) {
-                    const processedData = processSeedData(EXCEL_RAW_DATA);
+            onValue(tasksRef, (snap) => {
+                const val = snap.val();
+                if (!val) {
                     const updates = {};
-                    processedData.forEach(taskSeed => {
+                    const processSeed = (rawData) => {
+                        const projects = {};
+                        rawData.forEach(item => {
+                            if (!projects[item.name]) projects[item.name] = { 
+                                projectName: item.name, startDate: item.date, projectCategory: '未分類', status: '尚未開始', 
+                                contentItems: [], createdAt: serverTimestamp(), ownerId: userId 
+                            };
+                            projects[item.name].contentItems.push({ 
+                                content: item.content||'無', assignedPersonnel: [{name: `${item.group}-${item.person}`, role: '主要'}], 
+                                startDate: item.date, status: '尚未開始' 
+                            });
+                        });
+                        return Object.values(projects);
+                    };
+                    processSeed(EXCEL_RAW_DATA).forEach(t => {
                         const newKey = push(tasksRef).key;
-                        updates[newKey] = { ...taskSeed, ownerId: userId };
+                        updates[newKey] = t;
                     });
-                    update(ref(db, `artifacts/${appId}/public/data/tasks`), updates);
+                    update(tasksRef, updates);
                 } else {
-                    allTasks = Object.keys(tasksData).map(key => ({ id: key, ...tasksData[key] }));
+                    allTasks = Object.keys(val).map(key => ({ id: key, ...val[key] }));
                     loadingSpinner.classList.add('hidden');
                     dashboardTableContainer.classList.remove('hidden');
                     renderApp();
                 }
             });
         }
-        
+
         function setupEventListeners() {
-            // Main buttons
-            document.getElementById('btn-add-task').addEventListener('click', () => openTaskForm());
-            document.getElementById('btn-show-settings').addEventListener('click', openSettingsModal);
-            document.getElementById('btn-show-report').addEventListener('click', openReportModal);
-            document.getElementById('btn-show-schedule').addEventListener('click', openScheduleModal);
-
-            // Filters
-            ['filter-show-completed', 'filter-show-paused', 'sort-select', 'person-filter'].forEach(id => {
-                document.getElementById(id).addEventListener('change', renderDashboardTable);
-            });
+            document.getElementById('btn-add-task').onclick = () => openTaskForm();
+            document.querySelectorAll('.btn-cancel-task-form').forEach(b => b.onclick = () => toggleModal('task-form-modal', false));
             
-            // Table click delegation
-            dashboardTableBody.addEventListener('click', (e) => {
-                const editButton = e.target.closest('.btn-edit-task');
-                const deleteButton = e.target.closest('.btn-delete-task');
-                const statusBadge = e.target.closest('.status-badge-wrapper');
+            document.getElementById('btn-show-settings').onclick = openSettingsModal;
+            document.getElementById('btn-cancel-settings').onclick = () => toggleModal('settings-modal', false);
 
-                if (editButton) {
-                    const taskId = editButton.closest('tr').dataset.taskId;
-                    const task = allTasks.find(t => t.id === taskId);
-                    if (task) openTaskForm(task);
-                }
-                if (deleteButton) {
-                    const taskId = deleteButton.closest('tr').dataset.taskId;
-                    if (confirm('您確定要刪除此任務嗎？')) {
-                        remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`));
-                        showToast("任務已刪除！");
-                    }
-                }
-                if (statusBadge) {
-                    const popover = statusBadge.querySelector('.status-popover');
-                    if(popover) popover.classList.toggle('hidden');
-                }
+            document.getElementById('btn-show-report').onclick = openReportModal;
+            document.getElementById('btn-close-report').onclick = () => toggleModal('report-modal', false);
+
+            document.getElementById('btn-show-schedule').onclick = openScheduleModal;
+            document.getElementById('btn-cancel-schedule').onclick = () => toggleModal('schedule-modal', false);
+
+            ['filter-show-completed', 'filter-show-paused', 'sort-select', 'person-filter'].forEach(id => {
+                document.getElementById(id).onchange = renderDashboardTable;
             });
+            document.getElementById('search-input').oninput = renderDashboardTable;
 
-            // Status popover selection
+            dashboardTableBody.onclick = (e) => {
+                const btnEdit = e.target.closest('.btn-edit-task');
+                const btnDel = e.target.closest('.btn-delete-task');
+                const badge = e.target.closest('.status-badge-wrapper');
+
+                if (btnEdit) openTaskForm(allTasks.find(t => t.id === btnEdit.closest('tr').dataset.taskId));
+                if (btnDel) {
+                    if(confirm('確定刪除此任務？')) remove(ref(db, `artifacts/${appId}/public/data/tasks/${btnDel.closest('tr').dataset.taskId}`));
+                }
+                if (badge) {
+                     document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
+                     badge.querySelector('.status-popover').classList.remove('hidden');
+                     e.stopPropagation();
+                }
+            };
+
             document.body.addEventListener('click', (e) => {
+                if (!e.target.closest('.status-badge-wrapper')) {
+                    document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
+                }
                 if (e.target.matches('.status-popover a')) {
                     e.preventDefault();
-                    const popover = e.target.closest('.status-popover');
                     const ul = e.target.closest('ul');
                     const taskId = ul.dataset.taskId;
-                    const itemIndex = ul.dataset.itemIndex;
+                    const idx = ul.dataset.itemIndex;
                     const newStatus = e.target.dataset.status;
-
-                    let updates = {};
-                    if(itemIndex){
-                        set(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${itemIndex}/status`), newStatus);
-                    } else {
-                        updates[`artifacts/${appId}/public/data/tasks/${taskId}/status`] = newStatus;
-                         if (newStatus === '已完成') {
-                            updates[`artifacts/${appId}/public/data/tasks/${taskId}/actualCompletionDate`] = new Date().toISOString().split('T')[0];
-                        }
-                    }
-                    if (Object.keys(updates).length > 0) update(ref(db), updates);
-
-                    if (newStatus === '已完成') showToast("項目已標示為完成！");
-                    popover.classList.add('hidden');
-                } else if (!e.target.closest('.status-badge-wrapper')) {
+                    
+                    const path = idx 
+                        ? `artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${idx}/status`
+                        : `artifacts/${appId}/public/data/tasks/${taskId}/status`;
+                    
+                    const updates = { [path]: newStatus };
+                    if (!idx && newStatus === '已完成') updates[`artifacts/${appId}/public/data/tasks/${taskId}/actualCompletionDate`] = new Date().toISOString().slice(0,10);
+                    
+                    update(ref(db), updates);
+                    showToast('狀態已更新');
                     document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
                 }
             });
+
+            document.getElementById('btn-add-content-item').onclick = () => addContentItemToForm();
+            document.getElementById('content-items-container').onclick = (e) => {
+                if (e.target.closest('.btn-remove-item')) e.target.closest('.item-row').remove();
+                if (e.target.closest('.btn-remove-p')) {
+                    const pill = e.target.closest('.person-pill');
+                    pill.remove();
+                }
+            };
             
-            // Task Form Logic
-            document.getElementById('btn-cancel-task-form').addEventListener('click', () => taskFormModal.classList.add('hidden'));
-            document.getElementById('btn-add-content-item').addEventListener('click', () => addContentItemToForm());
-            document.getElementById('btn-toggle-new-category').addEventListener('click', () => document.getElementById('new-category-container').classList.toggle('hidden'));
-            
-            document.getElementById('btn-add-new-category').addEventListener('click', () => {
-                const newCategory = document.getElementById('new-category-input').value.trim();
-                if (newCategory && !config.projectCategories.includes(newCategory)) {
-                    config.projectCategories.push(newCategory);
-                    update(ref(db, `artifacts/${appId}/public/data/app_config`), { projectCategories: config.projectCategories });
-                    document.getElementById('projectCategory').innerHTML += `<option value="${newCategory}" selected>${newCategory}</option>`;
-                    document.getElementById('new-category-input').value = '';
-                    document.getElementById('new-category-container').classList.add('hidden');
+            document.getElementById('content-items-container').addEventListener('change', (e) => {
+                if (e.target.classList.contains('p-selector')) {
+                    const row = e.target.closest('.item-row');
+                    const role = row.querySelector('.p-role').value;
+                    const group = row.querySelector('.p-group').value;
+                    const name = row.querySelector('.p-name').value;
+                    if (e.target.classList.contains('p-group')) {
+                        const names = config.personnelData[group] || [];
+                        row.querySelector('.p-name').innerHTML = `<option value="">選擇人員</option>` + names.map(n => `<option value="${n}">${n}</option>`).join('');
+                    } else if (e.target.classList.contains('p-name') && name) {
+                        const container = row.querySelector('.p-list');
+                        const fullName = `${group} - ${name}`;
+                        if (!Array.from(container.children).some(c => c.dataset.name === fullName)) {
+                            container.innerHTML += `
+                                <span class="person-pill bg-${role==='主要'?'green':'blue'}-100 text-${role==='主要'?'green':'blue'}-800 text-xs px-2 py-1 rounded-full mr-1 mb-1 inline-flex items-center" data-name="${fullName}" data-role="${role}">
+                                    ${role}: ${name} <button type="button" class="btn-remove-p ml-1 hover:text-red-600">&times;</button>
+                                </span>
+                            `;
+                            e.target.value = ''; 
+                        }
+                    }
                 }
             });
-            
-            taskForm.addEventListener('submit', (e) => {
+
+            taskForm.onsubmit = (e) => {
                 e.preventDefault();
                 const taskId = document.getElementById('task-id').value;
-                const contentItems = [];
-                document.querySelectorAll('#content-items-container > div').forEach(itemDiv => {
-                    contentItems.push({
-                        content: itemDiv.querySelector('[data-field="content"]').value,
-                        assignedPersonnel: JSON.parse(itemDiv.querySelector('[data-field="personnel-assigned-list"]').dataset.assigned || '[]'),
-                        startDate: itemDiv.querySelector('[data-field="startDate"]').value,
-                        endDate: itemDiv.querySelector('[data-field="endDate"]').value,
-                        status: itemDiv.querySelector('[data-field="status"]').value
-                    });
-                });
-
-                const taskData = {
+                const items = Array.from(document.querySelectorAll('#content-items-container .item-row')).map(row => ({
+                    content: row.querySelector('.item-content').value,
+                    startDate: row.querySelector('.item-start').value,
+                    endDate: row.querySelector('.item-end').value,
+                    status: row.querySelector('.item-status').value,
+                    assignedPersonnel: Array.from(row.querySelectorAll('.person-pill')).map(p => ({
+                        name: p.dataset.name, role: p.dataset.role
+                    }))
+                }));
+                
+                const payload = {
                     projectName: document.getElementById('projectName').value,
                     projectCategory: document.getElementById('projectCategory').value,
                     startDate: document.getElementById('startDate').value,
                     estimatedCompletionDate: document.getElementById('estimatedCompletionDate').value,
                     status: document.getElementById('status').value,
                     remarks: document.getElementById('remarks').value,
-                    contentItems: contentItems
+                    contentItems: items
                 };
+
+                if (taskId) update(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), payload);
+                else push(ref(db, `artifacts/${appId}/public/data/tasks`), { ...payload, createdAt: serverTimestamp(), ownerId: userId });
                 
-                if(taskId) {
-                    update(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), taskData);
-                } else {
-                    const newTaskRef = push(ref(db, `artifacts/${appId}/public/data/tasks`));
-                    set(newTaskRef, {...taskData, createdAt: serverTimestamp(), ownerId: userId });
-                }
-                taskFormModal.classList.add('hidden');
-                showToast("任務已儲存！");
-            });
+                toggleModal('task-form-modal', false);
+                showToast('儲存成功');
+            };
 
-            document.getElementById('content-items-container').addEventListener('click', (e) => {
-                if (e.target.closest('.btn-remove-content-item')) {
-                    const itemDiv = e.target.closest('#content-items-container > div');
-                    if (document.querySelectorAll('#content-items-container > div').length > 1) {
-                        itemDiv.remove();
-                    }
-                } else if (e.target.closest('.btn-remove-person')) {
-                    const personSpan = e.target.closest('span');
-                    const managerDiv = personSpan.closest('.personnel-manager');
-                    let assigned = JSON.parse(managerDiv.querySelector('[data-field="personnel-assigned-list"]').dataset.assigned || '[]');
-                    assigned = assigned.filter(p => p.name !== personSpan.dataset.name);
-                    updatePersonnelManager(managerDiv, assigned);
-                }
-            });
-
-            document.getElementById('content-items-container').addEventListener('change', (e) => {
-                const target = e.target;
-                const managerDiv = target.closest('.personnel-manager');
-                if (!managerDiv) return;
-
-                const roleSelect = managerDiv.querySelector('[data-field="personnel-role"]');
-                const groupSelect = managerDiv.querySelector('[data-field="personnel-group"]');
-                const nameSelect = managerDiv.querySelector('[data-field="personnel-name"]');
-                let assigned = JSON.parse(managerDiv.querySelector('[data-field="personnel-assigned-list"]').dataset.assigned || '[]');
-
-                if (target === groupSelect) {
-                    updatePersonnelManager(managerDiv, assigned);
-                } else if (target === nameSelect && nameSelect.value) {
-                    const newPerson = { name: `${groupSelect.value} - ${nameSelect.value}`, role: roleSelect.value };
-                    if (!assigned.some(p => p.name === newPerson.name)) {
-                        if (newPerson.role === '主要') {
-                            assigned = assigned.filter(p => p.role !== '主要');
-                        }
-                        assigned.push(newPerson);
-                        updatePersonnelManager(managerDiv, assigned);
-                    }
-                    nameSelect.value = ''; // Reset select
-                }
-            });
-
-            // Settings Modal Logic
-            document.getElementById('btn-cancel-settings').addEventListener('click', () => settingsModal.classList.add('hidden'));
-            // ... (Add full settings logic here, similar to report modal)
-
-            // Report Modal Logic
-            document.getElementById('btn-close-report').addEventListener('click', () => reportModal.classList.add('hidden'));
+            setupScheduleInteractions();
+            
+            document.getElementById('btn-download-pdf').onclick = () => {
+                 const el = document.getElementById('report-content-wrapper');
+                 const opt = { margin: 0.5, filename: 'report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } };
+                 html2pdf().set(opt).from(el).save();
+            };
+            document.getElementById('btn-print-report').onclick = printReport;
+            document.getElementById('btn-download-csv').onclick = downloadCSV;
             ['report-year-filter', 'report-category-filter', 'report-status-filter', 'report-person-filter'].forEach(id => {
-                document.getElementById(id).addEventListener('change', renderReportTable);
+                document.getElementById(id).onchange = renderReportTable; 
             });
-            document.getElementById('btn-download-pdf').addEventListener('click', () => {
-                const element = document.getElementById('report-content-wrapper');
-                const opt = { margin: [0.2, 0.5, 0.2, 0.5], filename: '專案進度報表_橫式.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, letterRendering: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } };
-                if(window.html2pdf) html2pdf().from(element).set(opt).save();
-            });
-            document.getElementById('btn-print-report').addEventListener('click', printReport);
-            document.getElementById('btn-download-csv').addEventListener('click', downloadCSV);
-
-            // Schedule Modal Logic
-             document.getElementById('btn-cancel-schedule').addEventListener('click', () => scheduleModal.classList.add('hidden'));
-             // ... (Add full schedule logic here)
-        }
-        
-        // --- Modal Opening Functions with Full Logic ---
-        function openSettingsModal() {
-            const tempConfig = JSON.parse(JSON.stringify(config)); // Work on a copy
-            
-            const renderCategories = () => document.getElementById('settings-categories-list').innerHTML = tempConfig.projectCategories.map(c => `<span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">${c} <button type="button" data-value="${c}" class="font-bold text-red-500 btn-delete-category">&times;</button></span>`).join('');
-            const renderStatuses = () => document.getElementById('settings-statuses-list').innerHTML = tempConfig.statusOptions.map(s => `<span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">${s} <button type="button" data-value="${s}" class="font-bold text-red-500 btn-delete-status">&times;</button></span>`).join('');
-            const renderPersonnel = () => {
-                 document.getElementById('settings-personnel-list').innerHTML = Object.entries(tempConfig.personnelData).map(([group, people]) => `
-                    <div class="p-3 bg-gray-50 rounded-md">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold">${group}</h4>
-                            <button type="button" data-value="${group}" class="text-red-500 text-sm btn-delete-group">刪除組別</button>
-                        </div>
-                        <div class="pl-4">
-                            <div class="flex gap-2 mb-2">
-                                <input type="text" placeholder="新增人員" data-group="${group}" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm" />
-                                <button type="button" data-group="${group}" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm btn-add-person-to-group">加入</button>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                ${people.map(person => `<span class="flex items-center gap-2 bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full">${person} <button type="button" data-group="${group}" data-person="${person}" class="font-bold text-red-500 btn-delete-person">&times;</button></span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            };
-            
-            renderCategories();
-            renderStatuses();
-            renderPersonnel();
-            
-            const settingsForm = document.getElementById('settings-form');
-            settingsForm.onclick = (e) => {
-                const target = e.target;
-                if(target.id === 'settings-add-category') {
-                    const input = document.getElementById('settings-new-category');
-                    if (input.value && !tempConfig.projectCategories.includes(input.value)) { tempConfig.projectCategories.push(input.value); input.value=''; renderCategories(); }
-                } else if(target.id === 'settings-add-status') {
-                    const input = document.getElementById('settings-new-status');
-                    if (input.value && !tempConfig.statusOptions.includes(input.value)) { tempConfig.statusOptions.push(input.value); input.value=''; renderStatuses(); }
-                } else if(target.id === 'settings-add-group') {
-                    const input = document.getElementById('settings-new-group');
-                    if (input.value && !tempConfig.personnelData[input.value]) { tempConfig.personnelData[input.value] = []; input.value=''; renderPersonnel(); }
-                } else if(target.classList.contains('btn-delete-category')) {
-                    tempConfig.projectCategories = tempConfig.projectCategories.filter(c => c !== target.dataset.value); renderCategories();
-                } else if(target.classList.contains('btn-delete-status')) {
-                    tempConfig.statusOptions = tempConfig.statusOptions.filter(s => s !== target.dataset.value); renderStatuses();
-                } else if(target.classList.contains('btn-delete-group')) {
-                    delete tempConfig.personnelData[target.dataset.value]; renderPersonnel();
-                } else if(target.classList.contains('btn-add-person-to-group')) {
-                    const group = target.dataset.group;
-                    const input = settingsForm.querySelector(`input[data-group="${group}"]`);
-                    if (input.value && !tempConfig.personnelData[group].includes(input.value)) { tempConfig.personnelData[group].push(input.value); input.value=''; renderPersonnel(); }
-                } else if(target.classList.contains('btn-delete-person')) {
-                    const {group, person} = target.dataset;
-                    tempConfig.personnelData[group] = tempConfig.personnelData[group].filter(p => p !== person); renderPersonnel();
-                }
-            };
-            
-            const handleSettingsSubmit = (e) => {
-                e.preventDefault();
-                set(ref(db, `artifacts/${appId}/public/data/app_config`), tempConfig);
-                settingsModal.classList.add('hidden');
-                showToast("設定已儲存！");
-                settingsForm.removeEventListener('submit', handleSettingsSubmit);
-                settingsForm.onclick = null;
-            };
-            settingsForm.addEventListener('submit', handleSettingsSubmit, {once: true});
-
-            settingsModal.classList.remove('hidden');
         }
 
-        function openScheduleModal() {
-            let tempSchedule = JSON.parse(JSON.stringify(recorderSchedule));
-
-            const renderSchedule = () => {
-                const rotationList = document.getElementById('schedule-rotation-list');
-                rotationList.innerHTML = tempSchedule.rotation.length > 0 ? tempSchedule.rotation.map((p, i) => `
-                    <div class="flex justify-between items-center p-2 bg-gray-100 rounded-md">
-                        <span class="font-medium text-gray-800">${i + 1}. ${p}</span>
-                        <button type="button" data-person="${p}" class="text-red-500 hover:text-red-700 btn-remove-schedule-person"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg></button>
-                    </div>
-                `).join('') : `<p class="text-center text-gray-400 p-2">尚未新增任何輪值人員。</p>`;
-                
-                const allPersonnel = Object.entries(config.personnelData).flatMap(([g, p]) => p.map(name => `${g} - ${name}`)).sort();
-                document.getElementById('schedule-person-to-add').innerHTML = `<option value="">-- 從這裡選擇人員新增 --</option>` + allPersonnel.map(p => `<option value="${p}">${p}</option>`).join('');
-
-                const previewList = document.getElementById('schedule-preview-list');
-                const weeks = [];
-                let d = new Date();
-                d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
-                for(let i=0; i<12; i++) {
-                    const date = new Date(d);
-                    date.setDate(d.getDate() + i * 7);
-                    const key = getWeekKey(date);
-                    weeks.push({ key, year: key.split('-')[0], weekNo: parseInt(key.split('-')[1], 10), date });
-                }
-                previewList.innerHTML = tempSchedule.rotation.length > 0 ? weeks.map((w, i) => {
-                    const total = tempSchedule.rotation.length;
-                    const recorder = tempSchedule.rotation[((w.weekNo - 1 + tempSchedule.offset) % total + total) % total];
-                    const isCurrent = i === 0;
-                    return `
-                        <div class="p-1.5 rounded-md text-sm ${isCurrent ? 'bg-blue-100 ring-2 ring-blue-300' : ''}">
-                             <div class="grid grid-cols-3 gap-2">
-                                <span class="text-gray-600">${w.year} 第 ${w.weekNo} 週 <span class="text-xs text-gray-400 ml-2">(${w.date.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' })})</span></span>
-                                <span class="col-span-2 font-semibold text-indigo-700">${recorder}</span>
-                            </div>
-                            ${isCurrent ? `<div class="col-span-3 flex items-center justify-center gap-4 mt-2 pt-2 border-t border-blue-200">
-                                <button type="button" class="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300 schedule-offset-btn" data-offset="-1">← 往前一位</button>
-                                <span class="text-sm font-medium text-gray-600">調整本週排班</span>
-                                <button type="button" class="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300 schedule-offset-btn" data-offset="1">往後一位 →</button>
-                            </div>` : ''}
-                        </div>
-                    `;
-                }).join('') : `<p class="text-center text-gray-400 p-2">新增輪值人員後將會顯示自動排程預覽。</p>`;
-            };
-
-            const handleClick = (e) => {
-                const target = e.target;
-                if(target.id === 'schedule-btn-add-person') {
-                    const select = document.getElementById('schedule-person-to-add');
-                    if (select.value && !tempSchedule.rotation.includes(select.value)) {
-                        tempSchedule.rotation.push(select.value);
-                        select.value = '';
-                        renderSchedule();
-                    }
-                } else if(target.closest('.btn-remove-schedule-person')) {
-                    const person = target.closest('.btn-remove-schedule-person').dataset.person;
-                    tempSchedule.rotation = tempSchedule.rotation.filter(p => p !== person);
-                    renderSchedule();
-                } else if(target.classList.contains('schedule-offset-btn')) {
-                    tempSchedule.offset += parseInt(target.dataset.offset);
-                    renderSchedule();
-                }
-            };
-            scheduleModal.addEventListener('click', handleClick);
-
-            const saveSchedule = () => {
-                set(ref(db, `artifacts/${appId}/public/data/recorder_schedule`), tempSchedule);
-                scheduleModal.classList.add('hidden');
-                showToast("會議記錄人員輪值已更新！");
-                scheduleModal.removeEventListener('click', handleClick);
-                document.getElementById('btn-save-schedule').removeEventListener('click', saveSchedule);
-            };
-            document.getElementById('btn-save-schedule').addEventListener('click', saveSchedule, {once: true});
+        // --- Form Helpers ---
+        function openTaskForm(task = null) {
+            currentTaskToEdit = task;
+            taskForm.reset();
+            document.getElementById('task-id').value = task ? task.id : '';
+            document.getElementById('task-form-title').innerText = task ? '編輯任務' : '新增任務';
             
-            renderSchedule();
-            scheduleModal.classList.remove('hidden');
+            const catSel = document.getElementById('projectCategory');
+            catSel.innerHTML = config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            const statSel = document.getElementById('status');
+            statSel.innerHTML = config.statusOptions.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            if(task) {
+                document.getElementById('projectName').value = task.projectName;
+                catSel.value = task.projectCategory;
+                document.getElementById('startDate').value = task.startDate || '';
+                document.getElementById('estimatedCompletionDate').value = task.estimatedCompletionDate || '';
+                statSel.value = task.status;
+                document.getElementById('remarks').value = task.remarks || '';
+                renderFormItems(task.contentItems || []);
+            } else {
+                statSel.value = '進行中';
+                renderFormItems([{ content: '', status: '進行中' }]);
+            }
+            
+            document.getElementById('task-form-modal').classList.remove('hidden');
+        }
+
+        function renderFormItems(items) {
+            const container = document.getElementById('content-items-container');
+            container.innerHTML = '';
+            items.forEach(addContentItemToForm);
+        }
+
+        function addContentItemToForm(item = {}) {
+            const container = document.getElementById('content-items-container');
+            const div = document.createElement('div');
+            div.className = 'item-row p-3 bg-white rounded border shadow-sm relative';
+            
+            const groups = Object.keys(config.personnelData);
+            
+            div.innerHTML = `
+                <button type="button" class="btn-remove-item absolute top-2 right-2 text-gray-400 hover:text-red-500">&times;</button>
+                <div class="mb-2">
+                    <label class="text-xs text-gray-500">處理內容</label>
+                    <input type="text" class="item-content w-full border-gray-300 rounded text-sm" value="${item.content || ''}" placeholder="描述處理項目">
+                </div>
+                <div class="personnel-wrapper mb-2 bg-gray-50 p-2 rounded">
+                    <div class="flex gap-2 mb-1">
+                        <select class="p-role p-selector border-gray-300 rounded text-xs"><option value="主要">主要</option><option value="協助">協助</option></select>
+                        <select class="p-group p-selector border-gray-300 rounded text-xs">${groups.map(g => `<option value="${g}">${g}</option>`).join('')}</select>
+                        <select class="p-name p-selector border-gray-300 rounded text-xs flex-grow"><option value="">選擇人員</option></select>
+                    </div>
+                    <div class="p-list flex flex-wrap">
+                        ${(item.assignedPersonnel || []).map(p => `
+                            <span class="person-pill bg-${p.role==='主要'?'green':'blue'}-100 text-${p.role==='主要'?'green':'blue'}-800 text-xs px-2 py-1 rounded-full mr-1 mb-1 inline-flex items-center" data-name="${p.name}" data-role="${p.role}">
+                                ${p.role}: ${p.name.split('-')[1] || p.name} <button type="button" class="btn-remove-p ml-1 hover:text-red-600">&times;</button>
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="text-xs text-gray-500">開始</label><input type="date" class="item-start w-full border-gray-300 rounded text-xs" value="${item.startDate || ''}"></div>
+                    <div><label class="text-xs text-gray-500">結束</label><input type="date" class="item-end w-full border-gray-300 rounded text-xs" value="${item.endDate || ''}"></div>
+                    <div>
+                        <label class="text-xs text-gray-500">狀態</label>
+                        <select class="item-status w-full border-gray-300 rounded text-xs">
+                             ${config.statusOptions.map(s => `<option value="${s}" ${item.status===s?'selected':''}>${s}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            `;
+            const groupSel = div.querySelector('.p-group');
+            const nameSel = div.querySelector('.p-name');
+            nameSel.innerHTML = `<option value="">選擇人員</option>` + (config.personnelData[groupSel.value]||[]).map(n => `<option value="${n}">${n}</option>`).join('');
+            
+            container.appendChild(div);
+        }
+
+        function setupScheduleInteractions() {
+             document.getElementById('schedule-btn-add-person').onclick = () => {
+                const p = document.getElementById('schedule-person-to-add').value;
+                if(p && !recorderSchedule.rotation.includes(p)) {
+                    recorderSchedule.rotation.push(p);
+                    renderSchedulePreview();
+                }
+             };
+             document.getElementById('schedule-preview-list').onclick = (e) => {
+                 if(e.target.dataset.offset) {
+                     recorderSchedule.offset += parseInt(e.target.dataset.offset);
+                     renderSchedulePreview();
+                 }
+             };
+        }
+
+        function renderSchedulePreview() {
+            const list = document.getElementById('schedule-rotation-list');
+            list.innerHTML = recorderSchedule.rotation.map(p => `<div class="flex justify-between p-2 border-b text-sm">${p} <button class="text-red-500" onclick="removeSchedulePerson('${p}')">&times;</button></div>`).join('');
+            window.removeSchedulePerson = (p) => { recorderSchedule.rotation = recorderSchedule.rotation.filter(x => x!==p); renderSchedulePreview(); };
+
+            const allP = Object.values(config.personnelData).flat();
+            document.getElementById('schedule-person-to-add').innerHTML = `<option value="">選擇人員</option>` + allP.map(p => `<option value="${p}">${p}</option>`).join('');
+
+            const preview = document.getElementById('schedule-preview-list');
+            if(!recorderSchedule.rotation.length) { preview.innerHTML = '無資料'; return; }
+            
+            const today = new Date();
+            const currentWeek = getWeekKey(today);
+            let html = '';
+            for(let i=0; i<5; i++) {
+                const d = new Date(today.getTime() + i*7*86400000);
+                const wk = getWeekKey(d);
+                const wNum = parseInt(wk.split('-')[1]) || 1;
+                const total = recorderSchedule.rotation.length;
+                const person = recorderSchedule.rotation[((wNum - 1 + recorderSchedule.offset) % total + total) % total];
+                html += `
+                    <div class="flex justify-between items-center p-2 rounded ${i===0?'bg-blue-50 border border-blue-200':''}">
+                        <span class="text-sm">${wk} ${i===0?'(本週)':''}</span>
+                        <span class="font-bold text-blue-700">${person}</span>
+                        ${i===0 ? `<div><button class="text-xs bg-white border px-1" data-offset="-1">←</button><button class="text-xs bg-white border px-1" data-offset="1">→</button></div>` : ''}
+                    </div>
+                `;
+            }
+            preview.innerHTML = html;
+        }
+
+        function openReportModal() {
+            const years = Array.from(new Set(allTasks.map(t => (t.startDate||'').split('-')[0]))).filter(Boolean).sort().reverse();
+            document.getElementById('report-year-filter').innerHTML = `<option value="all">所有年份</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
+            document.getElementById('report-category-filter').innerHTML = `<option value="all">所有類別</option>` + config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('report-status-filter').innerHTML = `<option value="all">所有狀態</option>` + config.statusOptions.map(c => `<option value="${c}">${c}</option>`).join('');
+            
+            document.getElementById('report-modal').classList.remove('hidden');
+            renderReportTable();
+        }
+
+        function renderReportTable() {
+             document.getElementById('report-date').innerText = `製表日期: ${new Date().toLocaleDateString()}`;
+             const year = document.getElementById('report-year-filter').value;
+             const filtered = allTasks.filter(t => (year==='all' || t.startDate?.startsWith(year))); // Simplified
+             
+             document.getElementById('report-table-body').innerHTML = filtered.map(t => `
+                <tr class="border-b">
+                    <td class="p-2 align-top font-bold">${t.projectName}</td>
+                    <td class="p-2 align-top text-xs">${t.projectCategory}</td>
+                    <td class="p-2 align-top text-xs">${t.status}</td>
+                    <td class="p-2 align-top text-xs">
+                        ${(t.contentItems||[]).map(i => `<div>• ${i.content} (${i.status}) - ${i.assignedPersonnel?.map(p=>p.name).join(' ')}</div>`).join('')}
+                    </td>
+                </tr>
+             `).join('');
         }
 
     </script>
