@@ -33,7 +33,13 @@
         .status-dot.active { background-color: #22c55e; }
         .status-dot.repair { background-color: #eab308; }
         .status-dot.unused { background-color: #9ca3af; }
-
+        
+        /* 權限控制樣式 */
+        .role-guest .action-edit, 
+        .role-guest .action-delete, 
+        .role-guest .action-add,
+        .role-guest .action-submit { display: none !important; }
+        
         @media print {
             body > * { display: none !important; }
             #print-area { display: block !important; }
@@ -51,14 +57,42 @@
         <p id="loading-text" class="mt-4 text-slate-600">系統載入中...</p>
     </div>
 
+    <!-- 登入 Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-slate-900 bg-opacity-95 flex items-center justify-center p-4 z-[150] hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-800">歡迎使用</h1>
+                <p class="text-slate-500 mt-2">請選擇您的身分以進入系統</p>
+            </div>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">使用者</label>
+                    <select id="login-user-select" class="form-select w-full p-3 border border-gray-300 rounded-xl text-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                        <option value="guest" selected>👤 訪客 (僅供檢視)</option>
+                        <!-- 使用者列表將由 JS 動態載入 -->
+                    </select>
+                </div>
+                
+                <button onclick="window.app.handleLogin()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl text-lg hover:bg-indigo-700 shadow-lg transform transition hover:scale-[1.02]">
+                    進入系統
+                </button>
+            </div>
+            
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v2.6 (Role-Based)</p>
+        </div>
+    </div>
+
     <div id="print-area"></div>
 
-    <div id="app-container" class="container mx-auto max-w-2xl p-4 sm:p-6 md:p-8">
+    <div id="app-container" class="container mx-auto max-w-2xl p-4 sm:p-6 md:p-8 hidden">
         
         <div class="flex justify-between items-center mb-6">
             <div id="user-status" class="text-sm flex items-center">
-                <div id="logged-in-view" class="hidden">
-                    <span>當前使用者: <strong id="logged-in-name" class="text-indigo-600 font-semibold"></strong></span>
+                <div id="logged-in-view">
+                    <span>Hi, <strong id="logged-in-name" class="text-indigo-600 font-semibold"></strong> 
+                    <span id="role-badge" class="ml-2 px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-700"></span></span>
+                    <button onclick="window.app.logout()" class="ml-3 text-xs text-red-500 underline">登出</button>
                 </div>
             </div>
             <button id="toggle-mode-btn" onclick="window.app.toggleManagementMode()" class="bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-800 text-sm hidden">⚙️ 管理後台</button>
@@ -71,13 +105,14 @@
                 <p id="header-subtitle" class="text-slate-500 mt-2">使用手機相機掃描 QR Code 或手動選擇</p>
             </header>
 
-            <div id="main-content" class="hidden space-y-6">
+            <div id="main-content" class="space-y-6">
                 <div id="scan-section" class="card text-center p-8">
-                    <button onclick="window.app.showScanner()" class="bg-indigo-600 text-white font-bold py-4 px-8 rounded-lg hover:bg-indigo-700 transition-transform hover:scale-105 flex items-center justify-center mx-auto">
+                    <button onclick="window.app.showScanner()" class="bg-indigo-600 text-white font-bold py-4 px-8 rounded-lg hover:bg-indigo-700 transition-transform hover:scale-105 flex items-center justify-center mx-auto action-submit">
                         <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         開啟網頁掃描器
                     </button>
-                    <p class="text-sm text-gray-500 mt-3">💡 提示：您也可以直接使用手機相機掃描設備上的 QR Code</p>
+                    <p class="text-sm text-gray-500 mt-3 action-submit">💡 提示：您也可以直接使用手機相機掃描設備上的 QR Code</p>
+                    <p class="text-red-500 font-bold hidden guest-warning mt-2">訪客僅供檢視，無法執行點檢操作</p>
                 </div>
 
                 <div id="manual-select-section" class="card p-6">
@@ -85,7 +120,14 @@
                     <div class="space-y-4">
                         <select id="manual-category-select" class="form-select w-full border-gray-300 rounded-lg shadow-sm"><option value="">載入中...</option></select>
                         <select id="manual-device-select" class="form-select w-full border-gray-300 rounded-lg shadow-sm" disabled><option value="">請先選擇大類...</option></select>
-                        <button onclick="window.app.handleManualSelection()" id="manual-start-button" class="w-full bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400" disabled>開始點檢</button>
+                        <div class="flex space-x-3 action-submit">
+                            <button onclick="window.app.handleManualSelection()" id="manual-start-button" class="flex-1 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors" disabled>
+                                📋 開始點檢
+                            </button>
+                            <button onclick="window.app.handleManualMaintenance()" id="manual-maintenance-button" class="flex-1 bg-orange-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-orange-600 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors" disabled>
+                                🔧 記錄保養
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,7 +149,7 @@
                 </div>
                 <div class="mt-4 flex space-x-4">
                     <button onclick="window.app.resetApp()" class="w-1/3 bg-slate-500 text-white font-bold py-3 px-4 rounded-lg">取消</button>
-                    <button onclick="window.app.submitChecklist(this)" class="w-2/3 bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg">提交</button>
+                    <button onclick="window.app.submitChecklist(this)" class="w-2/3 bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg action-submit">提交</button>
                 </div>
             </div>
         </div>
@@ -118,8 +160,10 @@
             <div class="mb-6 border-b border-gray-200">
                 <nav class="flex -mb-px space-x-4 overflow-x-auto text-sm font-medium">
                     <button onclick="window.app.switchAdminTab('equipment')" id="tab-equipment" class="px-1 py-3 border-b-2 admin-tab-active">設備管理</button>
-                    <button onclick="window.app.switchAdminTab('templates')" id="tab-templates" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">點檢範本</button>
-                    <button onclick="window.app.switchAdminTab('users')" id="tab-users" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">人員管理</button>
+                    <!-- 訪客隱藏範本與人員管理 -->
+                    <button onclick="window.app.switchAdminTab('templates')" id="tab-templates" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">點檢範本</button>
+                    <button onclick="window.app.switchAdminTab('users')" id="tab-users" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">人員管理</button>
+                    
                     <button onclick="window.app.switchAdminTab('checklistHistory')" id="tab-checklistHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">點檢紀錄</button>
                     <button onclick="window.app.switchAdminTab('maintenanceHistory')" id="tab-maintenanceHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">保養紀錄</button>
                     <button onclick="window.app.switchAdminTab('reports')" id="tab-reports" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">報表輸出</button>
@@ -131,9 +175,10 @@
                 <div id="equipment-list-section">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-slate-800">設備列表</h2>
-                        <button onclick="window.app.showEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm">新增設備</button>
+                        <button onclick="window.app.showEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm action-add">新增設備</button>
                     </div>
-                    <div id="equipment-category-tabs" class="mb-4 border-b border-gray-200 overflow-x-auto"></div>
+                    <!-- 設備分類切換區 (已改為下拉選單) -->
+                    <div id="equipment-category-tabs" class="mb-6"></div>
                     <div id="equipment-list-container"></div>
                 </div>
                 
@@ -166,7 +211,7 @@
                             <label class="block text-xs font-medium text-slate-500 mb-2">設備圖片</label>
                             <div class="flex items-center gap-4">
                                 <img id="image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border">
-                                <button type="button" onclick="document.getElementById('edit-device-image').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50">上傳圖片</button>
+                                <button type="button" onclick="document.getElementById('edit-device-image').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50">📷 拍照 / 上傳</button>
                                 <input type="file" id="edit-device-image" accept="image/*" class="hidden" onchange="window.app.handleImageUpload(this)">
                             </div>
                         </div>
@@ -196,7 +241,7 @@
                 <div id="template-list-section">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-slate-800">點檢範本管理</h2>
-                        <button onclick="window.app.showTemplateEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm">新增範本</button>
+                        <button onclick="window.app.showTemplateEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm action-add">新增範本</button>
                     </div>
                     <div id="template-list-container" class="space-y-3"></div>
                 </div>
@@ -218,15 +263,18 @@
             </div>
             
             <div id="admin-tab-content-users" class="hidden">
-                <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">人員列表</h2><button onclick="window.app.showUserEditor()" class="bg-indigo-600 text-white px-4 py-2 rounded">新增</button></div>
+                <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">人員列表</h2><button onclick="window.app.showUserEditor()" class="bg-indigo-600 text-white px-4 py-2 rounded action-add">新增</button></div>
                 <div id="user-list-container" class="space-y-2"></div>
                 <div id="user-editor-section" class="hidden card p-6">
                     <h2 id="user-editor-title" class="text-xl font-bold mb-4">編輯人員</h2>
                     <div class="space-y-3">
                         <input type="text" id="edit-user-id" placeholder="ID" class="w-full p-2 border rounded">
                         <input type="text" id="edit-user-name" placeholder="姓名" class="w-full p-2 border rounded">
-                        <select id="edit-user-role" class="w-full p-2 border rounded"><option value="operator">操作員</option><option value="manager">主管</option></select>
-                        <input type="password" id="edit-user-password" placeholder="密碼 (主管必填)" class="w-full p-2 border rounded hidden">
+                        <select id="edit-user-role" class="w-full p-2 border rounded">
+                            <option value="operator">操作員</option>
+                            <option value="manager">管理員</option>
+                        </select>
+                        <input type="password" id="edit-user-password" placeholder="密碼 (管理員必填)" class="w-full p-2 border rounded hidden">
                     </div>
                     <div class="flex justify-end gap-2 mt-4"><button onclick="window.app.showUserList()" class="bg-gray-200 px-4 py-2 rounded">取消</button><button onclick="window.app.saveUser(this)" class="bg-indigo-600 text-white px-4 py-2 rounded">儲存</button></div>
                 </div>
@@ -251,7 +299,7 @@
                      <div class="mt-8 text-right text-sm text-slate-500"><p>製表時間: <span id="report-timestamp"></span></p></div>
                  </div>
                  <div id="report-actions" class="mt-4 flex justify-end gap-3 hidden">
-                     <button onclick="window.app.printReport()" class="bg-slate-700 text-white font-bold py-2 px-6 rounded hover:bg-slate-800 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>列印 / 另存 PDF</button>
+                     <button onclick="window.app.printReport()" class="bg-slate-700 text-white font-bold py-2 px-6 rounded hover:bg-slate-800 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>列印 / 另存 PDF</button>
                  </div>
              </div>
 
@@ -266,20 +314,21 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (Scanner, Template, Maint, QR) -->
     <!-- 掃描後動作選擇 Modal -->
     <div id="scan-action-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 hidden z-[140] flex">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center hidden" id="scan-action-content">
              <h3 class="text-xl font-bold mb-2 text-slate-800">掃描成功</h3>
              <p id="scan-match-name" class="text-lg text-indigo-600 font-bold mb-6">設備名稱</p>
              <div class="space-y-3">
-                 <button id="btn-scan-checklist" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2">📋 開始點檢</button>
-                 <button id="btn-scan-maintenance" class="w-full bg-orange-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-orange-600 shadow-md flex items-center justify-center gap-2">🔧 記錄保養</button>
+                 <button id="btn-scan-checklist" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 shadow-md flex items-center justify-center gap-2 action-submit">📋 開始點檢</button>
+                 <button id="btn-scan-maintenance" class="w-full bg-orange-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-orange-600 shadow-md flex items-center justify-center gap-2 action-submit">🔧 記錄保養</button>
                  <button onclick="document.getElementById('scan-action-modal').classList.add('hidden')" class="w-full bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-lg hover:bg-slate-300">取消</button>
              </div>
         </div>
     </div>
 
+    <!-- Template Modal -->
     <div id="template-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[120] hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
             <h3 class="text-xl font-bold mb-4">選擇範本</h3>
@@ -288,7 +337,7 @@
         </div>
     </div>
 
-    <!-- 保養紀錄視窗 -->
+    <!-- Maintenance Modal -->
     <div id="maintenance-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[120] hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full">
             <h2 class="text-2xl font-semibold mb-4 text-slate-800">新增保養紀錄</h2>
@@ -309,6 +358,14 @@
                     <label class="block text-sm font-medium text-slate-600">備註說明</label>
                     <textarea id="maintenance-notes" class="w-full p-2 border rounded mt-1" rows="3"></textarea>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-2">保養照片 (選填)</label>
+                    <div class="flex items-center gap-4">
+                        <img id="maint-image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border">
+                        <button type="button" onclick="document.getElementById('maint-image-upload').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50">📷 拍照 / 上傳</button>
+                        <input type="file" id="maint-image-upload" accept="image/*" class="hidden" onchange="window.app.handleMaintImageUpload(this)">
+                    </div>
+                </div>
             </div>
             <div class="mt-6 flex justify-end space-x-3">
                 <button onclick="window.app.closeMaintenanceModal()" class="bg-slate-200 py-2 px-4 rounded">取消</button>
@@ -317,12 +374,11 @@
         </div>
     </div>
 
-    <!-- QR Code Modal (已升級：含下載按鈕 & 文字合成) -->
+    <!-- QR Code Display Modal -->
     <div id="qr-code-display-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 hidden z-[130] flex">
         <div class="bg-white rounded-xl shadow-2xl p-6 text-center max-w-sm w-full hidden" id="qr-display-content">
             <h3 class="text-xl font-bold mb-2">設備 QR Code</h3>
             <p id="qr-display-name" class="text-gray-600 mb-4"></p>
-            <!-- 容器清空，改由 JS 動態插入 Canvas -->
             <div id="qr-code-container" class="flex justify-center mb-4 border p-2 rounded bg-white"></div>
             <p class="text-xs text-gray-400 mb-4">使用手機相機掃描即可直接開啟</p>
             <div class="space-y-2">
@@ -335,6 +391,7 @@
         </div>
     </div>
 
+    <!-- QR Scanner Modal -->
     <div id="qr-scanner-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 hidden z-50 flex">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 text-center hidden" id="qr-scanner-content">
             <h3 class="text-2xl font-bold mb-4">掃描設備 QR Code</h3>
@@ -369,23 +426,18 @@
 
         let equipmentDatabase = {}, userDatabase = {}, templateDatabase = {}, checkHistory = [], maintenanceHistory = [];
         let loggedInUser = null, currentCheckId = null, html5QrCode = null, currentMaintEqId = null;
-        let currentQrId = null; // Store current QR ID for filename
+        let currentQrId = null; 
 
         window.app = {};
 
         const init = () => {
             console.log("初始化 Firebase...");
-            // URL Parameter Check for Deep Linking
             const urlParams = new URLSearchParams(window.location.search);
             const scanId = urlParams.get('id');
-            if(scanId) {
-                console.log("偵測到掃描 ID:", scanId);
-                window.app.pendingScanId = scanId;
-            }
+            if(scanId) window.app.pendingScanId = scanId;
 
-            loggedInUser = { id: 'default_admin', name: '預設操作員', role: 'manager' };
-            updateUIState();
             startListeners();
+            
             const today = new Date().toISOString().slice(0,10);
             document.getElementById('report-start-date').value = today;
             document.getElementById('report-end-date').value = today;
@@ -398,23 +450,29 @@
             };
 
             onSnapshot(getCollectionRef("users"), (snap) => {
-                let newData = {}; snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; });
+                let newData = {}; 
+                snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; });
                 userDatabase = newData;
+                renderLoginOptions();
+                if (!loggedInUser) {
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    document.getElementById('login-modal').classList.remove('hidden');
+                }
                 if (document.getElementById('user-list-container').offsetParent) window.app.renderUserList();
-                document.getElementById('loading-overlay').classList.add('hidden');
             }, onError);
 
             onSnapshot(getCollectionRef("equipment"), (snap) => {
                 let newData = {}; snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; });
                 equipmentDatabase = newData;
                 if (document.getElementById('equipment-list-section').offsetParent) window.app.renderEquipmentList();
-                populateManualDropdown();
+                if (document.getElementById('admin-tab-content-checklistHistory').offsetParent) window.app.renderChecklistHistory(document.getElementById('check-filter-select')?.value || 'ALL');
+                if (document.getElementById('admin-tab-content-maintenanceHistory').offsetParent) window.app.renderMaintenanceHistory(document.getElementById('maint-filter-select')?.value || 'ALL');
                 
-                // Handle Pending Deep Link (Scan)
-                if(window.app.pendingScanId) {
+                populateManualDropdown();
+                if(window.app.pendingScanId && loggedInUser) { 
                     if(equipmentDatabase[window.app.pendingScanId]) {
                         window.app.handleScanResult(window.app.pendingScanId);
-                        window.app.pendingScanId = null; // Clear it
+                        window.app.pendingScanId = null; 
                         try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e){}
                     }
                 }
@@ -428,28 +486,78 @@
 
             onSnapshot(getCollectionRef("check_history"), (snap) => {
                 checkHistory = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                if(document.getElementById('admin-tab-content-checklistHistory').offsetParent) window.app.renderChecklistHistory();
+                if(document.getElementById('admin-tab-content-checklistHistory').offsetParent) window.app.renderChecklistHistory(document.getElementById('check-filter-select')?.value || 'ALL');
             }, onError);
 
             onSnapshot(getCollectionRef("maintenance_history"), (snap) => {
                 maintenanceHistory = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                if(document.getElementById('admin-tab-content-maintenanceHistory').offsetParent) window.app.renderMaintenanceHistory();
+                if(document.getElementById('admin-tab-content-maintenanceHistory').offsetParent) window.app.renderMaintenanceHistory(document.getElementById('maint-filter-select')?.value || 'ALL');
             }, onError);
         }
 
-        window.app.logout = () => {}; 
+        // 登入邏輯
+        function renderLoginOptions() {
+            const select = document.getElementById('login-user-select');
+            select.innerHTML = '<option value="guest" selected>👤 訪客 (僅供檢視)</option>';
+            Object.values(userDatabase).forEach(user => {
+                const roleText = user.role === 'manager' ? '👑 管理員' : '🔧 操作員';
+                select.add(new Option(`${roleText} - ${user.name}`, user.id));
+            });
+        }
+
+        window.app.handleLogin = function() {
+            const select = document.getElementById('login-user-select');
+            const userId = select.value;
+            if (userId === 'guest') { loggedInUser = { id: 'guest', name: '訪客', role: 'guest' }; } 
+            else { loggedInUser = userDatabase[userId]; }
+            if (!loggedInUser) return showToast("登入錯誤，請重試", "error");
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            updateUIState();
+            if(window.app.pendingScanId && equipmentDatabase[window.app.pendingScanId]) {
+                window.app.handleScanResult(window.app.pendingScanId); window.app.pendingScanId = null;
+            }
+        };
+
+        window.app.logout = function() {
+            loggedInUser = null;
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            document.getElementById('admin-mode').classList.add('hidden');
+            document.getElementById('user-mode').classList.remove('hidden');
+            document.getElementById('toggle-mode-btn').textContent = "⚙️ 管理後台";
+        };
 
         function updateUIState() {
             document.getElementById('logged-in-view').classList.remove('hidden');
             document.getElementById('logged-in-name').textContent = loggedInUser.name;
+            const roleBadge = document.getElementById('role-badge');
+            const body = document.body;
+            body.classList.remove('role-guest', 'role-operator', 'role-manager');
+            body.classList.add(`role-${loggedInUser.role}`);
+            let roleName = '';
+            if (loggedInUser.role === 'manager') roleName = '管理員';
+            else if (loggedInUser.role === 'operator') roleName = '操作員';
+            else roleName = '訪客';
+            roleBadge.textContent = roleName;
+            roleBadge.className = `ml-2 px-2 py-0.5 rounded text-xs font-bold ${loggedInUser.role === 'manager' ? 'bg-purple-100 text-purple-800' : loggedInUser.role === 'operator' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-600'}`;
+            const guestWarning = document.querySelector('.guest-warning');
+            if (loggedInUser.role === 'guest') {
+                guestWarning.classList.remove('hidden');
+                document.getElementById('toggle-mode-btn').classList.remove('hidden');
+            } else {
+                guestWarning.classList.add('hidden');
+                if (loggedInUser.role === 'operator') { document.getElementById('toggle-mode-btn').classList.add('hidden'); } else { document.getElementById('toggle-mode-btn').classList.remove('hidden'); }
+            }
             document.getElementById('main-content').classList.remove('hidden');
-            document.getElementById('toggle-mode-btn').classList.remove('hidden');
             populateManualDropdown();
         }
         
         function populateManualDropdown() {
             const sel = document.getElementById('manual-category-select');
             const devSel = document.getElementById('manual-device-select');
+            const btnStart = document.getElementById('manual-start-button');
+            const btnMaint = document.getElementById('manual-maintenance-button');
             if (!equipmentDatabase || Object.keys(equipmentDatabase).length === 0) return;
             const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))];
             const currentVal = sel.value;
@@ -457,123 +565,67 @@
             cats.forEach(c => sel.add(new Option(c, c)));
             if (currentVal && cats.includes(currentVal)) sel.value = currentVal;
             sel.onchange = () => {
-                devSel.innerHTML = '<option value="">請選擇設備...</option>';
-                devSel.disabled = false;
+                devSel.innerHTML = '<option value="">請選擇設備...</option>'; devSel.disabled = false;
                 Object.values(equipmentDatabase).filter(e => (e.category || '未分類') === sel.value).forEach(e => devSel.add(new Option(e.name, e.id)));
-                document.getElementById('manual-start-button').disabled = true;
+                btnStart.disabled = true; btnMaint.disabled = true;
             };
-            devSel.onchange = () => document.getElementById('manual-start-button').disabled = !devSel.value;
+            devSel.onchange = () => {
+                const hasValue = !!devSel.value; const isGuest = loggedInUser && loggedInUser.role === 'guest';
+                btnStart.disabled = !hasValue || isGuest; btnMaint.disabled = !hasValue || isGuest;
+            };
         }
 
-        window.app.handleManualSelection = () => {
-             const id = document.getElementById('manual-device-select').value;
-             startChecklist(id);
-        };
+        window.app.handleManualSelection = () => { const id = document.getElementById('manual-device-select').value; startChecklist(id); };
+        window.app.handleManualMaintenance = () => { const id = document.getElementById('manual-device-select').value; window.app.showMaintenanceModal(id); };
 
         function startChecklist(id) {
-            const eq = equipmentDatabase[id];
-            if (!eq) return;
+            if (loggedInUser.role === 'guest') return showToast("訪客無法執行點檢", "error");
+            const eq = equipmentDatabase[id]; if (!eq) return;
             currentCheckId = id;
-            document.getElementById('main-content').classList.add('hidden');
-            document.getElementById('checklist-section').classList.remove('hidden');
-            document.getElementById('device-name').textContent = eq.name;
-            document.getElementById('device-asset-no').textContent = eq.assetNumber || '無';
-            document.getElementById('user-name-display').textContent = loggedInUser.name;
-            document.getElementById('check-date').textContent = new Date().toISOString().slice(0,10);
-            const container = document.getElementById('checklist-items-container');
-            container.innerHTML = '';
+            document.getElementById('main-content').classList.add('hidden'); document.getElementById('checklist-section').classList.remove('hidden');
+            document.getElementById('device-name').textContent = eq.name; document.getElementById('device-asset-no').textContent = eq.assetNumber || '無';
+            document.getElementById('user-name-display').textContent = loggedInUser.name; document.getElementById('check-date').textContent = new Date().toISOString().slice(0,10);
+            const container = document.getElementById('checklist-items-container'); container.innerHTML = '';
             if (eq.items) {
                 eq.items.forEach(cat => {
-                    const group = document.createElement('div');
-                    group.innerHTML = `<h3 class="font-bold text-lg mb-2 text-slate-600 border-b pb-1">${cat.category}</h3>`;
+                    const group = document.createElement('div'); group.innerHTML = `<h3 class="font-bold text-lg mb-2 text-slate-600 border-b pb-1">${cat.category}</h3>`;
                     cat.subItems.forEach(item => {
-                        group.innerHTML += `
-                        <div class="card p-4 mb-3 item-row" data-cat="${cat.category}" data-text="${item.text}">
-                            <div class="flex justify-between items-center">
-                                <span class="text-slate-800 font-medium">${item.text}</span>
-                                <div class="space-x-1 flex-shrink-0">
-                                    <button onclick="window.app.setStatus(this, 'normal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">正常</button>
-                                    <button onclick="window.app.setStatus(this, 'abnormal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">異常</button>
-                                </div>
-                            </div>
-                            <input type="text" class="abnormal-input hidden w-full mt-2 p-2 border rounded text-sm bg-red-50 text-red-700 placeholder-red-300" placeholder="請說明異常原因...">
-                        </div>`;
-                    });
-                    container.appendChild(group);
+                        group.innerHTML += `<div class="card p-4 mb-3 item-row" data-cat="${cat.category}" data-text="${item.text}"><div class="flex justify-between items-center"><span class="text-slate-800 font-medium">${item.text}</span><div class="space-x-1 flex-shrink-0"><button onclick="window.app.setStatus(this, 'normal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">正常</button><button onclick="window.app.setStatus(this, 'abnormal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">異常</button></div></div><input type="text" class="abnormal-input hidden w-full mt-2 p-2 border rounded text-sm bg-red-50 text-red-700 placeholder-red-300" placeholder="請說明異常原因..."></div>`;
+                    }); container.appendChild(group);
                 });
             }
         }
 
         window.app.setStatus = function(btn, status) {
             const row = btn.closest('.item-row');
-            row.querySelectorAll('.status-btn').forEach(b => {
-                b.classList.remove('selected', 'selected-normal', 'selected-abnormal', 'bg-green-500', 'bg-red-500', 'text-white');
-            });
+            row.querySelectorAll('.status-btn').forEach(b => { b.classList.remove('selected', 'selected-normal', 'selected-abnormal', 'bg-green-500', 'bg-red-500', 'text-white'); });
             btn.classList.add('selected');
-            if(status === 'normal') btn.classList.add('selected-normal', 'bg-green-500', 'text-white');
-            else btn.classList.add('selected-abnormal', 'bg-red-500', 'text-white');
-            
-            const input = row.querySelector('.abnormal-input');
-            if(status === 'abnormal') input.classList.remove('hidden'); else input.classList.add('hidden');
+            if(status === 'normal') btn.classList.add('selected-normal', 'bg-green-500', 'text-white'); else btn.classList.add('selected-abnormal', 'bg-red-500', 'text-white');
+            const input = row.querySelector('.abnormal-input'); if(status === 'abnormal') input.classList.remove('hidden'); else input.classList.add('hidden');
             row.dataset.status = status;
         };
 
         window.app.submitChecklist = async function(btn) {
+            if (loggedInUser.role === 'guest') return;
             btn.disabled = true; btn.innerText = "提交中...";
             try {
-                const rows = document.querySelectorAll('.item-row');
-                const items = [];
-                rows.forEach(r => {
-                    items.push({
-                        category: r.dataset.cat,
-                        text: r.dataset.text,
-                        status: r.dataset.status === 'abnormal' ? '異常' : '正常',
-                        details: r.querySelector('.abnormal-input').value
-                    });
-                });
-                const record = {
-                    deviceId: currentCheckId,
-                    deviceName: equipmentDatabase[currentCheckId].name,
-                    userId: loggedInUser.id,
-                    userName: loggedInUser.name,
-                    checkTimestamp: serverTimestamp(),
-                    summaryNotes: document.getElementById('summary-notes').value,
-                    items: items
-                };
+                const rows = document.querySelectorAll('.item-row'); const items = [];
+                rows.forEach(r => { items.push({ category: r.dataset.cat, text: r.dataset.text, status: r.dataset.status === 'abnormal' ? '異常' : '正常', details: r.querySelector('.abnormal-input').value }); });
+                const record = { deviceId: currentCheckId, deviceName: equipmentDatabase[currentCheckId].name, userId: loggedInUser.id, userName: loggedInUser.name, checkTimestamp: serverTimestamp(), summaryNotes: document.getElementById('summary-notes').value, items: items };
                 await setDoc(doc(getCollectionRef("check_history")), record);
-                const cycle = parseInt(equipmentDatabase[currentCheckId].checkCycleDays) || 7;
-                const nextDate = new Date();
-                nextDate.setDate(nextDate.getDate() + cycle);
+                const cycle = parseInt(equipmentDatabase[currentCheckId].checkCycleDays) || 7; const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + cycle);
                 await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: nextDate.toISOString().slice(0,10) });
-                showToast('提交成功', 'success');
-                window.app.resetApp();
-            } catch (e) {
-                console.error(e);
-                showToast('提交失敗: ' + e.message, 'error');
-            } finally {
-                btn.disabled = false; btn.innerText = "提交";
-            }
+                showToast('提交成功', 'success'); window.app.resetApp();
+            } catch (e) { console.error(e); showToast('提交失敗: ' + e.message, 'error'); } finally { btn.disabled = false; btn.innerText = "提交"; }
         };
 
-        window.app.resetApp = function() {
-            document.getElementById('checklist-section').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-            currentCheckId = null;
-        };
+        window.app.resetApp = function() { document.getElementById('checklist-section').classList.add('hidden'); document.getElementById('main-content').classList.remove('hidden'); currentCheckId = null; };
 
-        // --- 後台管理 ---
         window.app.toggleManagementMode = function() {
-            const userMode = document.getElementById('user-mode');
-            const adminMode = document.getElementById('admin-mode');
-            const btn = document.getElementById('toggle-mode-btn');
-            if (userMode.classList.contains('hidden')) {
-                userMode.classList.remove('hidden'); adminMode.classList.add('hidden');
-                btn.textContent = "⚙️ 管理後台";
-            } else {
-                userMode.classList.add('hidden'); adminMode.classList.remove('hidden');
-                btn.textContent = "⬅️ 返回點檢";
-                window.app.renderEquipmentList();
-            }
+            const userMode = document.getElementById('user-mode'); const adminMode = document.getElementById('admin-mode'); const btn = document.getElementById('toggle-mode-btn');
+            if (loggedInUser.role === 'operator') { return showToast("權限不足：僅管理員可進入管理後台", "error"); }
+            if (userMode.classList.contains('hidden')) { userMode.classList.remove('hidden'); adminMode.classList.add('hidden'); btn.textContent = "⚙️ 管理後台"; } 
+            else { userMode.classList.add('hidden'); adminMode.classList.remove('hidden'); btn.textContent = "⬅️ 返回點檢"; window.app.renderEquipmentList(); }
         };
 
         window.app.switchAdminTab = function(tab) {
@@ -581,21 +633,27 @@
             document.getElementById(`admin-tab-content-${tab}`).classList.remove('hidden');
             document.querySelectorAll('#admin-mode nav button').forEach(b => b.classList.remove('admin-tab-active', 'text-indigo-600'));
             document.getElementById(`tab-${tab}`).classList.add('admin-tab-active');
-            
             if(tab === 'users') window.app.renderUserList();
             if(tab === 'equipment') window.app.renderEquipmentList();
             if(tab === 'templates') window.app.renderTemplateList();
-            if(tab === 'checklistHistory') window.app.renderChecklistHistory();
-            if(tab === 'maintenanceHistory') window.app.renderMaintenanceHistory();
+            
+            // 傳入預設的篩選狀態 'ALL'，避免初次切換時空白
+            if(tab === 'checklistHistory') window.app.renderChecklistHistory('ALL');
+            if(tab === 'maintenanceHistory') window.app.renderMaintenanceHistory('ALL');
         };
 
-        // 設備管理 (Updated Render to match screenshot)
+        // 設備管理 (Updated: Dropdown List Logic)
         window.app.renderEquipmentList = function() {
             const tabsContainer = document.getElementById('equipment-category-tabs');
             const listContainer = document.getElementById('equipment-list-container');
+            
             if(!equipmentDatabase || Object.keys(equipmentDatabase).length === 0) {
-                listContainer.innerHTML = '<p class="text-center text-gray-400 py-4">無資料</p>'; tabsContainer.innerHTML = ''; return;
+                listContainer.innerHTML = '<p class="text-center text-gray-400 py-4">無資料</p>'; 
+                tabsContainer.innerHTML = ''; 
+                return;
             }
+
+            // Group data
             const groups = {};
             Object.values(equipmentDatabase).forEach(eq => {
                 const cat = eq.category || '未分類';
@@ -603,34 +661,61 @@
                 groups[cat].push(eq);
             });
             const categories = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'zh-TW'));
-            let tabsHtml = '<nav class="flex -mb-px space-x-6 overflow-x-auto">';
-            categories.forEach((cat, index) => {
-                const activeClass = index === 0 ? 'eq-tab-active' : 'eq-tab-inactive';
-                tabsHtml += `<button onclick="window.app.switchEqTab('${cat}')" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeClass}" id="tab-btn-${cat}">${cat}</button>`;
+
+            // 1. Build Dropdown (Replacement for Tabs)
+            let selectHtml = `
+                <div class="flex items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <label class="mr-3 font-bold text-slate-700 flex items-center whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                        分類切換:
+                    </label>
+                    <select id="eq-category-select" onchange="window.app.filterEquipmentCategory(this.value)" class="form-select w-full p-2 border border-gray-300 rounded text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                        <option value="ALL">📋 全部顯示 (${Object.keys(equipmentDatabase).length} 台)</option>
+            `;
+            
+            categories.forEach(cat => {
+                selectHtml += `<option value="${cat}">${cat} (${groups[cat].length})</option>`;
             });
-            tabsHtml += '</nav>';
-            tabsContainer.innerHTML = tabsHtml;
+            selectHtml += `</select></div>`;
+            
+            tabsContainer.innerHTML = selectHtml; // Inject dropdown where tabs were
+
+            // 2. Build List Content
             let listHtml = '';
-            categories.forEach((cat, index) => {
-                const hiddenClass = index === 0 ? '' : 'hidden';
-                listHtml += `<div id="cat-content-${cat}" class="${hiddenClass} animate-fade-in space-y-3">`;
+            categories.forEach((cat) => {
+                // Show ALL by default
+                listHtml += `<div id="cat-content-${cat}" class="eq-category-group space-y-3 mb-6">`;
+                
+                // Add a header for the category so it's clear when viewing "All"
+                listHtml += `<h3 class="font-bold text-slate-500 text-sm border-b pb-1 mb-2 mt-4">${cat}</h3>`;
+                
                 groups[cat].forEach(eq => {
                     const imgUrl = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片';
-                    let statusClass = 'active'; if(eq.status==='維修中') statusClass='repair'; else if(eq.status==='未使用') statusClass='unused';
+                    let statusClass = 'active'; 
+                    if(eq.status==='維修中') statusClass='repair'; 
+                    else if(eq.status==='未使用') statusClass='unused';
+                    
                     listHtml += `
-                    <div class="card p-4 flex flex-col sm:flex-row items-center gap-4">
-                        <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md border flex-shrink-0">
+                    <div class="card p-4 flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition-shadow">
+                        <img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md border flex-shrink-0 cursor-pointer" onclick="window.open('${imgUrl}')">
                         <div class="flex-grow text-center sm:text-left w-full">
-                            <h3 class="font-bold text-lg text-slate-800"><span class="status-dot ${statusClass}"></span>${eq.name}</h3>
-                            <p class="text-sm text-slate-500 mt-1">ID: ${eq.id} | 地點: ${eq.location || '未設定'}</p>
-                            <p class="text-xs text-gray-400 mt-2">下次點檢: ${eq.nextCheckDate || '未設定'}</p>
-                            <p class="text-xs text-gray-400">下次清潔: ${eq.nextCleaningDate || '未設定'}</p>
+                            <h3 class="font-bold text-lg text-slate-800 flex items-center justify-center sm:justify-start">
+                                <span class="status-dot ${statusClass}"></span>${eq.name}
+                            </h3>
+                            <div class="text-sm text-slate-500 mt-1 space-y-1">
+                                <p>🆔 ID: <span class="font-mono text-slate-700">${eq.id}</span></p>
+                                <p>📍 地點: ${eq.location || '未設定'}</p>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2 text-xs text-gray-400 justify-center sm:justify-start">
+                                <span class="bg-slate-100 px-2 py-1 rounded">下次點檢: ${eq.nextCheckDate || '未設定'}</span>
+                                <span class="bg-slate-100 px-2 py-1 rounded">下次清潔: ${eq.nextCleaningDate || '未設定'}</span>
+                            </div>
                         </div>
                         <div class="flex gap-2 flex-wrap justify-center sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onclick="window.app.showQRCode('${eq.id}', '${eq.name}')" class="bg-green-500 text-white text-sm font-bold px-3 py-2 rounded hover:bg-green-600 transition-colors">QR Code</button>
-                            <button onclick="window.app.showMaintenanceModal('${eq.id}')" class="bg-orange-500 text-white text-sm font-bold px-3 py-2 rounded hover:bg-orange-600 transition-colors">保養</button>
-                            <button onclick="window.app.showEditor('${eq.id}')" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded hover:bg-blue-700 transition-colors">編輯</button>
-                            <button onclick="window.app.deleteEquipment('${eq.id}')" class="bg-red-500 text-white text-sm font-bold px-3 py-2 rounded hover:bg-red-600 transition-colors">刪除</button>
+                            <button onclick="window.app.showQRCode('${eq.id}', '${eq.name}')" class="bg-white border border-green-500 text-green-600 text-sm font-bold px-3 py-2 rounded hover:bg-green-50 transition-colors flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>QR</button>
+                            <button onclick="window.app.showMaintenanceModal('${eq.id}')" class="bg-orange-100 text-orange-600 border border-orange-200 text-sm font-bold px-3 py-2 rounded hover:bg-orange-200 transition-colors action-edit">保養</button>
+                            <button onclick="window.app.showEditor('${eq.id}')" class="bg-blue-100 text-blue-600 border border-blue-200 text-sm font-bold px-3 py-2 rounded hover:bg-blue-200 transition-colors action-edit">編輯</button>
+                            <button onclick="window.app.deleteEquipment('${eq.id}')" class="bg-red-100 text-red-600 border border-red-200 text-sm font-bold px-3 py-2 rounded hover:bg-red-200 transition-colors action-delete">刪除</button>
                         </div>
                     </div>`;
                 });
@@ -639,604 +724,251 @@
             listContainer.innerHTML = listHtml;
         };
 
-        window.app.switchEqTab = function(cat) {
-            document.querySelectorAll('#equipment-category-tabs button').forEach(btn => {
-                if (btn.id === `tab-btn-${cat}`) { btn.classList.remove('eq-tab-inactive'); btn.classList.add('eq-tab-active'); } 
-                else { btn.classList.remove('eq-tab-active'); btn.classList.add('eq-tab-inactive'); }
+        // Helper function for the select onchange
+        window.app.filterEquipmentCategory = function(selectedCat) {
+            const allGroups = document.querySelectorAll('.eq-category-group');
+            allGroups.forEach(group => {
+                if (selectedCat === 'ALL') {
+                    group.classList.remove('hidden');
+                } else {
+                    if (group.id === `cat-content-${selectedCat}`) {
+                        group.classList.remove('hidden');
+                    } else {
+                        group.classList.add('hidden');
+                    }
+                }
             });
-            document.querySelectorAll('[id^="cat-content-"]').forEach(div => div.classList.add('hidden'));
-            document.getElementById(`cat-content-${cat}`).classList.remove('hidden');
         };
 
         window.app.deleteEquipment = async function(id) {
             if(confirm('確定刪除此設備？')) await deleteDoc(getDocRef("equipment", id));
         };
-
-        // QR Code 顯示與產生功能 (已升級 URL Based + Canvas Drawing)
-        window.app.showQRCode = function(id, name) {
-            currentQrId = id;
-            const container = document.getElementById('qr-code-container');
-            container.innerHTML = ''; // Clear previous content
-            document.getElementById('qr-display-name').textContent = name;
-            document.getElementById('qr-code-display-modal').classList.remove('hidden');
-            document.getElementById('qr-display-content').classList.remove('hidden');
-
-            // 1. 指定的固定網址
-            const baseUrl = "https://saniltw.github.io/welddata/5.html";
-            const qrData = `${baseUrl}?id=${id}`;
-
-            // 2. 先在記憶體中建立一個隱藏的 div 來產生原始 QR Code
-            const hiddenDiv = document.createElement('div');
-            // 設定大一點的尺寸以確保列印清晰
-            new QRCode(hiddenDiv, { text: qrData, width: 200, height: 200, correctLevel : QRCode.CorrectLevel.H });
-
-            // 3. 等待 QR Code 圖片生成後，繪製到新的 Canvas 上並加上文字
-            const checkQrImage = setInterval(() => {
-                const qrImg = hiddenDiv.querySelector('img');
-                if (qrImg && qrImg.src) {
-                    clearInterval(checkQrImage);
-                    // 確保圖片載入完成
-                    const imgObj = new Image();
-                    imgObj.onload = () => {
-                         window.app.drawCompositeQRCode(imgObj, name, container);
-                    };
-                    imgObj.src = qrImg.src;
-                } else {
-                    // Fallback for canvas-based rendering (some browsers/settings)
-                    const qrCanvas = hiddenDiv.querySelector('canvas');
-                    if(qrCanvas) {
-                        clearInterval(checkQrImage);
-                        window.app.drawCompositeQRCode(qrCanvas, name, container);
-                    }
-                }
-            }, 50);
-        };
-
-        // 繪製合成圖片 (QR Code + 文字)
-        window.app.drawCompositeQRCode = function(sourceImage, text, container) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // 設定尺寸
-            const padding = 20;
-            const qrSize = 200;
-            const textBoxHeight = 50;
-            const width = qrSize + (padding * 2);
-            const height = qrSize + (padding * 2) + textBoxHeight;
-
-            canvas.width = width;
-            canvas.height = height;
-
-            // 1. 填滿白色背景
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, width, height);
-
-            // 2. 繪製 QR Code
-            ctx.drawImage(sourceImage, padding, padding, qrSize, qrSize);
-
-            // 3. 繪製文字 (設備名稱)
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold 18px "Noto Sans TC", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            // 自動縮小文字以適應寬度
-            let fontSize = 18;
-            do {
-                ctx.font = `bold ${fontSize}px "Noto Sans TC", sans-serif`;
-                fontSize -= 1;
-            } while (ctx.measureText(text).width > width - 20 && fontSize > 10);
-
-            ctx.fillText(text, width / 2, height - (textBoxHeight / 2) - 5);
-
-            // 4. 加個外框 (選用，增加質感)
-            ctx.strokeStyle = '#e5e7eb';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(0, 0, width, height);
-
-            // 顯示在畫面上 (縮放以適應螢幕)
-            canvas.style.maxWidth = '100%';
-            canvas.style.height = 'auto';
-            container.appendChild(canvas);
-        };
-
-        // 下載 QR Code 功能 (直接下載 Canvas)
-        window.app.downloadQRCode = function() {
-            const container = document.getElementById('qr-code-container');
-            const canvas = container.querySelector('canvas');
-            
-            if(canvas) {
-                const link = document.createElement('a');
-                // 檔名加上設備名稱，方便辨識
-                const deviceName = document.getElementById('qr-display-name').textContent || 'device';
-                link.download = `QR-${deviceName}.png`;
-                link.href = canvas.toDataURL("image/png");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                showToast("QR Code 尚未產生，請稍候", "error");
-            }
-        };
-
-        // 保養功能
-        window.app.showMaintenanceModal = function(id) {
-            currentMaintEqId = id;
-            document.getElementById('maint-device-name').textContent = equipmentDatabase[id].name;
-            const compSelect = document.getElementById('maintenance-component-name');
-            compSelect.innerHTML = '';
-            // Load components from equipment data
-            const comps = equipmentDatabase[id].components || [];
-            if(comps.length > 0) {
-                comps.forEach(c => compSelect.add(new Option(c.name, c.name)));
-            } else {
-                compSelect.add(new Option('無零件資料', ''));
-            }
-            window.app.toggleMaintType();
-            document.getElementById('maintenance-modal').classList.remove('hidden');
-        };
-
-        window.app.toggleMaintType = function() {
-            const type = document.getElementById('maintenance-type').value;
-            const selector = document.getElementById('maintenance-component-selector');
-            if(type === 'replacement') selector.classList.remove('hidden');
-            else selector.classList.add('hidden');
-        };
-
-        window.app.closeMaintenanceModal = function() {
-            document.getElementById('maintenance-modal').classList.add('hidden');
-        };
-
-        window.app.logMaintenance = async function(btn) {
-            if(!currentMaintEqId) return;
-            btn.disabled = true;
-            const type = document.getElementById('maintenance-type').value;
-            const notes = document.getElementById('maintenance-notes').value;
-            const componentName = type === 'replacement' ? document.getElementById('maintenance-component-name').value : null;
-            
-            try {
-                const record = {
-                    deviceId: currentMaintEqId,
-                    deviceName: equipmentDatabase[currentMaintEqId].name,
-                    userId: loggedInUser.id,
-                    userName: loggedInUser.name,
-                    timestamp: serverTimestamp(),
-                    type, notes, componentName
-                };
-                await setDoc(doc(getCollectionRef("maintenance_history")), record);
-                
-                // Update equipment cycles if needed (simplified logic)
-                const updates = {};
-                if(type === 'cleaning') {
-                    // Assuming default 30 days if not set
-                    const nextClean = new Date();
-                    nextClean.setDate(nextClean.getDate() + 30); 
-                    updates.nextCleaningDate = nextClean.toISOString().slice(0,10);
-                }
-                await updateDoc(getDocRef("equipment", currentMaintEqId), updates);
-
-                showToast("保養紀錄已儲存", "success");
-                window.app.closeMaintenanceModal();
-            } catch(e) {
-                console.error(e);
-                showToast("儲存失敗", "error");
-            } finally {
-                btn.disabled = false;
-            }
-        };
-
-        // 圖片上傳
-        window.app.handleImageUpload = function(input) {
-            if(!input.files[0]) return;
-            const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    const preview = document.getElementById('image-preview');
-                    preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl;
-                }
-                img.src = e.target.result;
-            }
-            reader.readAsDataURL(file);
-        };
-
-        // 設備編輯器
-        window.app.showEditor = function(id = null) {
-            document.getElementById('equipment-list-section').classList.add('hidden');
-            document.getElementById('equipment-editor-section').classList.remove('hidden');
-            document.getElementById('item-editor-container').innerHTML = '';
-            document.getElementById('component-editor-container').innerHTML = '';
-            
-            const sel = document.getElementById('edit-device-category-select');
-            const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))];
-            sel.innerHTML = '<option value="__new__">＋ 新增分類</option>';
-            cats.forEach(c => sel.add(new Option(c, c)));
-            
-            const imgPreview = document.getElementById('image-preview');
-            document.getElementById('edit-device-image').value = ''; 
-            
-            // 授權人員
-            const userContainer = document.getElementById('user-assignment-container');
-            userContainer.innerHTML = '';
-            Object.values(userDatabase).forEach(u => {
-                userContainer.innerHTML += `<label class="flex items-center space-x-2 text-sm p-1"><input type="checkbox" class="auth-user-cb rounded" value="${u.id}"><span class="text-gray-700">${u.name}</span></label>`;
-            });
-
-            if(id) {
-                const eq = equipmentDatabase[id];
-                document.getElementById('edit-device-id').value = eq.id;
-                document.getElementById('edit-device-name').value = eq.name;
-                document.getElementById('edit-device-location').value = eq.location || '';
-                document.getElementById('edit-device-asset').value = eq.assetNumber || '';
-                document.getElementById('edit-device-status').value = eq.status || '使用中';
-                document.getElementById('edit-device-cycle').value = eq.checkCycleDays || '';
-                document.getElementById('edit-device-next-date').value = eq.nextCheckDate || '';
-                if(eq.category) sel.value = eq.category;
-                if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container'));
-                if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c));
-                
-                // Fix for authorizedUsers error: Check if array exists
-                if(Array.isArray(eq.authorizedUsers)) {
-                    eq.authorizedUsers.forEach(uid => {
-                        const cb = userContainer.querySelector(`input[value="${uid}"]`);
-                        if(cb) cb.checked = true;
-                    });
-                }
-                
-                imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片';
-                imgPreview.dataset.imageDataUrl = eq.imageUrl || '';
-            } else {
-                ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset', 'edit-device-cycle', 'edit-device-next-date'].forEach(k=>document.getElementById(k).value='');
-                imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片';
-                imgPreview.dataset.imageDataUrl = '';
-            }
-        };
-
-        window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') {
-            const container = document.getElementById(containerId);
-            const div = document.createElement('div');
-            div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2';
-            div.innerHTML = `
-                <div class="flex justify-between mb-2">
-                    <input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)">
-                    <button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button>
-                </div>
-                <textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>
-            `;
-            container.appendChild(div);
-        };
-
-        // 新增零件編輯功能
-        window.app.addComponentEditor = function(data = null) {
-            const container = document.getElementById('component-editor-container');
-            const div = document.createElement('div');
-            div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center';
-            div.innerHTML = `
-                <input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱">
-                <input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)">
-                <button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>
-            `;
-            container.appendChild(div);
-        };
-
-        window.app.saveEquipment = async function() {
-            const id = document.getElementById('edit-device-id').value;
-            const name = document.getElementById('edit-device-name').value;
-            const catSelect = document.getElementById('edit-device-category-select');
-            const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value;
-            
-            const items = [];
-            document.querySelectorAll('#item-editor-container .editor-item').forEach(el => {
-                const cName = el.querySelector('.cat-name').value;
-                const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text);
-                if(cName) items.push({ category: cName, subItems: subs });
-            });
-
-            const components = [];
-            document.querySelectorAll('#component-editor-container .component-item').forEach(el => {
-                const cName = el.querySelector('.comp-name').value;
-                const cCycle = el.querySelector('.comp-cycle').value;
-                if(cName) components.push({ name: cName, cycle: cCycle });
-            });
-
-            const authorizedUsers = [];
-            document.querySelectorAll('.auth-user-cb:checked').forEach(cb => authorizedUsers.push(cb.value));
-
-            const imgPreview = document.getElementById('image-preview');
-            const data = {
-                name, category: cat, items, components, authorizedUsers,
-                imageUrl: imgPreview.dataset.imageDataUrl || null,
-                location: document.getElementById('edit-device-location').value,
-                assetNumber: document.getElementById('edit-device-asset').value,
-                status: document.getElementById('edit-device-status').value,
-                checkCycleDays: parseInt(document.getElementById('edit-device-cycle').value) || 0,
-                nextCheckDate: document.getElementById('edit-device-next-date').value
-            };
-
-            await setDoc(getDocRef("equipment", id), data, { merge: true });
-            showToast('儲存成功', 'success');
-            window.app.showList();
-        };
         
-        window.app.showList = function() {
-             document.getElementById('equipment-list-section').classList.remove('hidden');
-             document.getElementById('equipment-editor-section').classList.add('hidden');
+        // ... (QR Code, Image Upload, Modals Logic same as before) ...
+        window.app.showQRCode = function(id, name) {
+            currentQrId = id; const container = document.getElementById('qr-code-container'); container.innerHTML = '';
+            document.getElementById('qr-display-name').textContent = name;
+            document.getElementById('qr-code-display-modal').classList.remove('hidden'); document.getElementById('qr-display-content').classList.remove('hidden');
+            const baseUrl = "https://saniltw.github.io/welddata/5.html"; const qrData = `${baseUrl}?id=${id}`; const hiddenDiv = document.createElement('div');
+            new QRCode(hiddenDiv, { text: qrData, width: 200, height: 200, correctLevel : QRCode.CorrectLevel.H });
+            const checkQrImage = setInterval(() => { const qrImg = hiddenDiv.querySelector('img'); if (qrImg && qrImg.src) { clearInterval(checkQrImage); const imgObj = new Image(); imgObj.onload = () => window.app.drawCompositeQRCode(imgObj, name, container); imgObj.src = qrImg.src; } else { const qrCanvas = hiddenDiv.querySelector('canvas'); if(qrCanvas) { clearInterval(checkQrImage); window.app.drawCompositeQRCode(qrCanvas, name, container); } } }, 50);
         };
-
-        // 範本管理
-        window.app.renderTemplateList = function() {
-            const container = document.getElementById('template-list-container');
-            container.innerHTML = '';
-            if(Object.keys(templateDatabase).length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-400">尚無範本</p>'; return;
-            }
-            Object.values(templateDatabase).forEach(t => {
-                container.innerHTML += `
-                <div class="card p-4 flex justify-between items-center">
-                    <span class="font-bold">${t.name}</span>
-                    <div class="flex gap-2">
-                        <button onclick="window.app.showTemplateEditor('${t.id}')" class="text-blue-600 text-sm border px-2 py-1 rounded">編輯</button>
-                        <button onclick="window.app.deleteTemplate('${t.id}')" class="text-red-600 text-sm border px-2 py-1 rounded">刪除</button>
-                    </div>
-                </div>`;
-            });
-        };
-
-        window.app.showTemplateEditor = function(id = null) {
-            document.getElementById('template-list-section').classList.add('hidden');
-            document.getElementById('template-editor-section').classList.remove('hidden');
-            document.getElementById('template-item-editor-container').innerHTML = '';
-            
-            if(id) {
-                const t = templateDatabase[id];
-                document.getElementById('edit-template-id').value = t.id;
-                document.getElementById('edit-template-name').value = t.name;
-                if(t.items) t.items.forEach(i => window.app.addCategoryEditor(i, 'template-item-editor-container'));
-            } else {
-                document.getElementById('edit-template-id').value = '';
-                document.getElementById('edit-template-name').value = '';
-            }
-        };
-
-        window.app.showTemplateList = function() {
-            document.getElementById('template-list-section').classList.remove('hidden');
-            document.getElementById('template-editor-section').classList.add('hidden');
-        };
-
-        window.app.saveTemplate = async function() {
-            const id = document.getElementById('edit-template-id').value || doc(getCollectionRef("checklist_templates")).id;
-            const name = document.getElementById('edit-template-name').value;
-            if(!name) return showToast("請輸入範本名稱", "error");
-
-            const items = [];
-            document.querySelectorAll('#template-item-editor-container .editor-item').forEach(el => {
-                const cName = el.querySelector('.cat-name').value;
-                const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text);
-                if(cName) items.push({ category: cName, subItems: subs });
-            });
-
-            await setDoc(getDocRef("checklist_templates", id), { name, items });
-            showToast("範本已儲存", "success");
-            window.app.showTemplateList();
-        };
-
-        window.app.deleteTemplate = async function(id) {
-            if(confirm('確定刪除此範本？')) await deleteDoc(getDocRef("checklist_templates", id));
-        };
-
-        window.app.showTemplateModal = function() {
-            const container = document.getElementById('template-selection-container');
-            container.innerHTML = '';
-            if(Object.keys(templateDatabase).length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-400">無可用範本</p>';
-            } else {
-                Object.values(templateDatabase).forEach(t => {
-                    container.innerHTML += `<button onclick="window.app.applyTemplate('${t.id}')" class="w-full text-left p-3 border rounded hover:bg-indigo-50 mb-2">${t.name}</button>`;
-                });
-            }
-            document.getElementById('template-modal').classList.remove('hidden');
-            document.getElementById('template-modal').classList.add('flex');
-        };
-
-        window.app.closeTemplateModal = function() {
-            document.getElementById('template-modal').classList.add('hidden');
-            document.getElementById('template-modal').classList.remove('flex');
-        };
-
-        window.app.applyTemplate = function(id) {
-            const t = templateDatabase[id];
-            if(t && t.items) {
-                document.getElementById('item-editor-container').innerHTML = ''; // Clear existing
-                t.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container'));
-                showToast(`已套用範本：${t.name}`, "success");
-            }
-            window.app.closeTemplateModal();
-        };
-
-        // 人員與紀錄 (同前)
-        window.app.renderUserList = function() {
-            const c = document.getElementById('user-list-container'); c.innerHTML = '';
-            Object.values(userDatabase).forEach(u => {
-                c.innerHTML += `<div class="card p-3 flex justify-between items-center mb-2"><div><span class="font-bold">${u.name}</span> <span class="text-xs text-gray-500">(${u.role})</span></div><div class="space-x-2"><button onclick="window.app.showUserEditor('${u.id}')" class="text-blue-600 text-sm">編輯</button><button onclick="window.app.deleteUser('${u.id}')" class="text-red-600 text-sm">刪除</button></div></div>`;
-            });
-        };
-        window.app.showUserEditor = (id = null) => {
-            document.getElementById('user-list-container').classList.add('hidden');
-            document.getElementById('user-editor-section').classList.remove('hidden');
-            const roleSelect = document.getElementById('edit-user-role');
-            roleSelect.onchange = (e) => { document.getElementById('edit-user-password').classList.toggle('hidden', e.target.value !== 'manager'); };
-            if (id && userDatabase[id]) {
-                const user = userDatabase[id];
-                document.getElementById('edit-user-id').value = id; document.getElementById('edit-user-id').disabled = true;
-                document.getElementById('edit-user-name').value = user.name;
-                roleSelect.value = user.role;
-            } else {
-                document.getElementById('edit-user-id').value = ''; document.getElementById('edit-user-id').disabled = false;
-                document.getElementById('edit-user-name').value = '';
-            }
-        };
-        window.app.saveUser = async function() {
-            const id = document.getElementById('edit-user-id').value;
-            const data = { name: document.getElementById('edit-user-name').value, role: document.getElementById('edit-user-role').value };
-            if(data.role === 'manager') data.password = document.getElementById('edit-user-password').value;
-            await setDoc(getDocRef("users", id), data, { merge: true });
-            window.app.showUserList();
-        };
+        window.app.drawCompositeQRCode = function(sourceImage, text, container) { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const padding = 20; const qrSize = 200; const textBoxHeight = 50; const width = qrSize + (padding * 2); const height = qrSize + (padding * 2) + textBoxHeight; canvas.width = width; canvas.height = height; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height); ctx.drawImage(sourceImage, padding, padding, qrSize, qrSize); ctx.fillStyle = '#000000'; ctx.font = 'bold 18px "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; let fontSize = 18; do { ctx.font = `bold ${fontSize}px "Noto Sans TC", sans-serif`; fontSize -= 1; } while (ctx.measureText(text).width > width - 20 && fontSize > 10); ctx.fillText(text, width / 2, height - (textBoxHeight / 2) - 5); ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1; ctx.strokeRect(0, 0, width, height); canvas.style.maxWidth = '100%'; canvas.style.height = 'auto'; container.appendChild(canvas); };
+        window.app.downloadQRCode = function() { const container = document.getElementById('qr-code-container'); const canvas = container.querySelector('canvas'); if(canvas) { const link = document.createElement('a'); const deviceName = document.getElementById('qr-display-name').textContent || 'device'; link.download = `QR-${deviceName}.png`; link.href = canvas.toDataURL("image/png"); document.body.appendChild(link); link.click(); document.body.removeChild(link); } else { showToast("QR Code 尚未產生", "error"); } };
+        window.app.showMaintenanceModal = function(id) { if (loggedInUser.role === 'guest') return showToast("訪客權限不足", "error"); currentMaintEqId = id; document.getElementById('maint-device-name').textContent = equipmentDatabase[id].name; const compSelect = document.getElementById('maintenance-component-name'); compSelect.innerHTML = ''; document.getElementById('maintenance-notes').value = ''; document.getElementById('maint-image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; document.getElementById('maint-image-preview').removeAttribute('data-image-data-url'); document.getElementById('maint-image-upload').value = ''; const comps = equipmentDatabase[id].components || []; if(comps.length > 0) comps.forEach(c => compSelect.add(new Option(c.name, c.name))); else compSelect.add(new Option('無零件資料', '')); window.app.toggleMaintType(); document.getElementById('maintenance-modal').classList.remove('hidden'); };
+        window.app.toggleMaintType = function() { const type = document.getElementById('maintenance-type').value; const selector = document.getElementById('maintenance-component-selector'); if(type === 'replacement') selector.classList.remove('hidden'); else selector.classList.add('hidden'); };
+        window.app.closeMaintenanceModal = function() { document.getElementById('maintenance-modal').classList.add('hidden'); };
+        window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
+        window.app.logMaintenance = async function(btn) { if(!currentMaintEqId) return; btn.disabled = true; const type = document.getElementById('maintenance-type').value; const notes = document.getElementById('maintenance-notes').value; const componentName = type === 'replacement' ? document.getElementById('maintenance-component-name').value : null; const imageUrl = document.getElementById('maint-image-preview').dataset.imageDataUrl || null; try { const record = { deviceId: currentMaintEqId, deviceName: equipmentDatabase[currentMaintEqId].name, userId: loggedInUser.id, userName: loggedInUser.name, timestamp: serverTimestamp(), type, notes, componentName, imageUrl }; await setDoc(doc(getCollectionRef("maintenance_history")), record); const updates = {}; if(type === 'cleaning') { const nextClean = new Date(); nextClean.setDate(nextClean.getDate() + 30); updates.nextCleaningDate = nextClean.toISOString().slice(0,10); } await updateDoc(getDocRef("equipment", currentMaintEqId), updates); showToast("保養紀錄已儲存", "success"); window.app.closeMaintenanceModal(); } catch(e) { console.error(e); showToast("儲存失敗", "error"); } finally { btn.disabled = false; } };
+        window.app.handleImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
+        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; const userContainer = document.getElementById('user-assignment-container'); userContainer.innerHTML = ''; Object.values(userDatabase).forEach(u => { userContainer.innerHTML += `<label class="flex items-center space-x-2 text-sm p-1"><input type="checkbox" class="auth-user-cb rounded" value="${u.id}"><span class="text-gray-700">${u.name}</span></label>`; }); if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; document.getElementById('edit-device-cycle').value = eq.checkCycleDays || ''; document.getElementById('edit-device-next-date').value = eq.nextCheckDate || ''; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(Array.isArray(eq.authorizedUsers)) { eq.authorizedUsers.forEach(uid => { const cb = userContainer.querySelector(`input[value="${uid}"]`); if(cb) cb.checked = true; }); } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset', 'edit-device-cycle', 'edit-device-next-date'].forEach(k=>document.getElementById(k).value=''); imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } };
+        window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
+        window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
+        window.app.saveEquipment = async function() { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const authorizedUsers = []; document.querySelectorAll('.auth-user-cb:checked').forEach(cb => authorizedUsers.push(cb.value)); const imgPreview = document.getElementById('image-preview'); const data = { name, category: cat, items, components, authorizedUsers, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: parseInt(document.getElementById('edit-device-cycle').value) || 0, nextCheckDate: document.getElementById('edit-device-next-date').value }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); };
+        window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); };
+        window.app.renderTemplateList = function() { const container = document.getElementById('template-list-container'); container.innerHTML = ''; if(Object.keys(templateDatabase).length === 0) { container.innerHTML = '<p class="text-center text-gray-400">尚無範本</p>'; return; } Object.values(templateDatabase).forEach(t => { container.innerHTML += `<div class="card p-4 flex justify-between items-center"><span class="font-bold">${t.name}</span><div class="flex gap-2"><button onclick="window.app.showTemplateEditor('${t.id}')" class="text-blue-600 text-sm border px-2 py-1 rounded">編輯</button><button onclick="window.app.deleteTemplate('${t.id}')" class="text-red-600 text-sm border px-2 py-1 rounded">刪除</button></div></div>`; }); };
+        window.app.showTemplateEditor = function(id = null) { document.getElementById('template-list-section').classList.add('hidden'); document.getElementById('template-editor-section').classList.remove('hidden'); document.getElementById('template-item-editor-container').innerHTML = ''; if(id) { const t = templateDatabase[id]; document.getElementById('edit-template-id').value = t.id; document.getElementById('edit-template-name').value = t.name; if(t.items) t.items.forEach(i => window.app.addCategoryEditor(i, 'template-item-editor-container')); } else { document.getElementById('edit-template-id').value = ''; document.getElementById('edit-template-name').value = ''; } };
+        window.app.showTemplateList = function() { document.getElementById('template-list-section').classList.remove('hidden'); document.getElementById('template-editor-section').classList.add('hidden'); };
+        window.app.saveTemplate = async function() { const id = document.getElementById('edit-template-id').value || doc(getCollectionRef("checklist_templates")).id; const name = document.getElementById('edit-template-name').value; if(!name) return showToast("請輸入範本名稱", "error"); const items = []; document.querySelectorAll('#template-item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); await setDoc(getDocRef("checklist_templates", id), { name, items }); showToast("範本已儲存", "success"); window.app.showTemplateList(); };
+        window.app.deleteTemplate = async function(id) { if(confirm('確定刪除此範本？')) await deleteDoc(getDocRef("checklist_templates", id)); };
+        window.app.showTemplateModal = function() { const container = document.getElementById('template-selection-container'); container.innerHTML = ''; if(Object.keys(templateDatabase).length === 0) { container.innerHTML = '<p class="text-center text-gray-400">無可用範本</p>'; } else { Object.values(templateDatabase).forEach(t => { container.innerHTML += `<button onclick="window.app.applyTemplate('${t.id}')" class="w-full text-left p-3 border rounded hover:bg-indigo-50 mb-2">${t.name}</button>`; }); } document.getElementById('template-modal').classList.remove('hidden'); document.getElementById('template-modal').classList.add('flex'); };
+        window.app.closeTemplateModal = function() { document.getElementById('template-modal').classList.add('hidden'); document.getElementById('template-modal').classList.remove('flex'); };
+        window.app.applyTemplate = function(id) { const t = templateDatabase[id]; if(t && t.items) { document.getElementById('item-editor-container').innerHTML = ''; t.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); showToast(`已套用範本：${t.name}`, "success"); } window.app.closeTemplateModal(); };
+        window.app.renderUserList = function() { const c = document.getElementById('user-list-container'); c.innerHTML = ''; Object.values(userDatabase).forEach(u => { c.innerHTML += `<div class="card p-3 flex justify-between items-center mb-2"><div><span class="font-bold">${u.name}</span> <span class="text-xs text-gray-500">(${u.role})</span></div><div class="space-x-2"><button onclick="window.app.showUserEditor('${u.id}')" class="text-blue-600 text-sm">編輯</button><button onclick="window.app.deleteUser('${u.id}')" class="text-red-600 text-sm">刪除</button></div></div>`; }); };
+        window.app.showUserEditor = (id = null) => { document.getElementById('user-list-container').classList.add('hidden'); document.getElementById('user-editor-section').classList.remove('hidden'); const roleSelect = document.getElementById('edit-user-role'); roleSelect.onchange = (e) => { document.getElementById('edit-user-password').classList.toggle('hidden', e.target.value !== 'manager'); }; if (id && userDatabase[id]) { const user = userDatabase[id]; document.getElementById('edit-user-id').value = id; document.getElementById('edit-user-id').disabled = true; document.getElementById('edit-user-name').value = user.name; roleSelect.value = user.role; } else { document.getElementById('edit-user-id').value = ''; document.getElementById('edit-user-id').disabled = false; document.getElementById('edit-user-name').value = ''; } };
+        window.app.saveUser = async function() { const id = document.getElementById('edit-user-id').value; const data = { name: document.getElementById('edit-user-name').value, role: document.getElementById('edit-user-role').value }; if(data.role === 'manager') data.password = document.getElementById('edit-user-password').value; await setDoc(getDocRef("users", id), data, { merge: true }); window.app.showUserList(); };
         window.app.showUserList = function() { document.getElementById('user-list-container').classList.remove('hidden'); document.getElementById('user-editor-section').classList.add('hidden'); };
         window.app.deleteUser = async (id) => { if(confirm('刪除?')) await deleteDoc(getDocRef("users", id)); };
 
-        // 紀錄列表 Render
-        window.app.renderChecklistHistory = function() {
-             const c = document.getElementById('checklist-history-log-container'); c.innerHTML = '';
-             if(checkHistory.length === 0) { c.innerHTML = '<p class="text-gray-400 text-center py-4">無資料</p>'; return; }
-             checkHistory.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds).forEach(h => {
+        // 重新實作：點檢歷史紀錄 (包含分類篩選)
+        window.app.renderChecklistHistory = function(selectedCat = 'ALL') {
+             const c = document.getElementById('checklist-history-log-container');
+             c.innerHTML = '';
+             
+             // 1. 取得所有相關的設備分類 (動態生成選項)
+             const categories = new Set(['ALL']);
+             checkHistory.forEach(h => {
+                 const eq = equipmentDatabase[h.deviceId];
+                 if (eq && eq.category) categories.add(eq.category);
+                 else categories.add('未分類');
+             });
+             
+             // 2. 建立篩選器 HTML
+             let filterHtml = `
+                <div class="mb-4 flex items-center bg-white p-3 rounded-lg border border-gray-200">
+                    <label class="mr-3 font-bold text-slate-700 flex items-center">
+                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        分類篩選:
+                    </label>
+                    <select id="check-filter-select" onchange="window.app.renderChecklistHistory(this.value)" class="form-select flex-grow p-2 border border-gray-300 rounded text-slate-700 font-medium">
+                        <option value="ALL" ${selectedCat === 'ALL' ? 'selected' : ''}>全部顯示</option>
+             `;
+             
+             // 排序並產生選項
+             Array.from(categories).filter(c => c !== 'ALL').sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(cat => {
+                 filterHtml += `<option value="${cat}" ${cat === selectedCat ? 'selected' : ''}>${cat}</option>`;
+             });
+             filterHtml += `</select></div>`;
+             c.innerHTML = filterHtml;
+
+             // 3. 篩選與顯示資料
+             let filteredHistory = checkHistory.filter(h => {
+                 if (selectedCat === 'ALL') return true;
+                 const eq = equipmentDatabase[h.deviceId];
+                 const cat = eq ? (eq.category || '未分類') : '未分類';
+                 return cat === selectedCat;
+             });
+
+             if(filteredHistory.length === 0) { 
+                 c.innerHTML += '<p class="text-gray-400 text-center py-4">無符合條件的資料</p>'; 
+                 return; 
+             }
+             
+             filteredHistory.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds).forEach(h => {
                  const date = h.checkTimestamp?.toDate().toLocaleString() || 'N/A';
                  const abCount = h.items.filter(i => i.status === '異常').length;
                  const statusStr = abCount > 0 ? `<span class="text-red-500 font-bold">${abCount} 異常</span>` : `<span class="text-green-600">正常</span>`;
-                 c.innerHTML += `<div class="card p-4 mb-2 text-sm border-l-4 ${abCount>0?'border-red-500':'border-green-500'}"><p class="font-bold text-lg">${h.deviceName} <span class="text-xs font-normal text-gray-500">by ${h.userName}</span></p><p class="text-gray-500 mt-1 flex justify-between"><span>${date}</span><span>${statusStr}</span></p></div>`;
+                 // 顯示設備分類標籤
+                 const eq = equipmentDatabase[h.deviceId];
+                 const catLabel = eq ? `<span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded ml-2">${eq.category || '未分類'}</span>` : '';
+                 
+                 c.innerHTML += `
+                 <div class="card p-4 mb-2 text-sm border-l-4 ${abCount>0?'border-red-500':'border-green-500'}">
+                    <p class="font-bold text-lg flex items-center flex-wrap">
+                        ${h.deviceName} 
+                        ${catLabel}
+                        <span class="text-xs font-normal text-gray-500 ml-auto">by ${h.userName}</span>
+                    </p>
+                    <p class="text-gray-500 mt-1 flex justify-between"><span>${date}</span><span>${statusStr}</span></p>
+                 </div>`;
              });
         };
 
-        window.app.renderMaintenanceHistory = function() {
-             const c = document.getElementById('maintenance-history-log-container'); c.innerHTML = '';
-             if(maintenanceHistory.length === 0) { c.innerHTML = '<p class="text-gray-400 text-center py-4">無保養資料</p>'; return; }
-             maintenanceHistory.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds).forEach(h => {
+        // 重新實作：保養歷史紀錄 (包含分類篩選)
+        window.app.renderMaintenanceHistory = function(selectedCat = 'ALL') {
+             const c = document.getElementById('maintenance-history-log-container');
+             c.innerHTML = '';
+             
+             // 1. 取得分類
+             const categories = new Set(['ALL']);
+             maintenanceHistory.forEach(h => {
+                 const eq = equipmentDatabase[h.deviceId];
+                 if (eq && eq.category) categories.add(eq.category);
+                 else categories.add('未分類');
+             });
+
+             // 2. 建立篩選器 HTML
+             let filterHtml = `
+                <div class="mb-4 flex items-center bg-white p-3 rounded-lg border border-gray-200">
+                    <label class="mr-3 font-bold text-slate-700 flex items-center">
+                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                        分類篩選:
+                    </label>
+                    <select id="maint-filter-select" onchange="window.app.renderMaintenanceHistory(this.value)" class="form-select flex-grow p-2 border border-gray-300 rounded text-slate-700 font-medium">
+                        <option value="ALL" ${selectedCat === 'ALL' ? 'selected' : ''}>全部顯示</option>
+             `;
+             Array.from(categories).filter(c => c !== 'ALL').sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(cat => {
+                 filterHtml += `<option value="${cat}" ${cat === selectedCat ? 'selected' : ''}>${cat}</option>`;
+             });
+             filterHtml += `</select></div>`;
+             c.innerHTML = filterHtml;
+
+             // 3. 篩選與顯示
+             let filteredHistory = maintenanceHistory.filter(h => {
+                 if (selectedCat === 'ALL') return true;
+                 const eq = equipmentDatabase[h.deviceId];
+                 const cat = eq ? (eq.category || '未分類') : '未分類';
+                 return cat === selectedCat;
+             });
+
+             if(filteredHistory.length === 0) { 
+                 c.innerHTML += '<p class="text-gray-400 text-center py-4">無保養資料</p>'; 
+                 return; 
+             }
+             
+             filteredHistory.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds).forEach(h => {
                  const date = h.timestamp?.toDate().toLocaleString() || 'N/A';
                  const typeStr = h.type === 'cleaning' ? '🧹 機台清潔' : '🔧 零件更換';
-                 c.innerHTML += `<div class="card p-4 mb-2 text-sm border-l-4 border-yellow-500"><p class="font-bold text-lg">${h.deviceName} <span class="text-xs font-normal text-gray-500">by ${h.userName}</span></p><p class="mt-1 font-semibold text-slate-700">${typeStr} ${h.componentName ? `(${h.componentName})` : ''}</p><p class="text-gray-500 mt-1">${date}</p>${h.notes ? `<p class="mt-2 p-2 bg-gray-50 rounded text-gray-600">${h.notes}</p>` : ''}</div>`;
+                 const imgHtml = h.imageUrl ? `<a href="${h.imageUrl}" target="_blank" class="block mt-2"><img src="${h.imageUrl}" class="w-16 h-16 object-cover rounded border hover:scale-110 transition-transform"></a>` : '';
+                 const eq = equipmentDatabase[h.deviceId];
+                 const catLabel = eq ? `<span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded ml-2">${eq.category || '未分類'}</span>` : '';
+
+                 c.innerHTML += `
+                 <div class="card p-4 mb-2 text-sm border-l-4 border-yellow-500">
+                    <p class="font-bold text-lg flex items-center flex-wrap">
+                        ${h.deviceName} 
+                        ${catLabel}
+                        <span class="text-xs font-normal text-gray-500 ml-auto">by ${h.userName}</span>
+                    </p>
+                    <p class="mt-1 font-semibold text-slate-700">${typeStr} ${h.componentName ? `(${h.componentName})` : ''}</p>
+                    <p class="text-gray-500 mt-1">${date}</p>
+                    ${h.notes ? `<p class="mt-2 p-2 bg-gray-50 rounded text-gray-600">${h.notes}</p>` : ''}
+                    ${imgHtml}
+                 </div>`;
              });
         };
 
-        // --- 報表產生邏輯 ---
         window.app.generateReport = function() {
             const type = document.getElementById('report-type').value;
             const start = new Date(document.getElementById('report-start-date').value);
-            const end = new Date(document.getElementById('report-end-date').value);
-            end.setHours(23,59,59);
-
-            const container = document.getElementById('report-preview-container');
-            const content = document.getElementById('report-content');
-            const title = document.getElementById('report-title');
-            const subtitle = document.getElementById('report-subtitle');
-            
-            container.classList.remove('hidden');
-            document.getElementById('report-actions').classList.remove('hidden');
-            subtitle.textContent = `查詢區間: ${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`;
-            document.getElementById('report-timestamp').textContent = new Date().toLocaleString();
-
-            let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">';
-            const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;';
-            const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
-            
+            const end = new Date(document.getElementById('report-end-date').value); end.setHours(23,59,59);
+            const container = document.getElementById('report-preview-container'); const content = document.getElementById('report-content'); const title = document.getElementById('report-title'); const subtitle = document.getElementById('report-subtitle');
+            container.classList.remove('hidden'); document.getElementById('report-actions').classList.remove('hidden');
+            subtitle.textContent = `查詢區間: ${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`; document.getElementById('report-timestamp').textContent = new Date().toLocaleString();
+            let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
             if (type === 'checklist') {
                 title.textContent = "設備點檢紀錄表";
                 html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
-                
-                const filtered = checkHistory.filter(h => {
-                    const d = h.checkTimestamp?.toDate(); return d >= start && d <= end;
-                }).sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds);
-
+                const filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }).sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds);
                 if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`;
-                
                 filtered.forEach(r => {
-                    const date = r.checkTimestamp?.toDate().toLocaleString();
-                    const abItems = r.items.filter(i => i.status === '異常');
-                    const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>';
+                    const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>';
                     html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`;
                 });
-
             } else {
                 title.textContent = "設備保養/維修紀錄表";
                 html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
-                
-                const filtered = maintenanceHistory.filter(h => {
-                    const d = h.timestamp?.toDate(); return d >= start && d <= end;
-                }).sort((a,b) => b.timestamp.seconds - a.timestamp.seconds);
-
+                const filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }).sort((a,b) => b.timestamp.seconds - a.timestamp.seconds);
                 if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`;
-
                 filtered.forEach(r => {
-                    const date = r.timestamp?.toDate().toLocaleString();
-                    const typeStr = r.type === 'cleaning' ? '清潔' : '更換';
+                    const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換';
                     html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`;
                 });
             }
-            html += '</tbody></table>';
-            content.innerHTML = html;
-            
-            // 寫入列印內容
+            html += '</tbody></table>'; content.innerHTML = html;
             const printArea = document.getElementById('print-area');
-            printArea.innerHTML = `
-                <div style="text-align:center; margin-bottom:20px;">
-                    <h1>${title.textContent}</h1>
-                    <p>${subtitle.textContent}</p>
-                </div>
-                ${html}
-                <div style="text-align:right; margin-top:20px; font-size:12px; color:#666;">
-                    製表時間: ${document.getElementById('report-timestamp').textContent}
-                </div>
-            `;
+            printArea.innerHTML = `<div style="text-align:center; margin-bottom:20px;"><h1>${title.textContent}</h1><p>${subtitle.textContent}</p></div>${html}<div style="text-align:right; margin-top:20px; font-size:12px; color:#666;">製表時間: ${document.getElementById('report-timestamp').textContent}</div>`;
         };
-
-        // --- 核心：列印功能實作 ---
-        window.app.printReport = function() {
-            window.print();
-        };
+        window.app.printReport = function() { window.print(); };
 
         window.app.showScanner = function() {
-            document.getElementById('qr-scanner-modal').classList.remove('hidden');
-            document.getElementById('qr-scanner-content').classList.remove('hidden');
+            document.getElementById('qr-scanner-modal').classList.remove('hidden'); document.getElementById('qr-scanner-content').classList.remove('hidden');
             if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10 }, (decodedText) => {
                  window.app.hideScanner();
-                 
-                 // Check if it's a URL-based QR or old Text-based QR
-                 // Try to parse URL to find ID
-                 let id = decodedText;
-                 try {
-                     const url = new URL(decodedText);
-                     const paramId = url.searchParams.get('id');
-                     if(paramId) id = paramId;
-                 } catch(e) {
-                     // Not a valid URL, treat as raw ID (old QR codes)
-                 }
-                 
+                 let id = decodedText; try { const url = new URL(decodedText); const paramId = url.searchParams.get('id'); if(paramId) id = paramId; } catch(e) {}
                  window.app.handleScanResult(id);
             }).catch(err => { document.getElementById('qr-reader').innerHTML = `<p class="text-red-500 p-4">無法啟動相機 (需 HTTPS)</p>`; });
         };
-        
         window.app.handleScanResult = function(id) {
             const eq = equipmentDatabase[id];
-            if (!eq) {
-                showToast("找不到對應的設備 ID: " + id, "error");
-                return;
-            }
-            // Show selection modal
+            if (!eq) { showToast("找不到對應的設備 ID: " + id, "error"); return; }
             document.getElementById('scan-match-name').textContent = eq.name;
-            const btnCheck = document.getElementById('btn-scan-checklist');
-            const btnMaint = document.getElementById('btn-scan-maintenance');
+            const btnCheck = document.getElementById('btn-scan-checklist'); const btnMaint = document.getElementById('btn-scan-maintenance');
             
-            btnCheck.onclick = () => {
-                 document.getElementById('scan-action-modal').classList.add('hidden');
-                 startChecklist(id);
-            };
-            
-            btnMaint.onclick = () => {
-                 document.getElementById('scan-action-modal').classList.add('hidden');
-                 window.app.showMaintenanceModal(id);
-            };
-            
-            document.getElementById('scan-action-modal').classList.remove('hidden');
-            document.getElementById('scan-action-content').classList.remove('hidden');
-        };
+            // 訪客禁用掃描後的操作
+            if(loggedInUser.role === 'guest') {
+                btnCheck.disabled = true; btnCheck.classList.add('opacity-50', 'cursor-not-allowed');
+                btnMaint.disabled = true; btnMaint.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btnCheck.disabled = false; btnCheck.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnMaint.disabled = false; btnMaint.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
 
+            btnCheck.onclick = () => { document.getElementById('scan-action-modal').classList.add('hidden'); startChecklist(id); };
+            btnMaint.onclick = () => { document.getElementById('scan-action-modal').classList.add('hidden'); window.app.showMaintenanceModal(id); };
+            document.getElementById('scan-action-modal').classList.remove('hidden'); document.getElementById('scan-action-content').classList.remove('hidden');
+        };
         window.app.hideScanner = function() { if(html5QrCode) html5QrCode.stop().catch(e=>{}); document.getElementById('qr-scanner-modal').classList.add('hidden'); };
         function showToast(msg, type='info') {
             const t = document.getElementById('toast-container'); const d = document.createElement('div');
