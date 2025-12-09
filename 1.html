@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>專案進度追蹤儀表板</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" xintegrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <style>
         body {
@@ -173,8 +173,8 @@
                                     <select id="sort-select" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500">
                                         <option value="createdAt_desc">建立時間 (新→舊)</option>
                                         <option value="createdAt_asc">建立時間 (舊→新)</option>
-                                        <option value="startDate_desc">開始日 (新→舊)</option>
-                                        <option value="startDate_asc">開始日 (舊→新)</option>
+                                        <option value="startDate_desc">專案開始日 (新→舊)</option>
+                                        <option value="startDate_asc">專案開始日 (舊→新)</option>
                                         <option value="projectName_asc">專案名稱</option>
                                         <option value="projectCategory_asc">專案類別</option>
                                     </select>
