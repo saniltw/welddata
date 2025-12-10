@@ -73,21 +73,65 @@
             .report-table { font-size: 10px; }
             .report-table th, .report-table td { padding: 4px 6px; border: 1px solid #ccc; }
         }
+
+        /* Mobile Card View Optimization */
+        @media (max-width: 768px) {
+            .mobile-table-card thead { display: none; }
+            .mobile-table-card tbody tr {
+                display: block;
+                background: white;
+                margin-bottom: 1rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 0.75rem;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .mobile-table-card tbody td {
+                display: block;
+                text-align: right;
+                padding: 0.75rem;
+                border-bottom: 1px solid #f3f4f6;
+                position: relative;
+                padding-left: 50%;
+            }
+            .mobile-table-card tbody td:last-child { border-bottom: none; }
+            .mobile-table-card tbody td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 0.75rem;
+                width: 45%;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: 600;
+                color: #6b7280;
+                font-size: 0.875rem;
+            }
+            /* Adjust content specific cells */
+            .mobile-table-card tbody td:nth-child(3) { /* Content Items */
+                padding-left: 0.75rem;
+                text-align: left;
+            }
+            .mobile-table-card tbody td:nth-child(3)::before {
+                position: static;
+                display: block;
+                margin-bottom: 0.5rem;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div id="app" class="p-4 sm:p-6 lg:p-8 h-screen flex flex-col">
+    <div id="app" class="p-2 sm:p-6 lg:p-8 h-screen flex flex-col">
         <!-- Toast Notification -->
-        <div id="toast-notification" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg z-50"></div>
+        <div id="toast-notification" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg z-[70]"></div>
 
         <div class="max-w-7xl mx-auto w-full flex-1 flex flex-col min-h-0">
             <header class="mb-4 flex-shrink-0">
                 <div class="flex justify-between items-start flex-wrap gap-4">
                     <div class="flex items-center gap-3">
                         <div>
-                            <h1 class="text-3xl font-bold text-gray-900">專案進度儀表板</h1>
-                            <p class="text-gray-600 mt-1">即時追蹤所有任務的最新狀態與協作進度。</p>
+                            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">專案進度儀表板</h1>
+                            <p class="text-xs sm:text-base text-gray-600 mt-1">即時追蹤所有任務的最新狀態與協作進度。</p>
                         </div>
                         <div class="flex items-center gap-2 mt-1">
                             <!-- Stats Toggle Button -->
@@ -95,7 +139,7 @@
                                 <i id="icon-toggle-stats" class="fas fa-chevron-up rotate-180 transition-transform duration-300"></i>
                             </button>
                             <!-- Summary Text (Show when collapsed) -->
-                            <span id="stats-summary-text" class="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 transition-opacity duration-300">
+                            <span id="stats-summary-text" class="text-xs sm:text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 transition-opacity duration-300">
                                 載入中...
                             </span>
                         </div>
@@ -110,47 +154,50 @@
             <main class="flex-1 flex flex-col min-h-0">
                 <!-- Stats Cards (Wrap for animation) - Default Collapsed -->
                 <div id="stats-wrapper" class="stats-transition stats-collapsed mb-6 flex-shrink-0">
-                    <div id="stats-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div id="stats-cards-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                         <!-- Stat cards will be injected here -->
                         <div class="col-span-full text-center py-4 text-gray-400">載入數據中...</div>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="mb-4 flex justify-between items-center flex-wrap gap-3 flex-shrink-0">
+                <div class="mb-4 flex flex-col sm:flex-row justify-between items-center gap-3 flex-shrink-0">
                     <!-- Search Bar -->
-                    <div class="relative w-full md:w-64">
+                    <div class="relative w-full sm:w-64">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
-                        <input type="text" id="search-input" class="pl-10 block w-full shadow-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2" placeholder="搜尋專案、內容或人員...">
+                        <input type="text" id="search-input" class="pl-10 block w-full shadow-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm p-2" placeholder="搜尋專案、內容或人員...">
                     </div>
 
-                    <div class="flex gap-2 flex-wrap justify-end flex-1">
-                        <button id="btn-show-report" class="flex items-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors duration-300">
-                            <i class="fas fa-file-alt mr-2"></i> 產生報表
+                    <div class="flex gap-2 flex-wrap justify-end w-full sm:w-auto">
+                        <button id="btn-show-report" class="flex-1 sm:flex-none flex items-center justify-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors duration-300 text-sm">
+                            <i class="fas fa-file-alt mr-2"></i> 報表
                         </button>
-                        <button id="btn-show-schedule" class="flex items-center bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-300">
-                            <i class="fas fa-calendar-alt mr-2"></i> 會議記錄排程
+                        <button id="btn-show-schedule" class="flex-1 sm:flex-none flex items-center justify-center bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-300 text-sm">
+                            <i class="fas fa-calendar-alt mr-2"></i> 輪值
                         </button>
-                        <button id="btn-show-settings" class="flex items-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors duration-300">
+                        <button id="btn-show-settings" class="flex-1 sm:flex-none flex items-center justify-center bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors duration-300 text-sm">
                             <i class="fas fa-cog mr-2"></i> 設定
                         </button>
-                        <button id="btn-add-task" class="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300">
-                            <i class="fas fa-plus mr-2"></i> 新增任務
+                        <button id="btn-show-archive" class="flex-1 sm:flex-none flex items-center justify-center bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-orange-700 transition-colors duration-300 text-sm">
+                            <i class="fas fa-archive mr-2"></i> 已封存
+                        </button>
+                        <button id="btn-add-task" class="flex-1 sm:flex-none flex items-center justify-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 text-sm">
+                            <i class="fas fa-plus mr-2"></i> 新增
                         </button>
                     </div>
                 </div>
 
                 <!-- Main Table -->
-                <div class="bg-white rounded-xl shadow-lg flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div class="bg-gray-100 sm:bg-white sm:rounded-xl sm:shadow-lg flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div id="loading-spinner" class="flex justify-center items-center p-8 absolute inset-0 bg-white z-20">
                         <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500"></div>
                     </div>
                     
                     <div id="dashboard-table-container" class="hidden flex flex-col h-full">
                         <!-- Table Filters -->
-                        <div class="p-4 bg-gray-50 border-b flex items-center justify-between flex-wrap gap-4 flex-shrink-0">
+                        <div class="p-4 bg-gray-50 border-b flex items-center justify-between flex-wrap gap-4 flex-shrink-0 rounded-t-xl">
                             <div class="flex items-center space-x-4 flex-wrap gap-y-2">
                                 <label class="flex items-center space-x-2 cursor-pointer select-none">
                                     <input type="checkbox" id="filter-show-completed" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
@@ -163,18 +210,18 @@
                             </div>
                             <div class="flex items-center space-x-4 flex-wrap gap-y-2">
                                 <div class="flex items-center space-x-2">
-                                    <label for="person-filter" class="text-sm text-gray-700">主要人員:</label>
-                                    <select id="person-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="all">全部人員</option>
+                                    <label for="person-filter" class="text-sm text-gray-700">人員:</label>
+                                    <select id="person-filter" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500 w-24">
+                                        <option value="all">全部</option>
                                     </select>
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <label for="sort-select" class="text-sm text-gray-700">排序:</label>
-                                    <select id="sort-select" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500">
+                                    <select id="sort-select" class="border-gray-300 rounded-md shadow-sm text-sm p-1 focus:ring-blue-500 focus:border-blue-500 w-32">
+                                        <option value="startDate_asc" selected>專案開始日 (舊→新)</option>
+                                        <option value="startDate_desc">專案開始日 (新→舊)</option>
                                         <option value="createdAt_desc">建立時間 (新→舊)</option>
                                         <option value="createdAt_asc">建立時間 (舊→新)</option>
-                                        <option value="startDate_desc">專案開始日 (新→舊)</option>
-                                        <option value="startDate_asc">專案開始日 (舊→新)</option>
                                         <option value="projectName_asc">專案名稱</option>
                                         <option value="projectCategory_asc">專案類別</option>
                                     </select>
@@ -182,9 +229,9 @@
                             </div>
                         </div>
                         
-                        <!-- Scrollable Table Area -->
-                        <div class="overflow-auto flex-1 relative">
-                            <table class="min-w-full divide-y divide-gray-200">
+                        <!-- Scrollable Table Area (Mobile Optimized) -->
+                        <div class="overflow-auto flex-1 relative sm:px-0 bg-gray-100 sm:bg-white">
+                            <table class="min-w-full divide-y divide-gray-200 mobile-table-card">
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <!-- Column Widths Adjusted Here -->
@@ -196,15 +243,17 @@
                                         <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="dashboard-table-body" class="bg-white divide-y divide-gray-200">
+                                <tbody id="dashboard-table-body" class="bg-white sm:divide-y sm:divide-gray-200 block sm:table-row-group p-2 sm:p-0">
                                     <!-- Table rows will be injected here -->
                                 </tbody>
                             </table>
                         </div>
                         
-                        <!-- Table Footer/Count -->
-                        <div class="bg-gray-50 px-6 py-2 text-xs text-gray-500 text-right border-t flex-shrink-0">
-                            顯示 <span id="displayed-count">0</span> / 共 <span id="total-count">0</span> 筆專案
+                        <!-- Table Footer -->
+                        <div class="bg-gray-50 px-6 py-3 text-xs text-gray-500 border-t flex-shrink-0 rounded-b-xl flex justify-between items-center">
+                            <div>
+                                目前顯示 <span id="displayed-count" class="font-bold text-gray-700">0</span> 筆任務
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -214,6 +263,18 @@
 
     <!-- Modals -->
     
+    <!-- Generic Confirmation Modal (Replaces Native confirm()) -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-modal-in">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">確認操作</h3>
+            <p id="confirm-message" class="text-gray-600 mb-6">確定要執行此操作嗎？</p>
+            <div class="flex justify-end space-x-3">
+                <button id="btn-confirm-cancel" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button>
+                <button id="btn-confirm-ok" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 shadow-md">確定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Task Form Modal -->
     <div id="task-form-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] flex flex-col animate-modal-in">
@@ -361,6 +422,45 @@
         </div>
     </div>
     
+    <!-- Archive Modal -->
+    <div id="archive-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-6xl max-h-[90vh] flex flex-col animate-modal-in">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h2 class="text-2xl font-bold flex items-center text-orange-600"><i class="fas fa-archive mr-2"></i> 已封存專案</h2>
+                <button id="btn-close-archive" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <!-- Archive Search Bar and Sort -->
+            <div class="mb-4 flex gap-2">
+                <div class="relative flex-grow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" id="archive-search-input" class="pl-10 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm p-2" placeholder="搜尋封存專案名稱、類別或狀態...">
+                </div>
+                <select id="archive-sort-select" class="border-gray-300 rounded-lg shadow-sm text-sm p-2 focus:ring-orange-500 focus:border-orange-500">
+                    <option value="projectName_asc">專案名稱 (A-Z)</option>
+                    <option value="projectName_desc">專案名稱 (Z-A)</option>
+                    <option value="projectCategory_asc">類別 (A-Z)</option>
+                    <option value="projectCategory_desc">類別 (Z-A)</option>
+                </select>
+            </div>
+            <div class="flex-1 min-h-0 overflow-auto">
+                <div id="archive-loading" class="text-center py-8 text-gray-500">載入中...</div>
+                <table class="min-w-full divide-y divide-gray-200" id="archive-table">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">專案名稱</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">類別</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">狀態</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archive-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
     <!-- Schedule Modal -->
     <div id="schedule-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col animate-modal-in">
@@ -391,7 +491,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, remove, serverTimestamp, update, query, orderByChild } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, onValue, set, push, remove, serverTimestamp, update, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         // --- Firebase Config & Auth ---
@@ -445,10 +545,13 @@
         
         // --- Global State ---
         let allTasks = [];
+        let allArchivedTasks = [];
         let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
         let recorderSchedule = { rotation: [], offset: 0 };
         let currentTaskToEdit = null;
         let contentItemCounter = 0; 
+        let unsubscribeTasks = null;
+        let archivedTasksUnsubscribe = null;
 
         // --- DOM Elements ---
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -458,8 +561,18 @@
         const settingsModal = document.getElementById('settings-modal');
         const reportModal = document.getElementById('report-modal');
         const scheduleModal = document.getElementById('schedule-modal');
+        const archiveModal = document.getElementById('archive-modal');
         const taskForm = document.getElementById('task-form');
         const searchInput = document.getElementById('search-input');
+        const archiveSearchInput = document.getElementById('archive-search-input');
+        const archiveSortSelect = document.getElementById('archive-sort-select');
+
+        // --- Modal Elements ---
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmMsg = document.getElementById('confirm-message');
+        const confirmBtnOk = document.getElementById('btn-confirm-ok');
+        const confirmBtnCancel = document.getElementById('btn-confirm-cancel');
+        let confirmCallback = null;
 
         // --- Helper Functions ---
         const getStatusColor = (status) => {
@@ -469,6 +582,23 @@
                 case '暫停': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
                 default: return 'bg-gray-100 text-gray-800 border-gray-200';
             }
+        };
+
+        const createStatusBadge = (status, taskId, itemIndex = null) => {
+            return `
+                <div class="relative status-badge-wrapper inline-block">
+                    <button class="px-3 py-1 text-xs font-bold rounded-full border cursor-pointer ${getStatusColor(status)} shadow-sm hover:opacity-80 transition-opacity whitespace-nowrap">
+                        ${status}
+                    </button>
+                    <div class="status-popover hidden absolute z-50 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 left-0">
+                        <ul class="py-1 text-sm" data-task-id="${taskId}" data-item-index="${itemIndex !== null ? itemIndex : ''}">
+                            ${config.statusOptions.map(s => `
+                                <li><a href="#" class="block px-4 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700" data-status="${s}">${s}</a></li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
         };
 
         const getWeekKey = (date) => {
@@ -495,7 +625,7 @@
         const showToast = (message, type = 'success') => {
             const toast = document.getElementById('toast-notification');
             toast.textContent = message;
-            toast.className = `hidden fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg z-50 animate-fade-in-out font-bold ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
+            toast.className = `hidden fixed top-5 right-5 py-2 px-4 rounded-lg shadow-lg z-[70] animate-fade-in-out font-bold ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
             toast.classList.remove('hidden');
             setTimeout(() => {
                 toast.classList.add('hidden');
@@ -506,6 +636,28 @@
             const el = document.getElementById(id);
             if(show) { el.classList.remove('hidden'); setTimeout(()=>el.querySelector('div').classList.remove('opacity-0'), 10); } 
             else { el.classList.add('hidden'); }
+        };
+
+        // --- Custom Confirm Logic ---
+        function showConfirm(message, callback, confirmText = "確定", confirmColorClass = "bg-blue-600") {
+            confirmMsg.textContent = message;
+            confirmCallback = callback;
+            
+            // Reset button style
+            confirmBtnOk.className = `text-white font-bold py-2 px-4 rounded-lg shadow-md hover:opacity-90 ${confirmColorClass}`;
+            confirmBtnOk.textContent = confirmText;
+            
+            confirmModal.classList.remove('hidden');
+        }
+
+        confirmBtnOk.onclick = () => {
+            if (confirmCallback) confirmCallback();
+            confirmModal.classList.add('hidden');
+            confirmCallback = null;
+        };
+        confirmBtnCancel.onclick = () => {
+            confirmModal.classList.add('hidden');
+            confirmCallback = null;
         };
 
         // --- Enhanced Settings Logic ---
@@ -587,10 +739,10 @@
                     tempConfig.statusOptions = tempConfig.statusOptions.filter(s => s !== target.dataset.value);
                     render();
                 } else if (action === 'delete-group') {
-                    if(confirm(`確定要刪除 ${target.dataset.group} 嗎？`)) {
+                    showConfirm(`確定要刪除 ${target.dataset.group} 嗎？`, () => {
                         delete tempConfig.personnelData[target.dataset.group];
                         render();
-                    }
+                    }, '刪除', 'bg-red-600');
                 } else if (action === 'add-person') {
                     const group = target.dataset.group;
                     const input = document.getElementById(`input-person-${group}`);
@@ -720,7 +872,6 @@
             const summaryEl = document.getElementById('stats-summary-text');
             if(summaryEl) {
                 summaryEl.textContent = `本週記錄人員: ${thisWeeksRecorder}`;
-                // Sync visibility with initial state if needed, though toggle handler manages it mostly
                 const wrapper = document.getElementById('stats-wrapper');
                 if (wrapper.classList.contains('stats-collapsed')) {
                     summaryEl.classList.remove('hidden');
@@ -801,13 +952,11 @@
             });
 
             document.getElementById('displayed-count').textContent = filteredTasks.length;
-            document.getElementById('total-count').textContent = allTasks.length;
 
             if (filteredTasks.length === 0) {
                  dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 bg-gray-50">沒有符合條件的任務。</td></tr>`;
             } else {
                 dashboardTableBody.innerHTML = filteredTasks.map(task => {
-                    // Logic: Create mapped items with original index first, then filter.
                     const allItemsWithIndex = (task.contentItems || []).map((item, idx) => ({ ...item, originalIndex: idx }));
                     const visibleItems = allItemsWithIndex.filter(item => {
                          if (!showCompleted && item.status === '已完成') return false;
@@ -839,14 +988,15 @@
                     
                     return `
                         <tr class="hover:bg-blue-50 transition-colors group" data-task-id="${task.id}">
-                            <td class="px-3 py-4 align-top text-gray-900 font-bold">${task.projectName}</td>
-                            <td class="px-3 py-4 align-top text-sm text-gray-600"><span class="bg-gray-100 px-2 py-1 rounded text-xs">${task.projectCategory}</span></td>
-                            <td class="px-3 py-4 align-top">${contentHtml}</td>
-                            <td class="px-3 py-4 align-top">${createStatusBadge(task.status, task.id)}</td>
-                            <td class="px-3 py-4 align-top text-sm text-gray-600 font-mono">${days}</td>
-                            <td class="px-3 py-4 align-top">
-                                <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <td class="px-3 py-4 align-top text-gray-900 font-bold" data-label="專案名稱">${task.projectName}</td>
+                            <td class="px-3 py-4 align-top text-sm text-gray-600" data-label="類別"><span class="bg-gray-100 px-2 py-1 rounded text-xs">${task.projectCategory}</span></td>
+                            <td class="px-3 py-4 align-top" data-label="處理項目詳情">${contentHtml}</td>
+                            <td class="px-3 py-4 align-top" data-label="總體進度">${createStatusBadge(task.status, task.id)}</td>
+                            <td class="px-3 py-4 align-top text-sm text-gray-600 font-mono" data-label="天數">${days}</td>
+                            <td class="px-3 py-4 align-top" data-label="操作">
+                                <div class="flex space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity justify-end sm:justify-start">
                                     <button class="btn-edit-task bg-indigo-50 text-indigo-600 p-2 rounded hover:bg-indigo-100" title="編輯"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-archive-task bg-orange-50 text-orange-600 p-2 rounded hover:bg-orange-100" title="封存"><i class="fas fa-archive"></i></button>
                                     <button class="btn-delete-task bg-red-50 text-red-600 p-2 rounded hover:bg-red-100" title="刪除"><i class="fas fa-trash-alt"></i></button>
                                 </div>
                             </td>
@@ -854,23 +1004,6 @@
                     `;
                 }).join('');
             }
-        };
-
-        const createStatusBadge = (status, taskId, itemIndex = null) => {
-            return `
-                <div class="relative status-badge-wrapper inline-block">
-                    <button class="px-3 py-1 text-xs font-bold rounded-full border cursor-pointer ${getStatusColor(status)} shadow-sm hover:opacity-80 transition-opacity whitespace-nowrap">
-                        ${status}
-                    </button>
-                    <div class="status-popover hidden absolute z-50 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 left-0">
-                        <ul class="py-1 text-sm" data-task-id="${taskId}" data-item-index="${itemIndex !== null ? itemIndex : ''}">
-                            ${config.statusOptions.map(s => `
-                                <li><a href="#" class="block px-4 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700" data-status="${s}">${s}</a></li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                </div>
-            `;
         };
 
         // --- Interaction Logic ---
@@ -893,6 +1026,7 @@
             setupEventListeners();
         });
 
+        // --- Modified Data Listeners: Removed Pagination ---
         function initDataListeners() {
             onValue(ref(db, `artifacts/${appId}/public/data/app_config`), (snap) => {
                 if (snap.exists()) {
@@ -911,36 +1045,26 @@
                 renderStatsCards();
             });
 
+            // Initial load of tasks
+            loadTasks();
+        }
+
+        // Modified: Load ALL active tasks (no limit)
+        function loadTasks() {
             const tasksRef = ref(db, `artifacts/${appId}/public/data/tasks`);
-            onValue(tasksRef, (snap) => {
+            // Plain onValue without query limits
+            unsubscribeTasks = onValue(tasksRef, (snap) => {
                 const val = snap.val();
                 if (!val) {
-                    const updates = {};
-                    const processSeed = (rawData) => {
-                        const projects = {};
-                        rawData.forEach(item => {
-                            if (!projects[item.name]) projects[item.name] = { 
-                                projectName: item.name, startDate: item.date, projectCategory: '未分類', status: '尚未開始', 
-                                contentItems: [], createdAt: serverTimestamp(), ownerId: userId 
-                            };
-                            projects[item.name].contentItems.push({ 
-                                content: item.content||'無', assignedPersonnel: [{name: `${item.group}-${item.person}`, role: '主要'}], 
-                                startDate: item.date, status: '尚未開始' 
-                            });
-                        });
-                        return Object.values(projects);
-                    };
-                    processSeed(EXCEL_RAW_DATA).forEach(t => {
-                        const newKey = push(tasksRef).key;
-                        updates[newKey] = t;
-                    });
-                    update(tasksRef, updates);
+                    allTasks = [];
+                    // Seed logic could go here if needed
                 } else {
                     allTasks = Object.keys(val).map(key => ({ id: key, ...val[key] }));
-                    loadingSpinner.classList.add('hidden');
-                    dashboardTableContainer.classList.remove('hidden');
-                    renderApp();
                 }
+                
+                loadingSpinner.classList.add('hidden');
+                dashboardTableContainer.classList.remove('hidden');
+                renderApp();
             });
         }
 
@@ -967,7 +1091,7 @@
                     setTimeout(() => summary.classList.add('hidden'), 300);
                 }
             };
-
+            
             document.getElementById('btn-add-task').onclick = () => openTaskForm();
             document.querySelectorAll('.btn-cancel-task-form').forEach(b => b.onclick = () => toggleModal('task-form-modal', false));
             
@@ -980,18 +1104,24 @@
             document.getElementById('btn-show-schedule').onclick = openScheduleModal;
             document.getElementById('btn-cancel-schedule').onclick = () => toggleModal('schedule-modal', false);
 
+            document.getElementById('btn-show-archive').onclick = openArchiveModal;
+            document.getElementById('btn-close-archive').onclick = () => toggleModal('archive-modal', false);
+            
+            // Add Archive Search Listener
+            archiveSearchInput.addEventListener('input', renderArchiveTable);
+            archiveSortSelect.addEventListener('change', renderArchiveTable);
+
             ['filter-show-completed', 'filter-show-paused', 'sort-select', 'person-filter'].forEach(id => {
                 document.getElementById(id).onchange = renderDashboardTable;
             });
             document.getElementById('search-input').oninput = renderDashboardTable;
 
-            // Updated dashboardTableBody handler for robust status change
+            // Dashboard Actions
             dashboardTableBody.onclick = (e) => {
-                // 1. Check for Status Option Click FIRST (fixes propagation issue)
+                // Status Popup
                 const statusLink = e.target.closest('.status-popover a');
                 if (statusLink) {
                     e.preventDefault();
-                    
                     const ul = statusLink.closest('ul');
                     const taskId = ul.dataset.taskId;
                     const idx = ul.dataset.itemIndex;
@@ -1008,35 +1138,50 @@
                     
                     update(ref(db), updates);
                     showToast('狀態已更新');
-                    // Hide all
                     document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
                     return;
                 }
 
-                // 2. Handle other actions
+                // Other Actions
                 const btnEdit = e.target.closest('.btn-edit-task');
+                const btnArchive = e.target.closest('.btn-archive-task');
                 const btnDel = e.target.closest('.btn-delete-task');
                 const badgeWrapper = e.target.closest('.status-badge-wrapper');
+                
+                const tr = e.target.closest('tr');
+                if(!tr) return;
+                const taskId = tr.dataset.taskId;
 
-                if (btnEdit) openTaskForm(allTasks.find(t => t.id === btnEdit.closest('tr').dataset.taskId));
+                if (btnEdit) openTaskForm(allTasks.find(t => t.id === taskId));
+                if (btnArchive) {
+                    showConfirm('確定要封存此任務嗎？封存後可至「已封存專案」查看。', () => archiveTask(taskId), '封存', 'bg-orange-600');
+                }
                 if (btnDel) {
-                    if(confirm('確定刪除此任務？')) remove(ref(db, `artifacts/${appId}/public/data/tasks/${btnDel.closest('tr').dataset.taskId}`));
+                    showConfirm('確定刪除此任務？(此操作無法復原)', () => remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`)), '刪除', 'bg-red-600');
                 }
                 
-                // 3. Toggle Menu
                 if (badgeWrapper) {
                      const popover = badgeWrapper.querySelector('.status-popover');
                      const wasHidden = popover.classList.contains('hidden');
-                     
-                     // Close others
                      document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
-                     
-                     // Toggle current
-                     if (wasHidden) {
-                        popover.classList.remove('hidden');
-                     }
-                     
+                     if (wasHidden) popover.classList.remove('hidden');
                      e.stopPropagation(); 
+                }
+            };
+
+            // Archive Modal Actions
+            document.getElementById('archive-table-body').onclick = (e) => {
+                const btnRestore = e.target.closest('.btn-restore-task');
+                const btnDelPerm = e.target.closest('.btn-delete-permanent');
+                const tr = e.target.closest('tr');
+                if(!tr) return;
+                const taskId = tr.dataset.taskId;
+
+                if(btnRestore) {
+                    showConfirm('確定要還原此任務嗎？', () => restoreTask(taskId), '還原', 'bg-green-600');
+                }
+                if(btnDelPerm) {
+                    showConfirm('警告：確定要永久刪除此任務嗎？此操作無法復原！', () => deleteArchivedTask(taskId), '永久刪除', 'bg-red-600');
                 }
             };
 
@@ -1047,6 +1192,7 @@
                 }
             });
 
+            // ... (rest of listeners like form submit) ...
             document.getElementById('btn-add-content-item').onclick = () => addContentItemToForm();
             document.getElementById('content-items-container').onclick = (e) => {
                 if (e.target.closest('.btn-remove-item')) e.target.closest('.item-row').remove();
@@ -1124,7 +1270,111 @@
             });
         }
 
-        // --- Form Helpers ---
+        // --- Archive Functions ---
+        async function archiveTask(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            const taskData = { ...task };
+            delete taskData.id; 
+            
+            try {
+                await set(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), taskData);
+                await remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`));
+                showToast('任務已封存');
+            } catch (e) {
+                console.error(e);
+                showToast('封存失敗', 'error');
+            }
+        }
+
+        function openArchiveModal() {
+            toggleModal('archive-modal', true);
+            const archiveRef = ref(db, `artifacts/${appId}/public/data/archived_tasks`);
+            
+            if (archivedTasksUnsubscribe) archivedTasksUnsubscribe();
+            
+            document.getElementById('archive-loading').classList.remove('hidden');
+            document.getElementById('archive-table').classList.add('hidden');
+            archiveSearchInput.value = ''; // Reset search
+            
+            archivedTasksUnsubscribe = onValue(archiveRef, (snap) => {
+                const val = snap.val();
+                allArchivedTasks = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })) : [];
+                
+                document.getElementById('archive-loading').classList.add('hidden');
+                document.getElementById('archive-table').classList.remove('hidden');
+                
+                renderArchiveTable();
+            });
+        }
+
+        function renderArchiveTable() {
+            const tbody = document.getElementById('archive-table-body');
+            const term = archiveSearchInput.value.toLowerCase().trim();
+            const sortValue = archiveSortSelect.value;
+            
+            let filtered = allArchivedTasks.filter(t => {
+                if(!term) return true;
+                return (t.projectName || '').toLowerCase().includes(term) ||
+                       (t.projectCategory || '').toLowerCase().includes(term) ||
+                       (t.status || '').toLowerCase().includes(term);
+            });
+
+            // Sorting Logic
+            filtered.sort((a, b) => {
+                const key = sortValue.split('_')[0];
+                const type = sortValue.split('_')[1];
+                const valA = (a[key] || '').toString();
+                const valB = (b[key] || '').toString();
+                
+                return type === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : valB.localeCompare(valA, 'zh-Hant');
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">${allArchivedTasks.length === 0 ? '暫無封存資料' : '找不到符合的資料'}</td></tr>`;
+            } else {
+                tbody.innerHTML = filtered.map(t => `
+                    <tr data-task-id="${t.id}" class="hover:bg-gray-50">
+                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${t.projectName}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.projectCategory}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.status}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium">
+                            <button class="btn-restore-task text-green-600 hover:text-green-900 mr-3"><i class="fas fa-undo"></i> 還原</button>
+                            <button class="btn-delete-permanent text-red-600 hover:text-red-900"><i class="fas fa-trash"></i> 刪除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+        async function restoreTask(taskId) {
+             try {
+                const snap = await new Promise(resolve => onValue(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), resolve, {onlyOnce: true}));
+                const taskData = snap.val();
+                
+                if(taskData) {
+                     await set(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), taskData);
+                     await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`));
+                     showToast('任務已還原');
+                }
+             } catch(e) {
+                 console.error(e);
+                 showToast('還原失敗', 'error');
+             }
+        }
+        
+        async function deleteArchivedTask(taskId) {
+            try {
+                await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`));
+                showToast('永久刪除成功');
+            } catch(e) {
+                 console.error(e);
+                 showToast('刪除失敗', 'error');
+            }
+        }
+
+        // --- Form Helpers (unchanged logic) ---
         function openTaskForm(task = null) {
             currentTaskToEdit = task;
             taskForm.reset();
