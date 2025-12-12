@@ -40,14 +40,22 @@
         .role-guest .action-add,
         .role-guest .action-submit { display: none !important; }
         
-        @media print {
-            body > * { display: none !important; }
-            #print-area { display: block !important; }
-            #print-area * { visibility: visible; }
-            @page { size: auto; margin: 10mm; }
-            html, body { height: auto; background: white; overflow: visible; }
-        }
-        #print-area { display: none; position: absolute; top: 0; left: 0; width: 100%; background: white; z-index: 9999; padding: 20px; }
+        /* 廣泰報表專用樣式 (這些樣式會被複製到列印視窗) */
+        .kt-report-table { width: 100%; border-collapse: collapse; font-family: "标楷体", "DFKai-SB", "Noto Sans TC", sans-serif; }
+        .kt-report-table th, .kt-report-table td { border: 1px solid black; padding: 4px; text-align: center; vertical-align: middle; height: 35px; font-size: 14px; }
+        .kt-header { text-align: center; font-weight: bold; margin-bottom: 10px; position: relative; height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .kt-logo-container { position: absolute; left: 0; top: 0; text-align: left; }
+        .kt-logo { height: 40px; display: block; margin-bottom: 2px; }
+        .kt-logo-text { font-family: sans-serif; font-weight: bold; font-size: 14px; }
+        .kt-company-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+        .kt-title-main { font-size: 26px; text-decoration: underline; font-weight: bold; }
+        /* 更新: 表頭資訊改為表格樣式，不再使用 flex */
+        .kt-info-table { width: 100%; border-collapse: collapse; font-family: "标楷体", "DFKai-SB", "Noto Sans TC", sans-serif; margin-bottom: 5px; }
+        .kt-info-table td { border: 1px solid black; padding: 5px 10px; font-size: 16px; vertical-align: middle; }
+        
+        .kt-footer-notes { font-size: 12px; margin-top: 10px; line-height: 1.5; text-align: left; font-family: "标楷体", "DFKai-SB", "Noto Sans TC", sans-serif;}
+        .kt-sign-area { display: flex; justify-content: space-between; margin-top: 20px; font-size: 14px; font-family: "标楷体", "DFKai-SB", "Noto Sans TC", sans-serif;}
+        .page-break { page-break-after: always; display: block; }
     </style>
 </head>
 <body class="bg-slate-50">
@@ -79,14 +87,12 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v2.6 (Role-Based)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v3.8 (Table Header Fix)</p>
         </div>
     </div>
 
-    <div id="print-area"></div>
-
     <div id="app-container" class="container mx-auto max-w-2xl p-4 sm:p-6 md:p-8 hidden">
-        
+        <!-- Main Content Omitted for Brevity (Same as before) -->
         <div class="flex justify-between items-center mb-6">
             <div id="user-status" class="text-sm flex items-center">
                 <div id="logged-in-view">
@@ -98,7 +104,6 @@
             <button id="toggle-mode-btn" onclick="window.app.toggleManagementMode()" class="bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-800 text-sm hidden">⚙️ 管理後台</button>
         </div>
 
-        <!-- 使用者點檢模式 -->
         <div id="user-mode">
             <header class="mb-8">
                 <h1 class="text-4xl font-bold text-slate-800">設備點檢</h1>
@@ -139,7 +144,13 @@
                         <div><label class="text-slate-500">設備名稱</label><p id="device-name" class="font-bold text-slate-700 text-lg"></p></div>
                         <div><label class="text-slate-500">資產編號</label><p id="device-asset-no" class="font-semibold text-slate-700"></p></div>
                         <div><label class="text-slate-500">點檢人員</label><p id="user-name-display" class="font-semibold text-slate-700"></p></div>
-                        <div><label class="text-slate-500">點檢日期</label><p id="check-date" class="font-semibold text-slate-700"></p></div>
+                        <div>
+                            <label class="text-slate-500 block mb-1">點檢日期 (可補登)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="check-date-input" class="border border-slate-300 rounded p-1.5 text-slate-700 font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="window.app.updateWeekDisplay(this.value)">
+                                <span id="week-display" class="text-sm font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-full border border-indigo-100"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="checklist-items-container" class="space-y-6"></div>
@@ -154,35 +165,31 @@
             </div>
         </div>
 
-        <!-- 管理者模式 -->
         <div id="admin-mode" class="hidden">
             <header class="mb-6"><h1 class="text-4xl font-bold text-slate-800">管理後台</h1></header>
             <div class="mb-6 border-b border-gray-200">
                 <nav class="flex -mb-px space-x-4 overflow-x-auto text-sm font-medium">
                     <button onclick="window.app.switchAdminTab('equipment')" id="tab-equipment" class="px-1 py-3 border-b-2 admin-tab-active">設備管理</button>
-                    <!-- 訪客隱藏範本與人員管理 -->
                     <button onclick="window.app.switchAdminTab('templates')" id="tab-templates" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">點檢範本</button>
                     <button onclick="window.app.switchAdminTab('users')" id="tab-users" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">人員管理</button>
-                    
                     <button onclick="window.app.switchAdminTab('checklistHistory')" id="tab-checklistHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">點檢紀錄</button>
                     <button onclick="window.app.switchAdminTab('maintenanceHistory')" id="tab-maintenanceHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">保養紀錄</button>
                     <button onclick="window.app.switchAdminTab('reports')" id="tab-reports" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">報表輸出</button>
                 </nav>
             </div>
             
-            <!-- 設備管理 -->
             <div id="admin-tab-content-equipment">
                 <div id="equipment-list-section">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-slate-800">設備列表</h2>
                         <button onclick="window.app.showEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm action-add">新增設備</button>
                     </div>
-                    <!-- 設備分類切換區 (已改為下拉選單) -->
                     <div id="equipment-category-tabs" class="mb-6"></div>
                     <div id="equipment-list-container"></div>
                 </div>
                 
                 <div id="equipment-editor-section" class="hidden card p-6">
+                    <!-- Equipment Editor Content -->
                     <h2 id="editor-title" class="text-2xl font-semibold mb-6 text-slate-800">編輯設備</h2>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -202,6 +209,14 @@
                             <div><label class="block text-xs font-medium text-slate-500">下次點檢日</label><input type="date" id="edit-device-next-date" class="w-full p-2 border rounded"></div>
                         </div>
                         
+                        <div class="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-device-include-kt" class="form-checkbox h-5 w-5 text-indigo-600 rounded focus:ring-indigo-500">
+                                <span class="font-bold text-indigo-700">列印於「廣泰金屬-週點檢表」</span>
+                            </label>
+                            <p class="text-xs text-indigo-500 mt-1 ml-8">勾選此項目後，此設備才會出現在「廣泰金屬-週點檢表」報表中。</p>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-2">授權人員</label>
                             <div id="user-assignment-container" class="w-full p-3 border rounded h-32 overflow-y-auto bg-slate-50 grid grid-cols-2 gap-2"></div>
@@ -236,8 +251,8 @@
                 </div>
             </div>
 
-            <!-- 其他管理頁面 (範本, 人員, 報表, 紀錄) -->
             <div id="admin-tab-content-templates" class="hidden">
+                <!-- Templates Content -->
                 <div id="template-list-section">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-slate-800">點檢範本管理</h2>
@@ -263,6 +278,7 @@
             </div>
             
             <div id="admin-tab-content-users" class="hidden">
+                <!-- Users Content -->
                 <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">人員列表</h2><button onclick="window.app.showUserEditor()" class="bg-indigo-600 text-white px-4 py-2 rounded action-add">新增</button></div>
                 <div id="user-list-container" class="space-y-2"></div>
                 <div id="user-editor-section" class="hidden card p-6">
@@ -283,10 +299,38 @@
              <div id="admin-tab-content-reports" class="hidden">
                  <h2 class="text-2xl font-semibold mb-4 text-slate-800">報表輸出中心</h2>
                  <div class="card p-6 mb-6">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label><select id="report-type" class="w-full p-2 border rounded bg-white"><option value="checklist">設備點檢紀錄表</option><option value="maintenance">保養維修紀錄表</option></select></div>
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">開始日期</label><input type="date" id="report-start-date" class="w-full p-2 border rounded"></div>
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">結束日期</label><input type="date" id="report-end-date" class="w-full p-2 border rounded"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label>
+                            <select id="report-type" class="w-full p-2 border rounded bg-white">
+                                <option value="checklist">設備點檢紀錄表 (清單式)</option>
+                                <option value="kt_weekly">廣泰金屬-週點檢表 (格式化)</option>
+                                <option value="maintenance">保養維修紀錄表</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">設備分類</label>
+                            <select id="report-category" class="w-full p-2 border rounded bg-white">
+                                <option value="ALL">全部分類</option>
+                            </select>
+                        </div>
+                        
+                        <div id="date-range-container" class="contents">
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">開始日期</label><input type="date" id="report-start-date" class="w-full p-2 border rounded"></div>
+                            <div><label class="block text-xs font-medium text-slate-500 mb-1">結束日期</label><input type="date" id="report-end-date" class="w-full p-2 border rounded"></div>
+                        </div>
+                        
+                        <div id="kt-report-options" class="hidden md:col-span-2 flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">報表月份</label>
+                                <input type="month" id="report-month" class="w-full p-2 border rounded">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">主管</label>
+                                <input type="text" id="report-supervisor" class="w-full p-2 border rounded" placeholder="簽核主管">
+                            </div>
+                        </div>
+
                         <div class="flex items-end"><button onclick="window.app.generateReport()" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded hover:bg-indigo-700">產生報表</button></div>
                     </div>
                  </div>
@@ -296,7 +340,6 @@
                          <p class="text-slate-600" id="report-subtitle">查詢區間: </p>
                      </div>
                      <div id="report-content" class="overflow-x-auto"></div>
-                     <div class="mt-8 text-right text-sm text-slate-500"><p>製表時間: <span id="report-timestamp"></span></p></div>
                  </div>
                  <div id="report-actions" class="mt-4 flex justify-end gap-3 hidden">
                      <button onclick="window.app.printReport()" class="bg-slate-700 text-white font-bold py-2 px-6 rounded hover:bg-slate-800 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>列印 / 另存 PDF</button>
@@ -314,8 +357,8 @@
         </div>
     </div>
 
-    <!-- Modals (Scanner, Template, Maint, QR) -->
-    <!-- 掃描後動作選擇 Modal -->
+    <!-- Modals (Omitted for brevity, same as previous) -->
+    <!-- Scan Action Modal -->
     <div id="scan-action-modal" class="fixed inset-0 bg-black bg-opacity-75 items-center justify-center p-4 hidden z-[140] flex">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center hidden" id="scan-action-content">
              <h3 class="text-xl font-bold mb-2 text-slate-800">掃描成功</h3>
@@ -405,7 +448,59 @@
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Global Variables ---
+        let equipmentDatabase = {}, userDatabase = {}, templateDatabase = {}, checkHistory = [], maintenanceHistory = [];
+        let loggedInUser = null, currentCheckId = null, html5QrCode = null, currentMaintEqId = null;
+        let currentQrId = null;
+
+        window.app = {}; 
+        window.app.printReport = function() {
+            const reportContent = document.getElementById('report-content').innerHTML;
+            if (!reportContent.trim()) {
+                showToast("無報表內容可列印", "error");
+                return;
+            }
+            const title = document.getElementById('report-title').textContent;
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert("瀏覽器攔截了彈跳視窗，請允許本網站的彈跳視窗以進行列印。");
+                return;
+            }
+
+            printWindow.document.write('<html><head><title>' + title + '</title>');
+            printWindow.document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+            printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">');
+            
+            const styles = document.querySelectorAll('style');
+            styles.forEach(style => {
+                printWindow.document.write(style.outerHTML);
+            });
+            
+            // 加入強制列印樣式
+            printWindow.document.write(`
+                <style>
+                    body { background-color: white !important; margin: 0; padding: 20px; -webkit-print-color-adjust: exact; }
+                    .page-break { page-break-after: always; display: block; position: relative; }
+                    @media print {
+                        .page-break { break-after: page; }
+                        body { padding: 0; }
+                    }
+                </style>
+            `);
+
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(reportContent);
+            printWindow.document.write('</body></html>');
+            
+            printWindow.document.close();
+            
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+            }, 1000);
+        };
 
         const firebaseConfig = {
             apiKey: "AIzaSyDPpMCssbitCn2wE7WEqefL2czjIsRuyBw",
@@ -424,12 +519,6 @@
         function getCollectionRef(name) { return collection(db, name); }
         function getDocRef(colName, docId) { return doc(db, colName, docId); }
 
-        let equipmentDatabase = {}, userDatabase = {}, templateDatabase = {}, checkHistory = [], maintenanceHistory = [];
-        let loggedInUser = null, currentCheckId = null, html5QrCode = null, currentMaintEqId = null;
-        let currentQrId = null; 
-
-        window.app = {};
-
         const init = () => {
             console.log("初始化 Firebase...");
             const urlParams = new URLSearchParams(window.location.search);
@@ -439,8 +528,52 @@
             startListeners();
             
             const today = new Date().toISOString().slice(0,10);
-            document.getElementById('report-start-date').value = today;
-            document.getElementById('report-end-date').value = today;
+            const currentMonth = new Date().toISOString().slice(0,7);
+            
+            const startDateEl = document.getElementById('report-start-date');
+            if(startDateEl) {
+                startDateEl.value = today;
+                document.getElementById('report-end-date').value = today;
+                document.getElementById('report-month').value = currentMonth;
+            }
+
+            const reportTypeSelect = document.getElementById('report-type');
+            if(reportTypeSelect) {
+                reportTypeSelect.addEventListener('change', window.app.handleReportTypeChange);
+            }
+        };
+
+        // --- Utils for Week Calculation ---
+        window.app.updateWeekDisplay = function(dateStr) {
+            if(!dateStr) return;
+            const date = new Date(dateStr);
+            const day = date.getDate();
+            const month = date.getMonth() + 1;
+            let week = 0;
+            if(day <= 7) week = 1;
+            else if(day <= 14) week = 2;
+            else if(day <= 21) week = 3;
+            else if(day <= 28) week = 4;
+            else week = 5;
+            
+            const display = document.getElementById('week-display');
+            if(display) display.textContent = `${month}月 第 ${week} 週`;
+        }
+
+        window.app.handleReportTypeChange = function() {
+            const type = document.getElementById('report-type').value;
+            const dateContainer = document.getElementById('date-range-container');
+            const ktOptionsContainer = document.getElementById('kt-report-options');
+            
+            if (type === 'kt_weekly') {
+                dateContainer.classList.add('hidden');
+                dateContainer.classList.remove('contents');
+                ktOptionsContainer.classList.remove('hidden');
+            } else {
+                dateContainer.classList.remove('hidden');
+                dateContainer.classList.add('contents');
+                ktOptionsContainer.classList.add('hidden');
+            }
         };
 
         function startListeners() {
@@ -454,9 +587,10 @@
                 snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; });
                 userDatabase = newData;
                 renderLoginOptions();
-                if (!loggedInUser) {
-                    document.getElementById('loading-overlay').classList.add('hidden');
-                    document.getElementById('login-modal').classList.remove('hidden');
+                if (!loggedInUser && !document.getElementById('login-modal').classList.contains('hidden') && !document.getElementById('app-container').classList.contains('hidden')) {
+                } else if(!loggedInUser) {
+                     document.getElementById('loading-overlay').classList.add('hidden');
+                     document.getElementById('login-modal').classList.remove('hidden');
                 }
                 if (document.getElementById('user-list-container').offsetParent) window.app.renderUserList();
             }, onError);
@@ -469,6 +603,8 @@
                 if (document.getElementById('admin-tab-content-maintenanceHistory').offsetParent) window.app.renderMaintenanceHistory(document.getElementById('maint-filter-select')?.value || 'ALL');
                 
                 populateManualDropdown();
+                populateReportCategoryDropdown();
+                
                 if(window.app.pendingScanId && loggedInUser) { 
                     if(equipmentDatabase[window.app.pendingScanId]) {
                         window.app.handleScanResult(window.app.pendingScanId);
@@ -495,16 +631,42 @@
             }, onError);
         }
 
-        // 登入邏輯
+        function populateReportCategoryDropdown() {
+            const sel = document.getElementById('report-category');
+            if(!sel) return;
+            const currentVal = sel.value;
+            const cats = new Set(['ALL']);
+            Object.values(equipmentDatabase).forEach(e => {
+                if(e.category) cats.add(e.category);
+                else cats.add('未分類');
+            });
+            
+            sel.innerHTML = '';
+            Array.from(cats).sort((a,b) => {
+                if(a === 'ALL') return -1;
+                if(b === 'ALL') return 1;
+                return a.localeCompare(b, 'zh-TW');
+            }).forEach(c => {
+                sel.add(new Option(c === 'ALL' ? '全部分類' : c, c));
+            });
+            
+            if(currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+                sel.value = currentVal;
+            } else {
+                sel.value = 'ALL';
+            }
+        }
+
         function renderLoginOptions() {
             const select = document.getElementById('login-user-select');
+            if(!select) return;
             select.innerHTML = '<option value="guest" selected>👤 訪客 (僅供檢視)</option>';
             Object.values(userDatabase).forEach(user => {
                 const roleText = user.role === 'manager' ? '👑 管理員' : '🔧 操作員';
                 select.add(new Option(`${roleText} - ${user.name}`, user.id));
             });
         }
-
+        
         window.app.handleLogin = function() {
             const select = document.getElementById('login-user-select');
             const userId = select.value;
@@ -519,6 +681,322 @@
             }
         };
 
+        window.app.generateReport = function() {
+            const type = document.getElementById('report-type').value;
+            const category = document.getElementById('report-category').value;
+            
+            let start, end;
+            
+            if (type === 'kt_weekly') {
+                const monthVal = document.getElementById('report-month').value; 
+                if (!monthVal) return showToast("請選擇月份", "error");
+                const [year, month] = monthVal.split('-');
+                start = new Date(year, month - 1, 1);
+                end = new Date(year, month, 0, 23, 59, 59); 
+            } else {
+                start = new Date(document.getElementById('report-start-date').value);
+                end = new Date(document.getElementById('report-end-date').value); end.setHours(23,59,59);
+            }
+
+            const container = document.getElementById('report-preview-container'); 
+            const content = document.getElementById('report-content'); 
+            const title = document.getElementById('report-title'); 
+            const subtitle = document.getElementById('report-subtitle');
+            
+            container.classList.remove('hidden'); 
+            document.getElementById('report-actions').classList.remove('hidden');
+            
+            const dateStr = type === 'kt_weekly' 
+                ? `${start.getFullYear()}年 ${start.getMonth()+1}月` 
+                : `${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`;
+            
+            subtitle.textContent = `查詢區間: ${dateStr}${category !== 'ALL' ? ' (分類: ' + category + ')' : ''}`; 
+            
+            let html = '';
+            
+            if (type === 'kt_weekly') {
+                title.textContent = "設備點檢表(週) - 預覽";
+                content.innerHTML = '<div class="text-center py-4">正在產生報表...</div>';
+                
+                const filteredHistory = checkHistory.filter(h => { 
+                    const d = h.checkTimestamp?.toDate(); 
+                    return d >= start && d <= end; 
+                });
+
+                let devices = Object.values(equipmentDatabase).sort((a,b) => (a.category||'').localeCompare(b.category||''));
+                
+                if (category !== 'ALL') {
+                    devices = devices.filter(eq => (eq.category || '未分類') === category);
+                }
+
+                devices = devices.filter(eq => eq.includeInKtReport === true);
+
+                if (devices.length === 0) {
+                    content.innerHTML = '<div class="text-center py-4 text-gray-500">此範圍無設備資料，或設備未勾選「列印於廣泰週點檢表」。</div>';
+                    return;
+                }
+
+                // Prepare Data for Footer
+                const supervisorName = document.getElementById('report-supervisor').value || '';
+                
+                // Calculate Last Working Day
+                // start is 1st of month.
+                // Find last day of month
+                const year = start.getFullYear();
+                const month = start.getMonth(); // 0-based
+                const lastDayOfMonth = new Date(year, month + 1, 0); // Day 0 of next month is last day of current
+                
+                // Adjust for weekend
+                let signDate = new Date(lastDayOfMonth);
+                const dayOfWeek = signDate.getDay(); // 0=Sun, 6=Sat
+                if (dayOfWeek === 0) { // Sunday
+                    signDate.setDate(signDate.getDate() - 2); // Friday
+                } else if (dayOfWeek === 6) { // Saturday
+                    signDate.setDate(signDate.getDate() - 1); // Friday
+                }
+                
+                const signYear = signDate.getFullYear();
+                const signMonth = signDate.getMonth() + 1;
+                const signDay = signDate.getDate();
+
+                let reportHtml = '';
+
+                devices.forEach(eq => {
+                    const eqLogs = filteredHistory.filter(h => h.deviceId === eq.id);
+                    const reportMonth = start.getMonth() + 1;
+                    const reportYear = start.getFullYear();
+
+                    const itemMatrix = {};
+                    // Group Items by Category
+                    // Structure: { "CategoryName": [ {text: "Item1", week1: "V", ...} ] }
+                    const groupedItems = {};
+
+                    if(eq.items) {
+                        eq.items.forEach(cat => {
+                            if (!groupedItems[cat.category]) groupedItems[cat.category] = [];
+                            cat.subItems.forEach(sub => {
+                                // Initialize
+                                groupedItems[cat.category].push({
+                                    text: sub.text,
+                                    1: '', 2: '', 3: '', 4: '', 5: ''
+                                });
+                            });
+                        });
+                    }
+
+                    const signatures = { 1: '', 2: '', 3: '', 4: '', 5: '' };
+                    const dates = { 1: '', 2: '', 3: '', 4: '', 5: '' };
+
+                    eqLogs.forEach(log => {
+                        const d = log.checkTimestamp.toDate();
+                        const day = d.getDate();
+                        let week = 0;
+                        if(day <= 7) week = 1;
+                        else if(day <= 14) week = 2;
+                        else if(day <= 21) week = 3;
+                        else if(day <= 28) week = 4;
+                        else week = 5;
+
+                        dates[week] = `${d.getMonth()+1}/${d.getDate()}`;
+                        signatures[week] = log.userName;
+
+                        log.items.forEach(item => {
+                            // Find item in groupedItems structure
+                            // item.category matches key, item.text matches subitem text
+                            if (groupedItems[item.category]) {
+                                const found = groupedItems[item.category].find(i => i.text === item.text);
+                                if (found) {
+                                    const symbol = item.status === '正常' ? '✓' : (item.status === '異常' ? 'X' : '/');
+                                    found[week] = symbol;
+                                }
+                            }
+                        });
+                    });
+
+                    // Build Table Rows
+                    let tableRowsHtml = '';
+                    const categories = Object.keys(groupedItems);
+                    
+                    // --- 固定表格邏輯：計算總列數 ---
+                    let currentRowCount = 0;
+                    categories.forEach(cat => { currentRowCount += groupedItems[cat].length; });
+                    const targetRowCount = 19; // Target rows reduced to 19 to prevent overflow
+                    
+                    if (categories.length === 0) {
+                        tableRowsHtml = `<tr><td colspan="8">無設定點檢項目</td></tr>`;
+                    } else {
+                        categories.forEach(catName => {
+                            const items = groupedItems[catName];
+                            items.forEach((item, index) => {
+                                tableRowsHtml += '<tr>';
+                                // Category Column (with Rowspan)
+                                if (index === 0) {
+                                    tableRowsHtml += `<td rowspan="${items.length}" style="width: 15%; font-weight: bold;">${catName}</td>`;
+                                }
+                                // Item Column
+                                tableRowsHtml += `<td style="text-align: left; padding-left: 10px;">${item.text}</td>`;
+                                // Cycle Columns: Week (○) and Month (Empty)
+                                tableRowsHtml += `<td style="width: 2.5%; text-align: center;">○</td>`; // 週欄位填入空心圓圈
+                                tableRowsHtml += `<td style="width: 2.5%;"></td>`; // 月欄位空白
+                                // Week Columns
+                                tableRowsHtml += `<td style="width: 8%;">${item[1]}</td>`;
+                                tableRowsHtml += `<td style="width: 8%;">${item[2]}</td>`;
+                                tableRowsHtml += `<td style="width: 8%;">${item[3]}</td>`;
+                                tableRowsHtml += `<td style="width: 8%;">${item[4]}</td>`;
+                                tableRowsHtml += `<td style="width: 8%;">${item[5]}</td>`;
+                                tableRowsHtml += '</tr>';
+                            });
+                        });
+                        
+                        // --- 填充空白列 ---
+                        if (currentRowCount < targetRowCount) {
+                            const emptyRowsNeeded = targetRowCount - currentRowCount;
+                            for (let i = 0; i < emptyRowsNeeded; i++) {
+                                tableRowsHtml += `
+                                <tr>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                    <td style="border: 1px solid black;">&nbsp;</td>
+                                </tr>`;
+                            }
+                        }
+                    }
+
+                    // Report Layout Construction
+                    reportHtml += `
+                    <div class="page-break" style="padding: 20px; max-width: 210mm; margin: 0 auto;">
+                        <div class="kt-header">
+                            <div class="kt-logo-container">
+                                <img src="https://www.kuangtai.com/wp-content/uploads/2024/05/logo1.png" class="kt-logo" alt="Kuang Tai Logo">
+                                <div class="kt-logo-text">KUANG TAI</div>
+                            </div>
+                            <div class="kt-company-name">廣泰金屬工業(股)公司</div>
+                            <div class="kt-title-main">設備點檢表(週)</div>
+                        </div>
+
+                        <table class="kt-info-table">
+                            <tr>
+                                <td style="width: 15%; font-weight: bold; text-align: center;">設備編號</td>
+                                <td style="width: 25%; text-align: center;">${eq.assetNumber || eq.id}</td>
+                                <td style="width: 15%; font-weight: bold; text-align: center;">設備名稱</td>
+                                <td style="width: 25%; text-align: center;">${eq.name}</td>
+                                <td style="width: 20%; text-align: center;">${reportYear} 年 ${reportMonth} 月</td>
+                            </tr>
+                        </table>
+
+                        <table class="kt-report-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="2" rowspan="2" style="width: 45%;">點檢項目</th>
+                                    <th colspan="2" style="width: 5%;">週期</th>
+                                    <th rowspan="2" style="width: 8%; font-size: 10px;">第一週<br><span style="font-size:9px">${dates[1]||'月 日'}</span></th>
+                                    <th rowspan="2" style="width: 8%; font-size: 10px;">第二週<br><span style="font-size:9px">${dates[2]||'月 日'}</span></th>
+                                    <th rowspan="2" style="width: 8%; font-size: 10px;">第三週<br><span style="font-size:9px">${dates[3]||'月 日'}</span></th>
+                                    <th rowspan="2" style="width: 8%; font-size: 10px;">第四週<br><span style="font-size:9px">${dates[4]||'月 日'}</span></th>
+                                    <th rowspan="2" style="width: 8%; font-size: 10px;">第五週<br><span style="font-size:9px">${dates[5]||'月 日'}</span></th>
+                                </tr>
+                                <tr>
+                                    <th style="font-size: 12px; height: 15px;">週</th>
+                                    <th style="font-size: 12px; height: 15px;">月</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRowsHtml}
+                                <tr style="height: 50px;">
+                                    <td colspan="4">檢查人員簽名</td>
+                                    <td style="font-size: 75%;">${signatures[1]}</td>
+                                    <td style="font-size: 75%;">${signatures[2]}</td>
+                                    <td style="font-size: 75%;">${signatures[3]}</td>
+                                    <td style="font-size: 75%;">${signatures[4]}</td>
+                                    <td style="font-size: 75%;">${signatures[5]}</td>
+                                </tr>
+                                <tr style="height: 25px;">
+                                    <td colspan="4">備註</td>
+                                    <td colspan="5"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="kt-footer-notes">
+                            <div>附註：</div>
+                            <ol style="padding-left: 20px; margin: 5px 0;">
+                                <li>本表由機器(儀器)設備早班操作人員每週確實檢查，點檢後檢查人員須簽章。</li>
+                                <li>檢查結果正常打✓，不正常打X，不適用項目打/。</li>
+                                <li>發生不正常打X時，除了記錄外，檢查人應向課長報告，在能力條件下，進行一級保養維護，無法處理時申請維修。</li>
+                            </ol>
+                        </div>
+
+                        <div class="kt-sign-area" style="justify-content: flex-end; gap: 40px; padding-right: 20px;">
+                            <div>主管：<span style="border-bottom: 1px solid black; padding: 0 10px; display: inline-block; min-width: 80px; text-align: center;">${supervisorName}</span></div>
+                            <div>日期：<span style="border-bottom: 1px solid black; padding: 0 10px;">${signYear}</span>年<span style="border-bottom: 1px solid black; padding: 0 10px;">${signMonth}</span>月<span style="border-bottom: 1px solid black; padding: 0 10px;">${signDay}</span>日</div>
+                        </div>
+                        <div class="kt-sign-area" style="margin-top: 5px; justify-content: space-between;">
+                            <div>表單編號：0023-02-01</div>
+                            <div>存放地點：各設備使用單位</div>
+                            <div>保存期限：三年</div>
+                        </div>
+                    </div>
+                    `;
+                });
+                
+                content.innerHTML = reportHtml;
+            } else {
+                // ... (Other report types remain unchanged) ...
+                let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
+                if (type === 'checklist') {
+                    title.textContent = "設備點檢紀錄表";
+                    html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
+                    
+                    let filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; });
+                    
+                    if (category !== 'ALL') {
+                        filtered = filtered.filter(h => {
+                            const eq = equipmentDatabase[h.deviceId];
+                            const eqCat = eq ? (eq.category || '未分類') : '未分類';
+                            return eqCat === category;
+                        });
+                    }
+
+                    filtered.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds);
+
+                    if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`;
+                    filtered.forEach(r => {
+                        const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>';
+                        html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`;
+                    });
+                } else if (type === 'maintenance') {
+                    title.textContent = "設備保養/維修紀錄表";
+                    html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
+                    
+                    let filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; });
+                    
+                    if (category !== 'ALL') {
+                        filtered = filtered.filter(h => {
+                            const eq = equipmentDatabase[h.deviceId];
+                            const eqCat = eq ? (eq.category || '未分類') : '未分類';
+                            return eqCat === category;
+                        });
+                    }
+                    
+                    filtered.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds);
+
+                    if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`;
+                    filtered.forEach(r => {
+                        const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換';
+                        html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`;
+                    });
+                }
+                html += '</tbody></table>'; content.innerHTML = html;
+            }
+        };
+
+        // ... (remaining functions stay the same) ...
         window.app.logout = function() {
             loggedInUser = null;
             document.getElementById('app-container').classList.add('hidden');
@@ -584,7 +1062,14 @@
             currentCheckId = id;
             document.getElementById('main-content').classList.add('hidden'); document.getElementById('checklist-section').classList.remove('hidden');
             document.getElementById('device-name').textContent = eq.name; document.getElementById('device-asset-no').textContent = eq.assetNumber || '無';
-            document.getElementById('user-name-display').textContent = loggedInUser.name; document.getElementById('check-date').textContent = new Date().toISOString().slice(0,10);
+            document.getElementById('user-name-display').textContent = loggedInUser.name;
+            
+            // Set date to today and update week
+            const today = new Date().toISOString().slice(0,10);
+            const dateInput = document.getElementById('check-date-input');
+            dateInput.value = today;
+            window.app.updateWeekDisplay(today);
+
             const container = document.getElementById('checklist-items-container'); container.innerHTML = '';
             if (eq.items) {
                 eq.items.forEach(cat => {
@@ -609,12 +1094,41 @@
             if (loggedInUser.role === 'guest') return;
             btn.disabled = true; btn.innerText = "提交中...";
             try {
+                // Get selected date
+                const dateStr = document.getElementById('check-date-input').value;
+                const selectedDate = new Date(dateStr);
+                // Add current time to preserve submission hour, or set to noon if strict date based
+                // Here we keep current hour/min to avoid timezone shift causing previous day
+                const now = new Date();
+                selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
                 const rows = document.querySelectorAll('.item-row'); const items = [];
                 rows.forEach(r => { items.push({ category: r.dataset.cat, text: r.dataset.text, status: r.dataset.status === 'abnormal' ? '異常' : '正常', details: r.querySelector('.abnormal-input').value }); });
-                const record = { deviceId: currentCheckId, deviceName: equipmentDatabase[currentCheckId].name, userId: loggedInUser.id, userName: loggedInUser.name, checkTimestamp: serverTimestamp(), summaryNotes: document.getElementById('summary-notes').value, items: items };
+                
+                const record = { 
+                    deviceId: currentCheckId, 
+                    deviceName: equipmentDatabase[currentCheckId].name, 
+                    userId: loggedInUser.id, 
+                    userName: loggedInUser.name, 
+                    checkTimestamp: Timestamp.fromDate(selectedDate), // Use selected date for history 
+                    createdTimestamp: serverTimestamp(), // Keep track of actual creation time
+                    summaryNotes: document.getElementById('summary-notes').value, 
+                    items: items 
+                };
+                
                 await setDoc(doc(getCollectionRef("check_history")), record);
-                const cycle = parseInt(equipmentDatabase[currentCheckId].checkCycleDays) || 7; const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + cycle);
-                await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: nextDate.toISOString().slice(0,10) });
+                
+                // Only update "Next Check Date" if the submitted date is TODAY or FUTURE
+                // If backfilling old records, we probably shouldn't mess up the schedule for next week
+                const isBackfill = selectedDate < new Date(new Date().setHours(0,0,0,0));
+                
+                if (!isBackfill) {
+                    const cycle = parseInt(equipmentDatabase[currentCheckId].checkCycleDays) || 7; 
+                    const nextDate = new Date(); 
+                    nextDate.setDate(nextDate.getDate() + cycle);
+                    await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: nextDate.toISOString().slice(0,10) });
+                }
+
                 showToast('提交成功', 'success'); window.app.resetApp();
             } catch (e) { console.error(e); showToast('提交失敗: ' + e.message, 'error'); } finally { btn.disabled = false; btn.innerText = "提交"; }
         };
@@ -637,12 +1151,151 @@
             if(tab === 'equipment') window.app.renderEquipmentList();
             if(tab === 'templates') window.app.renderTemplateList();
             
-            // 傳入預設的篩選狀態 'ALL'，避免初次切換時空白
             if(tab === 'checklistHistory') window.app.renderChecklistHistory('ALL');
             if(tab === 'maintenanceHistory') window.app.renderMaintenanceHistory('ALL');
         };
 
-        // 設備管理 (Updated: Dropdown List Logic)
+        // --- NEW FUNCTIONS FOR HISTORY TAB ---
+        window.app.renderChecklistHistory = function(filter = 'ALL') {
+            const container = document.getElementById('checklist-history-log-container');
+            if(!container) return;
+            
+            let filtered = checkHistory.sort((a,b) => (b.checkTimestamp?.seconds || 0) - (a.checkTimestamp?.seconds || 0));
+            if(filter !== 'ALL') {
+                filtered = filtered.filter(h => h.deviceId === filter);
+            }
+
+            let html = `
+                <div class="mb-4">
+                    <label class="text-sm font-bold text-gray-700">篩選設備: </label>
+                    <select id="check-filter-select" onchange="window.app.renderChecklistHistory(this.value)" class="border rounded p-1">
+                        <option value="ALL">全部顯示</option>
+                        ${Object.values(equipmentDatabase).map(e => `<option value="${e.id}" ${filter===e.id?'selected':''}>${e.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="py-2 px-4 border-b">日期</th>
+                                <th class="py-2 px-4 border-b">設備</th>
+                                <th class="py-2 px-4 border-b">人員</th>
+                                <th class="py-2 px-4 border-b">狀態</th>
+                                <th class="py-2 px-4 border-b">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            if(filtered.length === 0) {
+                html += `<tr><td colspan="5" class="text-center py-4 text-gray-500">無紀錄</td></tr>`;
+            } else {
+                filtered.forEach(h => {
+                    const date = h.checkTimestamp?.toDate().toLocaleString() || 'N/A';
+                    const isAbnormal = h.items.some(i => i.status === '異常');
+                    const statusBadge = isAbnormal 
+                        ? `<span class="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">異常</span>` 
+                        : `<span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">正常</span>`;
+                        
+                    html += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-2 px-4 border-b text-sm">${date}</td>
+                            <td class="py-2 px-4 border-b text-sm">${h.deviceName}</td>
+                            <td class="py-2 px-4 border-b text-sm">${h.userName}</td>
+                            <td class="py-2 px-4 border-b">${statusBadge}</td>
+                            <td class="py-2 px-4 border-b text-sm">
+                                <button onclick="window.app.deleteCheckHistory('${h.id}')" class="text-red-500 hover:text-red-700">刪除</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        };
+
+        window.app.renderMaintenanceHistory = function(filter = 'ALL') {
+             const container = document.getElementById('maintenance-history-log-container');
+             if(!container) return;
+             
+             let filtered = maintenanceHistory.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+             if(filter !== 'ALL') {
+                 filtered = filtered.filter(h => h.deviceId === filter);
+             }
+             
+             let html = `
+                <div class="mb-4">
+                    <label class="text-sm font-bold text-gray-700">篩選設備: </label>
+                    <select id="maint-filter-select" onchange="window.app.renderMaintenanceHistory(this.value)" class="border rounded p-1">
+                        <option value="ALL">全部顯示</option>
+                        ${Object.values(equipmentDatabase).map(e => `<option value="${e.id}" ${filter===e.id?'selected':''}>${e.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border border-gray-200">
+                         <thead class="bg-gray-50">
+                            <tr>
+                                <th class="py-2 px-4 border-b">日期</th>
+                                <th class="py-2 px-4 border-b">設備</th>
+                                <th class="py-2 px-4 border-b">類型</th>
+                                <th class="py-2 px-4 border-b">內容</th>
+                                <th class="py-2 px-4 border-b">人員</th>
+                                <th class="py-2 px-4 border-b">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+             `;
+             
+             if(filtered.length === 0) {
+                 html += `<tr><td colspan="6" class="text-center py-4 text-gray-500">無紀錄</td></tr>`;
+             } else {
+                 filtered.forEach(h => {
+                     const date = h.timestamp?.toDate().toLocaleString() || 'N/A';
+                     const typeStr = h.type === 'cleaning' ? '清潔' : '更換零件';
+                     const content = h.type === 'replacement' ? h.componentName : h.notes;
+                     
+                     html += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-2 px-4 border-b text-sm">${date}</td>
+                            <td class="py-2 px-4 border-b text-sm">${h.deviceName}</td>
+                            <td class="py-2 px-4 border-b text-sm">${typeStr}</td>
+                            <td class="py-2 px-4 border-b text-sm truncate max-w-xs" title="${content}">${content}</td>
+                            <td class="py-2 px-4 border-b text-sm">${h.userName}</td>
+                            <td class="py-2 px-4 border-b text-sm">
+                                <button onclick="window.app.deleteMaintenanceHistory('${h.id}')" class="text-red-500 hover:text-red-700">刪除</button>
+                            </td>
+                        </tr>
+                     `;
+                 });
+             }
+             html += `</tbody></table></div>`;
+             container.innerHTML = html;
+        };
+
+        window.app.deleteCheckHistory = async function(id) {
+            if(confirm('確定要刪除這筆點檢紀錄嗎？此動作無法復原。')) {
+                try {
+                    await deleteDoc(getDocRef("check_history", id));
+                    showToast('刪除成功', 'success');
+                } catch(e) {
+                    console.error(e);
+                    showToast('刪除失敗', 'error');
+                }
+            }
+        };
+
+        window.app.deleteMaintenanceHistory = async function(id) {
+            if(confirm('確定要刪除這筆保養紀錄嗎？此動作無法復原。')) {
+                try {
+                    await deleteDoc(getDocRef("maintenance_history", id));
+                    showToast('刪除成功', 'success');
+                } catch(e) {
+                    console.error(e);
+                    showToast('刪除失敗', 'error');
+                }
+            }
+        };
+
         window.app.renderEquipmentList = function() {
             const tabsContainer = document.getElementById('equipment-category-tabs');
             const listContainer = document.getElementById('equipment-list-container');
@@ -653,7 +1306,6 @@
                 return;
             }
 
-            // Group data
             const groups = {};
             Object.values(equipmentDatabase).forEach(eq => {
                 const cat = eq.category || '未分類';
@@ -662,7 +1314,6 @@
             });
             const categories = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'zh-TW'));
 
-            // 1. Build Dropdown (Replacement for Tabs)
             let selectHtml = `
                 <div class="flex items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                     <label class="mr-3 font-bold text-slate-700 flex items-center whitespace-nowrap">
@@ -678,15 +1329,12 @@
             });
             selectHtml += `</select></div>`;
             
-            tabsContainer.innerHTML = selectHtml; // Inject dropdown where tabs were
+            tabsContainer.innerHTML = selectHtml; 
 
-            // 2. Build List Content
             let listHtml = '';
             categories.forEach((cat) => {
-                // Show ALL by default
                 listHtml += `<div id="cat-content-${cat}" class="eq-category-group space-y-3 mb-6">`;
                 
-                // Add a header for the category so it's clear when viewing "All"
                 listHtml += `<h3 class="font-bold text-slate-500 text-sm border-b pb-1 mb-2 mt-4">${cat}</h3>`;
                 
                 groups[cat].forEach(eq => {
@@ -724,7 +1372,6 @@
             listContainer.innerHTML = listHtml;
         };
 
-        // Helper function for the select onchange
         window.app.filterEquipmentCategory = function(selectedCat) {
             const allGroups = document.querySelectorAll('.eq-category-group');
             allGroups.forEach(group => {
@@ -744,7 +1391,6 @@
             if(confirm('確定刪除此設備？')) await deleteDoc(getDocRef("equipment", id));
         };
         
-        // ... (QR Code, Image Upload, Modals Logic same as before) ...
         window.app.showQRCode = function(id, name) {
             currentQrId = id; const container = document.getElementById('qr-code-container'); container.innerHTML = '';
             document.getElementById('qr-display-name').textContent = name;
@@ -761,10 +1407,10 @@
         window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
         window.app.logMaintenance = async function(btn) { if(!currentMaintEqId) return; btn.disabled = true; const type = document.getElementById('maintenance-type').value; const notes = document.getElementById('maintenance-notes').value; const componentName = type === 'replacement' ? document.getElementById('maintenance-component-name').value : null; const imageUrl = document.getElementById('maint-image-preview').dataset.imageDataUrl || null; try { const record = { deviceId: currentMaintEqId, deviceName: equipmentDatabase[currentMaintEqId].name, userId: loggedInUser.id, userName: loggedInUser.name, timestamp: serverTimestamp(), type, notes, componentName, imageUrl }; await setDoc(doc(getCollectionRef("maintenance_history")), record); const updates = {}; if(type === 'cleaning') { const nextClean = new Date(); nextClean.setDate(nextClean.getDate() + 30); updates.nextCleaningDate = nextClean.toISOString().slice(0,10); } await updateDoc(getDocRef("equipment", currentMaintEqId), updates); showToast("保養紀錄已儲存", "success"); window.app.closeMaintenanceModal(); } catch(e) { console.error(e); showToast("儲存失敗", "error"); } finally { btn.disabled = false; } };
         window.app.handleImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
-        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; const userContainer = document.getElementById('user-assignment-container'); userContainer.innerHTML = ''; Object.values(userDatabase).forEach(u => { userContainer.innerHTML += `<label class="flex items-center space-x-2 text-sm p-1"><input type="checkbox" class="auth-user-cb rounded" value="${u.id}"><span class="text-gray-700">${u.name}</span></label>`; }); if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; document.getElementById('edit-device-cycle').value = eq.checkCycleDays || ''; document.getElementById('edit-device-next-date').value = eq.nextCheckDate || ''; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(Array.isArray(eq.authorizedUsers)) { eq.authorizedUsers.forEach(uid => { const cb = userContainer.querySelector(`input[value="${uid}"]`); if(cb) cb.checked = true; }); } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset', 'edit-device-cycle', 'edit-device-next-date'].forEach(k=>document.getElementById(k).value=''); imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } };
+        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; const userContainer = document.getElementById('user-assignment-container'); userContainer.innerHTML = ''; Object.values(userDatabase).forEach(u => { userContainer.innerHTML += `<label class="flex items-center space-x-2 text-sm p-1"><input type="checkbox" class="auth-user-cb rounded" value="${u.id}"><span class="text-gray-700">${u.name}</span></label>`; }); if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; document.getElementById('edit-device-cycle').value = eq.checkCycleDays || ''; document.getElementById('edit-device-next-date').value = eq.nextCheckDate || ''; document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(Array.isArray(eq.authorizedUsers)) { eq.authorizedUsers.forEach(uid => { const cb = userContainer.querySelector(`input[value="${uid}"]`); if(cb) cb.checked = true; }); } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset', 'edit-device-cycle', 'edit-device-next-date'].forEach(k=>document.getElementById(k).value=''); document.getElementById('edit-device-include-kt').checked = false; imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
-        window.app.saveEquipment = async function() { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const authorizedUsers = []; document.querySelectorAll('.auth-user-cb:checked').forEach(cb => authorizedUsers.push(cb.value)); const imgPreview = document.getElementById('image-preview'); const data = { name, category: cat, items, components, authorizedUsers, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: parseInt(document.getElementById('edit-device-cycle').value) || 0, nextCheckDate: document.getElementById('edit-device-next-date').value }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); };
+        window.app.saveEquipment = async function() { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const authorizedUsers = []; document.querySelectorAll('.auth-user-cb:checked').forEach(cb => authorizedUsers.push(cb.value)); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const data = { name, category: cat, items, components, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: parseInt(document.getElementById('edit-device-cycle').value) || 0, nextCheckDate: document.getElementById('edit-device-next-date').value }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); };
         window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); };
         window.app.renderTemplateList = function() { const container = document.getElementById('template-list-container'); container.innerHTML = ''; if(Object.keys(templateDatabase).length === 0) { container.innerHTML = '<p class="text-center text-gray-400">尚無範本</p>'; return; } Object.values(templateDatabase).forEach(t => { container.innerHTML += `<div class="card p-4 flex justify-between items-center"><span class="font-bold">${t.name}</span><div class="flex gap-2"><button onclick="window.app.showTemplateEditor('${t.id}')" class="text-blue-600 text-sm border px-2 py-1 rounded">編輯</button><button onclick="window.app.deleteTemplate('${t.id}')" class="text-red-600 text-sm border px-2 py-1 rounded">刪除</button></div></div>`; }); };
         window.app.showTemplateEditor = function(id = null) { document.getElementById('template-list-section').classList.add('hidden'); document.getElementById('template-editor-section').classList.remove('hidden'); document.getElementById('template-item-editor-container').innerHTML = ''; if(id) { const t = templateDatabase[id]; document.getElementById('edit-template-id').value = t.id; document.getElementById('edit-template-name').value = t.name; if(t.items) t.items.forEach(i => window.app.addCategoryEditor(i, 'template-item-editor-container')); } else { document.getElementById('edit-template-id').value = ''; document.getElementById('edit-template-name').value = ''; } };
@@ -779,202 +1425,6 @@
         window.app.saveUser = async function() { const id = document.getElementById('edit-user-id').value; const data = { name: document.getElementById('edit-user-name').value, role: document.getElementById('edit-user-role').value }; if(data.role === 'manager') data.password = document.getElementById('edit-user-password').value; await setDoc(getDocRef("users", id), data, { merge: true }); window.app.showUserList(); };
         window.app.showUserList = function() { document.getElementById('user-list-container').classList.remove('hidden'); document.getElementById('user-editor-section').classList.add('hidden'); };
         window.app.deleteUser = async (id) => { if(confirm('刪除?')) await deleteDoc(getDocRef("users", id)); };
-
-        // 重新實作：點檢歷史紀錄 (包含分類篩選)
-        window.app.renderChecklistHistory = function(selectedCat = 'ALL') {
-             const c = document.getElementById('checklist-history-log-container');
-             c.innerHTML = '';
-             
-             // 1. 取得所有相關的設備分類 (動態生成選項)
-             const categories = new Set(['ALL']);
-             checkHistory.forEach(h => {
-                 const eq = equipmentDatabase[h.deviceId];
-                 if (eq && eq.category) categories.add(eq.category);
-                 else categories.add('未分類');
-             });
-             
-             // 2. 建立篩選器 HTML
-             let filterHtml = `
-                <div class="mb-4 flex items-center bg-white p-3 rounded-lg border border-gray-200">
-                    <label class="mr-3 font-bold text-slate-700 flex items-center">
-                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                        分類篩選:
-                    </label>
-                    <select id="check-filter-select" onchange="window.app.renderChecklistHistory(this.value)" class="form-select flex-grow p-2 border border-gray-300 rounded text-slate-700 font-medium">
-                        <option value="ALL" ${selectedCat === 'ALL' ? 'selected' : ''}>全部顯示</option>
-             `;
-             
-             // 排序並產生選項
-             Array.from(categories).filter(c => c !== 'ALL').sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(cat => {
-                 filterHtml += `<option value="${cat}" ${cat === selectedCat ? 'selected' : ''}>${cat}</option>`;
-             });
-             filterHtml += `</select></div>`;
-             c.innerHTML = filterHtml;
-
-             // 3. 篩選與顯示資料
-             let filteredHistory = checkHistory.filter(h => {
-                 if (selectedCat === 'ALL') return true;
-                 const eq = equipmentDatabase[h.deviceId];
-                 const cat = eq ? (eq.category || '未分類') : '未分類';
-                 return cat === selectedCat;
-             });
-
-             if(filteredHistory.length === 0) { 
-                 c.innerHTML += '<p class="text-gray-400 text-center py-4">無符合條件的資料</p>'; 
-                 return; 
-             }
-             
-             filteredHistory.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds).forEach(h => {
-                 const date = h.checkTimestamp?.toDate().toLocaleString() || 'N/A';
-                 const abCount = h.items.filter(i => i.status === '異常').length;
-                 const statusStr = abCount > 0 ? `<span class="text-red-500 font-bold">${abCount} 異常</span>` : `<span class="text-green-600">正常</span>`;
-                 // 顯示設備分類標籤
-                 const eq = equipmentDatabase[h.deviceId];
-                 const catLabel = eq ? `<span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded ml-2">${eq.category || '未分類'}</span>` : '';
-                 
-                 c.innerHTML += `
-                 <div class="card p-4 mb-2 text-sm border-l-4 ${abCount>0?'border-red-500':'border-green-500'}">
-                    <p class="font-bold text-lg flex items-center flex-wrap">
-                        ${h.deviceName} 
-                        ${catLabel}
-                        <span class="text-xs font-normal text-gray-500 ml-auto">by ${h.userName}</span>
-                    </p>
-                    <p class="text-gray-500 mt-1 flex justify-between"><span>${date}</span><span>${statusStr}</span></p>
-                 </div>`;
-             });
-        };
-
-        // 重新實作：保養歷史紀錄 (包含分類篩選)
-        window.app.renderMaintenanceHistory = function(selectedCat = 'ALL') {
-             const c = document.getElementById('maintenance-history-log-container');
-             c.innerHTML = '';
-             
-             // 1. 取得分類
-             const categories = new Set(['ALL']);
-             maintenanceHistory.forEach(h => {
-                 const eq = equipmentDatabase[h.deviceId];
-                 if (eq && eq.category) categories.add(eq.category);
-                 else categories.add('未分類');
-             });
-
-             // 2. 建立篩選器 HTML
-             let filterHtml = `
-                <div class="mb-4 flex items-center bg-white p-3 rounded-lg border border-gray-200">
-                    <label class="mr-3 font-bold text-slate-700 flex items-center">
-                        <svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                        分類篩選:
-                    </label>
-                    <select id="maint-filter-select" onchange="window.app.renderMaintenanceHistory(this.value)" class="form-select flex-grow p-2 border border-gray-300 rounded text-slate-700 font-medium">
-                        <option value="ALL" ${selectedCat === 'ALL' ? 'selected' : ''}>全部顯示</option>
-             `;
-             Array.from(categories).filter(c => c !== 'ALL').sort((a,b) => a.localeCompare(b, 'zh-TW')).forEach(cat => {
-                 filterHtml += `<option value="${cat}" ${cat === selectedCat ? 'selected' : ''}>${cat}</option>`;
-             });
-             filterHtml += `</select></div>`;
-             c.innerHTML = filterHtml;
-
-             // 3. 篩選與顯示
-             let filteredHistory = maintenanceHistory.filter(h => {
-                 if (selectedCat === 'ALL') return true;
-                 const eq = equipmentDatabase[h.deviceId];
-                 const cat = eq ? (eq.category || '未分類') : '未分類';
-                 return cat === selectedCat;
-             });
-
-             if(filteredHistory.length === 0) { 
-                 c.innerHTML += '<p class="text-gray-400 text-center py-4">無保養資料</p>'; 
-                 return; 
-             }
-             
-             filteredHistory.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds).forEach(h => {
-                 const date = h.timestamp?.toDate().toLocaleString() || 'N/A';
-                 const typeStr = h.type === 'cleaning' ? '🧹 機台清潔' : '🔧 零件更換';
-                 const imgHtml = h.imageUrl ? `<a href="${h.imageUrl}" target="_blank" class="block mt-2"><img src="${h.imageUrl}" class="w-16 h-16 object-cover rounded border hover:scale-110 transition-transform"></a>` : '';
-                 const eq = equipmentDatabase[h.deviceId];
-                 const catLabel = eq ? `<span class="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded ml-2">${eq.category || '未分類'}</span>` : '';
-
-                 c.innerHTML += `
-                 <div class="card p-4 mb-2 text-sm border-l-4 border-yellow-500">
-                    <p class="font-bold text-lg flex items-center flex-wrap">
-                        ${h.deviceName} 
-                        ${catLabel}
-                        <span class="text-xs font-normal text-gray-500 ml-auto">by ${h.userName}</span>
-                    </p>
-                    <p class="mt-1 font-semibold text-slate-700">${typeStr} ${h.componentName ? `(${h.componentName})` : ''}</p>
-                    <p class="text-gray-500 mt-1">${date}</p>
-                    ${h.notes ? `<p class="mt-2 p-2 bg-gray-50 rounded text-gray-600">${h.notes}</p>` : ''}
-                    ${imgHtml}
-                 </div>`;
-             });
-        };
-
-        window.app.generateReport = function() {
-            const type = document.getElementById('report-type').value;
-            const start = new Date(document.getElementById('report-start-date').value);
-            const end = new Date(document.getElementById('report-end-date').value); end.setHours(23,59,59);
-            const container = document.getElementById('report-preview-container'); const content = document.getElementById('report-content'); const title = document.getElementById('report-title'); const subtitle = document.getElementById('report-subtitle');
-            container.classList.remove('hidden'); document.getElementById('report-actions').classList.remove('hidden');
-            subtitle.textContent = `查詢區間: ${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`; document.getElementById('report-timestamp').textContent = new Date().toLocaleString();
-            let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
-            if (type === 'checklist') {
-                title.textContent = "設備點檢紀錄表";
-                html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
-                const filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }).sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds);
-                if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`;
-                filtered.forEach(r => {
-                    const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>';
-                    html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`;
-                });
-            } else {
-                title.textContent = "設備保養/維修紀錄表";
-                html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
-                const filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }).sort((a,b) => b.timestamp.seconds - a.timestamp.seconds);
-                if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`;
-                filtered.forEach(r => {
-                    const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換';
-                    html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`;
-                });
-            }
-            html += '</tbody></table>'; content.innerHTML = html;
-            const printArea = document.getElementById('print-area');
-            printArea.innerHTML = `<div style="text-align:center; margin-bottom:20px;"><h1>${title.textContent}</h1><p>${subtitle.textContent}</p></div>${html}<div style="text-align:right; margin-top:20px; font-size:12px; color:#666;">製表時間: ${document.getElementById('report-timestamp').textContent}</div>`;
-        };
-        window.app.printReport = function() { window.print(); };
-
-        window.app.showScanner = function() {
-            document.getElementById('qr-scanner-modal').classList.remove('hidden'); document.getElementById('qr-scanner-content').classList.remove('hidden');
-            if(!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10 }, (decodedText) => {
-                 window.app.hideScanner();
-                 let id = decodedText; try { const url = new URL(decodedText); const paramId = url.searchParams.get('id'); if(paramId) id = paramId; } catch(e) {}
-                 window.app.handleScanResult(id);
-            }).catch(err => { document.getElementById('qr-reader').innerHTML = `<p class="text-red-500 p-4">無法啟動相機 (需 HTTPS)</p>`; });
-        };
-        window.app.handleScanResult = function(id) {
-            const eq = equipmentDatabase[id];
-            if (!eq) { showToast("找不到對應的設備 ID: " + id, "error"); return; }
-            document.getElementById('scan-match-name').textContent = eq.name;
-            const btnCheck = document.getElementById('btn-scan-checklist'); const btnMaint = document.getElementById('btn-scan-maintenance');
-            
-            // 訪客禁用掃描後的操作
-            if(loggedInUser.role === 'guest') {
-                btnCheck.disabled = true; btnCheck.classList.add('opacity-50', 'cursor-not-allowed');
-                btnMaint.disabled = true; btnMaint.classList.add('opacity-50', 'cursor-not-allowed');
-            } else {
-                btnCheck.disabled = false; btnCheck.classList.remove('opacity-50', 'cursor-not-allowed');
-                btnMaint.disabled = false; btnMaint.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-
-            btnCheck.onclick = () => { document.getElementById('scan-action-modal').classList.add('hidden'); startChecklist(id); };
-            btnMaint.onclick = () => { document.getElementById('scan-action-modal').classList.add('hidden'); window.app.showMaintenanceModal(id); };
-            document.getElementById('scan-action-modal').classList.remove('hidden'); document.getElementById('scan-action-content').classList.remove('hidden');
-        };
-        window.app.hideScanner = function() { if(html5QrCode) html5QrCode.stop().catch(e=>{}); document.getElementById('qr-scanner-modal').classList.add('hidden'); };
-        function showToast(msg, type='info') {
-            const t = document.getElementById('toast-container'); const d = document.createElement('div');
-            d.className = `p-3 rounded shadow text-white ${type==='error'?'bg-red-500':'bg-blue-500'}`; d.innerText = msg;
-            t.appendChild(d); setTimeout(() => d.remove(), 3000);
-        }
 
         init();
     </script>
