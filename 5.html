@@ -87,7 +87,7 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v3.8 (Table Header Fix)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v3.8.1 (Fix: Toast Error)</p>
         </div>
     </div>
 
@@ -455,6 +455,32 @@
         let loggedInUser = null, currentCheckId = null, html5QrCode = null, currentMaintEqId = null;
         let currentQrId = null;
 
+        // --- Toast Notification Function ---
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded shadow-lg text-white font-bold transition-opacity duration-500 opacity-0 transform translate-y-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`;
+            toast.textContent = message;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-2');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => {
+                    if (container.contains(toast)) {
+                        container.removeChild(toast);
+                    }
+                }, 500);
+            }, 3000);
+        };
+
         window.app = {}; 
         window.app.printReport = function() {
             const reportContent = document.getElementById('report-content').innerHTML;
@@ -631,6 +657,7 @@
             }, onError);
         }
 
+        // ... (populateReportCategoryDropdown, renderLoginOptions, handleLogin stay the same) ...
         function populateReportCategoryDropdown() {
             const sel = document.getElementById('report-category');
             if(!sel) return;
@@ -1405,8 +1432,6 @@
         window.app.toggleMaintType = function() { const type = document.getElementById('maintenance-type').value; const selector = document.getElementById('maintenance-component-selector'); if(type === 'replacement') selector.classList.remove('hidden'); else selector.classList.add('hidden'); };
         window.app.closeMaintenanceModal = function() { document.getElementById('maintenance-modal').classList.add('hidden'); };
         window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
-        window.app.logMaintenance = async function(btn) { if(!currentMaintEqId) return; btn.disabled = true; const type = document.getElementById('maintenance-type').value; const notes = document.getElementById('maintenance-notes').value; const componentName = type === 'replacement' ? document.getElementById('maintenance-component-name').value : null; const imageUrl = document.getElementById('maint-image-preview').dataset.imageDataUrl || null; try { const record = { deviceId: currentMaintEqId, deviceName: equipmentDatabase[currentMaintEqId].name, userId: loggedInUser.id, userName: loggedInUser.name, timestamp: serverTimestamp(), type, notes, componentName, imageUrl }; await setDoc(doc(getCollectionRef("maintenance_history")), record); const updates = {}; if(type === 'cleaning') { const nextClean = new Date(); nextClean.setDate(nextClean.getDate() + 30); updates.nextCleaningDate = nextClean.toISOString().slice(0,10); } await updateDoc(getDocRef("equipment", currentMaintEqId), updates); showToast("保養紀錄已儲存", "success"); window.app.closeMaintenanceModal(); } catch(e) { console.error(e); showToast("儲存失敗", "error"); } finally { btn.disabled = false; } };
-        window.app.handleImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
         window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; const userContainer = document.getElementById('user-assignment-container'); userContainer.innerHTML = ''; Object.values(userDatabase).forEach(u => { userContainer.innerHTML += `<label class="flex items-center space-x-2 text-sm p-1"><input type="checkbox" class="auth-user-cb rounded" value="${u.id}"><span class="text-gray-700">${u.name}</span></label>`; }); if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; document.getElementById('edit-device-cycle').value = eq.checkCycleDays || ''; document.getElementById('edit-device-next-date').value = eq.nextCheckDate || ''; document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(Array.isArray(eq.authorizedUsers)) { eq.authorizedUsers.forEach(uid => { const cb = userContainer.querySelector(`input[value="${uid}"]`); if(cb) cb.checked = true; }); } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset', 'edit-device-cycle', 'edit-device-next-date'].forEach(k=>document.getElementById(k).value=''); document.getElementById('edit-device-include-kt').checked = false; imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
