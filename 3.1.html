@@ -1024,19 +1024,52 @@
                      try {
                          const raw = JSON.parse(val);
                          let list = Array.isArray(raw) ? raw : [raw];
+                         
+                         // 處理嵌套結構 (groupId + data)
                          if(list.length>0 && list[0].groupId && list[0].data) {
-                             list = list.map(i => ({ '筆數':String(i.groupId), ...i.data }));
+                             list = list.map(i => {
+                                 const flatData = { '筆數':String(i.groupId), ...i.data };
+                                 // 自動修正欄位名稱: 衝擊試驗 -> 衝擊測試
+                                 if (flatData['衝擊試驗'] && !flatData['衝擊測試']) {
+                                     flatData['衝擊測試'] = flatData['衝擊試驗'];
+                                     delete flatData['衝擊試驗']; // 刪除舊名稱避免混淆
+                                 }
+                                 return flatData;
+                             });
                          }
+
                          const { db, setDoc, doc, writeBatch } = window.fb;
                          let batch = writeBatch(db);
                          let count = 0;
+                         
                          for(const item of list) {
                              if(item['筆數']) {
                                  const docId = String(item['筆數']);
+                                 
+                                 // 如果 JSON 最外層也是用「衝擊試驗」，也進行修正
+                                 if (item['衝擊試驗'] && !item['衝擊測試']) {
+                                     item['衝擊測試'] = item['衝擊試驗'];
+                                 }
+
                                  const saveData = { ...item, '筆數': Number(item['筆數']) };
+                                 
+                                 // 確保複雜欄位轉為 JSON 字串存儲
                                  if(saveData['機械性質'] && typeof saveData['機械性質'] === 'object') saveData['機械性質'] = JSON.stringify([saveData['機械性質']]);
                                  if(saveData['化學成分'] && typeof saveData['化學成分'] === 'object') saveData['化學成分'] = JSON.stringify(saveData['化學成分']);
-                                 if(saveData['衝擊測試'] && Array.isArray(saveData['衝擊測試'])) saveData['衝擊測試'] = JSON.stringify(saveData['衝擊測試']);
+                                 
+                                 // 修正衝擊測試的處理邏輯
+                                 if(saveData['衝擊測試']) {
+                                     if(Array.isArray(saveData['衝擊測試'])) {
+                                         saveData['衝擊測試'] = JSON.stringify(saveData['衝擊測試']);
+                                     } else if (typeof saveData['衝擊測試'] === 'object') {
+                                         // 如果是單一物件，包成陣列再存
+                                         saveData['衝擊測試'] = JSON.stringify([saveData['衝擊測試']]);
+                                     }
+                                 }
+
+                                 // 移除匯入時不必要的舊欄位名稱，保持資料庫乾淨
+                                 delete saveData['衝擊試驗'];
+
                                  batch.set(doc(db, CONFIG.COLLECTIONS.DATA, docId), saveData, {merge:true});
                                  count++;
                                  if(count % 450 === 0) { await batch.commit(); batch = writeBatch(db); }
@@ -1047,6 +1080,7 @@
                          this.closeModal('importModal');
                          this.dm.fetchMainDataPage('first');
                      } catch(e) {
+                         console.error(e);
                          Utils.showToast('匯入失敗: '+e.message, 'error');
                      } finally {
                          Utils.hideLoading();
