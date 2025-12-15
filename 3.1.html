@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>銲接資料管理系統 (報表修復版)</title>
+    <title>銲接資料管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1275,7 +1275,27 @@
                 }
                 if (!docId && prefillId) { data['筆數'] = prefillId; }
                 if (tableName === CONFIG.COLLECTIONS.SPECS) { document.getElementById('modalDialog').classList.add('modal-content-7xl'); form.innerHTML = this.generateSpecFormHtml(data); }
-                else if (tableName === CONFIG.COLLECTIONS.DATA) { document.getElementById('modalDialog').classList.add('modal-content-7xl'); form.innerHTML = this.generateMainDataFormHtml(data); this.populateTestData(data, form); } 
+                else if (tableName === CONFIG.COLLECTIONS.DATA) { 
+                    document.getElementById('modalDialog').classList.add('modal-content-7xl'); 
+                    form.innerHTML = this.generateMainDataFormHtml(data); 
+                    this.populateTestData(data, form);
+
+                    // 自動帶入規範與分類
+                    const prodSelect = form.querySelector('select[name="品名"]');
+                    if (prodSelect) {
+                        prodSelect.addEventListener('change', (e) => {
+                            const selectedProd = e.target.value;
+                            const mapping = this.dm.cache[CONFIG.COLLECTIONS.PROD_SPEC] || [];
+                            const match = mapping.find(m => m['品名'] === selectedProd);
+                            if (match) {
+                                const specField = form.querySelector('select[name="適用規範"]');
+                                const modeField = form.querySelector('select[name="銲接模式"]');
+                                if (specField && match['預設適用規範']) specField.value = match['預設適用規範'];
+                                if (modeField && match['預設銲材分類']) modeField.value = match['預設銲材分類'];
+                            }
+                        });
+                    }
+                } 
                 else { document.getElementById('modalDialog').classList.remove('modal-content-7xl'); const headers = CONFIG.DEFAULT_HEADERS[tableName] || (data ? Object.keys(data).filter(k => k!=='_docId') : ['名稱']); form.innerHTML = headers.map(h => `<div><label class="block text-sm font-medium text-gray-700">${h}</label><input type="text" name="${h}" value="${data[h]||''}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></div>`).join(''); }
                 modal.classList.remove('hidden');
             }
