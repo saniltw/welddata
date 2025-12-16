@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>銲接資料管理系統</title>
+    <title>銲接資料管理系統 (報表修復版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -212,8 +212,11 @@
                             <!-- NEW: Archive Toggle -->
                             <div class="relative flex-grow flex items-center gap-2">
                                 <div class="relative flex-grow">
-                                    <input type="text" id="searchInput" placeholder="搜尋..." class="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
-                                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <!-- Modified Search Input for Global Search -->
+                                    <input type="text" id="searchInput" placeholder="搜尋(Enter搜全部)..." class="w-full pl-9 pr-8 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+                                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer" id="searchIconBtn" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                    <!-- Optional: Help tooltip or visual cue for Enter key -->
+                                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">↵</span>
                                 </div>
                                 <label class="flex items-center space-x-1 text-sm text-gray-600 bg-gray-100 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-200">
                                     <input type="checkbox" id="showArchivedToggle" class="form-checkbox h-4 w-4 text-blue-600">
@@ -588,6 +591,75 @@
                 } catch (e) { console.error(e); Utils.showToast('讀取資料失敗: ' + e.message, 'error'); } finally { Utils.hideLoading(); }
             }
 
+            // NEW: Global Search Function
+            async searchGlobal(term) {
+                if (!term || term.trim() === '') {
+                    // Empty search -> revert to first page
+                    await this.fetchMainDataPage('first');
+                    return;
+                }
+                
+                Utils.showLoading('全域搜尋中...');
+                const { db, collection, query, where, getDocs, orderBy, limit } = window.fb;
+                const colRef = collection(db, CONFIG.COLLECTIONS.DATA);
+                const termStr = term.trim();
+                let results = [];
+                let seenIds = new Set();
+                
+                try {
+                    // 1. Search by ID (if numeric)
+                    if (!isNaN(termStr)) {
+                        const numVal = Number(termStr);
+                        const qId = query(colRef, where('筆數', '==', numVal));
+                        const snapshotId = await getDocs(qId);
+                        snapshotId.forEach(d => {
+                             if(!seenIds.has(d.id)) {
+                                 results.push({...d.data(), _docId: d.id});
+                                 seenIds.add(d.id);
+                             }
+                        });
+                    }
+                    
+                    // 2. Search by Product Name (Prefix Match)
+                    // Firestore prefix match: name >= term AND name <= term + '\uf8ff'
+                    const qProd = query(colRef, 
+                        where('品名', '>=', termStr), 
+                        where('品名', '<=', termStr + '\uf8ff'),
+                        limit(50) // Limit to prevent massive download
+                    );
+                    const snapshotProd = await getDocs(qProd);
+                    snapshotProd.forEach(d => {
+                        if(!seenIds.has(d.id)) {
+                             results.push({...d.data(), _docId: d.id});
+                             seenIds.add(d.id);
+                        }
+                    });
+                    
+                    // 3. Search by Person Name (Exact Match) - Optional but useful
+                    const qPerson = query(colRef, where('銲接人員', '==', termStr), limit(20));
+                     const snapshotPerson = await getDocs(qPerson);
+                    snapshotPerson.forEach(d => {
+                        if(!seenIds.has(d.id)) {
+                             results.push({...d.data(), _docId: d.id});
+                             seenIds.add(d.id);
+                        }
+                    });
+
+                    // Update UI Data
+                    this.mainData = results.sort((a,b) => (b['筆數']||0) - (a['筆數']||0)); // Sort by ID desc
+                    this.pagination.hasMore = false; // Disable next page as this is a custom result set
+                    
+                    document.dispatchEvent(new CustomEvent('main-data-updated', { detail: { includeArchived: true } })); // Force show results even if archived, or keep user pref? Let's obey user pref in render
+                    Utils.showToast(`搜尋完成，共找到 ${results.length} 筆資料`);
+
+                } catch(e) {
+                    console.error(e);
+                    Utils.showToast('搜尋發生錯誤: ' + e.message, 'error');
+                } finally {
+                    Utils.hideLoading();
+                }
+            }
+
             async deleteItem(collectionName, docId) {
                 await window.fb.deleteDoc(window.fb.doc(window.fb.db, collectionName, docId));
                 if (collectionName === CONFIG.COLLECTIONS.DATA) {
@@ -895,10 +967,31 @@
                 document.getElementById('refreshDataBtn').addEventListener('click', () => {
                     this.state.selectedRowIds = [];
                     this.updateBatchButtons();
+                    document.getElementById('searchInput').value = ''; // Clear search
                     this.dm.fetchMainDataPage('first', this.state.showArchived);
                 });
 
-                document.getElementById('searchInput').addEventListener('input', (e) => { this.state.searchTerm = e.target.value.toLowerCase(); this.renderTable(); });
+                // Modified Search Event Listener
+                const searchInput = document.getElementById('searchInput');
+                const searchIconBtn = document.getElementById('searchIconBtn');
+
+                // Local filter on input (for quick filtering current page)
+                searchInput.addEventListener('input', (e) => { 
+                    this.state.searchTerm = e.target.value.toLowerCase(); 
+                    this.renderTable(); 
+                });
+
+                // Global Search on Enter
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.dm.searchGlobal(searchInput.value);
+                    }
+                });
+
+                // Global Search on Icon Click
+                searchIconBtn.addEventListener('click', () => {
+                     this.dm.searchGlobal(searchInput.value);
+                });
                 
                 document.querySelectorAll('.tab-button').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -916,6 +1009,19 @@
                     const nextId = await this.dm.getNextId();
                     Utils.hideLoading();
                     this.openFormModal(CONFIG.COLLECTIONS.DATA, null, nextId);
+                });
+                
+                // NEW: Quick Edit Button Logic
+                document.getElementById('quickEditBtn').addEventListener('click', () => {
+                    const selectedIds = this.state.selectedRowIds;
+                    if (selectedIds.length === 0) {
+                        Utils.showToast('請先勾選一筆欲編輯的資料', 'warning');
+                    } else if (selectedIds.length > 1) {
+                        Utils.showToast('編輯功能一次只能處理一筆資料，請勿多選', 'warning');
+                    } else {
+                        // Open modal with the single selected ID
+                        this.openFormModal(CONFIG.COLLECTIONS.DATA, selectedIds[0]);
+                    }
                 });
 
                 document.getElementById('saveModalBtn').addEventListener('click', (e) => this.handleSave(e.target.dataset.tableName));
@@ -1274,16 +1380,22 @@
                     else data = (this.dm.cache[tableName] || []).find(d => d._docId === docId) || {};
                 }
                 if (!docId && prefillId) { data['筆數'] = prefillId; }
-                if (tableName === CONFIG.COLLECTIONS.SPECS) { document.getElementById('modalDialog').classList.add('modal-content-7xl'); form.innerHTML = this.generateSpecFormHtml(data); }
+                
+                // --- Form Generation Logic ---
+                if (tableName === CONFIG.COLLECTIONS.SPECS) { 
+                    document.getElementById('modalDialog').classList.add('modal-content-7xl'); 
+                    form.innerHTML = this.generateSpecFormHtml(data); 
+                }
                 else if (tableName === CONFIG.COLLECTIONS.DATA) { 
                     document.getElementById('modalDialog').classList.add('modal-content-7xl'); 
                     form.innerHTML = this.generateMainDataFormHtml(data); 
                     this.populateTestData(data, form);
-
-                    // 自動帶入規範與分類
-                    const prodSelect = form.querySelector('select[name="品名"]');
-                    if (prodSelect) {
-                        prodSelect.addEventListener('change', (e) => {
+                    
+                    // NEW: Product Auto-fill Logic for Datalist Input
+                    // Changed from select to input listener to support datalist and free text
+                    const prodInput = form.querySelector('input[name="品名"]');
+                    if (prodInput) {
+                        prodInput.addEventListener('input', (e) => { // Listen to input event for datalist
                             const selectedProd = e.target.value;
                             const mapping = this.dm.cache[CONFIG.COLLECTIONS.PROD_SPEC] || [];
                             const match = mapping.find(m => m['品名'] === selectedProd);
@@ -1296,8 +1408,32 @@
                         });
                     }
                 } 
-                else { document.getElementById('modalDialog').classList.remove('modal-content-7xl'); const headers = CONFIG.DEFAULT_HEADERS[tableName] || (data ? Object.keys(data).filter(k => k!=='_docId') : ['名稱']); form.innerHTML = headers.map(h => `<div><label class="block text-sm font-medium text-gray-700">${h}</label><input type="text" name="${h}" value="${data[h]||''}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></div>`).join(''); }
+                else if (tableName === CONFIG.COLLECTIONS.PROD_SPEC) {
+                    // NEW: Custom form for Product-Spec mapping
+                    document.getElementById('modalDialog').classList.remove('modal-content-7xl');
+                    document.getElementById('modalDialog').classList.add('modal-content-md');
+                    form.innerHTML = this.generateProdSpecFormHtml(data);
+                }
+                else { 
+                    document.getElementById('modalDialog').classList.remove('modal-content-7xl'); 
+                    const headers = CONFIG.DEFAULT_HEADERS[tableName] || (data ? Object.keys(data).filter(k => k!=='_docId') : ['名稱']); 
+                    form.innerHTML = headers.map(h => `<div><label class="block text-sm font-medium text-gray-700">${h}</label><input type="text" name="${h}" value="${data[h]||''}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></div>`).join(''); 
+                }
                 modal.classList.remove('hidden');
+            }
+            
+            // NEW: Generate custom form for Product-Spec mapping
+            generateProdSpecFormHtml(data) {
+                const specs = (this.dm.cache['規範'] || []).map(s => s.規範名稱);
+                const classes = (this.dm.cache['銲材分類'] || []).map(c => c.銲材分類);
+                
+                return `
+                    <div class="space-y-4">
+                        ${this.createFormField('品名', data['品名'], 'text', { label: '品名' })}
+                        ${this.createFormField('預設適用規範', data['預設適用規範'], 'text', { label: '預設適用規範', isSelect: true, selectOptions: specs })}
+                        ${this.createFormField('預設銲材分類', data['預設銲材分類'], 'text', { label: '預設銲材分類', isSelect: true, selectOptions: classes })}
+                    </div>
+                `;
             }
             
             generateSpecFormHtml(data) { 
@@ -1305,22 +1441,59 @@
             }
 
             createFormField(name, value, type='text', options={}) {
-                const { label=name, isSelect=false, selectOptions=[], noLabel=false } = options;
+                const { label=name, isSelect=false, selectOptions=[], noLabel=false, isDatalist=false } = options; // Added isDatalist
                 let html = ``;
                 if(!noLabel) html += `<label class="block text-sm font-medium text-gray-700 mb-1">${label}</label>`;
-                if(isSelect) { html += `<select name="${name}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm"><option value="">請選擇</option>${selectOptions.map(o=>`<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('')}</select>`; } 
-                else { html += `<input type="${type}" name="${name}" value="${value||''}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm">`; }
+                
+                if(isSelect) { 
+                    html += `<select name="${name}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm"><option value="">請選擇</option>${selectOptions.map(o=>`<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('')}</select>`; 
+                } else if (isDatalist) {
+                    // NEW: Datalist Logic for hybrid input/select
+                    const listId = `${name}-list-${Math.random().toString(36).substr(2, 9)}`;
+                    html += `
+                        <input type="${type}" name="${name}" value="${value||''}" list="${listId}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm" autocomplete="off" placeholder="請輸入或選擇...">
+                        <datalist id="${listId}">
+                            ${selectOptions.map(o => `<option value="${o}"></option>`).join('')}
+                        </datalist>
+                    `;
+                } else { 
+                    html += `<input type="${type}" name="${name}" value="${value||''}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm">`; 
+                }
                 return `<div class="input-container">${html}</div>`;
             }
 
             generateMainDataFormHtml(item) {
                 let html = `<h4 class="col-span-full text-lg font-semibold text-gray-800 border-b pb-2 mb-2">基本資料</h4><div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">`;
                 const fields = ["筆數", "銲接日期", "品名", "線徑", "適用規範", "配方", "RUD卡", "備註", "銲接人員", "銲接模式", "氣體", "鋼板材質", "電流", "電壓", "件別", "拉力棒加工人員", "衝擊片加工人員"];
-                const selects = { '銲接人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), '拉力棒加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), '衝擊片加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), '品名': (this.dm.cache['品名對規範']||[]).map(p=>p.品名), '適用規範': (this.dm.cache['規範']||[]).map(p=>p.規範名稱), '銲接模式': (this.dm.cache['銲材分類']||[]).map(p=>p.銲材分類), '氣體': (this.dm.cache['氣體']||[]).map(p=>p.名稱), '鋼板材質': (this.dm.cache['鋼板']||[]).map(p=>p.材質), '件別': (this.dm.cache['件別']||[]).map(p=>p.件別名稱) };
+                
+                // Changed '品名' logic: Removed from standard selects, handled separately
+                const selects = { 
+                    '銲接人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
+                    '拉力棒加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
+                    '衝擊片加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
+                    // '品名': (this.dm.cache['品名對規範']||[]).map(p=>p.品名), // REMOVED from here
+                    '適用規範': (this.dm.cache['規範']||[]).map(p=>p.規範名稱), 
+                    '銲接模式': (this.dm.cache['銲材分類']||[]).map(p=>p.銲材分類), 
+                    '氣體': (this.dm.cache['氣體']||[]).map(p=>p.名稱), 
+                    '鋼板材質': (this.dm.cache['鋼板']||[]).map(p=>p.材質), 
+                    '件別': (this.dm.cache['件別']||[]).map(p=>p.件別名稱) 
+                };
+
+                // Get options for Product Name separately
+                const productOptions = (this.dm.cache['品名對規範']||[]).map(p=>p.品名);
+
                 fields.forEach(f => {
                     const colSpan = (f === '適用規範' || f === '備註') ? 'md:col-span-2' : 'col-span-1';
                     let inputType = f === '銲接日期' ? 'date' : (f === '筆數' ? 'number' : 'text');
-                    html += `<div class="${colSpan}">${this.createFormField(f, item[f], inputType, { isSelect: !!selects[f], selectOptions: selects[f] || [] })}</div>`;
+                    
+                    let fieldOptions = { isSelect: !!selects[f], selectOptions: selects[f] || [] };
+                    
+                    // Special handling for '品名' to use datalist
+                    if (f === '品名') {
+                        fieldOptions = { isDatalist: true, selectOptions: productOptions };
+                    }
+
+                    html += `<div class="${colSpan}">${this.createFormField(f, item[f], inputType, fieldOptions)}</div>`;
                 });
                 html += `</div><h4 class="col-span-full text-lg font-semibold text-gray-800 border-b pb-2 mt-6 mb-2">測試結果</h4><div id="test-results-container" class="space-y-4">${this.createTestSetContainerHTML('mechanical', '拉力實測')}${this.createTestSetContainerHTML('impact', '衝擊實測')}${this.createTestSetContainerHTML('chemical', '成份實測')}</div>`;
                 return html;
@@ -1365,15 +1538,28 @@
                             const idx = this.dm.mainData.findIndex(d=>d._docId===saveBtn.dataset.docId);
                             if(idx!==-1) this.dm.mainData[idx] = { ...this.dm.mainData[idx], ...newData };
                             this.renderTable();
+                        } else if(tableName === CONFIG.COLLECTIONS.PROD_SPEC) {
+                             // Update local cache manually to reflect changes immediately in dropdowns
+                             const idx = (this.dm.cache[tableName] || []).findIndex(d => d._docId === saveBtn.dataset.docId);
+                             if(idx !== -1) {
+                                  this.dm.cache[tableName][idx] = { ...this.dm.cache[tableName][idx], ...newData };
+                             }
+                             this.renderSettingsTable(tableName);
                         }
                     } else {
                         if(tableName === CONFIG.COLLECTIONS.DATA && newData['筆數']) {
                              const docId = String(newData['筆數']);
-                             // Ensure isArchived is false for new data
                              newData.isArchived = false;
                              await setDoc(doc(db, tableName, docId), newData, {merge:true});
                              this.dm.fetchMainDataPage('first');
-                        } else await addDoc(collection(db, tableName), newData);
+                        } else {
+                            await addDoc(collection(db, tableName), newData);
+                            // Refresh cache for settings
+                            if(tableName !== CONFIG.COLLECTIONS.DATA) {
+                                // Although onSnapshot handles it, manual update for immediate UI feedback is ok, 
+                                // but onSnapshot is better. We rely on onSnapshot here.
+                            }
+                        }
                     }
                     this.closeModal('formModal'); Utils.showToast('儲存成功');
                 } catch(e) { Utils.showToast('儲存失敗:'+e.message, 'error'); } finally { Utils.hideLoading(); }
