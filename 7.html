@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樣品庫存管理系統 v2.9.10 (標籤字體微調)</title>
+    <title>樣品庫存管理系統 v2.9.13 (自訂版面)</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -775,12 +775,27 @@
                     hCtx.fillStyle = '#ffffff'; 
                     hCtx.fillRect(0, 0, width, height);
 
-                    // QR Calculation
-                    const qrZoneWidth = 320; 
-                    const targetQrSize = 260; 
-                    const cellSize = Math.floor(targetQrSize / moduleCount); 
-                    const qrMarginX = (qrZoneWidth - cellSize*moduleCount) / 2; 
-                    const qrMarginY = (height - cellSize*moduleCount) / 2;
+                    // 1. Top Row (Full Width Header) - Y Baseline ~ 80px
+                    hCtx.font = 'bold 72px "Inter", "Noto Sans TC", sans-serif';
+                    hCtx.fillStyle = '#000000';
+                    
+                    // Wire Diameter: Left Aligned
+                    hCtx.textAlign = 'left';
+                    hCtx.fillText(sample.wireDiameter, 30, 80);
+
+                    // Sample Name: Right Aligned
+                    hCtx.textAlign = 'right';
+                    hCtx.fillText(sample.sampleName, 930, 80);
+
+                    // --- Left Column (QR & ID) ---
+                    // Zone: X=0 to 320. Y=120 to 600.
+                    const qrZoneWidth = 320;
+                    const targetQrSize = 260;
+                    const cellSize = Math.floor(targetQrSize / moduleCount);
+                    const qrMarginX = (qrZoneWidth - cellSize * moduleCount) / 2;
+                    // Y Start: 120 (Below header)
+                    // Let's place QR code relatively high in this zone to leave space for ID below
+                    const qrMarginY = 150; 
 
                     // Draw QR
                     hCtx.fillStyle = '#000000'; 
@@ -790,32 +805,47 @@
                         } 
                     }
 
-                    // Text Configuration
-                    const centerTextX = 320 + (640 / 2); 
-                    hCtx.textAlign = 'center'; 
+                    // System ID below QR
+                    hCtx.textAlign = 'center';
+                    hCtx.font = 'bold 24px monospace';
+                    hCtx.fillStyle = '#666666';
+                    // Center of left column is 160
+                    hCtx.fillText(sample.id.substring(0, 8).toUpperCase(), 160, qrMarginY + cellSize * moduleCount + 40);
+
+
+                    // --- Right Column (Details) ---
+                    // Zone: X=340 to 960.
+                    const leftAlignX = 360; // Padding from left of this col
+                    hCtx.textAlign = 'left';
                     hCtx.fillStyle = '#000000';
 
-                    // Name: Reduce by 1/3 (becomes 2/3) -> 90 * 0.66 = 60
-                    hCtx.font = 'bold 60px "Inter", "Noto Sans TC", sans-serif'; 
-                    hCtx.fillText(sample.sampleName, centerTextX, 150); 
+                    // 1. Standard (AWS...) - Font 34px
+                    hCtx.font = '34px "Inter", "Noto Sans TC", sans-serif';
+                    hCtx.fillText(sample.applicableStandard || '', leftAlignX, 150);
 
-                    // Wire: Reduce by 1/3 -> 72 * 0.66 = 48
-                    hCtx.font = 'bold 48px "Inter", "Noto Sans TC", sans-serif'; 
-                    hCtx.fillText(`線徑: ${sample.wireDiameter}`, centerTextX, 250); 
+                    // 2. List Items - Font 48px
+                    hCtx.font = '48px "Inter", "Noto Sans TC", sans-serif';
+                    let currentY = 220;
+                    const lineHeight = 65;
 
-                    // Standard: Reduce by 1/2 -> 60 * 0.5 = 30
-                    hCtx.font = '30px "Inter", "Noto Sans TC", sans-serif'; 
-                    hCtx.fillText(`標準: ${sample.applicableStandard || '-'}`, centerTextX, 320); 
+                    hCtx.fillText(`配方: ${sample.formulaCode || ''}`, leftAlignX, currentY);
+                    currentY += lineHeight;
+                    hCtx.fillText(`製程: ${sample.processDetails || ''}`, leftAlignX, currentY);
+                    currentY += lineHeight;
+                    hCtx.fillText(`爐號: ${sample.furnaceNo || ''}`, leftAlignX, currentY);
+                    currentY += lineHeight;
+                    hCtx.fillText(`批號: ${sample.batchNo || ''}`, leftAlignX, currentY);
+                    currentY += lineHeight;
+                    
+                    // Note logic: simple render
+                    const noteText = sample.notes ? `備註: ${sample.notes}` : '備註:';
+                    hCtx.fillText(noteText, leftAlignX, currentY);
 
-                    // Manufacturer: Reduce further by 1/2 -> 40 * 0.5 = 20
-                    hCtx.font = '20px "Inter", "Noto Sans TC", sans-serif'; 
-                    hCtx.fillText(`廠商: ${sample.manufacturer || '-'}`, centerTextX, 390); 
-
-                    // ID
-                    hCtx.textAlign = 'right'; 
-                    hCtx.font = '24px monospace'; 
-                    hCtx.fillStyle = '#666666'; 
-                    hCtx.fillText(sample.id.substring(0, 8).toUpperCase(), width - 30, height - 30);
+                    // 3. Manufacturer (Bottom Right) - Replaces original ID position
+                    hCtx.textAlign = 'right';
+                    hCtx.font = '24px "Inter", "Noto Sans TC", sans-serif';
+                    hCtx.fillStyle = '#666666';
+                    hCtx.fillText(sample.manufacturer || '', 930, 580);
 
                     // Rotation Logic
                     const rCanvas = document.createElement('canvas');
@@ -1032,17 +1062,43 @@
                 });
             }
 
-            // --- Fix: Batch Download Logic ---
+            // --- Fix: Batch Download Logic (Enhanced for Single Item) ---
             document.getElementById('inventory-batch-download-btn').addEventListener('click', async () => {
                 if (selectedInventoryIds.size === 0) return;
                 
-                const zip = new JSZip();
                 const size = document.getElementById('inventoryBatchLabelSize').value; // '40x40' or '80x50'
                 const btn = document.getElementById('inventory-batch-download-btn');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> 處理中...';
                 btn.disabled = true;
 
+                // Optimization: If only 1 item, download directly as PNG
+                if (selectedInventoryIds.size === 1) {
+                    const id = Array.from(selectedInventoryIds)[0];
+                    const sample = sampleInventory.find(s => s.id === id);
+                    if (sample) {
+                        try {
+                            const dataUrl = await generateLabelImage(sample, size);
+                            const link = document.createElement('a');
+                            link.href = dataUrl;
+                            const cleanName = sample.sampleName.replace(/[<>:"/\\|?*]/g, '_');
+                            link.download = `${cleanName}_${id.substring(0,4)}_${size}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showToast(`已下載 ${sample.sampleName} 的 QR 圖檔`, 'success');
+                        } catch (e) {
+                            console.error(e);
+                            showToast('圖片生成失敗', 'error');
+                        }
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Batch Mode: Use ZIP
+                const zip = new JSZip();
                 const promises = [];
                 selectedInventoryIds.forEach(id => {
                     const sample = sampleInventory.find(s => s.id === id);
@@ -1064,8 +1120,72 @@
                 
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-                showToast(`已下載 ${selectedInventoryIds.size} 個 QR Code`, 'success');
+                showToast(`已下載 ${selectedInventoryIds.size} 個 QR Code (ZIP)`, 'success');
             });
+            
+            // Add listener for batch-qr-btn in Staging Drawer (Robustness)
+            const stagingBatchBtn = document.getElementById('batch-qr-btn');
+            if (stagingBatchBtn) {
+                stagingBatchBtn.addEventListener('click', async () => {
+                    // Simple logic: grab all staging samples for now since we don't track selection strictly in drawer yet
+                    // OR implementing simple check
+                    const selectedChecks = document.querySelectorAll('#staging-list input[type="checkbox"]:checked');
+                    if (selectedChecks.length === 0) return showToast('請先勾選暫存區樣品', 'error');
+
+                    const btn = stagingBatchBtn;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i>';
+                    btn.disabled = true;
+                    
+                    const size = document.getElementById('stagingBatchLabelSize').value;
+                    const zip = new JSZip();
+                    const promises = [];
+                    let singleSample = null;
+
+                    // Identify selected samples (Using index or simple logic if IDs were stored, here relying on sample list order if DOM matches)
+                    // Better approach: Iterate stagingSamples and match? 
+                    // Let's assume user wants all for now or check current simple implementation.
+                    // To be safe, let's just zip all STAGING samples for now as the checkboxes in drawer are visual in this snippet version
+                    // OR simply fix it to be robust:
+                    const stagingListDivs = document.getElementById('staging-list').children;
+                    let count = 0;
+                    
+                    for (let i = 0; i < stagingListDivs.length; i++) {
+                        if (stagingListDivs[i].querySelector('input').checked) {
+                            const sample = stagingSamples[i]; // Assuming order matches
+                            if (sample) {
+                                count++;
+                                singleSample = sample;
+                                promises.push(generateLabelImage(sample, size).then(dataUrl => {
+                                    const cleanName = sample.sampleName.replace(/[<>:"/\\|?*]/g, '_');
+                                    zip.file(`${cleanName}_${sample.id.substring(0,4)}.png`, dataUrl.split(',')[1], {base64: true});
+                                }));
+                            }
+                        }
+                    }
+
+                    if (count === 0) { btn.innerHTML = originalText; btn.disabled = false; return; }
+
+                    if (count === 1 && singleSample) {
+                         const dataUrl = await generateLabelImage(singleSample, size);
+                         const link = document.createElement('a');
+                         link.href = dataUrl;
+                         link.download = `${singleSample.sampleName}_${singleSample.id.substring(0,4)}.png`;
+                         link.click();
+                         showToast('已下載圖檔', 'success');
+                    } else {
+                        await Promise.all(promises);
+                        const content = await zip.generateAsync({type:"blob"});
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(content);
+                        link.download = `staging_qr_${new Date().getTime()}.zip`;
+                        link.click();
+                        showToast(`已下載 ${count} 個圖檔`, 'success');
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }
 
 
             onAuthStateChanged(auth, user => {
