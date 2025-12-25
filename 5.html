@@ -112,7 +112,7 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.0.1 (Error Fixes)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.0.2 (Overdue Reports)</p>
         </div>
     </div>
 
@@ -328,7 +328,15 @@
                  <h2 class="text-2xl font-semibold mb-4 text-slate-800">報表輸出中心</h2>
                  <div class="card p-6 mb-6">
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div><label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label><select id="report-type" class="w-full p-2 border rounded bg-white"><option value="checklist">設備點檢紀錄表 (清單式)</option><option value="kt_weekly">廣泰金屬-週點檢表 (格式化)</option><option value="maintenance">保養維修紀錄表</option></select></div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label>
+                            <select id="report-type" class="w-full p-2 border rounded bg-white">
+                                <option value="checklist">設備點檢紀錄表 (清單式)</option>
+                                <option value="overdue">逾期未執行報表 (目前)</option>
+                                <option value="kt_weekly">廣泰金屬-週點檢表 (格式化)</option>
+                                <option value="maintenance">保養維修紀錄表</option>
+                            </select>
+                        </div>
                         <div><label class="block text-xs font-medium text-slate-500 mb-1">設備分類</label><select id="report-category" class="w-full p-2 border rounded bg-white"><option value="ALL">全部分類</option></select></div>
                         <div id="date-range-container" class="contents"><div><label class="block text-xs font-medium text-slate-500 mb-1">開始日期</label><input type="date" id="report-start-date" class="w-full p-2 border rounded"></div><div><label class="block text-xs font-medium text-slate-500 mb-1">結束日期</label><input type="date" id="report-end-date" class="w-full p-2 border rounded"></div></div>
                         <div id="kt-report-options" class="hidden md:col-span-2 flex gap-4">
@@ -609,7 +617,28 @@
             document.getElementById('count-pending').textContent = pendingItems.length; document.getElementById('count-completed').textContent = completedItems.length;
             const total = pendingItems.length + completedItems.length; const percentage = total === 0 ? 0 : Math.round((completedItems.length / total) * 100); document.getElementById('dashboard-progress-text').textContent = `${percentage}%`; document.getElementById('dashboard-progress-bar').style.width = `${percentage}%`;
         };
-        window.app.handleReportTypeChange = function() { const type = document.getElementById('report-type').value; const dateContainer = document.getElementById('date-range-container'); const ktOptionsContainer = document.getElementById('kt-report-options'); if (type === 'kt_weekly') { dateContainer.classList.add('hidden'); dateContainer.classList.remove('contents'); ktOptionsContainer.classList.remove('hidden'); } else { dateContainer.classList.remove('hidden'); dateContainer.classList.add('contents'); ktOptionsContainer.classList.add('hidden'); } };
+
+        // Updated Handle Report Type Change for Overdue Report
+        window.app.handleReportTypeChange = function() { 
+            const type = document.getElementById('report-type').value; 
+            const dateContainer = document.getElementById('date-range-container'); 
+            const ktOptionsContainer = document.getElementById('kt-report-options'); 
+            
+            // Default hidden
+            dateContainer.classList.add('hidden');
+            dateContainer.classList.remove('contents'); 
+            ktOptionsContainer.classList.add('hidden');
+            
+            if (type === 'kt_weekly') { 
+                ktOptionsContainer.classList.remove('hidden'); 
+            } else if (type === 'overdue') {
+                // For overdue, we don't need dates or KT options, just category is enough
+            } else { 
+                // checklist, maintenance
+                dateContainer.classList.remove('hidden'); 
+                dateContainer.classList.add('contents'); 
+            } 
+        };
 
         // === Main Listeners with Safety Checks ===
         function startListeners() {
@@ -657,17 +686,117 @@
         function renderLoginOptions() { const select = document.getElementById('login-user-select'); if(!select) return; select.innerHTML = '<option value="guest" selected>👤 訪客 (僅供檢視)</option>'; Object.values(userDatabase).forEach(user => { const roleText = user.role === 'manager' ? '👑 管理員' : '🔧 操作員'; select.add(new Option(`${roleText} - ${user.name}`, user.id)); }); }
         window.app.handleLogin = function() { const select = document.getElementById('login-user-select'); const userId = select.value; if (userId === 'guest') { loggedInUser = { id: 'guest', name: '訪客', role: 'guest' }; } else { loggedInUser = userDatabase[userId]; } if (!loggedInUser) return showToast("登入錯誤，請重試", "error"); document.getElementById('user-switch-modal').classList.add('hidden'); updateUIState(); if(window.app.pendingScanId && equipmentDatabase[window.app.pendingScanId]) { window.app.handleScanResult(window.app.pendingScanId); window.app.pendingScanId = null; } };
         
-        // ... (Report generation omitted for brevity, same as before) ...
+        // ... (Report generation updated with Overdue logic) ...
         window.app.generateReport = function() {
-            // ... (keep existing report logic) ...
-            const type = document.getElementById('report-type').value; const category = document.getElementById('report-category').value; let start, end;
-            if (type === 'kt_weekly') { const monthVal = document.getElementById('report-month').value; if (!monthVal) return showToast("請選擇月份", "error"); const [year, month] = monthVal.split('-'); start = new Date(year, month - 1, 1); end = new Date(year, month, 0, 23, 59, 59); } else { start = new Date(document.getElementById('report-start-date').value); end = new Date(document.getElementById('report-end-date').value); end.setHours(23,59,59); }
-            const container = document.getElementById('report-preview-container'); const content = document.getElementById('report-content'); const title = document.getElementById('report-title'); const subtitle = document.getElementById('report-subtitle');
-            container.classList.remove('hidden'); document.getElementById('report-actions').classList.remove('hidden');
+            const type = document.getElementById('report-type').value; 
+            const category = document.getElementById('report-category').value; 
+            let start, end;
+
+            // Only parse dates if not overdue type (which uses 'now') and not KT (uses month)
+            if (type !== 'overdue' && type !== 'kt_weekly') {
+                start = new Date(document.getElementById('report-start-date').value); 
+                end = new Date(document.getElementById('report-end-date').value); 
+                end.setHours(23,59,59);
+            }
+            if (type === 'kt_weekly') { 
+                const monthVal = document.getElementById('report-month').value; 
+                if (!monthVal) return showToast("請選擇月份", "error"); 
+                const [year, month] = monthVal.split('-'); 
+                start = new Date(year, month - 1, 1); 
+                end = new Date(year, month, 0, 23, 59, 59); 
+            }
+
+            const container = document.getElementById('report-preview-container'); 
+            const content = document.getElementById('report-content'); 
+            const title = document.getElementById('report-title'); 
+            const subtitle = document.getElementById('report-subtitle');
+            
+            container.classList.remove('hidden'); 
+            document.getElementById('report-actions').classList.remove('hidden');
+
+            // Render Logic
+            if (type === 'overdue') {
+                title.textContent = "逾期未執行報表 (目前)";
+                const now = new Date();
+                subtitle.textContent = `統計時間: ${now.toLocaleString()}`;
+                
+                let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; 
+                const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; 
+                const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
+                html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">逾期項目</th><th style="${thStyle}">預計執行日</th><th style="${thStyle}">逾期天數</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
+
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                let overdueList = [];
+                
+                Object.values(equipmentDatabase).forEach(eq => {
+                    if (category !== 'ALL' && (eq.category || '未分類') !== category) return;
+                    // Usually we track active equipments
+                    if (eq.status !== '使用中') return; 
+
+                    const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定';
+
+                    // Check Overdue
+                    if (eq.nextCheckDate) {
+                        const dueDate = new Date(eq.nextCheckDate);
+                        if (dueDate < today) {
+                            const diffTime = Math.abs(today - dueDate);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                            overdueList.push({
+                                name: eq.name,
+                                category: eq.category || '未分類',
+                                type: '設備點檢',
+                                dueDate: eq.nextCheckDate,
+                                days: diffDays,
+                                owner: ownerName
+                            });
+                        }
+                    }
+                    // Clean Overdue
+                    if (eq.nextCleaningDate) {
+                        const dueDate = new Date(eq.nextCleaningDate);
+                        if (dueDate < today) {
+                            const diffTime = Math.abs(today - dueDate);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                            overdueList.push({
+                                name: eq.name,
+                                category: eq.category || '未分類',
+                                type: '清潔保養',
+                                dueDate: eq.nextCleaningDate,
+                                days: diffDays,
+                                owner: ownerName
+                            });
+                        }
+                    }
+                });
+
+                overdueList.sort((a, b) => b.days - a.days); // Most overdue first
+
+                if (overdueList.length === 0) {
+                    html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">目前無逾期項目</td></tr>`;
+                } else {
+                    overdueList.forEach(item => {
+                        html += `<tr>
+                            <td style="${tdStyle}">${item.name}</td>
+                            <td style="${tdStyle}">${item.category}</td>
+                            <td style="${tdStyle} color:#ef4444; font-weight:bold;">${item.type}</td>
+                            <td style="${tdStyle}">${item.dueDate}</td>
+                            <td style="${tdStyle} color:#ef4444; font-weight:bold;">${item.days} 天</td>
+                            <td style="${tdStyle}">${item.owner}</td>
+                        </tr>`;
+                    });
+                }
+                html += '</tbody></table>';
+                content.innerHTML = html;
+                return; // Exit here for overdue report
+            }
+
+            // Existing logic for other report types
             const dateStr = type === 'kt_weekly' ? `${start.getFullYear()}年 ${start.getMonth()+1}月` : `${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`;
             subtitle.textContent = `查詢區間: ${dateStr}${category !== 'ALL' ? ' (分類: ' + category + ')' : ''}`; 
-            // ... (keep render logic) ...
+            
             let html = '';
+            // KT Weekly Report Logic
             if (type === 'kt_weekly') {
                  title.textContent = "設備點檢表(週) - 預覽";
                 content.innerHTML = '<div class="text-center py-4">正在產生報表...</div>';
@@ -698,8 +827,10 @@
                 });
                 content.innerHTML = reportHtml;
             } else {
+                // Regular Checklist or Maintenance Report
                 let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
-                if (type === 'checklist') { title.textContent = "設備點檢紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`; }); } else if (type === 'maintenance') { title.textContent = "設備保養/維修紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`; }); }
+                if (type === 'checklist') { title.textContent = "設備點檢紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`; }); } 
+                else if (type === 'maintenance') { title.textContent = "設備保養/維修紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`; }); }
                 html += '</tbody></table>'; content.innerHTML = html;
             }
         };

@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <!-- Excel Export Library -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Sortable.js for Drag-and-Drop -->
+    <!-- Sortable.js for Drag-and-Drop (Item sorting only now) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body { 
@@ -107,10 +107,25 @@
                 </div>
             </div>
             
-            <div id="main-category-tabs" class="flex flex-wrap items-center gap-2 mb-4"></div>
-            <div id="sub-category-tabs-container" class="mb-4 hidden">
-                <div class="border-b border-gray-200">
-                    <nav id="sub-category-tabs" class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto" aria-label="Tabs"></nav>
+            <!-- 類別選單 (改為下拉式) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">大類選擇</label>
+                    <div class="flex gap-2">
+                        <select id="main-category-select" class="block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                        <button id="edit-main-cat-btn" class="p-2 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 border border-slate-200" title="編輯目前大類">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="sub-category-select-container" class="hidden">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">小類選擇</label>
+                    <div class="flex gap-2">
+                        <select id="sub-category-select" class="block w-full p-2 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 form-select"></select>
+                        <button id="edit-sub-cat-btn" class="p-2 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 border border-slate-200" title="編輯目前小類">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -515,33 +530,23 @@
                 
                 // Handle item ID and action from URL parameters on initial data load
                 if (!urlParamHandled) {
-                    console.log("系統：正在檢查網址參數...");
                     const urlParams = new URLSearchParams(window.location.search);
                     const itemIdFromUrl = urlParams.get('itemId');
                     const actionFromUrl = urlParams.get('action');
-                    console.log(`系統：找到品號(itemId): ${itemIdFromUrl}, 操作(action): ${actionFromUrl}`);
-
 
                     if (itemIdFromUrl && inventoryDatabase[itemIdFromUrl]) {
-                        console.log("系統：品號存在於資料庫中。");
                         const item = inventoryDatabase[itemIdFromUrl];
                         
                         if (actionFromUrl && ['in', 'out', 'adjustment'].includes(actionFromUrl)) {
-                            console.log("系統：找到特定操作指令，正在開啟交易視窗...");
-                            // If a specific action is provided, go directly to the transaction modal
                             setTimeout(() => {
                                 showTransactionModal(item.id, actionFromUrl);
                             }, 100);
                         } else {
-                            console.log("系統：未找到特定操作指令或指令無效，正在開啟通用選擇視窗...");
-                            // Otherwise, show the general action selection modal
                             setTimeout(() => {
                                 showScanActionModal(item);
                             }, 100);
                         }
                         urlParamHandled = true; // Prevent re-triggering
-                    } else {
-                         console.log("系統：網址中沒有有效的品號，或該品號不存在於資料庫中。");
                     }
                 }
 
@@ -687,91 +692,75 @@
             }
         }
         
-        // --- 庫存總覽渲染 ---
+        // --- 庫存總覽渲染 (使用下拉選單) ---
         function renderOverviewTab() {
+            const mainCategorySelect = document.getElementById('main-category-select');
+            const editMainBtn = document.getElementById('edit-main-cat-btn');
+            
+            // 清空目前的選項
+            mainCategorySelect.innerHTML = '';
+            
             const mainCategories = Array.from(mainCategoriesStore.values()).sort((a, b) => (a.order || 0) - (b.order || 0));
-            const mainTabsContainer = document.getElementById('main-category-tabs');
-            mainTabsContainer.innerHTML = '';
 
             if (mainCategories.length === 0) {
                 document.getElementById('inventory-list-container').innerHTML = `<div class="card text-center py-12"><p class="text-slate-500">尚未建立任何品項或類別。</p></div>`;
-                document.getElementById('sub-category-tabs-container').classList.add('hidden');
+                document.getElementById('sub-category-select-container').classList.add('hidden');
+                editMainBtn.disabled = true;
                 return;
             }
+            editMainBtn.disabled = false;
 
+            // 確保有選中的大類
             if (!selectedMainCategory || !mainCategoriesStore.has(selectedMainCategory)) {
                 selectedMainCategory = mainCategories.length > 0 ? mainCategories[0].name : null;
             }
             
+            // 填充大類選單
             mainCategories.forEach(cat => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'relative group flex items-center cursor-grab';
-                wrapper.dataset.categoryName = cat.name;
-
-                const isActive = cat.name === selectedMainCategory;
-                const btn = document.createElement('button');
-                btn.textContent = cat.name;
-                btn.className = `px-4 py-2 text-sm font-semibold rounded-full transition-colors ${isActive ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-700 hover:bg-slate-100 border'}`;
-                btn.onclick = () => selectMainCategory(cat.name);
-                
-                const editBtn = document.createElement('button');
-                editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
-                editBtn.className = 'ml-1 p-1 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors cursor-pointer';
-                editBtn.title = `編輯「${cat.name}」`;
-                editBtn.onclick = (e) => { e.stopPropagation(); showCategoryEditor(false, cat.name); };
-
-                wrapper.appendChild(btn);
-                wrapper.appendChild(editBtn);
-                mainTabsContainer.appendChild(wrapper);
-            });
-
-            // Init Sortable.js for Main Categories
-            new Sortable(mainTabsContainer, {
-                animation: 150,
-                onEnd: handleMainCategorySort
-            });
-
-            renderSubCategories();
-        }
-
-        async function handleMainCategorySort(evt) {
-            const container = evt.target;
-            const children = Array.from(container.children);
-            const batch = writeBatch(db);
-
-            children.forEach((child, index) => {
-                const catName = child.dataset.categoryName;
-                if (catName && mainCategoriesStore.has(catName)) {
-                    const catData = mainCategoriesStore.get(catName);
-                    const docRef = doc(db, "inventory_main_categories", catData.id);
-                    batch.update(docRef, { order: index });
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name;
+                if (cat.name === selectedMainCategory) {
+                    option.selected = true;
                 }
+                mainCategorySelect.appendChild(option);
             });
 
-            try {
-                await batch.commit();
-                showToast('大類排序已儲存', 'success');
-            } catch (e) {
-                console.error("Error saving main category order: ", e);
-                showToast('儲存排序失敗', 'error');
-            }
+            // 大類變更事件
+            mainCategorySelect.onchange = function() {
+                selectMainCategory(this.value);
+            };
+
+            // 大類編輯按鈕事件
+            editMainBtn.onclick = function() {
+                if (selectedMainCategory) {
+                    showCategoryEditor(false, selectedMainCategory);
+                }
+            };
+
+            // 渲染小類
+            renderSubCategories();
         }
 
         window.selectMainCategory = function(categoryName) {
             selectedMainCategory = categoryName;
-            selectedSubCategory = null; 
-            renderOverviewTab();
+            selectedSubCategory = null; // 重置小類選擇
+            renderSubCategories(); // 重新渲染小類選單
         }
 
         function renderSubCategories() {
-            const subCatContainer = document.getElementById('sub-category-tabs-container');
-            const subCatTabs = document.getElementById('sub-category-tabs');
-            subCatTabs.innerHTML = '';
+            const subCatContainer = document.getElementById('sub-category-select-container');
+            const subCategorySelect = document.getElementById('sub-category-select');
+            const editSubBtn = document.getElementById('edit-sub-cat-btn');
+
+            subCategorySelect.innerHTML = '';
 
             const subCategoriesMap = subCategoriesStore.get(selectedMainCategory);
+            
+            // 如果沒有小類，隱藏小類選單容器並直接渲染列表
             if (!subCategoriesMap || subCategoriesMap.size === 0) {
                  subCatContainer.classList.add('hidden');
-                 selectedSubCategory = null; // No sub-categories exist
+                 selectedSubCategory = null;
                  renderFilteredItemsTable();
                  return;
             }
@@ -781,45 +770,39 @@
             if (subCategories.length > 0) {
                 subCatContainer.classList.remove('hidden');
                 
-                // Find a valid selectedSubCategory if current one is invalid
+                // 確保有選中的小類
                 const subCategoryNames = subCategories.map(s => s.name);
                 if (!selectedSubCategory || !subCategoryNames.includes(selectedSubCategory)) {
                     selectedSubCategory = subCategoryNames[0];
                 }
 
+                // 填充小類選單
                 subCategories.forEach(subCat => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'relative group flex items-center cursor-grab';
-                    wrapper.dataset.categoryName = subCat.name;
-
-                    const isActive = subCat.name === selectedSubCategory;
-                    const link = document.createElement('a');
-                    link.href = '#';
-                    link.textContent = subCat.name;
-                    link.className = `whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${isActive ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
-                    link.onclick = (e) => {
-                        e.preventDefault();
-                        selectSubCategory(subCat.name);
-                    };
-
-                    const editBtn = document.createElement('button');
-                    editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
-                    editBtn.className = 'ml-1 p-1 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors cursor-pointer';
-                    editBtn.title = `編輯「${subCat.name}」`;
-                    editBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); showCategoryEditor(true, subCat.name); };
-                    
-                    wrapper.appendChild(link);
-                    if (subCat.name !== '未分類') {
-                      wrapper.appendChild(editBtn);
+                    const option = document.createElement('option');
+                    option.value = subCat.name;
+                    option.textContent = subCat.name;
+                    if (subCat.name === selectedSubCategory) {
+                        option.selected = true;
                     }
-                    subCatTabs.appendChild(wrapper);
+                    subCategorySelect.appendChild(option);
                 });
 
-                // Init Sortable.js for Sub Categories
-                new Sortable(subCatTabs, {
-                    animation: 150,
-                    onEnd: handleSubCategorySort
-                });
+                // 小類變更事件
+                subCategorySelect.onchange = function() {
+                    selectSubCategory(this.value);
+                };
+
+                // 小類編輯按鈕事件 (未分類不可編輯)
+                if (selectedSubCategory === '未分類') {
+                     editSubBtn.classList.add('hidden');
+                } else {
+                     editSubBtn.classList.remove('hidden');
+                     editSubBtn.onclick = function() {
+                        if (selectedSubCategory) {
+                            showCategoryEditor(true, selectedSubCategory);
+                        }
+                    };
+                }
 
             } else {
                 subCatContainer.classList.add('hidden');
@@ -829,40 +812,18 @@
             renderFilteredItemsTable();
         }
 
-        async function handleSubCategorySort(evt) {
-            const container = evt.target;
-            const children = Array.from(container.children);
-            const batch = writeBatch(db);
-
-            children.forEach((child, index) => {
-                const catName = child.dataset.categoryName;
-                if (catName && subCategoriesStore.has(selectedMainCategory) && subCategoriesStore.get(selectedMainCategory).has(catName)) {
-                    const catData = subCategoriesStore.get(selectedMainCategory).get(catName);
-                    const docRef = doc(db, "inventory_sub_categories", catData.id);
-                    batch.update(docRef, { order: index });
-                }
-            });
-
-            try {
-                await batch.commit();
-                showToast('小類排序已儲存', 'success');
-            } catch (e) {
-                console.error("Error saving sub-category order: ", e);
-                showToast('儲存排序失敗', 'error');
-            }
-        }
-
-
         window.selectSubCategory = function(subCategoryName) {
             selectedSubCategory = subCategoryName;
-            const subCatTabs = document.getElementById('sub-category-tabs');
-            subCatTabs.querySelectorAll('a').forEach(link => {
-                const isActive = link.textContent === subCategoryName;
-                link.classList.toggle('border-indigo-500', isActive);
-                link.classList.toggle('text-indigo-600', isActive);
-                link.classList.toggle('border-transparent', !isActive);
-                link.classList.toggle('text-gray-500', !isActive);
-            });
+            // 更新編輯按鈕的可見性
+            const editSubBtn = document.getElementById('edit-sub-cat-btn');
+            if (subCategoryName === '未分類') {
+                editSubBtn.classList.add('hidden');
+            } else {
+                editSubBtn.classList.remove('hidden');
+                editSubBtn.onclick = function() {
+                    showCategoryEditor(true, subCategoryName);
+                };
+            }
             renderFilteredItemsTable();
         }
 
