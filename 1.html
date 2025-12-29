@@ -171,6 +171,10 @@
                     </div>
 
                     <div class="flex gap-2 flex-wrap justify-end w-full sm:w-auto">
+                         <!-- New Weekly Plan Button -->
+                        <button id="btn-show-weekly-plan" class="flex-1 sm:flex-none flex items-center justify-center bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-300 text-sm">
+                            <i class="fas fa-calendar-week mr-2"></i> 週計畫
+                        </button>
                         <button id="btn-show-report" class="flex-1 sm:flex-none flex items-center justify-center bg-teal-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 transition-colors duration-300 text-sm">
                             <i class="fas fa-file-alt mr-2"></i> 報表
                         </button>
@@ -263,8 +267,77 @@
 
     <!-- Modals -->
     
+    <!-- Weekly Plan Modal (NEW) -->
+    <div id="weekly-plan-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-7xl max-h-[95vh] flex flex-col animate-modal-in">
+            <div class="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-2">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-calendar-week text-indigo-600 mr-2"></i>週計畫表</h2>
+                    <input type="week" id="weekly-plan-week-picker" class="border border-gray-300 rounded-lg p-1 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <!-- Group Filter Dropdown (NEW) -->
+                    <select id="weekly-group-filter" class="border border-gray-300 rounded-lg p-1 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ml-2">
+                        <option value="all">所有組別</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-add-general-task" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 text-sm shadow">
+                        <i class="fas fa-plus mr-1"></i> 新增雜項工作
+                    </button>
+                    <button id="btn-close-weekly-plan" class="text-gray-500 hover:text-gray-700 text-2xl px-2">&times;</button>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div id="weekly-plan-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Swimlanes will be injected here -->
+                    <div class="text-center col-span-full py-10 text-gray-500">載入中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- General Task Form Modal (NEW) -->
+    <div id="general-task-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-[60] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-modal-in">
+            <h3 class="text-xl font-bold text-gray-800 mb-4" id="general-task-title">新增雜項/例行工作</h3>
+            <form id="general-task-form">
+                <input type="hidden" id="general-task-id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">工作內容</label>
+                        <!-- Updated to use datalist -->
+                        <input type="text" id="gt-content" list="gt-content-list" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required placeholder="請選擇或輸入工作內容">
+                        <datalist id="gt-content-list"></datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">執行人員</label>
+                        <select id="gt-assignee" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                        <input type="date" id="gt-date" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">狀態</label>
+                        <select id="gt-status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                            <option value="尚未開始">尚未開始</option>
+                            <option value="本週預計">本週預計</option>
+                            <option value="下週預計">下週預計</option>
+                            <option value="進行中" selected>進行中</option>
+                            <option value="已完成">已完成</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="btn-cancel-general-task" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button>
+                    <button type="submit" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 shadow-md">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- Generic Confirmation Modal (Replaces Native confirm()) -->
-    <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[60] p-4 backdrop-blur-sm">
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-modal-in">
             <h3 class="text-xl font-bold text-gray-800 mb-4">確認操作</h3>
             <p id="confirm-message" class="text-gray-600 mb-6">確定要執行此操作嗎？</p>
@@ -316,10 +389,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案總體開始日</label>
                             <input type="date" id="startDate" name="startDate" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">專案總體預計完成日</label>
-                            <input type="date" id="estimatedCompletionDate" name="estimatedCompletionDate" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-                        </div>
+                        <!-- Removed Estimated Completion Date Field -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">專案總體進度</label>
                             <select id="status" name="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
@@ -361,6 +431,15 @@
                             <button type="button" id="settings-add-status" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium">新增</button>
                         </div>
                         <div id="settings-statuses-list" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <!-- Routine Tasks Management (NEW) -->
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <h3 class="font-semibold text-lg mb-2 flex items-center gap-2"><i class="fas fa-list-ul text-orange-500"></i> 雜項工作選項管理</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="settings-new-routine" placeholder="新增例行工作" class="flex-grow border-gray-300 rounded-lg shadow-sm p-2 text-sm" />
+                            <button type="button" id="settings-add-routine" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium">新增</button>
+                        </div>
+                        <div id="settings-routines-list" class="flex flex-wrap gap-2"></div>
                     </div>
                     <!-- Personnel Management -->
                     <div class="p-4 border rounded-lg bg-gray-50">
@@ -527,31 +606,22 @@
                 '其他': ['王正賢', '邱耀賢', '莊立旋']
             },
             projectCategories: ['碳鋼包藥開發', '碳鋼包藥改善', '設備', '測試'],
-            statusOptions: ['尚未開始', '進行中', '已完成', '暫停']
+            // Updated status options to include Weekly Plan specific statuses globally
+            statusOptions: ['尚未開始', '進行中', '已完成', '暫停', '本週預計', '下週預計'],
+            // New Default Routine Task Options
+            routineTaskOptions: ['整理環境', '參加會議', '設備保養', '教育訓練', '支援生產', '行政庶務']
         };
-        
-        const EXCEL_RAW_DATA = [
-            { name: "KTVN 火嘴磨耗設備", content: "設計", group: "銲接課", person: "哀聖哲", date: "2024-05-01" },
-            { name: "銲接室空間整理", content: "規劃", group: "銲接課", person: "哀聖哲", date: "2024-09-01" },
-            { name: "SGS資料整理", content: "資料整合", group: "銲接課", person: "哀聖哲", date: "2024-10-15" },
-            { name: "耗材造冊", content: "資料整理", group: "銲接課", person: "哀聖哲", date: "2024-11-01" },
-            { name: "銲接年會", content: "2024年銲接年會", group: "銲接課", person: "蔡明利", date: "2024-10-01" },
-            { name: "無渣銲線 KM-50LS", content: "資料整合", group: "開發課", person: "邱柏勳", date: "2024-11-01" },
-            { name: "樣品防潮箱", content: "規劃", group: "銲接課", person: "陳冠彰", date: "2024-10-01" },
-            { name: "長榮混合氣實心", content: "測試比較報告", group: "開發課", person: "張家銘", date: "2024-10-01" },
-            { name: "308(-196°C)測試(蓬萊巨濤)", content: "銲線設計", group: "開發課", person: "林仕哲", date: "2024-10-27" },
-            { name: "2594測試(長江中車)", content: "調整配方", group: "開發課", person: "林仕哲", date: "2025-03-31" }
-        ];
         
         // --- Global State ---
         let allTasks = [];
         let allArchivedTasks = [];
+        let allGeneralTasks = []; // NEW: Non-project tasks
         let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
         let recorderSchedule = { rotation: [], offset: 0 };
         let currentTaskToEdit = null;
-        let contentItemCounter = 0; 
         let unsubscribeTasks = null;
         let archivedTasksUnsubscribe = null;
+        let unsubscribeGeneralTasks = null;
 
         // --- DOM Elements ---
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -562,6 +632,8 @@
         const reportModal = document.getElementById('report-modal');
         const scheduleModal = document.getElementById('schedule-modal');
         const archiveModal = document.getElementById('archive-modal');
+        const weeklyPlanModal = document.getElementById('weekly-plan-modal');
+        const generalTaskModal = document.getElementById('general-task-modal');
         const taskForm = document.getElementById('task-form');
         const searchInput = document.getElementById('search-input');
         const archiveSearchInput = document.getElementById('archive-search-input');
@@ -580,6 +652,8 @@
                 case '已完成': return 'bg-green-100 text-green-800 border-green-200';
                 case '進行中': return 'bg-blue-100 text-blue-800 border-blue-200';
                 case '暫停': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                case '本週預計': return 'bg-purple-100 text-purple-800 border-purple-200';
+                case '下週預計': return 'bg-pink-100 text-pink-800 border-pink-200';
                 default: return 'bg-gray-100 text-gray-800 border-gray-200';
             }
         };
@@ -608,6 +682,23 @@
             const yearStart = new Date(d.getFullYear(), 0, 1);
             const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
             return `${d.getFullYear()}-${String(weekNo).padStart(2, '0')}`;
+        };
+        
+        // Helper to get week range dates
+        const getWeekRange = (weekString) => {
+            const [year, week] = weekString.split('-W').map(Number);
+            const simple = new Date(year, 0, 1 + (week - 1) * 7);
+            const dow = simple.getDay();
+            const ISOweekStart = simple;
+            if (dow <= 4)
+                ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+            else
+                ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+            
+            const start = new Date(ISOweekStart);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            return { start, end };
         };
 
         const calculateDaysInProgress = (task) => {
@@ -642,11 +733,8 @@
         function showConfirm(message, callback, confirmText = "確定", confirmColorClass = "bg-blue-600") {
             confirmMsg.textContent = message;
             confirmCallback = callback;
-            
-            // Reset button style
             confirmBtnOk.className = `text-white font-bold py-2 px-4 rounded-lg shadow-md hover:opacity-90 ${confirmColorClass}`;
             confirmBtnOk.textContent = confirmText;
-            
             confirmModal.classList.remove('hidden');
         }
 
@@ -660,383 +748,29 @@
             confirmCallback = null;
         };
 
-        // --- Enhanced Settings Logic ---
-        const openSettingsModal = () => {
-            const tempConfig = JSON.parse(JSON.stringify(config));
-            
-            const render = () => {
-                document.getElementById('settings-categories-list').innerHTML = tempConfig.projectCategories.map(c => `
-                    <span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">
-                        ${c} <button type="button" data-action="delete-category" data-value="${c}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
-                    </span>
-                `).join('');
-
-                document.getElementById('settings-statuses-list').innerHTML = tempConfig.statusOptions.map(s => `
-                    <span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">
-                        ${s} <button type="button" data-action="delete-status" data-value="${s}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
-                    </span>
-                `).join('');
-
-                document.getElementById('settings-personnel-list').innerHTML = Object.entries(tempConfig.personnelData).map(([group, people]) => `
-                    <div class="p-3 bg-gray-50 rounded-md border border-gray-200">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold text-gray-700">${group}</h4>
-                            <button type="button" data-action="delete-group" data-group="${group}" class="text-red-500 text-sm hover:text-red-700 hover:underline">刪除組別</button>
-                        </div>
-                        <div class="pl-0 sm:pl-4">
-                            <div class="flex gap-2 mb-3">
-                                <input type="text" placeholder="新增人員" id="input-person-${group}" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm p-2" />
-                                <button type="button" data-action="add-person" data-group="${group}" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 shadow-sm">加入</button>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                ${people.map(person => `
-                                    <span class="flex items-center gap-2 bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">
-                                        ${person} <button type="button" data-action="delete-person" data-group="${group}" data-person="${person}" class="font-bold text-red-500 hover:text-red-700">&times;</button>
-                                    </span>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            };
-
-            render();
-
-            const form = document.getElementById('settings-form');
-            form.onclick = (e) => {
-                const target = e.target;
-                const action = target.dataset.action;
-                
-                if (target.id === 'settings-add-category') {
-                    const val = document.getElementById('settings-new-category').value.trim();
-                    if (val && !tempConfig.projectCategories.includes(val)) {
-                        tempConfig.projectCategories.push(val);
-                        document.getElementById('settings-new-category').value = '';
-                        render();
-                    }
-                } else if (target.id === 'settings-add-status') {
-                    const val = document.getElementById('settings-new-status').value.trim();
-                    if (val && !tempConfig.statusOptions.includes(val)) {
-                        tempConfig.statusOptions.push(val);
-                        document.getElementById('settings-new-status').value = '';
-                        render();
-                    }
-                } else if (target.id === 'settings-add-group') {
-                    const val = document.getElementById('settings-new-group').value.trim();
-                    if (val && !tempConfig.personnelData[val]) {
-                        tempConfig.personnelData[val] = [];
-                        document.getElementById('settings-new-group').value = '';
-                        render();
-                    }
-                }
-                
-                if (!action) return;
-
-                if (action === 'delete-category') {
-                    tempConfig.projectCategories = tempConfig.projectCategories.filter(c => c !== target.dataset.value);
-                    render();
-                } else if (action === 'delete-status') {
-                    tempConfig.statusOptions = tempConfig.statusOptions.filter(s => s !== target.dataset.value);
-                    render();
-                } else if (action === 'delete-group') {
-                    showConfirm(`確定要刪除 ${target.dataset.group} 嗎？`, () => {
-                        delete tempConfig.personnelData[target.dataset.group];
-                        render();
-                    }, '刪除', 'bg-red-600');
-                } else if (action === 'add-person') {
-                    const group = target.dataset.group;
-                    const input = document.getElementById(`input-person-${group}`);
-                    const val = input.value.trim();
-                    if (val && !tempConfig.personnelData[group].includes(val)) {
-                        tempConfig.personnelData[group].push(val);
-                        input.value = '';
-                        render();
-                    }
-                } else if (action === 'delete-person') {
-                    const { group, person } = target.dataset;
-                    tempConfig.personnelData[group] = tempConfig.personnelData[group].filter(p => p !== person);
-                    render();
-                }
-            };
-
-            form.onsubmit = (e) => {
-                e.preventDefault();
-                set(ref(db, `artifacts/${appId}/public/data/app_config`), tempConfig);
-                toggleModal('settings-modal', false);
-                showToast('設定已更新');
-            };
-
-            toggleModal('settings-modal', true);
-        };
-
-        const openScheduleModal = () => {
-            renderSchedulePreview();
-            toggleModal('schedule-modal', true);
-        };
-        
-        const downloadCSV = () => {
-            const year = document.getElementById('report-year-filter').value;
-            const category = document.getElementById('report-category-filter').value;
-            const status = document.getElementById('report-status-filter').value;
-            const person = document.getElementById('report-person-filter').value;
-
-            const filtered = allTasks.filter(task => 
-                (year === 'all' || (task.startDate && task.startDate.startsWith(year))) &&
-                (category === 'all' || task.projectCategory === category) &&
-                (status === 'all' || task.status === status) &&
-                (person === 'all' || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person)))
-            );
-            
-            if (filtered.length === 0) {
-                showToast("沒有可匯出的資料。", 'error');
-                return;
-            }
-
-            const headers = [
-                "專案名稱", "專案類別", "專案總體開始日", "專案總體預計完成日", "專案總體進度",
-                "項目內容", "項目開始日", "項目結束日", "項目進度", "主要人員", "協助人員", "備註"
-            ];
-            
-            let csvContent = "\uFEFF"; 
-            csvContent += headers.join(',') + '\r\n';
-
-            filtered.forEach(task => {
-                const escapeCSV = (field) => `"${(field || '').toString().replace(/"/g, '""')}"`;
-                if (task.contentItems && task.contentItems.length > 0) {
-                    task.contentItems.forEach(item => {
-                        const mainPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '主要').map(p => p.name).join('; ');
-                        const assistingPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '協助').map(p => p.name).join('; ');
-                        const row = [task.projectName, task.projectCategory, task.startDate, task.estimatedCompletionDate, task.status, item.content, item.startDate, item.endDate, item.status, mainPersonnel, assistingPersonnel, task.remarks].map(escapeCSV).join(',');
-                        csvContent += row + '\r\n';
-                    });
-                } else {
-                    const row = [task.projectName, task.projectCategory, task.startDate, task.estimatedCompletionDate, task.status, "", "", "", "", "", "", task.remarks].map(escapeCSV).join(',');
-                    csvContent += row + '\r\n';
-                }
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `專案進度報表_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-
-        const printReport = () => {
-            const reportContent = document.getElementById('report-content-wrapper').innerHTML;
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html><head><title>專案進度報表</title>
-                <style>
-                    body { font-family: "Microsoft JhengHei", sans-serif !important; -webkit-print-color-adjust: exact !important; }
-                    @page { size: A4 landscape; margin: 10mm; }
-                    table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-                    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-                    th { background-color: #f3f4f6; }
-                </style>
-                </head><body>${reportContent}<script>window.onload = function() { window.print(); window.close(); }<\/script></body></html>
-            `);
-            printWindow.document.close();
-        };
-
-        const renderApp = () => {
-            renderStatsCards();
-            renderDashboardTable();
-        };
-        
-        const renderStatsCards = () => {
-            const container = document.getElementById('stats-cards-container');
-            const allSubItems = allTasks.flatMap(t => t.contentItems || []);
-            const completedProjects = allTasks.filter(t => t.status === '已完成').length;
-            const inProgressProjects = allTasks.filter(t => t.status === '進行中').length;
-            const pausedProjects = allTasks.filter(t => t.status === '暫停').length;
-            
-            let thisWeeksRecorder = '未排定', nextWeeksRecorder = '未排定';
-            const { rotation = [], offset = 0 } = recorderSchedule;
-            if (Array.isArray(rotation) && rotation.length > 0) {
-                const today = new Date();
-                const thisWeekKey = getWeekKey(today);
-                const nextWeekKey = getWeekKey(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
-                
-                const thisWeekNum = parseInt(thisWeekKey.split('-')[1], 10) || 1;
-                const nextWeekNum = parseInt(nextWeekKey.split('-')[1], 10) || 2;
-                const total = rotation.length;
-                thisWeeksRecorder = rotation[((thisWeekNum - 1 + offset) % total + total) % total];
-                nextWeeksRecorder = rotation[((nextWeekNum - 1 + offset) % total + total) % total];
-            }
-
-            // Update Summary Text
-            const summaryEl = document.getElementById('stats-summary-text');
-            if(summaryEl) {
-                summaryEl.textContent = `本週記錄人員: ${thisWeeksRecorder}`;
-                const wrapper = document.getElementById('stats-wrapper');
-                if (wrapper.classList.contains('stats-collapsed')) {
-                    summaryEl.classList.remove('hidden');
-                    summaryEl.classList.remove('opacity-0');
-                } else {
-                    summaryEl.classList.add('opacity-0');
-                    summaryEl.classList.add('hidden');
-                }
-            }
-
-            const cards = [
-                { color: 'blue', icon: 'fa-chart-pie', title: '專案總數', value: allTasks.length, sub: `進行中: ${inProgressProjects}` },
-                { color: 'green', icon: 'fa-check-circle', title: '已完成專案', value: completedProjects, sub: `完成率: ${allTasks.length ? Math.round((completedProjects/allTasks.length)*100) : 0}%` },
-                { color: 'yellow', icon: 'fa-pause-circle', title: '暫停中專案', value: pausedProjects, sub: '待重啟' },
-                { color: 'indigo', icon: 'fa-user-clock', title: '本週記錄', value: thisWeeksRecorder, sub: `下週: ${nextWeeksRecorder}` }
-            ];
-
-            container.innerHTML = cards.map(c => `
-                <div class="bg-white p-4 rounded-xl shadow border-l-4 border-${c.color}-500 flex items-center justify-between">
-                    <div>
-                        <div class="text-gray-500 text-xs font-semibold uppercase tracking-wide">${c.title}</div>
-                        <div class="text-2xl font-bold text-gray-800 mt-1">${c.value}</div>
-                        <div class="text-xs text-gray-400 mt-1">${c.sub}</div>
-                    </div>
-                    <div class="bg-${c.color}-100 p-3 rounded-full text-${c.color}-600">
-                        <i class="fas ${c.icon} text-xl"></i>
-                    </div>
-                </div>
-            `).join('');
-        };
-        
-        const renderDashboardTable = () => {
-            const showCompleted = document.getElementById('filter-show-completed').checked;
-            const showPaused = document.getElementById('filter-show-paused').checked;
-            const sortCriteria = document.getElementById('sort-select').value;
-            const selectedPerson = document.getElementById('person-filter').value;
-            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-
-            const existingOptions = new Set();
-            allTasks.forEach(t => t.contentItems?.forEach(i => i.assignedPersonnel?.forEach(p => {
-                if(p.role === '主要') existingOptions.add(p.name);
-            })));
-            const currentSelected = document.getElementById('person-filter').value;
-            let optionsHtml = `<option value="all">全部人員</option>`;
-            Array.from(existingOptions).sort().forEach(p => {
-                optionsHtml += `<option value="${p}" ${p === currentSelected ? 'selected' : ''}>${p}</option>`;
-            });
-            if (document.getElementById('person-filter').innerHTML !== optionsHtml) {
-                 document.getElementById('person-filter').innerHTML = optionsHtml;
-            }
-
-            let filteredTasks = allTasks.filter(task => {
-                if (!showCompleted && task.status === '已完成') return false;
-                if (!showPaused && task.status === '暫停') return false;
-                if (selectedPerson !== 'all') {
-                    const hasPerson = task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.role === '主要' && p.name === selectedPerson));
-                    if (!hasPerson) return false;
-                }
-                if (searchTerm) {
-                    const inName = task.projectName.toLowerCase().includes(searchTerm);
-                    const inCat = task.projectCategory.toLowerCase().includes(searchTerm);
-                    const inContent = task.contentItems?.some(i => i.content.toLowerCase().includes(searchTerm));
-                    const inPerson = task.contentItems?.some(i => i.assignedPersonnel?.some(p => p.name.toLowerCase().includes(searchTerm)));
-                    if (!inName && !inCat && !inContent && !inPerson) return false;
-                }
-                return true;
-            });
-
-            filteredTasks.sort((a, b) => {
-                switch (sortCriteria) {
-                    case 'startDate_desc': return (new Date(b.startDate || 0)) - (new Date(a.startDate || 0));
-                    case 'startDate_asc': return (new Date(a.startDate || 0)) - (new Date(b.startDate || 0));
-                    case 'projectName_asc': return a.projectName.localeCompare(b.projectName, 'zh-Hant');
-                    case 'projectCategory_asc': return a.projectCategory.localeCompare(b.projectCategory, 'zh-Hant');
-                    case 'createdAt_asc': return (a.createdAt || 0) - (b.createdAt || 0);
-                    default: return (b.createdAt || 0) - (a.createdAt || 0);
-                }
-            });
-
-            document.getElementById('displayed-count').textContent = filteredTasks.length;
-
-            if (filteredTasks.length === 0) {
-                 dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 bg-gray-50">沒有符合條件的任務。</td></tr>`;
-            } else {
-                dashboardTableBody.innerHTML = filteredTasks.map(task => {
-                    const allItemsWithIndex = (task.contentItems || []).map((item, idx) => ({ ...item, originalIndex: idx }));
-                    const visibleItems = allItemsWithIndex.filter(item => {
-                         if (!showCompleted && item.status === '已完成') return false;
-                         if (!showPaused && item.status === '暫停') return false;
-                         return true;
-                    });
-
-                    const contentHtml = visibleItems.length > 0 ? visibleItems.map((item) => {
-                         const mainP = item.assignedPersonnel?.filter(p => p.role === '主要').map(p => p.name).join(', ') || '-';
-                         const asstP = item.assignedPersonnel?.filter(p => p.role === '協助').map(p => p.name).join(', ');
-                         const dateRange = (item.startDate || item.endDate) ? `<span class="text-gray-400 mx-1">|</span> ${item.startDate||'?'}~${item.endDate||'?'}` : '';
-                         
-                         return `
-                            <div class="mb-2 last:mb-0 p-2 rounded hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
-                                <div class="flex justify-between items-start">
-                                    <div class="font-bold text-gray-800 text-base">${item.content}</div>
-                                    ${createStatusBadge(item.status, task.id, item.originalIndex)}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
-                                    <div class="flex items-center"><i class="fas fa-user-circle mr-1 text-blue-400"></i> ${mainP}</div>
-                                    ${asstP ? `<div class="flex items-center"><i class="fas fa-hands-helping mr-1 text-green-400"></i> ${asstP}</div>` : ''}
-                                    <div class="flex items-center"><i class="far fa-calendar-alt mr-1 text-gray-400"></i> ${dateRange}</div>
-                                </div>
-                            </div>
-                         `;
-                    }).join('') : `<span class="text-gray-400 italic text-sm">${(task.contentItems||[]).length > 0 ? '所有項目已隱藏' : '無細項內容'}</span>`;
-
-                    const days = calculateDaysInProgress(task);
-                    
-                    return `
-                        <tr class="hover:bg-blue-50 transition-colors group" data-task-id="${task.id}">
-                            <td class="px-3 py-4 align-top text-gray-900 font-bold" data-label="專案名稱">${task.projectName}</td>
-                            <td class="px-3 py-4 align-top text-sm text-gray-600" data-label="類別"><span class="bg-gray-100 px-2 py-1 rounded text-xs">${task.projectCategory}</span></td>
-                            <td class="px-3 py-4 align-top" data-label="處理項目詳情">${contentHtml}</td>
-                            <td class="px-3 py-4 align-top" data-label="總體進度">${createStatusBadge(task.status, task.id)}</td>
-                            <td class="px-3 py-4 align-top text-sm text-gray-600 font-mono" data-label="天數">${days}</td>
-                            <td class="px-3 py-4 align-top" data-label="操作">
-                                <div class="flex space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity justify-end sm:justify-start">
-                                    <button class="btn-edit-task bg-indigo-50 text-indigo-600 p-2 rounded hover:bg-indigo-100" title="編輯"><i class="fas fa-edit"></i></button>
-                                    <button class="btn-archive-task bg-orange-50 text-orange-600 p-2 rounded hover:bg-orange-100" title="封存"><i class="fas fa-archive"></i></button>
-                                    <button class="btn-delete-task bg-red-50 text-red-600 p-2 rounded hover:bg-red-100" title="刪除"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-            }
-        };
-
-        // --- Interaction Logic ---
-        document.addEventListener('DOMContentLoaded', () => {
-            if (auth) {
-                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('user-id').textContent = userId.substring(0,6) + '...';
-                        initDataListeners();
-                    } else {
-                        document.getElementById('user-id').textContent = '未登入';
-                    }
-                });
-            } else {
-                console.error("Firebase auth not initialized");
-                loadingSpinner.innerHTML = `<p class="text-red-500 font-bold">系統連線失敗</p>`;
-            }
-
-            setupEventListeners();
-        });
-
-        // --- Modified Data Listeners: Removed Pagination ---
+        // --- Data Listeners ---
         function initDataListeners() {
+            // App Config
             onValue(ref(db, `artifacts/${appId}/public/data/app_config`), (snap) => {
                 if (snap.exists()) {
                     config = snap.val();
+                    // Ensure new statuses exist in config if pulled from old DB
+                    const requiredStatuses = ['尚未開始', '進行中', '已完成', '暫停', '本週預計', '下週預計'];
+                    if (!config.statusOptions) config.statusOptions = requiredStatuses;
+                    else {
+                        requiredStatuses.forEach(s => {
+                            if (!config.statusOptions.includes(s)) config.statusOptions.push(s);
+                        });
+                    }
+                    // Ensure routine options exist
+                    if (!config.routineTaskOptions) config.routineTaskOptions = DEFAULT_CONFIG.routineTaskOptions;
                 } else {
                     set(ref(db, `artifacts/${appId}/public/data/app_config`), DEFAULT_CONFIG);
                 }
                 renderApp(); 
             });
 
+            // Recorder Schedule
             onValue(ref(db, `artifacts/${appId}/public/data/recorder_schedule`), (snap) => {
                 if (snap.exists()) {
                     const val = snap.val();
@@ -1045,69 +779,65 @@
                 renderStatsCards();
             });
 
-            // Initial load of tasks
-            loadTasks();
-        }
-
-        // Modified: Load ALL active tasks (no limit)
-        function loadTasks() {
+            // Active Tasks
             const tasksRef = ref(db, `artifacts/${appId}/public/data/tasks`);
-            // Plain onValue without query limits
             unsubscribeTasks = onValue(tasksRef, (snap) => {
                 const val = snap.val();
-                if (!val) {
-                    allTasks = [];
-                    // Seed logic could go here if needed
-                } else {
-                    allTasks = Object.keys(val).map(key => ({ id: key, ...val[key] }));
-                }
-                
+                allTasks = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })) : [];
                 loadingSpinner.classList.add('hidden');
                 dashboardTableContainer.classList.remove('hidden');
                 renderApp();
             });
+            
+            // General (Non-Project) Tasks - NEW
+            const generalTasksRef = ref(db, `artifacts/${appId}/public/data/general_tasks`);
+            unsubscribeGeneralTasks = onValue(generalTasksRef, (snap) => {
+                const val = snap.val();
+                allGeneralTasks = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })) : [];
+                // If Weekly Modal is open, re-render it
+                if (!weeklyPlanModal.classList.contains('hidden')) {
+                    renderWeeklyPlan();
+                }
+            });
         }
 
         function setupEventListeners() {
-            // Stats Toggle
+            // ... (Existing listeners) ...
             document.getElementById('btn-toggle-stats').onclick = () => {
                 const wrapper = document.getElementById('stats-wrapper');
                 const icon = document.getElementById('icon-toggle-stats');
                 const summary = document.getElementById('stats-summary-text');
-
                 if (wrapper.classList.contains('stats-expanded')) {
-                    // Collapse
-                    wrapper.classList.remove('stats-expanded');
-                    wrapper.classList.add('stats-collapsed');
-                    icon.classList.add('rotate-180');
-                    summary.classList.remove('hidden');
-                    setTimeout(() => summary.classList.remove('opacity-0'), 10);
+                    wrapper.classList.remove('stats-expanded'); wrapper.classList.add('stats-collapsed'); icon.classList.add('rotate-180'); summary.classList.remove('hidden'); setTimeout(() => summary.classList.remove('opacity-0'), 10);
                 } else {
-                    // Expand
-                    wrapper.classList.remove('stats-collapsed');
-                    wrapper.classList.add('stats-expanded');
-                    icon.classList.remove('rotate-180');
-                    summary.classList.add('opacity-0');
-                    setTimeout(() => summary.classList.add('hidden'), 300);
+                    wrapper.classList.remove('stats-collapsed'); wrapper.classList.add('stats-expanded'); icon.classList.remove('rotate-180'); summary.classList.add('opacity-0'); setTimeout(() => summary.classList.add('hidden'), 300);
                 }
             };
             
             document.getElementById('btn-add-task').onclick = () => openTaskForm();
             document.querySelectorAll('.btn-cancel-task-form').forEach(b => b.onclick = () => toggleModal('task-form-modal', false));
-            
             document.getElementById('btn-show-settings').onclick = openSettingsModal;
             document.getElementById('btn-cancel-settings').onclick = () => toggleModal('settings-modal', false);
-
             document.getElementById('btn-show-report').onclick = openReportModal;
             document.getElementById('btn-close-report').onclick = () => toggleModal('report-modal', false);
-
             document.getElementById('btn-show-schedule').onclick = openScheduleModal;
             document.getElementById('btn-cancel-schedule').onclick = () => toggleModal('schedule-modal', false);
-
             document.getElementById('btn-show-archive').onclick = openArchiveModal;
             document.getElementById('btn-close-archive').onclick = () => toggleModal('archive-modal', false);
             
-            // Add Archive Search Listener
+            // NEW: Weekly Plan Listeners
+            document.getElementById('btn-show-weekly-plan').onclick = openWeeklyPlanModal;
+            document.getElementById('btn-close-weekly-plan').onclick = () => toggleModal('weekly-plan-modal', false);
+            document.getElementById('weekly-plan-week-picker').addEventListener('change', renderWeeklyPlan);
+            // Revert show-incomplete to hidden as logic changed to auto-hide based on status
+            // document.getElementById('weekly-show-incomplete').addEventListener('change', renderWeeklyPlan); 
+            document.getElementById('weekly-group-filter').addEventListener('change', renderWeeklyPlan); // New Group Filter
+            
+            // NEW: General Task Form Listeners
+            document.getElementById('btn-add-general-task').onclick = () => openGeneralTaskForm();
+            document.getElementById('btn-cancel-general-task').onclick = () => toggleModal('general-task-modal', false);
+            document.getElementById('general-task-form').onsubmit = handleGeneralTaskSubmit;
+
             archiveSearchInput.addEventListener('input', renderArchiveTable);
             archiveSortSelect.addEventListener('change', renderArchiveTable);
 
@@ -1118,7 +848,6 @@
 
             // Dashboard Actions
             dashboardTableBody.onclick = (e) => {
-                // Status Popup
                 const statusLink = e.target.closest('.status-popover a');
                 if (statusLink) {
                     e.preventDefault();
@@ -1126,14 +855,38 @@
                     const taskId = ul.dataset.taskId;
                     const idx = ul.dataset.itemIndex;
                     const newStatus = statusLink.dataset.status;
+                    const isCompleted = newStatus === '已完成';
+                    const todayStr = new Date().toISOString().slice(0,10);
                     
-                    const path = (idx !== null && idx !== '')
-                        ? `artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${idx}/status`
-                        : `artifacts/${appId}/public/data/tasks/${taskId}/status`;
-                    
+                    // Construct path for update
+                    const path = (idx !== null && idx !== '') ? `artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${idx}/status` : `artifacts/${appId}/public/data/tasks/${taskId}/status`;
                     const updates = { [path]: newStatus };
-                    if ((idx === null || idx === '') && newStatus === '已完成') {
-                        updates[`artifacts/${appId}/public/data/tasks/${taskId}/actualCompletionDate`] = new Date().toISOString().slice(0,10);
+                    
+                    if (idx !== null && idx !== '') {
+                        // Sub-item logic: Auto-record endDate
+                        const datePath = `artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${idx}/endDate`;
+                        if (isCompleted) {
+                            updates[datePath] = todayStr; // Overwrite or set to today
+                        } else {
+                            updates[datePath] = null; // Clear if not completed
+                        }
+                    } else {
+                        // Main Project logic
+                        const datePath = `artifacts/${appId}/public/data/tasks/${taskId}/actualCompletionDate`;
+                        if (isCompleted) {
+                            updates[datePath] = todayStr;
+                            
+                            // Auto-complete all sub-items and set their dates
+                            const task = allTasks.find(t => t.id === taskId);
+                            if (task && task.contentItems) {
+                                task.contentItems.forEach((_, i) => {
+                                    updates[`artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${i}/status`] = '已完成';
+                                    updates[`artifacts/${appId}/public/data/tasks/${taskId}/contentItems/${i}/endDate`] = todayStr;
+                                });
+                            }
+                        } else {
+                            updates[datePath] = null; // Clear main completion date if reopened
+                        }
                     }
                     
                     update(ref(db), updates);
@@ -1141,25 +894,18 @@
                     document.querySelectorAll('.status-popover').forEach(p => p.classList.add('hidden'));
                     return;
                 }
-
-                // Other Actions
                 const btnEdit = e.target.closest('.btn-edit-task');
                 const btnArchive = e.target.closest('.btn-archive-task');
                 const btnDel = e.target.closest('.btn-delete-task');
-                const badgeWrapper = e.target.closest('.status-badge-wrapper');
-                
                 const tr = e.target.closest('tr');
                 if(!tr) return;
                 const taskId = tr.dataset.taskId;
 
                 if (btnEdit) openTaskForm(allTasks.find(t => t.id === taskId));
-                if (btnArchive) {
-                    showConfirm('確定要封存此任務嗎？封存後可至「已封存專案」查看。', () => archiveTask(taskId), '封存', 'bg-orange-600');
-                }
-                if (btnDel) {
-                    showConfirm('確定刪除此任務？(此操作無法復原)', () => remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`)), '刪除', 'bg-red-600');
-                }
+                if (btnArchive) showConfirm('確定要封存此任務嗎？封存後可至「已封存專案」查看。', () => archiveTask(taskId), '封存', 'bg-orange-600');
+                if (btnDel) showConfirm('確定刪除此任務？(此操作無法復原)', () => remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`)), '刪除', 'bg-red-600');
                 
+                const badgeWrapper = e.target.closest('.status-badge-wrapper');
                 if (badgeWrapper) {
                      const popover = badgeWrapper.querySelector('.status-popover');
                      const wasHidden = popover.classList.contains('hidden');
@@ -1168,20 +914,36 @@
                      e.stopPropagation(); 
                 }
             };
-
-            // Archive Modal Actions
-            document.getElementById('archive-table-body').onclick = (e) => {
-                const btnRestore = e.target.closest('.btn-restore-task');
-                const btnDelPerm = e.target.closest('.btn-delete-permanent');
-                const tr = e.target.closest('tr');
-                if(!tr) return;
-                const taskId = tr.dataset.taskId;
-
-                if(btnRestore) {
-                    showConfirm('確定要還原此任務嗎？', () => restoreTask(taskId), '還原', 'bg-green-600');
+            
+            // Weekly View Actions (Delete General Task & Edit Project from Weekly)
+            document.getElementById('weekly-plan-container').onclick = (e) => {
+                // 1. Check for Project Card Click (Delegation)
+                // We look for the card element with data-project-task-id
+                const projectCard = e.target.closest('[data-project-task-id]');
+                
+                // If clicked inside a project card AND NOT on a button (though currently project cards have no buttons, good safety)
+                if (projectCard && !e.target.closest('button')) {
+                    const taskId = projectCard.dataset.projectTaskId;
+                    const task = allTasks.find(t => t.id === taskId);
+                    if (task) {
+                        toggleModal('weekly-plan-modal', false); // Close weekly plan
+                        openTaskForm(task); // Open task edit form
+                        return; // Stop processing other clicks
+                    }
                 }
-                if(btnDelPerm) {
-                    showConfirm('警告：確定要永久刪除此任務嗎？此操作無法復原！', () => deleteArchivedTask(taskId), '永久刪除', 'bg-red-600');
+
+                // 2. Check for General Task Buttons
+                const btnDel = e.target.closest('.btn-delete-general-task');
+                const btnEdit = e.target.closest('.btn-edit-general-task');
+                
+                if (btnDel) {
+                    const id = btnDel.dataset.id;
+                    showConfirm('確定刪除此雜項工作？', () => remove(ref(db, `artifacts/${appId}/public/data/general_tasks/${id}`)), '刪除', 'bg-red-600');
+                }
+                if (btnEdit) {
+                    const id = btnEdit.dataset.id;
+                    const task = allGeneralTasks.find(t => t.id === id);
+                    if(task) openGeneralTaskForm(task);
                 }
             };
 
@@ -1192,14 +954,11 @@
                 }
             });
 
-            // ... (rest of listeners like form submit) ...
+            // Form Submit Logic ...
             document.getElementById('btn-add-content-item').onclick = () => addContentItemToForm();
             document.getElementById('content-items-container').onclick = (e) => {
                 if (e.target.closest('.btn-remove-item')) e.target.closest('.item-row').remove();
-                if (e.target.closest('.btn-remove-p')) {
-                    const pill = e.target.closest('.person-pill');
-                    pill.remove();
-                }
+                if (e.target.closest('.btn-remove-p')) e.target.closest('.person-pill').remove();
             };
             
             document.getElementById('content-items-container').addEventListener('change', (e) => {
@@ -1226,42 +985,86 @@
                 }
             });
 
+            // Auto-update content items status when main status changes to "Completed"
+            document.getElementById('status').addEventListener('change', function() {
+                if (this.value === '已完成') {
+                    const itemSelects = document.querySelectorAll('.item-status');
+                    let updatedCount = 0;
+                    itemSelects.forEach(select => {
+                        if (select.value !== '已完成') {
+                            select.value = '已完成';
+                            updatedCount++;
+                        }
+                    });
+                    if (updatedCount > 0) {
+                        showToast(`已自動將 ${updatedCount} 個處理項目設為已完成`);
+                    }
+                }
+            });
+
             taskForm.onsubmit = (e) => {
                 e.preventDefault();
                 const taskId = document.getElementById('task-id').value;
-                const items = Array.from(document.querySelectorAll('#content-items-container .item-row')).map(row => ({
-                    content: row.querySelector('.item-content').value,
-                    startDate: row.querySelector('.item-start').value,
-                    endDate: row.querySelector('.item-end').value,
-                    status: row.querySelector('.item-status').value,
-                    assignedPersonnel: Array.from(row.querySelectorAll('.person-pill')).map(p => ({
-                        name: p.dataset.name, role: p.dataset.role
-                    }))
-                }));
-                
+                const todayStr = new Date().toISOString().slice(0,10);
+                const currentTaskData = currentTaskToEdit || {};
+
+                // Process items with auto-date logic
+                const items = Array.from(document.querySelectorAll('#content-items-container .item-row')).map((row, index) => {
+                    const status = row.querySelector('.item-status').value;
+                    // Logic: preserve existing date if already completed, set today if new complete, clear if not complete
+                    let endDate = null;
+                    const existingItem = (currentTaskData.contentItems && currentTaskData.contentItems[index]) ? currentTaskData.contentItems[index] : null;
+                    
+                    if (status === '已完成') {
+                        if (existingItem && existingItem.endDate) {
+                            endDate = existingItem.endDate; // Keep existing date
+                        } else {
+                            endDate = todayStr; // New completion
+                        }
+                    } else {
+                        endDate = null; // Clear date
+                    }
+
+                    return {
+                        content: row.querySelector('.item-content').value,
+                        startDate: row.querySelector('.item-start').value,
+                        endDate: endDate, // Auto-set
+                        status: status,
+                        assignedPersonnel: Array.from(row.querySelectorAll('.person-pill')).map(p => ({ name: p.dataset.name, role: p.dataset.role }))
+                    };
+                });
+
+                // Process Main Project Date Logic
+                const mainStatus = document.getElementById('status').value;
+                let actualCompletionDate = null;
+                if (mainStatus === '已完成') {
+                    if (currentTaskData.actualCompletionDate) {
+                        actualCompletionDate = currentTaskData.actualCompletionDate;
+                    } else {
+                        actualCompletionDate = todayStr;
+                    }
+                }
+
                 const payload = {
                     projectName: document.getElementById('projectName').value,
                     projectCategory: document.getElementById('projectCategory').value,
                     startDate: document.getElementById('startDate').value,
-                    estimatedCompletionDate: document.getElementById('estimatedCompletionDate').value,
-                    status: document.getElementById('status').value,
+                    // Remove estimatedCompletionDate
+                    actualCompletionDate: actualCompletionDate, // Auto-set
+                    status: mainStatus,
                     remarks: document.getElementById('remarks').value,
                     contentItems: items
                 };
-
                 if (taskId) update(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), payload);
                 else push(ref(db, `artifacts/${appId}/public/data/tasks`), { ...payload, createdAt: serverTimestamp(), ownerId: userId });
-                
                 toggleModal('task-form-modal', false);
-                showToast('儲存成功');
+                showToast('儲存任務成功');
             };
 
             setupScheduleInteractions();
-            
             document.getElementById('btn-download-pdf').onclick = () => {
                  const el = document.getElementById('report-content-wrapper');
-                 const opt = { margin: 0.5, filename: 'report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } };
-                 html2pdf().set(opt).from(el).save();
+                 html2pdf().set({ margin: 0.5, filename: 'report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } }).from(el).save();
             };
             document.getElementById('btn-print-report').onclick = printReport;
             document.getElementById('btn-download-csv').onclick = downloadCSV;
@@ -1270,127 +1073,301 @@
             });
         }
 
-        // --- Archive Functions ---
-        async function archiveTask(taskId) {
-            const task = allTasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            const taskData = { ...task };
-            delete taskData.id; 
-            
-            try {
-                await set(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), taskData);
-                await remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`));
-                showToast('任務已封存');
-            } catch (e) {
-                console.error(e);
-                showToast('封存失敗', 'error');
+        // --- Weekly Plan Logic (The Hybrid View) ---
+        function openWeeklyPlanModal() {
+            // Update Group Select Options
+            const groupSelect = document.getElementById('weekly-group-filter');
+            const groups = Object.keys(config.personnelData);
+            groupSelect.innerHTML = `<option value="all">所有組別</option>` + groups.map(g => `<option value="${g}">${g}</option>`).join('');
+
+            // Updated logic to default to current week more reliably
+            const picker = document.getElementById('weekly-plan-week-picker');
+            // Always reset to current week when opening if not explicitly set by user interaction previously, 
+            // or just ensure it has a value.
+            if (!picker.value) {
+                const today = new Date();
+                const weekKey = getWeekKey(today); // Returns YYYY-WW
+                // Input type="week" expects YYYY-Www
+                picker.value = weekKey.replace('-', '-W');
             }
+            toggleModal('weekly-plan-modal', true);
+            renderWeeklyPlan();
         }
 
-        function openArchiveModal() {
-            toggleModal('archive-modal', true);
-            const archiveRef = ref(db, `artifacts/${appId}/public/data/archived_tasks`);
+        function renderWeeklyPlan() {
+            const picker = document.getElementById('weekly-plan-week-picker');
+            const selectedGroup = document.getElementById('weekly-group-filter').value;
+            let weekString = picker.value; // YYYY-Www
             
-            if (archivedTasksUnsubscribe) archivedTasksUnsubscribe();
+            if (!weekString) {
+                const today = new Date();
+                weekString = getWeekKey(today).replace('-', '-W');
+                picker.value = weekString;
+            }
+
+            const { start: weekStart, end: weekEnd } = getWeekRange(weekString);
+            const container = document.getElementById('weekly-plan-container');
+            container.innerHTML = '';
+
+            const allGroups = config.personnelData;
+            const groupNames = Object.keys(allGroups);
             
-            document.getElementById('archive-loading').classList.remove('hidden');
-            document.getElementById('archive-table').classList.add('hidden');
-            archiveSearchInput.value = ''; // Reset search
-            
-            archivedTasksUnsubscribe = onValue(archiveRef, (snap) => {
-                const val = snap.val();
-                allArchivedTasks = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })) : [];
-                
-                document.getElementById('archive-loading').classList.add('hidden');
-                document.getElementById('archive-table').classList.remove('hidden');
-                
-                renderArchiveTable();
+            // Iterate over all groups
+            groupNames.filter(g => selectedGroup === 'all' || g === selectedGroup).forEach(groupName => {
+                let people = allGroups[groupName];
+                // Sort people alphabetically by name
+                people.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+                people.forEach(personName => {
+                    const fullPersonName = `${groupName} - ${personName}`;
+                    
+                    // 1. Find Project Tasks for this person in this week
+                    const personProjectTasks = [];
+                    allTasks.forEach(task => {
+                        (task.contentItems || []).forEach((item, index) => {
+                            // NEW: Find assignment regardless of role
+                            const assignment = item.assignedPersonnel?.find(p => p.name === fullPersonName);
+                            if (!assignment) return;
+
+                            // Filter: Hide Completed, Paused, Not Started
+                            if (['已完成', '暫停', '尚未開始'].includes(item.status)) return;
+
+                            // LOGIC UPDATE: Include if Active/Scheduled this week OR (Not Completed AND Started before week ends)
+                            const itemStart = item.startDate ? new Date(item.startDate) : (item.endDate ? new Date(item.endDate) : null); 
+                            const itemEnd = item.endDate ? new Date(item.endDate) : (item.startDate ? new Date(item.startDate) : null);
+                            
+                            if (itemStart) itemStart.setHours(0,0,0,0);
+                            if (itemEnd) itemEnd.setHours(0,0,0,0);
+
+                            let shouldShow = false;
+                            // Since we already filtered out Completed, we just need to check if it's active/started
+                            if (itemStart && itemEnd) {
+                                // Show if it started before end of this week (Backlog or Current)
+                                if (itemStart <= weekEnd) shouldShow = true;
+                            } else {
+                                // No dates but active status
+                                shouldShow = true; 
+                            }
+
+                            if (shouldShow) {
+                                personProjectTasks.push({
+                                    type: 'project',
+                                    taskName: task.projectName,
+                                    content: item.content,
+                                    status: item.status,
+                                    dateDisplay: `${item.startDate || '?'} ~ ${item.endDate || '?'}`,
+                                    originalTask: task,
+                                    role: assignment.role // Capture role
+                                });
+                            }
+                        });
+                    });
+
+                    // 2. Find General Tasks for this person in this week
+                    const personGeneralTasks = allGeneralTasks.filter(gt => {
+                        if (gt.assignee !== fullPersonName) return false;
+                        
+                        // Filter: Hide Completed, Paused, Not Started
+                        if (['已完成', '暫停', '尚未開始'].includes(gt.status)) return false;
+
+                        const gtDate = new Date(gt.date);
+                        gtDate.setHours(0,0,0,0);
+                        // Show incomplete items from past up to current week
+                        return gtDate <= weekEnd; 
+                    }).map(gt => ({
+                        type: 'general',
+                        id: gt.id,
+                        content: gt.content,
+                        status: gt.status,
+                        dateDisplay: gt.date,
+                        originalTask: gt
+                    }));
+
+                    // Combine
+                    let allItems = [...personProjectTasks, ...personGeneralTasks];
+                    
+                    // Seperate "Scheduled for this week" and "Others"
+                    const scheduledItems = allItems.filter(item => item.status === '本週預計');
+                    const otherItems = allItems.filter(item => item.status !== '本週預計');
+
+                    // Render even if empty to show structure, or only if items exist?
+                    // User said: "if no [scheduled items], show 'Unscheduled'...", then show others.
+                    // This implies we render the person block if there's a chance they have tasks, or maybe just render all personnel.
+                    // Let's render all personnel to be safe so we can see who has nothing.
+                    
+                    // Helper to generate HTML for a list of items (New List Style)
+                    const generateItemsHtml = (items) => items.map(item => {
+                        const isProj = item.type === 'project';
+                        const isAssist = isProj && item.role === '協助'; // Check if assisting
+
+                        // Visual Logic - High Contrast & Tags
+                        // Project (Main): Indigo
+                        // Assist: Teal
+                        // General: Orange
+                        let bgClass = 'bg-white';
+                        let borderClass = 'border-l-4 border-indigo-600'; 
+                        let tagClass = 'bg-indigo-600 text-white';
+                        let tagText = '專案';
+                        let hoverClass = 'hover:bg-gray-50';
+
+                        if (item.type === 'general') {
+                            borderClass = 'border-l-4 border-orange-500';
+                            tagClass = 'bg-orange-500 text-white';
+                            tagText = '雜項';
+                        } else if (isAssist) {
+                            borderClass = 'border-l-4 border-teal-500';
+                            tagClass = 'bg-teal-500 text-white';
+                            tagText = '協作';
+                        }
+                        
+                        const editControls = !isProj ? `
+                            <div class="ml-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button class="btn-edit-general-task text-gray-400 hover:text-blue-600 mr-2" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+                                <button class="btn-delete-general-task text-gray-400 hover:text-red-600" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        ` : '';
+
+                        const projectDataAttr = isProj ? `data-project-task-id="${item.originalTask.id}"` : '';
+                        const cursorClass = isProj ? 'cursor-pointer' : '';
+                        const titleAttr = isProj ? 'title="點擊編輯專案"' : '';
+
+                        // List Item Style
+                        return `
+                            <div class="flex items-center p-2 mb-2 bg-white rounded shadow-sm border border-gray-100 ${borderClass} ${hoverClass} transition-all group ${cursorClass}" ${projectDataAttr} ${titleAttr}>
+                                <div class="flex-shrink-0 mr-2">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${tagClass}">${tagText}</span>
+                                </div>
+                                <div class="flex-grow min-w-0">
+                                    <div class="text-xs font-bold text-gray-800 truncate">${isProj ? item.taskName : item.content}</div>
+                                    ${isProj ? `<div class="text-[10px] text-gray-500 truncate">${item.content}</div>` : ''}
+                                </div>
+                                <div class="flex-shrink-0 text-[10px] text-gray-400 whitespace-nowrap ml-2">
+                                    ${item.status}
+                                </div>
+                                ${editControls}
+                            </div>
+                        `;
+                    }).join('');
+
+                    const scheduledHtml = scheduledItems.length > 0 
+                        ? generateItemsHtml(scheduledItems) 
+                        : `<div class="w-full text-xs text-gray-400 italic p-2 mb-2 bg-gray-50 rounded border border-dashed border-gray-300 text-center">未排定工作內容</div>`;
+                    
+                    const otherHtml = generateItemsHtml(otherItems);
+
+                    container.innerHTML += `
+                        <div class="bg-gray-200 rounded-lg p-3 flex flex-col h-full shadow-inner">
+                            <div class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-indigo-600 shadow-sm border border-gray-200">
+                                    ${personName.charAt(0)}
+                                </div>
+                                <span>${personName}</span>
+                            </div>
+                            <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                <div class="mb-3">
+                                    <div class="flex flex-col">
+                                        ${scheduledHtml}
+                                    </div>
+                                </div>
+                                ${otherItems.length > 0 ? `
+                                    <div class="border-t border-gray-300 pt-2">
+                                        <div class="flex flex-col">
+                                            ${otherHtml}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
             });
         }
 
-        function renderArchiveTable() {
-            const tbody = document.getElementById('archive-table-body');
-            const term = archiveSearchInput.value.toLowerCase().trim();
-            const sortValue = archiveSortSelect.value;
+        // --- General Task Logic ---
+        function openGeneralTaskForm(task = null) {
+            const form = document.getElementById('general-task-form');
+            form.reset();
+            const title = document.getElementById('general-task-title');
+            const hiddenId = document.getElementById('general-task-id');
+            const assigneeSel = document.getElementById('gt-assignee');
             
-            let filtered = allArchivedTasks.filter(t => {
-                if(!term) return true;
-                return (t.projectName || '').toLowerCase().includes(term) ||
-                       (t.projectCategory || '').toLowerCase().includes(term) ||
-                       (t.status || '').toLowerCase().includes(term);
-            });
+            // Populate Assignees
+            assigneeSel.innerHTML = Object.entries(config.personnelData).flatMap(([group, people]) => 
+                people.map(p => `<option value="${group} - ${p}">${group} - ${p}</option>`)
+            ).join('');
 
-            // Sorting Logic
-            filtered.sort((a, b) => {
-                const key = sortValue.split('_')[0];
-                const type = sortValue.split('_')[1];
-                const valA = (a[key] || '').toString();
-                const valB = (b[key] || '').toString();
-                
-                return type === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : valB.localeCompare(valA, 'zh-Hant');
-            });
+            // Populate Content Datalist
+            const datalist = document.getElementById('gt-content-list');
+            datalist.innerHTML = (config.routineTaskOptions || []).map(opt => `<option value="${opt}">`).join('');
 
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">${allArchivedTasks.length === 0 ? '暫無封存資料' : '找不到符合的資料'}</td></tr>`;
+            if (task) {
+                title.innerText = "編輯雜項工作";
+                hiddenId.value = task.id;
+                document.getElementById('gt-content').value = task.content;
+                assigneeSel.value = task.assignee;
+                document.getElementById('gt-date').value = task.date;
+                document.getElementById('gt-status').value = task.status;
             } else {
-                tbody.innerHTML = filtered.map(t => `
-                    <tr data-task-id="${t.id}" class="hover:bg-gray-50">
-                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${t.projectName}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.projectCategory}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.status}</td>
-                        <td class="px-3 py-3 whitespace-nowrap text-sm font-medium">
-                            <button class="btn-restore-task text-green-600 hover:text-green-900 mr-3"><i class="fas fa-undo"></i> 還原</button>
-                            <button class="btn-delete-permanent text-red-600 hover:text-red-900"><i class="fas fa-trash"></i> 刪除</button>
-                        </td>
-                    </tr>
-                `).join('');
+                title.innerText = "新增雜項/例行工作";
+                hiddenId.value = '';
+                document.getElementById('gt-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('gt-status').value = "進行中";
             }
-        }
-        
-        async function restoreTask(taskId) {
-             try {
-                const snap = await new Promise(resolve => onValue(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), resolve, {onlyOnce: true}));
-                const taskData = snap.val();
-                
-                if(taskData) {
-                     await set(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), taskData);
-                     await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`));
-                     showToast('任務已還原');
-                }
-             } catch(e) {
-                 console.error(e);
-                 showToast('還原失敗', 'error');
-             }
-        }
-        
-        async function deleteArchivedTask(taskId) {
-            try {
-                await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`));
-                showToast('永久刪除成功');
-            } catch(e) {
-                 console.error(e);
-                 showToast('刪除失敗', 'error');
-            }
+            
+            toggleModal('general-task-modal', true);
         }
 
-        // --- Form Helpers (unchanged logic) ---
+        function handleGeneralTaskSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('general-task-id').value;
+            const payload = {
+                content: document.getElementById('gt-content').value,
+                assignee: document.getElementById('gt-assignee').value,
+                date: document.getElementById('gt-date').value,
+                status: document.getElementById('gt-status').value,
+                updatedAt: serverTimestamp()
+            };
+
+            if (id) {
+                update(ref(db, `artifacts/${appId}/public/data/general_tasks/${id}`), payload);
+                showToast('雜項工作已更新');
+            } else {
+                payload.createdAt = serverTimestamp();
+                push(ref(db, `artifacts/${appId}/public/data/general_tasks`), payload);
+                showToast('已新增雜項工作');
+            }
+            toggleModal('general-task-modal', false);
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (auth) {
+                 onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id').textContent = userId.substring(0,6) + '...';
+                        initDataListeners();
+                    }
+                });
+            }
+            setupEventListeners();
+        });
+
+        // --- Other existing functions (openTaskForm, settings, report...) ---
         function openTaskForm(task = null) {
             currentTaskToEdit = task;
             taskForm.reset();
             document.getElementById('task-id').value = task ? task.id : '';
             document.getElementById('task-form-title').innerText = task ? '編輯任務' : '新增任務';
-            
             const catSel = document.getElementById('projectCategory');
             catSel.innerHTML = config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
             const statSel = document.getElementById('status');
             statSel.innerHTML = config.statusOptions.map(s => `<option value="${s}">${s}</option>`).join('');
-
             if(task) {
                 document.getElementById('projectName').value = task.projectName;
                 catSel.value = task.projectCategory;
                 document.getElementById('startDate').value = task.startDate || '';
-                document.getElementById('estimatedCompletionDate').value = task.estimatedCompletionDate || '';
+                // Removed population of estimatedCompletionDate
                 statSel.value = task.status;
                 document.getElementById('remarks').value = task.remarks || '';
                 renderFormItems(task.contentItems || []);
@@ -1398,23 +1375,18 @@
                 statSel.value = '進行中';
                 renderFormItems([{ content: '', status: '進行中' }]);
             }
-            
-            document.getElementById('task-form-modal').classList.remove('hidden');
+            toggleModal('task-form-modal', true);
         }
-
         function renderFormItems(items) {
             const container = document.getElementById('content-items-container');
             container.innerHTML = '';
             items.forEach(addContentItemToForm);
         }
-
         function addContentItemToForm(item = {}) {
             const container = document.getElementById('content-items-container');
             const div = document.createElement('div');
             div.className = 'item-row p-3 bg-white rounded border shadow-sm relative';
-            
             const groups = Object.keys(config.personnelData);
-            
             div.innerHTML = `
                 <button type="button" class="btn-remove-item absolute top-2 right-2 text-gray-400 hover:text-red-500">&times;</button>
                 <div class="mb-2">
@@ -1435,98 +1407,176 @@
                         `).join('')}
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2"> <!-- Changed from grid-cols-3 to 2, removed end date -->
                     <div><label class="text-xs text-gray-500">開始</label><input type="date" class="item-start w-full border-gray-300 rounded text-xs" value="${item.startDate || ''}"></div>
-                    <div><label class="text-xs text-gray-500">結束</label><input type="date" class="item-end w-full border-gray-300 rounded text-xs" value="${item.endDate || ''}"></div>
-                    <div>
-                        <label class="text-xs text-gray-500">狀態</label>
-                        <select class="item-status w-full border-gray-300 rounded text-xs">
-                             ${config.statusOptions.map(s => `<option value="${s}" ${item.status===s?'selected':''}>${s}</option>`).join('')}
-                        </select>
-                    </div>
+                    <!-- End date input removed -->
+                    <div><label class="text-xs text-gray-500">狀態</label><select class="item-status w-full border-gray-300 rounded text-xs">${config.statusOptions.map(s => `<option value="${s}" ${item.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
                 </div>
             `;
             const groupSel = div.querySelector('.p-group');
             const nameSel = div.querySelector('.p-name');
             nameSel.innerHTML = `<option value="">選擇人員</option>` + (config.personnelData[groupSel.value]||[]).map(n => `<option value="${n}">${n}</option>`).join('');
-            
             container.appendChild(div);
         }
-
+        function openSettingsModal() { /* ... Same as before, omitted for brevity but logic is preserved in full code ... */ 
+             // Re-implementing simplified settings open for the full code context
+            const tempConfig = JSON.parse(JSON.stringify(config));
+            const render = () => {
+                document.getElementById('settings-categories-list').innerHTML = tempConfig.projectCategories.map(c => `<span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">${c} <button type="button" data-action="delete-category" data-value="${c}" class="font-bold text-red-500 hover:text-red-700">&times;</button></span>`).join('');
+                document.getElementById('settings-statuses-list').innerHTML = tempConfig.statusOptions.map(s => `<span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">${s} <button type="button" data-action="delete-status" data-value="${s}" class="font-bold text-red-500 hover:text-red-700">&times;</button></span>`).join('');
+                document.getElementById('settings-routines-list').innerHTML = (tempConfig.routineTaskOptions || []).map(r => `<span class="flex items-center gap-2 bg-gray-200 text-gray-800 text-sm px-3 py-1 rounded-full">${r} <button type="button" data-action="delete-routine" data-value="${r}" class="font-bold text-red-500 hover:text-red-700">&times;</button></span>`).join('');
+                document.getElementById('settings-personnel-list').innerHTML = Object.entries(tempConfig.personnelData).map(([group, people]) => `
+                    <div class="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        <div class="flex justify-between items-center mb-2"><h4 class="font-semibold text-gray-700">${group}</h4><button type="button" data-action="delete-group" data-group="${group}" class="text-red-500 text-sm hover:text-red-700 hover:underline">刪除組別</button></div>
+                        <div class="pl-0 sm:pl-4"><div class="flex gap-2 mb-3"><input type="text" placeholder="新增人員" id="input-person-${group}" class="flex-grow border-gray-300 rounded-lg shadow-sm text-sm p-2" /><button type="button" data-action="add-person" data-group="${group}" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 shadow-sm">加入</button></div>
+                        <div class="flex flex-wrap gap-2">${people.map(person => `<span class="flex items-center gap-2 bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">${person} <button type="button" data-action="delete-person" data-group="${group}" data-person="${person}" class="font-bold text-red-500 hover:text-red-700">&times;</button></span>`).join('')}</div></div>
+                    </div>`).join('');
+            };
+            render();
+            const form = document.getElementById('settings-form');
+            form.onclick = (e) => {
+                const target = e.target; const action = target.dataset.action;
+                if (target.id === 'settings-add-category') { const val = document.getElementById('settings-new-category').value.trim(); if (val && !tempConfig.projectCategories.includes(val)) { tempConfig.projectCategories.push(val); document.getElementById('settings-new-category').value = ''; render(); } }
+                else if (target.id === 'settings-add-status') { const val = document.getElementById('settings-new-status').value.trim(); if (val && !tempConfig.statusOptions.includes(val)) { tempConfig.statusOptions.push(val); document.getElementById('settings-new-status').value = ''; render(); } }
+                else if (target.id === 'settings-add-routine') { const val = document.getElementById('settings-new-routine').value.trim(); if (!tempConfig.routineTaskOptions) tempConfig.routineTaskOptions = []; if (val && !tempConfig.routineTaskOptions.includes(val)) { tempConfig.routineTaskOptions.push(val); document.getElementById('settings-new-routine').value = ''; render(); } }
+                else if (target.id === 'settings-add-group') { const val = document.getElementById('settings-new-group').value.trim(); if (val && !tempConfig.personnelData[val]) { tempConfig.personnelData[val] = []; document.getElementById('settings-new-group').value = ''; render(); } }
+                if (!action) return;
+                if (action === 'delete-category') { tempConfig.projectCategories = tempConfig.projectCategories.filter(c => c !== target.dataset.value); render(); }
+                else if (action === 'delete-status') { tempConfig.statusOptions = tempConfig.statusOptions.filter(s => s !== target.dataset.value); render(); }
+                else if (action === 'delete-routine') { tempConfig.routineTaskOptions = tempConfig.routineTaskOptions.filter(r => r !== target.dataset.value); render(); }
+                else if (action === 'delete-group') { showConfirm(`確定要刪除 ${target.dataset.group} 嗎？`, () => { delete tempConfig.personnelData[target.dataset.group]; render(); }, '刪除', 'bg-red-600'); }
+                else if (action === 'add-person') { const group = target.dataset.group; const input = document.getElementById(`input-person-${group}`); const val = input.value.trim(); if (val && !tempConfig.personnelData[group].includes(val)) { tempConfig.personnelData[group].push(val); input.value = ''; render(); } }
+                else if (action === 'delete-person') { const { group, person } = target.dataset; tempConfig.personnelData[group] = tempConfig.personnelData[group].filter(p => p !== person); render(); }
+            };
+            form.onsubmit = (e) => { e.preventDefault(); set(ref(db, `artifacts/${appId}/public/data/app_config`), tempConfig); toggleModal('settings-modal', false); showToast('設定已更新'); };
+            toggleModal('settings-modal', true);
+        }
+        function openScheduleModal() { renderSchedulePreview(); toggleModal('schedule-modal', true); }
         function setupScheduleInteractions() {
-             document.getElementById('schedule-btn-add-person').onclick = () => {
-                const p = document.getElementById('schedule-person-to-add').value;
-                if(p && !recorderSchedule.rotation.includes(p)) {
-                    recorderSchedule.rotation.push(p);
-                    renderSchedulePreview();
-                }
-             };
-             document.getElementById('schedule-preview-list').onclick = (e) => {
-                 if(e.target.dataset.offset) {
-                     recorderSchedule.offset += parseInt(e.target.dataset.offset);
-                     renderSchedulePreview();
-                 }
-             };
+             document.getElementById('schedule-btn-add-person').onclick = () => { const p = document.getElementById('schedule-person-to-add').value; if(p && !recorderSchedule.rotation.includes(p)) { recorderSchedule.rotation.push(p); renderSchedulePreview(); } };
+             document.getElementById('schedule-preview-list').onclick = (e) => { if(e.target.dataset.offset) { recorderSchedule.offset += parseInt(e.target.dataset.offset); renderSchedulePreview(); } };
         }
-
         function renderSchedulePreview() {
-            const list = document.getElementById('schedule-rotation-list');
-            list.innerHTML = recorderSchedule.rotation.map(p => `<div class="flex justify-between p-2 border-b text-sm">${p} <button class="text-red-500" onclick="removeSchedulePerson('${p}')">&times;</button></div>`).join('');
+            const list = document.getElementById('schedule-rotation-list'); list.innerHTML = recorderSchedule.rotation.map(p => `<div class="flex justify-between p-2 border-b text-sm">${p} <button class="text-red-500" onclick="window.removeSchedulePerson('${p}')">&times;</button></div>`).join('');
             window.removeSchedulePerson = (p) => { recorderSchedule.rotation = recorderSchedule.rotation.filter(x => x!==p); renderSchedulePreview(); };
-
-            const allP = Object.values(config.personnelData).flat();
-            document.getElementById('schedule-person-to-add').innerHTML = `<option value="">選擇人員</option>` + allP.map(p => `<option value="${p}">${p}</option>`).join('');
-
-            const preview = document.getElementById('schedule-preview-list');
-            if(!recorderSchedule.rotation.length) { preview.innerHTML = '無資料'; return; }
-            
-            const today = new Date();
-            const currentWeek = getWeekKey(today);
-            let html = '';
-            for(let i=0; i<5; i++) {
-                const d = new Date(today.getTime() + i*7*86400000);
-                const wk = getWeekKey(d);
-                const wNum = parseInt(wk.split('-')[1]) || 1;
-                const total = recorderSchedule.rotation.length;
-                const person = recorderSchedule.rotation[((wNum - 1 + recorderSchedule.offset) % total + total) % total];
-                html += `
-                    <div class="flex justify-between items-center p-2 rounded ${i===0?'bg-blue-50 border border-blue-200':''}">
-                        <span class="text-sm">${wk} ${i===0?'(本週)':''}</span>
-                        <span class="font-bold text-blue-700">${person}</span>
-                        ${i===0 ? `<div><button class="text-xs bg-white border px-1" data-offset="-1">←</button><button class="text-xs bg-white border px-1" data-offset="1">→</button></div>` : ''}
-                    </div>
-                `;
-            }
-            preview.innerHTML = html;
+            const allP = Object.values(config.personnelData).flat(); document.getElementById('schedule-person-to-add').innerHTML = `<option value="">選擇人員</option>` + allP.map(p => `<option value="${p}">${p}</option>`).join('');
+            const preview = document.getElementById('schedule-preview-list'); if(!recorderSchedule.rotation.length) { preview.innerHTML = '無資料'; return; }
+            const today = new Date(); let html = ''; for(let i=0; i<5; i++) { const d = new Date(today.getTime() + i*7*86400000); const wk = getWeekKey(d); const wNum = parseInt(wk.split('-')[1]) || 1; const total = recorderSchedule.rotation.length; const person = recorderSchedule.rotation[((wNum - 1 + recorderSchedule.offset) % total + total) % total]; html += `<div class="flex justify-between items-center p-2 rounded ${i===0?'bg-blue-50 border border-blue-200':''}"><span class="text-sm">${wk} ${i===0?'(本週)':''}</span><span class="font-bold text-blue-700">${person}</span>${i===0 ? `<div><button class="text-xs bg-white border px-1" data-offset="-1">←</button><button class="text-xs bg-white border px-1" data-offset="1">→</button></div>` : ''}</div>`; } preview.innerHTML = html;
         }
-
         function openReportModal() {
-            const years = Array.from(new Set(allTasks.map(t => (t.startDate||'').split('-')[0]))).filter(Boolean).sort().reverse();
-            document.getElementById('report-year-filter').innerHTML = `<option value="all">所有年份</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
+            const years = Array.from(new Set(allTasks.map(t => (t.startDate||'').split('-')[0]))).filter(Boolean).sort().reverse(); document.getElementById('report-year-filter').innerHTML = `<option value="all">所有年份</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
             document.getElementById('report-category-filter').innerHTML = `<option value="all">所有類別</option>` + config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('report-status-filter').innerHTML = `<option value="all">所有狀態</option>` + config.statusOptions.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            document.getElementById('report-modal').classList.remove('hidden');
-            renderReportTable();
+            document.getElementById('report-modal').classList.remove('hidden'); renderReportTable();
         }
-
         function renderReportTable() {
-             document.getElementById('report-date').innerText = `製表日期: ${new Date().toLocaleDateString()}`;
-             const year = document.getElementById('report-year-filter').value;
-             const filtered = allTasks.filter(t => (year==='all' || t.startDate?.startsWith(year))); // Simplified
-             
-             document.getElementById('report-table-body').innerHTML = filtered.map(t => `
-                <tr class="border-b">
-                    <td class="p-2 align-top font-bold">${t.projectName}</td>
-                    <td class="p-2 align-top text-xs">${t.projectCategory}</td>
-                    <td class="p-2 align-top text-xs">${t.status}</td>
-                    <td class="p-2 align-top text-xs">
-                        ${(t.contentItems||[]).map(i => `<div>• ${i.content} (${i.status}) - ${i.assignedPersonnel?.map(p=>p.name).join(' ')}</div>`).join('')}
-                    </td>
-                </tr>
-             `).join('');
+             document.getElementById('report-date').innerText = `製表日期: ${new Date().toLocaleDateString()}`; const year = document.getElementById('report-year-filter').value; const category = document.getElementById('report-category-filter').value; const status = document.getElementById('report-status-filter').value; const person = document.getElementById('report-person-filter').value;
+             const filtered = allTasks.filter(task => (year === 'all' || (task.startDate && task.startDate.startsWith(year))) && (category === 'all' || task.projectCategory === category) && (status === 'all' || task.status === status) && (person === 'all' || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person))));
+             document.getElementById('report-table-body').innerHTML = filtered.map(t => `<tr class="border-b"><td class="p-2 align-top font-bold">${t.projectName}</td><td class="p-2 align-top text-xs">${t.projectCategory}</td><td class="p-2 align-top text-xs">${t.status}</td><td class="p-2 align-top text-xs">${(t.contentItems||[]).map(i => `<div>• ${i.content} (${i.status}) - ${i.assignedPersonnel?.map(p=>p.name).join(' ')}</div>`).join('')}</td></tr>`).join('');
         }
+        async function archiveTask(taskId) { const task = allTasks.find(t => t.id === taskId); if (!task) return; const taskData = { ...task }; delete taskData.id; try { await set(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), taskData); await remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`)); showToast('任務已封存'); } catch (e) { console.error(e); showToast('封存失敗', 'error'); } }
+        function openArchiveModal() { toggleModal('archive-modal', true); const archiveRef = ref(db, `artifacts/${appId}/public/data/archived_tasks`); if (archivedTasksUnsubscribe) archivedTasksUnsubscribe(); document.getElementById('archive-loading').classList.remove('hidden'); document.getElementById('archive-table').classList.add('hidden'); archiveSearchInput.value = ''; archivedTasksUnsubscribe = onValue(archiveRef, (snap) => { const val = snap.val(); allArchivedTasks = val ? Object.keys(val).map(key => ({ id: key, ...val[key] })) : []; document.getElementById('archive-loading').classList.add('hidden'); document.getElementById('archive-table').classList.remove('hidden'); renderArchiveTable(); }); }
+        function renderArchiveTable() { const tbody = document.getElementById('archive-table-body'); const term = archiveSearchInput.value.toLowerCase().trim(); const sortValue = archiveSortSelect.value; let filtered = allArchivedTasks.filter(t => { if(!term) return true; return (t.projectName || '').toLowerCase().includes(term) || (t.projectCategory || '').toLowerCase().includes(term) || (t.status || '').toLowerCase().includes(term); }); filtered.sort((a, b) => { const key = sortValue.split('_')[0]; const type = sortValue.split('_')[1]; const valA = (a[key] || '').toString(); const valB = (b[key] || '').toString(); return type === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : valB.localeCompare(valA, 'zh-Hant'); }); if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">${allArchivedTasks.length === 0 ? '暫無封存資料' : '找不到符合的資料'}</td></tr>`; } else { tbody.innerHTML = filtered.map(t => `<tr data-task-id="${t.id}" class="hover:bg-gray-50"><td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${t.projectName}</td><td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.projectCategory}</td><td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${t.status}</td><td class="px-3 py-3 whitespace-nowrap text-sm font-medium"><button class="btn-restore-task text-green-600 hover:text-green-900 mr-3"><i class="fas fa-undo"></i> 還原</button><button class="btn-delete-permanent text-red-600 hover:text-red-900"><i class="fas fa-trash"></i> 刪除</button></td></tr>`).join(''); } }
+        async function restoreTask(taskId) { try { const snap = await new Promise(resolve => onValue(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), resolve, {onlyOnce: true})); const taskData = snap.val(); if(taskData) { await set(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`), taskData); await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`)); showToast('任務已還原'); } } catch(e) { console.error(e); showToast('還原失敗', 'error'); } }
+        async function deleteArchivedTask(taskId) { try { await remove(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`)); showToast('永久刪除成功'); } catch(e) { console.error(e); showToast('刪除失敗', 'error'); } }
+        document.getElementById('archive-table-body').onclick = (e) => { const btnRestore = e.target.closest('.btn-restore-task'); const btnDelPerm = e.target.closest('.btn-delete-permanent'); const tr = e.target.closest('tr'); if(!tr) return; const taskId = tr.dataset.taskId; if(btnRestore) { showConfirm('確定要還原此任務嗎？', () => restoreTask(taskId), '還原', 'bg-green-600'); } if(btnDelPerm) { showConfirm('警告：確定要永久刪除此任務嗎？此操作無法復原！', () => deleteArchivedTask(taskId), '永久刪除', 'bg-red-600'); } };
+        // --- End of Script ---
+        
+        function renderApp() {
+            renderStatsCards();
+            renderDashboardTable();
+        }
+        function renderStatsCards() { /* ... Same logic as previous, ensuring stats update ... */
+            const container = document.getElementById('stats-cards-container');
+            const completedProjects = allTasks.filter(t => t.status === '已完成').length;
+            const inProgressProjects = allTasks.filter(t => t.status === '進行中').length;
+            const pausedProjects = allTasks.filter(t => t.status === '暫停').length;
+            let thisWeeksRecorder = '未排定', nextWeeksRecorder = '未排定';
+            const { rotation = [], offset = 0 } = recorderSchedule;
+            if (Array.isArray(rotation) && rotation.length > 0) {
+                const today = new Date(); const thisWeekKey = getWeekKey(today); const nextWeekKey = getWeekKey(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000));
+                const thisWeekNum = parseInt(thisWeekKey.split('-')[1], 10) || 1; const nextWeekNum = parseInt(nextWeekKey.split('-')[1], 10) || 2; const total = rotation.length;
+                thisWeeksRecorder = rotation[((thisWeekNum - 1 + offset) % total + total) % total]; nextWeeksRecorder = rotation[((nextWeekNum - 1 + offset) % total + total) % total];
+            }
+            const summaryEl = document.getElementById('stats-summary-text'); if(summaryEl) { summaryEl.textContent = `本週記錄人員: ${thisWeeksRecorder}`; }
+            const cards = [ { color: 'blue', icon: 'fa-chart-pie', title: '專案總數', value: allTasks.length, sub: `進行中: ${inProgressProjects}` }, { color: 'green', icon: 'fa-check-circle', title: '已完成專案', value: completedProjects, sub: `完成率: ${allTasks.length ? Math.round((completedProjects/allTasks.length)*100) : 0}%` }, { color: 'yellow', icon: 'fa-pause-circle', title: '暫停中專案', value: pausedProjects, sub: '待重啟' }, { color: 'indigo', icon: 'fa-user-clock', title: '本週記錄', value: thisWeeksRecorder, sub: `下週: ${nextWeeksRecorder}` } ];
+            container.innerHTML = cards.map(c => `<div class="bg-white p-4 rounded-xl shadow border-l-4 border-${c.color}-500 flex items-center justify-between"><div><div class="text-gray-500 text-xs font-semibold uppercase tracking-wide">${c.title}</div><div class="text-2xl font-bold text-gray-800 mt-1">${c.value}</div><div class="text-xs text-gray-400 mt-1">${c.sub}</div></div><div class="bg-${c.color}-100 p-3 rounded-full text-${c.color}-600"><i class="fas ${c.icon} text-xl"></i></div></div>`).join('');
+        }
+        function renderDashboardTable() { /* ... Same logic as previous, ensuring table updates ... */ 
+            const showCompleted = document.getElementById('filter-show-completed').checked;
+            const showPaused = document.getElementById('filter-show-paused').checked;
+            const sortCriteria = document.getElementById('sort-select').value;
+            const selectedPerson = document.getElementById('person-filter').value;
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
 
+            const existingOptions = new Set();
+            allTasks.forEach(t => t.contentItems?.forEach(i => i.assignedPersonnel?.forEach(p => { if(p.role === '主要') existingOptions.add(p.name); })));
+            const currentSelected = document.getElementById('person-filter').value;
+            let optionsHtml = `<option value="all">全部人員</option>`;
+            Array.from(existingOptions).sort().forEach(p => { optionsHtml += `<option value="${p}" ${p === currentSelected ? 'selected' : ''}>${p}</option>`; });
+            if (document.getElementById('person-filter').innerHTML !== optionsHtml) document.getElementById('person-filter').innerHTML = optionsHtml;
+
+            let filteredTasks = allTasks.filter(task => {
+                if (!showCompleted && task.status === '已完成') return false;
+                if (!showPaused && task.status === '暫停') return false;
+                if (selectedPerson !== 'all') { const hasPerson = task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.role === '主要' && p.name === selectedPerson)); if (!hasPerson) return false; }
+                if (searchTerm) {
+                    const inName = task.projectName.toLowerCase().includes(searchTerm);
+                    const inCat = task.projectCategory.toLowerCase().includes(searchTerm);
+                    const inContent = task.contentItems?.some(i => i.content.toLowerCase().includes(searchTerm));
+                    const inPerson = task.contentItems?.some(i => i.assignedPersonnel?.some(p => p.name.toLowerCase().includes(searchTerm)));
+                    if (!inName && !inCat && !inContent && !inPerson) return false;
+                }
+                return true;
+            });
+            
+            filteredTasks.sort((a, b) => {
+                switch (sortCriteria) {
+                    case 'startDate_desc': return (new Date(b.startDate || 0)) - (new Date(a.startDate || 0));
+                    case 'startDate_asc': return (new Date(a.startDate || 0)) - (new Date(b.startDate || 0));
+                    case 'projectName_asc': return a.projectName.localeCompare(b.projectName, 'zh-Hant');
+                    case 'projectCategory_asc': return a.projectCategory.localeCompare(b.projectCategory, 'zh-Hant');
+                    case 'createdAt_asc': return (a.createdAt || 0) - (b.createdAt || 0);
+                    default: return (b.createdAt || 0) - (a.createdAt || 0);
+                }
+            });
+
+            document.getElementById('displayed-count').textContent = filteredTasks.length;
+            if (filteredTasks.length === 0) { dashboardTableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 bg-gray-50">沒有符合條件的任務。</td></tr>`; } else {
+                dashboardTableBody.innerHTML = filteredTasks.map(task => {
+                    const allItemsWithIndex = (task.contentItems || []).map((item, idx) => ({ ...item, originalIndex: idx }));
+                    const visibleItems = allItemsWithIndex.filter(item => { if (!showCompleted && item.status === '已完成') return false; if (!showPaused && item.status === '暫停') return false; return true; });
+                    const contentHtml = visibleItems.length > 0 ? visibleItems.map((item) => {
+                         const mainP = item.assignedPersonnel?.filter(p => p.role === '主要').map(p => p.name).join(', ') || '-';
+                         const asstP = item.assignedPersonnel?.filter(p => p.role === '協助').map(p => p.name).join(', ');
+                         // Adjusted to show endDate only if set (which means completed)
+                         let dateRange = '';
+                         if (item.startDate) {
+                             dateRange = item.endDate ? `${item.startDate}~${item.endDate}` : `${item.startDate}~`;
+                         }
+                         const dateDisplay = dateRange ? `<span class="text-gray-400 mx-1">|</span> ${dateRange}` : ''; // Error here in previous context, fixed variable
+                         
+                         return `<div class="mb-2 last:mb-0 p-2 rounded hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors"><div class="flex justify-between items-start"><div class="font-bold text-gray-800 text-base">${item.content}</div>${createStatusBadge(item.status, task.id, item.originalIndex)}</div><div class="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-1"><div class="flex items-center"><i class="fas fa-user-circle mr-1 text-blue-400"></i> ${mainP}</div>${asstP ? `<div class="flex items-center"><i class="fas fa-hands-helping mr-1 text-green-400"></i> ${asstP}</div>` : ''}<div class="flex items-center"><i class="far fa-calendar-alt mr-1 text-gray-400"></i> ${dateDisplay}</div></div></div>`;
+                    }).join('') : `<span class="text-gray-400 italic text-sm">${(task.contentItems||[]).length > 0 ? '所有項目已隱藏' : '無細項內容'}</span>`;
+                    const days = calculateDaysInProgress(task);
+                    return `<tr class="hover:bg-blue-50 transition-colors group" data-task-id="${task.id}"><td class="px-3 py-4 align-top text-gray-900 font-bold" data-label="專案名稱">${task.projectName}</td><td class="px-3 py-4 align-top text-sm text-gray-600" data-label="類別"><span class="bg-gray-100 px-2 py-1 rounded text-xs">${task.projectCategory}</span></td><td class="px-3 py-4 align-top" data-label="處理項目詳情">${contentHtml}</td><td class="px-3 py-4 align-top" data-label="總體進度">${createStatusBadge(task.status, task.id)}</td><td class="px-3 py-4 align-top text-sm text-gray-600 font-mono" data-label="天數">${days}</td><td class="px-3 py-4 align-top" data-label="操作"><div class="flex space-x-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity justify-end sm:justify-start"><button class="btn-edit-task bg-indigo-50 text-indigo-600 p-2 rounded hover:bg-indigo-100" title="編輯"><i class="fas fa-edit"></i></button><button class="btn-archive-task bg-orange-50 text-orange-600 p-2 rounded hover:bg-orange-100" title="封存"><i class="fas fa-archive"></i></button><button class="btn-delete-task bg-red-50 text-red-600 p-2 rounded hover:bg-red-100" title="刪除"><i class="fas fa-trash-alt"></i></button></div></td></tr>`;
+                }).join('');
+            }
+        }
+        function downloadCSV() { /* ... Same logic as before ... */
+            const year = document.getElementById('report-year-filter').value; const category = document.getElementById('report-category-filter').value; const status = document.getElementById('report-status-filter').value; const person = document.getElementById('report-person-filter').value;
+            const filtered = allTasks.filter(task => (year === 'all' || (task.startDate && task.startDate.startsWith(year))) && (category === 'all' || task.projectCategory === category) && (status === 'all' || task.status === status) && (person === 'all' || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person))));
+            if (filtered.length === 0) { showToast("沒有可匯出的資料。", 'error'); return; }
+            const headers = ["專案名稱", "專案類別", "專案總體開始日", "專案總體完成日", "專案總體進度", "項目內容", "項目開始日", "項目完成日", "項目進度", "主要人員", "協助人員", "備註"];
+            let csvContent = "\uFEFF"; csvContent += headers.join(',') + '\r\n';
+            filtered.forEach(task => { const escapeCSV = (field) => `"${(field || '').toString().replace(/"/g, '""')}"`; if (task.contentItems && task.contentItems.length > 0) { task.contentItems.forEach(item => { const mainPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '主要').map(p => p.name).join('; '); const assistingPersonnel = (item.assignedPersonnel || []).filter(p => p.role === '協助').map(p => p.name).join('; '); const row = [task.projectName, task.projectCategory, task.startDate, task.actualCompletionDate, task.status, item.content, item.startDate, item.endDate, item.status, mainPersonnel, assistingPersonnel, task.remarks].map(escapeCSV).join(','); csvContent += row + '\r\n'; }); } else { const row = [task.projectName, task.projectCategory, task.startDate, task.actualCompletionDate, task.status, "", "", "", "", "", "", task.remarks].map(escapeCSV).join(','); csvContent += row + '\r\n'; } });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); const url = URL.createObjectURL(blob); link.setAttribute("href", url); link.setAttribute("download", `專案進度報表_${new Date().toISOString().slice(0,10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+        function printReport() {
+            const reportContent = document.getElementById('report-content-wrapper').innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`<html><head><title>專案進度報表</title><style>body { font-family: "Microsoft JhengHei", sans-serif !important; -webkit-print-color-adjust: exact !important; } @page { size: A4 landscape; margin: 10mm; } table { width: 100%; border-collapse: collapse; font-size: 10pt; } th, td { border: 1px solid #ddd; padding: 6px; text-align: left; } th { background-color: #f3f4f6; }</style></head><body>${reportContent}<script>window.onload = function() { window.print(); window.close(); }<\/script></body></html>`); printWindow.document.close();
+        }
     </script>
 </body>
 </html>
