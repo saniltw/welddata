@@ -855,6 +855,8 @@
                 document.getElementById('remarks').value = task.remarks || '';
                 renderFormItems(task.contentItems || []);
             } else {
+                // 新增任務時，預設帶入當天日期
+                document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
                 statSel.value = '進行中';
                 renderFormItems([{ content: '', status: '單日工作' }]);
             }
