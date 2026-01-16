@@ -112,7 +112,7 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.1.0 (Retroactive Analysis)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.3.0 (Smart Calendar Expand)</p>
         </div>
     </div>
 
@@ -179,14 +179,14 @@
                             <select id="dashboard-category-filter" onchange="window.app.renderDashboard()" class="text-xs border rounded p-1 bg-slate-50 text-slate-600 max-w-[100px]"><option value="ALL">全部分類</option></select>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center mb-4 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded"><span id="dashboard-range-label">統計區間</span><span id="dashboard-date-range" class="font-mono">...</span></div>
+                    <div class="flex justify-between items-center mb-4 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded"><span id="dashboard-range-label">統計區間 (本週)</span><span id="dashboard-date-range" class="font-mono">...</span></div>
                     <div class="mb-4">
-                        <div class="flex justify-between text-xs text-slate-600 mb-1"><span>完成進度</span><span id="dashboard-progress-text" class="font-bold">0%</span></div>
+                        <div class="flex justify-between text-xs text-slate-600 mb-1"><span>本週完成度</span><span id="dashboard-progress-text" class="font-bold">0%</span></div>
                         <div class="progress-bar-container"><div id="dashboard-progress-bar" class="progress-bar-fill bg-indigo-500" style="width: 0%"></div></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                        <div class="bg-slate-50 rounded p-2 border border-slate-200"><span class="block text-xs text-slate-500 font-bold mb-1" id="label-pending">待執行</span><span id="count-pending" class="text-2xl font-bold text-slate-700">0</span></div>
-                        <div class="bg-green-50 rounded p-2 border border-green-100"><span class="block text-xs text-green-600 font-bold mb-1" id="label-completed">已完成</span><span id="count-completed" class="text-2xl font-bold text-green-700">0</span></div>
+                        <div class="bg-slate-50 rounded p-2 border border-slate-200"><span class="block text-xs text-slate-500 font-bold mb-1" id="label-pending">本週待辦</span><span id="count-pending" class="text-2xl font-bold text-slate-700">0</span></div>
+                        <div class="bg-green-50 rounded p-2 border border-green-100"><span class="block text-xs text-green-600 font-bold mb-1" id="label-completed">本週已完成</span><span id="count-completed" class="text-2xl font-bold text-green-700">0</span></div>
                     </div>
                     <div id="todo-list-container" class="space-y-3 max-h-60 overflow-y-auto pr-1"><p class="text-center text-sm text-gray-400 py-2">載入中...</p></div>
                     <div id="completed-section-toggle" class="mt-4 text-center hidden">
@@ -210,13 +210,24 @@
                                 <input type="date" id="check-date-input" class="border border-slate-300 rounded p-1.5 text-slate-700 font-semibold bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" onchange="window.app.updateWeekDisplay(this.value)">
                                 <span id="week-display" class="text-sm font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1.5 rounded-full border border-indigo-100"></span>
                             </div>
-                            <div id="overdue-hint-container" class="mt-2 hidden">
-                                <p class="text-xs font-bold text-red-500 mb-1 flex items-center">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
-                                    提醒：此設備有過期作業需補登
-                                </p>
-                                <div id="overdue-dates-list" class="flex flex-wrap gap-1"></div>
+
+                            <!-- 新增：月份檢視按鈕與容器 -->
+                            <div class="mt-2">
+                                <button onclick="window.app.toggleCalendarView()" class="text-sm text-indigo-600 font-bold hover:text-indigo-800 flex items-center transition-colors">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    📅 月份檢視 / 補登其他週次
+                                </button>
                             </div>
+                            <div id="calendar-view-container" class="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-lg hidden transition-all">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <label class="text-sm font-bold text-slate-700">選擇月份:</label>
+                                    <input type="month" id="calendar-month-select" class="border rounded p-1 text-sm bg-white" onchange="window.app.renderCalendarView()">
+                                </div>
+                                <div id="calendar-weeks-list" class="space-y-2"></div>
+                            </div>
+                            <!-- 結束新增 -->
+
+                            <!-- 已移除紅色逾期文字提醒 (Option A) -->
                         </div>
                     </div>
                 </div>
@@ -281,14 +292,14 @@
                         <div id="editor-section-check-schedule" class="border border-indigo-200 rounded-lg bg-indigo-50 p-4">
                             <h3 class="font-bold text-indigo-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>點檢排程設定</h3>
                             <div class="flex gap-6 mb-3 text-sm"><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="weekly" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="interval" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
-                            <div id="check-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週日</label></div></div>
+                            <div id="check-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日，以免無人執行造成系統逾期判定。</p></div>
                             <div id="check-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-check-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('check')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-indigo-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計點檢日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-indigo-600"><span id="check-preview-1">--</span><span class="text-slate-300">|</span><span id="check-preview-2">--</span></div></div>
                         </div>
                         <div id="editor-section-clean-schedule" class="border border-orange-200 rounded-lg bg-orange-50 p-4 mt-4">
                             <h3 class="font-bold text-orange-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>清潔排程設定</h3>
                             <div class="flex gap-4 mb-3 text-sm flex-wrap"><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="weekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="biweekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (隔週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="interval" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
-                            <div id="clean-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週日</label></div></div>
+                            <div id="clean-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日。</p></div>
                             <div id="clean-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-clean-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('clean')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-orange-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計清潔日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-orange-600"><span id="clean-preview-1">--</span><span class="text-slate-300">|</span><span id="clean-preview-2">--</span></div></div>
                         </div>
@@ -339,7 +350,7 @@
                             <label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label>
                             <select id="report-type" class="w-full p-2 border rounded bg-white">
                                 <option value="checklist">設備點檢紀錄表 (清單式)</option>
-                                <option value="overdue">逾期未執行報表 (目前)</option>
+                                <option value="overdue">逾期未執行報表 (週管理)</option>
                                 <option value="kt_weekly">廣泰金屬-週點檢表 (格式化)</option>
                                 <option value="maintenance">保養維修紀錄表</option>
                                 <option value="analysis_retroactive">補登分析報表 (效率分析)</option>
@@ -432,10 +443,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">執行日期 (可補登)</label>
                     <input type="date" id="maint-date-input" class="w-full p-2 border rounded border-gray-300">
-                    <div id="maint-overdue-hint-container" class="mt-2 hidden">
-                        <p class="text-xs font-bold text-red-500 mb-1">⚠️ 提醒：此設備有清潔作業需補登</p>
-                        <div id="maint-overdue-dates-list" class="flex flex-wrap gap-1"></div>
-                    </div>
+                    <!-- 已移除紅色逾期文字提醒 -->
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-600">保養類型</label>
@@ -512,6 +520,55 @@
         };
 
         window.app = {}; 
+
+        // --- Date Utilities ---
+        window.app.formatDate = function(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
+        // **核心修改：週末跳過邏輯**
+        // 將日期往後推，直到不是週六或週日
+        window.app.adjustForWeekend = function(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            if (day === 6) { // Sat -> +2 -> Mon
+                d.setDate(d.getDate() + 2);
+            } else if (day === 0) { // Sun -> +1 -> Mon
+                d.setDate(d.getDate() + 1);
+            }
+            return d;
+        };
+        
+        // **核心修改：取得週次範圍字串**
+        // 格式: 2025-W02 (01/06~01/12)
+        window.app.getWeekRangeString = function(date) {
+            if(!date) return '';
+            const d = new Date(date);
+            // 找出該週的週一
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(d);
+            monday.setDate(diff);
+            
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            // 計算週數 (ISO Week Number 簡化版)
+            const oneJan = new Date(d.getFullYear(), 0, 1);
+            const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
+            const weekNum = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
+
+            const mStr = `${String(monday.getMonth()+1).padStart(2,'0')}/${String(monday.getDate()).padStart(2,'0')}`;
+            const sStr = `${String(sunday.getMonth()+1).padStart(2,'0')}/${String(sunday.getDate()).padStart(2,'0')}`;
+            
+            return `${d.getFullYear()}-W${String(weekNum).padStart(2,'0')} (${mStr}~${sStr})`;
+        };
+
         window.app.toggleScheduleMode = function(type) {
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const weeklyDiv = document.getElementById(`${type}-weekly-input`);
@@ -522,16 +579,64 @@
         window.app.updateSchedulePreview = function(type) {
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const today = new Date(); let nextDates = [];
-            if (mode === 'weekly') { const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } nextDates = window.app.calculateNextWeeklyDates(today, checked, 2); } 
-            else if (mode === 'biweekly') { const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } const firstBatch = window.app.calculateNextWeeklyDates(today, checked, 1); if (firstBatch.length > 0) { const firstDate = firstBatch[0]; const secondDate = new Date(firstDate); secondDate.setDate(secondDate.getDate() + 14); nextDates = [firstDate, secondDate]; } } 
-            else { const interval = parseInt(document.getElementById(`edit-${type}-interval`).value); if (!interval || interval < 1) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } const d1 = new Date(today); d1.setDate(d1.getDate() + interval); const d2 = new Date(today); d2.setDate(d2.getDate() + interval * 2); nextDates = [d1, d2]; }
-            if (nextDates.length > 0) document.getElementById(`${type}-preview-1`).textContent = nextDates[0].toISOString().slice(0, 10); if (nextDates.length > 1) document.getElementById(`${type}-preview-2`).textContent = nextDates[1].toISOString().slice(0, 10);
+            
+            if (mode === 'weekly') { 
+                const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); 
+                if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
+                nextDates = window.app.calculateNextWeeklyDates(today, checked, 2); 
+            } 
+            else if (mode === 'biweekly') { 
+                const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); 
+                if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
+                const firstBatch = window.app.calculateNextWeeklyDates(today, checked, 1); 
+                if (firstBatch.length > 0) { const firstDate = firstBatch[0]; const secondDate = new Date(firstDate); secondDate.setDate(secondDate.getDate() + 14); nextDates = [firstDate, secondDate]; } 
+            } 
+            else { 
+                const interval = parseInt(document.getElementById(`edit-${type}-interval`).value); 
+                if (!interval || interval < 1) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
+                
+                let d1 = new Date(today); 
+                d1.setDate(d1.getDate() + interval);
+                d1 = window.app.adjustForWeekend(d1); // 強制週末跳過
+
+                let d2 = new Date(d1); 
+                d2.setDate(d2.getDate() + interval);
+                d2 = window.app.adjustForWeekend(d2); // 強制週末跳過
+                
+                nextDates = [d1, d2]; 
+            }
+            if (nextDates.length > 0) document.getElementById(`${type}-preview-1`).textContent = window.app.formatDate(nextDates[0]); 
+            if (nextDates.length > 1) document.getElementById(`${type}-preview-2`).textContent = window.app.formatDate(nextDates[1]);
         };
-        window.app.calculateNextWeeklyDates = function(startDate, weekdays, count) { let dates = []; let current = new Date(startDate); current.setDate(current.getDate() + 1); let loopCount = 0; while (dates.length < count && loopCount < 365) { if (weekdays.includes(current.getDay())) { dates.push(new Date(current)); } current.setDate(current.getDate() + 1); loopCount++; } return dates; };
-        window.app.calculateNextScheduleDate = function(schedule, fromDate) { if (!schedule) return null; const start = new Date(fromDate); if ((schedule.mode === 'weekly' || schedule.mode === 'biweekly') && schedule.weekdays && schedule.weekdays.length > 0) { const nextDates = window.app.calculateNextWeeklyDates(start, schedule.weekdays, 1); if (nextDates.length > 0) { let nextDate = nextDates[0]; if (schedule.mode === 'biweekly') { nextDate.setDate(nextDate.getDate() + 7); } return nextDate; } } else if (schedule.mode === 'interval' && schedule.interval) { const next = new Date(start); next.setDate(next.getDate() + parseInt(schedule.interval)); return next; } return null; };
         
-        // --- NEW: Calculate All Overdue Dates ---
-        // Calculates all dates from nextDate until Today that were missed
+        window.app.calculateNextWeeklyDates = function(startDate, weekdays, count) { let dates = []; let current = new Date(startDate); current.setDate(current.getDate() + 1); let loopCount = 0; while (dates.length < count && loopCount < 365) { if (weekdays.includes(current.getDay())) { dates.push(new Date(current)); } current.setDate(current.getDate() + 1); loopCount++; } return dates; };
+        
+        // **核心修改：所有下次日期計算，最後都要經過 adjustForWeekend**
+        window.app.calculateNextScheduleDate = function(schedule, fromDate) { 
+            if (!schedule) return null; 
+            const start = new Date(fromDate); 
+            let resultDate = null;
+
+            if ((schedule.mode === 'weekly' || schedule.mode === 'biweekly') && schedule.weekdays && schedule.weekdays.length > 0) { 
+                const nextDates = window.app.calculateNextWeeklyDates(start, schedule.weekdays, 1); 
+                if (nextDates.length > 0) { 
+                    let nextDate = nextDates[0]; 
+                    if (schedule.mode === 'biweekly') { nextDate.setDate(nextDate.getDate() + 7); } 
+                    resultDate = nextDate;
+                } 
+            } else if (schedule.mode === 'interval' && schedule.interval) { 
+                const next = new Date(start); 
+                next.setDate(next.getDate() + parseInt(schedule.interval)); 
+                resultDate = next;
+            } 
+            
+            // 最終防線：確保存入資料庫的日期不是週末
+            if (resultDate) {
+                return window.app.adjustForWeekend(resultDate);
+            }
+            return null; 
+        };
+        
         window.app.calculateOverdueDates = function(nextDateStr, schedule) {
             if (!nextDateStr || !schedule) return [];
             const nextDate = new Date(nextDateStr);
@@ -539,27 +644,119 @@
             today.setHours(0,0,0,0);
             nextDate.setHours(0,0,0,0);
 
-            if (nextDate >= today) return []; // Not overdue
+            // 這裡不需要改，因為是否「算」逾期，由顯示層(Dashboard/Report)決定
+            // 這裡負責找出所有「在今天之前」應該發生但沒發生的日期點
+            if (nextDate >= today) return []; 
 
             let missedDates = [];
             let current = new Date(nextDate);
-            
-            // Safety: prevent infinite loops if schedule is broken
             let loops = 0;
             while (current < today && loops < 50) {
                 missedDates.push(new Date(current));
-                
-                // Calculate next theoretical date
                 let next = window.app.calculateNextScheduleDate(schedule, current);
-                if (!next || next <= current) break; // Error or invalid schedule
+                if (!next || next <= current) break; 
                 current = next;
                 current.setHours(0,0,0,0);
                 loops++;
             }
             return missedDates;
         };
+        
+        // --- 新增: 月曆檢視相關功能 ---
+        window.app.toggleCalendarView = function() {
+            const container = document.getElementById('calendar-view-container');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                // Set default to current month if not set
+                if (!document.getElementById('calendar-month-select').value) {
+                    const now = new Date();
+                    const yyyy = now.getFullYear();
+                    const mm = String(now.getMonth() + 1).padStart(2, '0');
+                    document.getElementById('calendar-month-select').value = `${yyyy}-${mm}`;
+                }
+                window.app.renderCalendarView();
+            } else {
+                container.classList.add('hidden');
+            }
+        };
 
-        // --- Custom Confirm Modal Logic ---
+        window.app.renderCalendarView = function() {
+            const container = document.getElementById('calendar-weeks-list');
+            const monthVal = document.getElementById('calendar-month-select').value;
+            if (!monthVal || !currentCheckId) return;
+
+            const [year, month] = monthVal.split('-').map(Number);
+            // 依據 KT 報表週次定義: 1-7, 8-14, 15-21, 22-28, 29-End
+            const endDate = new Date(year, month, 0); // Last day of month
+            
+            const weeks = [
+                { id: 1, start: 1, end: 7 },
+                { id: 2, start: 8, end: 14 },
+                { id: 3, start: 15, end: 21 },
+                { id: 4, start: 22, end: 28 },
+                { id: 5, start: 29, end: endDate.getDate() }
+            ];
+
+            const deviceHistory = checkHistory.filter(h => h.deviceId === currentCheckId);
+            
+            let html = '';
+            
+            weeks.forEach(w => {
+                if (w.start > endDate.getDate()) return;
+
+                // 找尋是否有紀錄落在這個區間
+                const record = deviceHistory.find(h => {
+                    const d = h.checkTimestamp.toDate();
+                    return d.getFullYear() === year && d.getMonth() === (month - 1) && d.getDate() >= w.start && d.getDate() <= w.end;
+                });
+                
+                // 設定補登目標日期 (該週起始日)
+                const targetDate = new Date(year, month - 1, w.start);
+                const targetDateStr = window.app.formatDate(targetDate);
+                const isFuture = targetDate > new Date();
+
+                if (record) {
+                    const recordDate = window.app.formatDate(record.checkTimestamp.toDate());
+                    html += `
+                        <div class="flex justify-between items-center p-2 bg-green-50 border border-green-200 rounded">
+                            <div class="flex items-center">
+                                 <span class="text-green-600 font-bold mr-2 text-sm">✅ 第 ${w.id} 週</span>
+                                 <span class="text-xs text-green-700">(${month}/${w.start}~${month}/${w.end})</span>
+                            </div>
+                            <span class="text-xs font-mono text-green-800 font-bold">已完成: ${recordDate}</span>
+                        </div>
+                    `;
+                } else {
+                     const statusText = isFuture ? '尚未開始' : '未完成';
+                     const btnText = isFuture ? '預填' : '補登';
+                     const btnClass = isFuture ? 'text-indigo-600 bg-indigo-50 border-indigo-200' : 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100';
+
+                    html += `
+                        <div class="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+                            <div class="flex items-center">
+                                 <span class="text-gray-500 font-bold mr-2 text-sm">⬜ 第 ${w.id} 週</span>
+                                 <span class="text-xs text-gray-400">(${month}/${w.start}~${month}/${w.end})</span>
+                            </div>
+                            <button onclick="window.app.selectRetroactiveDate('${targetDateStr}')" class="px-3 py-1 text-xs font-bold border rounded ${btnClass}">
+                                ${btnText}
+                            </button>
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML = html;
+        };
+
+        window.app.selectRetroactiveDate = function(dateStr) {
+            document.getElementById('check-date-input').value = dateStr;
+            window.app.updateWeekDisplay(dateStr);
+            showToast(`已設定補登日期: ${dateStr}，請開始填寫表格`, 'success');
+            // 選擇性: 設定完日期後可以自動收起日曆，或保持開啟
+            // window.app.toggleCalendarView(); 
+        };
+        // --- 結束新增 ---
+
         let confirmCallback = null;
         window.app.confirmAction = function(message, callback) { document.getElementById('custom-confirm-msg').textContent = message; confirmCallback = callback; document.getElementById('custom-confirm-modal').classList.remove('hidden'); document.getElementById('custom-confirm-modal').classList.add('flex'); };
         window.app.closeConfirmModal = function() { document.getElementById('custom-confirm-modal').classList.add('hidden'); document.getElementById('custom-confirm-modal').classList.remove('flex'); confirmCallback = null; };
@@ -579,7 +776,7 @@
             if(scanId) window.app.pendingScanId = scanId;
             window.app.loginAsGuest();
             startListeners();
-            const today = new Date().toISOString().slice(0,10);
+            const today = window.app.formatDate(new Date());
             const currentMonth = new Date().toISOString().slice(0,7);
             const startDateEl = document.getElementById('report-start-date'); if(startDateEl) startDateEl.value = today;
             const endDateEl = document.getElementById('report-end-date'); if(endDateEl) endDateEl.value = today;
@@ -603,7 +800,7 @@
         window.app.handleManualReplace = function() { const id = document.getElementById('manual-device-select').value; if (loggedInUser.role === 'guest') return showToast("訪客權限不足", "error"); window.app.handleManualReplaceOpen(id); };
         window.app.handleManualReplaceOpen = function(id) {
              currentMaintEqId = id; document.getElementById('maint-device-name').textContent = equipmentDatabase[id].name; const compSelect = document.getElementById('maintenance-component-name'); compSelect.innerHTML = ''; document.getElementById('maintenance-notes').value = ''; document.getElementById('maint-image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; document.getElementById('maint-image-preview').removeAttribute('data-image-data-url'); document.getElementById('maint-image-upload').value = ''; const comps = equipmentDatabase[id].components || []; if(comps.length > 0) comps.forEach(c => compSelect.add(new Option(c.name, c.name))); else compSelect.add(new Option('無零件資料', '')); document.getElementById('maintenance-type').value = 'replacement'; window.app.toggleMaintType(); 
-             document.getElementById('maint-date-input').value = new Date().toISOString().slice(0,10); // Default Today
+             document.getElementById('maint-date-input').value = window.app.formatDate(new Date());
              document.getElementById('maintenance-modal').classList.remove('hidden');
         };
         window.app.startChecklist = function(id) { startChecklist(id); };
@@ -613,24 +810,121 @@
             const { start, end } = window.app.getThisWeekRange();
             document.getElementById('dashboard-date-range').textContent = `${start.getMonth()+1}/${start.getDate()} - ${end.getMonth()+1}/${end.getDate()}`;
             const icon = document.getElementById('dashboard-icon'); const title = document.getElementById('dashboard-title');
-            if(currentTaskMode === 'check') { icon.textContent = '📋'; title.textContent = '本週點檢進度'; } else if(currentTaskMode === 'clean') { icon.textContent = '🧹'; title.textContent = '本週清潔進度'; } else { icon.textContent = '⚙️'; title.textContent = '耗材更換紀錄'; }
+            if(currentTaskMode === 'check') { icon.textContent = '📋'; title.textContent = '工作概覽 (點檢)'; } else if(currentTaskMode === 'clean') { icon.textContent = '🧹'; title.textContent = '工作概覽 (清潔)'; } else { icon.textContent = '⚙️'; title.textContent = '耗材更換紀錄'; }
             const ownerFilter = document.getElementById('dashboard-owner-filter').value; const categoryFilter = document.getElementById('dashboard-category-filter').value;
-            let pendingItems = []; let completedItems = [];
+            
+            let pendingItems = []; 
+            let completedItems = [];
+
             Object.values(equipmentDatabase).forEach(eq => {
-                if(categoryFilter !== 'ALL' && (eq.category || '未分類') !== categoryFilter) return; if(ownerFilter !== 'ALL' && eq.primaryOwnerId !== ownerFilter) return; if(eq.status !== '使用中') return;
+                if(categoryFilter !== 'ALL' && (eq.category || '未分類') !== categoryFilter) return; 
+                if(ownerFilter !== 'ALL' && eq.primaryOwnerId !== ownerFilter) return; 
+                if(eq.status !== '使用中') return;
+                
                 if(currentTaskMode === 'check') {
+                    // Check Logic
                     const isDone = checkHistory.some(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end && h.deviceId === eq.id; });
-                    if(isDone) completedItems.push({ name: eq.name, id: eq.id }); else { const nextDate = eq.nextCheckDate ? new Date(eq.nextCheckDate) : new Date(0); if(nextDate <= end) pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCheckDate }); }
+                    if(isDone) {
+                        completedItems.push({ name: eq.name, id: eq.id });
+                    } else {
+                        const nextDate = eq.nextCheckDate ? new Date(eq.nextCheckDate) : new Date(0);
+                        // 判定邏輯: 
+                        // 1. 如果 nextDate 小於 本週一 => Overdue (Red)
+                        // 2. 如果 nextDate 在 本週一 ~ 本週日 => Pending (This Week)
+                        
+                        // nextDate 不需要時分秒
+                        nextDate.setHours(0,0,0,0);
+                        const thisWeekStart = new Date(start); thisWeekStart.setHours(0,0,0,0);
+                        const thisWeekEnd = new Date(end); thisWeekEnd.setHours(23,59,59,999);
+
+                        if (nextDate < thisWeekStart) {
+                             // Overdue
+                             pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCheckDate, status: 'overdue' });
+                        } else if (nextDate <= thisWeekEnd) {
+                             // This Week
+                             pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCheckDate, status: 'pending' });
+                        }
+                    }
                 } else if(currentTaskMode === 'clean') {
+                    // Clean Logic
                     const isDone = maintenanceHistory.some(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end && h.deviceId === eq.id && h.type === 'cleaning'; });
-                    if(isDone) completedItems.push({ name: eq.name, id: eq.id }); else { const nextDate = eq.nextCleaningDate ? new Date(eq.nextCleaningDate) : new Date(0); if(nextDate <= end) pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCleaningDate }); }
+                    if(isDone) {
+                        completedItems.push({ name: eq.name, id: eq.id });
+                    } else {
+                        const nextDate = eq.nextCleaningDate ? new Date(eq.nextCleaningDate) : new Date(0);
+                        nextDate.setHours(0,0,0,0);
+                        const thisWeekStart = new Date(start); thisWeekStart.setHours(0,0,0,0);
+                        const thisWeekEnd = new Date(end); thisWeekEnd.setHours(23,59,59,999);
+
+                        if (nextDate < thisWeekStart) {
+                             pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCleaningDate, status: 'overdue' });
+                        } else if (nextDate <= thisWeekEnd) {
+                             pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCleaningDate, status: 'pending' });
+                        }
+                    }
                 }
             });
-            todoList.innerHTML = ''; if(pendingItems.length === 0) todoList.innerHTML = '<p class="text-center text-sm text-gray-400 py-2">目前無待辦事項</p>'; else { pendingItems.forEach(item => { const action = currentTaskMode === 'check' ? `window.app.startChecklist('${item.id}')` : `window.app.showMaintenanceModal('${item.id}')`; todoList.innerHTML += `<div class="flex justify-between items-center p-2 bg-white border rounded shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="${action}"><div><div class="font-bold text-slate-700 text-sm">${item.name}</div><div class="text-xs text-red-500">預計: ${item.date || '盡快'}</div></div><button class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded text-xs font-bold">執行</button></div>`; }); }
-            completedList.innerHTML = ''; if(completedItems.length === 0) completedList.innerHTML = '<p class="text-gray-400 text-xs pl-2">本週尚無完成項目</p>'; else { completedItems.forEach(item => { completedList.innerHTML += `<div class="flex items-center p-1.5 border-b border-gray-100 last:border-0"><span class="text-green-500 mr-2">✓</span><span class="text-gray-600 text-sm line-through opacity-70">${item.name}</span></div>`; }); }
+
+            // Render Pending List
+            todoList.innerHTML = ''; 
+            if(pendingItems.length === 0) {
+                todoList.innerHTML = '<p class="text-center text-sm text-gray-400 py-2">目前無待辦事項</p>'; 
+            } else { 
+                // Sort: Overdue first, then by date
+                pendingItems.sort((a,b) => {
+                    if (a.status === 'overdue' && b.status !== 'overdue') return -1;
+                    if (a.status !== 'overdue' && b.status === 'overdue') return 1;
+                    return new Date(a.date) - new Date(b.date);
+                });
+
+                pendingItems.forEach(item => { 
+                    const action = currentTaskMode === 'check' ? `window.app.startChecklist('${item.id}')` : `window.app.showMaintenanceModal('${item.id}')`; 
+                    let statusHtml = '';
+                    if (item.status === 'overdue') {
+                        // 逾期顯示週次區間
+                        const rangeStr = window.app.getWeekRangeString(item.date);
+                        statusHtml = `<div class="text-xs text-red-600 font-bold flex items-center mt-1">⚠️ 逾期: ${rangeStr}</div>`;
+                    } else {
+                        // 本週待辦顯示日期
+                        statusHtml = `<div class="text-xs text-slate-400 mt-1">預計: ${item.date || '本週'}</div>`;
+                    }
+
+                    todoList.innerHTML += `
+                    <div class="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-2" onclick="${action}">
+                        <div>
+                            <div class="font-bold text-slate-700 text-sm">${item.name}</div>
+                            ${statusHtml}
+                        </div>
+                        <button class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded text-xs font-bold border border-indigo-100 hover:bg-indigo-100">執行</button>
+                    </div>`; 
+                }); 
+            }
+            
+            completedList.innerHTML = ''; 
+            if(completedItems.length === 0) completedList.innerHTML = '<p class="text-gray-400 text-xs pl-2">本週尚無完成項目</p>'; 
+            else { 
+                completedItems.forEach(item => { 
+                    completedList.innerHTML += `<div class="flex items-center p-2 border-b border-gray-100 last:border-0"><span class="text-green-500 mr-2 font-bold">✓</span><span class="text-gray-500 text-sm line-through opacity-75">${item.name}</span></div>`; 
+                }); 
+            }
+            
             document.getElementById('completed-section-toggle').classList.toggle('hidden', completedItems.length === 0);
-            document.getElementById('count-pending').textContent = pendingItems.length; document.getElementById('count-completed').textContent = completedItems.length;
-            const total = pendingItems.length + completedItems.length; const percentage = total === 0 ? 0 : Math.round((completedItems.length / total) * 100); document.getElementById('dashboard-progress-text').textContent = `${percentage}%`; document.getElementById('dashboard-progress-bar').style.width = `${percentage}%`;
+            
+            // Counts
+            const overdueCount = pendingItems.filter(i => i.status === 'overdue').length;
+            const weekPendingCount = pendingItems.filter(i => i.status === 'pending').length;
+            
+            // Update labels to reflect new logic
+            document.getElementById('label-pending').innerHTML = overdueCount > 0 ? `本週待辦 <span class="text-red-500 text-[10px] ml-1">(${overdueCount} 逾期)</span>` : '本週待辦';
+            document.getElementById('count-pending').textContent = weekPendingCount + overdueCount;
+            document.getElementById('count-completed').textContent = completedItems.length;
+            
+            // Progress based on (Completed) / (Completed + This Week Pending). Ignoring Overdue in denominator? 
+            // Usually progress is for "This Week's Goal".
+            const totalThisWeek = weekPendingCount + completedItems.length; 
+            const percentage = totalThisWeek === 0 ? 0 : Math.round((completedItems.length / totalThisWeek) * 100); 
+            document.getElementById('dashboard-progress-text').textContent = `${percentage}%`; 
+            document.getElementById('dashboard-progress-bar').style.width = `${percentage}%`;
         };
 
         window.app.handleReportTypeChange = function() { 
@@ -645,7 +939,7 @@
             if (type === 'kt_weekly') { 
                 ktOptionsContainer.classList.remove('hidden'); 
             } else if (type === 'overdue') {
-                // Overdue
+                // Overdue doesn't need date range, implies "As of Now"
             } else { 
                 dateContainer.classList.remove('hidden'); 
                 dateContainer.classList.add('contents'); 
@@ -718,11 +1012,14 @@
             container.classList.remove('hidden'); 
             document.getElementById('report-actions').classList.remove('hidden');
 
-            // --- 逾期報表 (Overdue Report) - Split & Detailed ---
+            // --- 逾期報表 (Overdue Report) - Week Logic ---
             if (type === 'overdue') {
-                title.textContent = "逾期未執行報表 (目前)";
+                title.textContent = "逾期未執行報表 (週管理)";
                 const now = new Date();
                 subtitle.textContent = `統計時間: ${now.toLocaleString()}`;
+                
+                // 定義本週開始時間，凡是小於此時間的 "Next Date" 才算逾期
+                const { start: thisWeekStart } = window.app.getThisWeekRange();
                 
                 let html = '';
                 const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; 
@@ -731,33 +1028,34 @@
                 // --- Part 1: Overdue Check (點檢逾期) ---
                 html += '<h3 class="text-xl font-bold text-slate-700 mt-4 mb-2 border-l-4 border-indigo-600 pl-2">📋 點檢逾期清單 (Check Overdue)</h3>';
                 html += '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left; margin-bottom: 20px;">'; 
-                html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行的日期 (Missing Dates)</th><th style="${thStyle}">逾期天數 (最久)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
+                html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行週次 (Missed Weeks)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
 
                 let overdueCheckList = [];
                 Object.values(equipmentDatabase).forEach(eq => {
                     if (category !== 'ALL' && (eq.category || '未分類') !== category) return;
                     if (eq.status !== '使用中') return;
-                    const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定';
                     
                     const missedDates = window.app.calculateOverdueDates(eq.nextCheckDate, eq.checkSchedule);
-                    if (missedDates.length > 0) {
-                        const oldestDate = missedDates[0];
-                        const diffTime = Math.abs(now - oldestDate);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    // Filter: Only strictly before this week
+                    const realOverdue = missedDates.filter(d => d < thisWeekStart);
+
+                    if (realOverdue.length > 0) {
+                        const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定';
                         overdueCheckList.push({
                             name: eq.name,
                             category: eq.category || '未分類',
-                            dates: missedDates.map(d => d.toISOString().slice(0,10)).join(', '),
-                            days: diffDays,
+                            // 轉換成週次字串
+                            weeks: realOverdue.map(d => window.app.getWeekRangeString(d)).join('<br>'),
+                            count: realOverdue.length,
                             owner: ownerName
                         });
                     }
                 });
-                overdueCheckList.sort((a, b) => b.days - a.days);
-                if (overdueCheckList.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無逾期點檢項目</td></tr>`;
+                
+                if (overdueCheckList.length === 0) html += `<tr><td colspan="4" style="${tdStyle} text-align:center;">無逾期點檢項目</td></tr>`;
                 else {
                     overdueCheckList.forEach(item => {
-                        html += `<tr><td style="${tdStyle}">${item.name}</td><td style="${tdStyle}">${item.category}</td><td style="${tdStyle} color:#ef4444; font-weight:bold;">${item.dates}</td><td style="${tdStyle} color:#ef4444;">${item.days} 天</td><td style="${tdStyle}">${item.owner}</td></tr>`;
+                        html += `<tr><td style="${tdStyle}">${item.name}</td><td style="${tdStyle}">${item.category}</td><td style="${tdStyle} color:#ef4444; font-weight:bold;">${item.weeks}</td><td style="${tdStyle}">${item.owner}</td></tr>`;
                     });
                 }
                 html += '</tbody></table>';
@@ -765,33 +1063,32 @@
                 // --- Part 2: Overdue Clean (清潔逾期) ---
                 html += '<h3 class="text-xl font-bold text-slate-700 mt-4 mb-2 border-l-4 border-orange-500 pl-2">🧹 清潔保養逾期清單 (Clean Overdue)</h3>';
                 html += '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; 
-                html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行的日期 (Missing Dates)</th><th style="${thStyle}">逾期天數 (最久)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
+                html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行週次 (Missed Weeks)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
 
                 let overdueCleanList = [];
                 Object.values(equipmentDatabase).forEach(eq => {
                     if (category !== 'ALL' && (eq.category || '未分類') !== category) return;
                     if (eq.status !== '使用中') return;
-                    const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定';
                     
                     const missedDates = window.app.calculateOverdueDates(eq.nextCleaningDate, eq.cleaningSchedule);
-                    if (missedDates.length > 0) {
-                        const oldestDate = missedDates[0];
-                        const diffTime = Math.abs(now - oldestDate);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    const realOverdue = missedDates.filter(d => d < thisWeekStart);
+
+                    if (realOverdue.length > 0) {
+                        const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定';
                         overdueCleanList.push({
                             name: eq.name,
                             category: eq.category || '未分類',
-                            dates: missedDates.map(d => d.toISOString().slice(0,10)).join(', '),
-                            days: diffDays,
+                            weeks: realOverdue.map(d => window.app.getWeekRangeString(d)).join('<br>'),
+                            count: realOverdue.length,
                             owner: ownerName
                         });
                     }
                 });
-                overdueCleanList.sort((a, b) => b.days - a.days);
-                if (overdueCleanList.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無逾期清潔項目</td></tr>`;
+
+                if (overdueCleanList.length === 0) html += `<tr><td colspan="4" style="${tdStyle} text-align:center;">無逾期清潔項目</td></tr>`;
                 else {
                     overdueCleanList.forEach(item => {
-                        html += `<tr><td style="${tdStyle}">${item.name}</td><td style="${tdStyle}">${item.category}</td><td style="${tdStyle} color:#c2410c; font-weight:bold;">${item.dates}</td><td style="${tdStyle} color:#c2410c;">${item.days} 天</td><td style="${tdStyle}">${item.owner}</td></tr>`;
+                        html += `<tr><td style="${tdStyle}">${item.name}</td><td style="${tdStyle}">${item.category}</td><td style="${tdStyle} color:#c2410c; font-weight:bold;">${item.weeks}</td><td style="${tdStyle}">${item.owner}</td></tr>`;
                     });
                 }
                 html += '</tbody></table>';
@@ -803,7 +1100,7 @@
             // --- Retroactive Analysis Report (效率分析) ---
             if (type === 'analysis_retroactive') {
                 title.textContent = "補登分析報表 (Efficiency Analysis)";
-                const dateStr = `${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)}`;
+                const dateStr = `${window.app.formatDate(start)} ~ ${window.app.formatDate(end)}`;
                 subtitle.textContent = `分析區間: ${dateStr}`;
                 
                 let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; 
@@ -850,7 +1147,7 @@
                     html += `<tr><td colspan="7" style="${tdStyle} text-align:center;">無資料</td></tr>`;
                 } else {
                     combinedRecords.forEach(r => {
-                        const selStr = r.selectedDate.toISOString().slice(0,10);
+                        const selStr = window.app.formatDate(r.selectedDate);
                         const actStr = r.createdDate.toLocaleString();
                         
                         // Calculate Diff (ignoring hours for "Same Day" logic)
@@ -886,14 +1183,9 @@
                 return;
             }
             
-            // --- 廣泰報表 (Kuang Tai Report) - Protected Block ---
-            /* ================================================================================
-               !!! 重要代碼區域 (CRITICAL SECTION) !!!
-               名稱：廣泰金屬-週點檢表 (格式化)
-               說明：此區塊代碼經過高度客製化以符合特定紙本格式，請勿隨意更動表格結構與樣式。
-               ================================================================================
-            */
+            // --- 廣泰報表 (Kuang Tai Report) ---
             if (type === 'kt_weekly') {
+                 // ... (Keep existing complex logic) ...
                  title.textContent = "設備點檢表(週) - 預覽";
                 content.innerHTML = '<div class="text-center py-4">正在產生報表...</div>';
                 const filteredHistory = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; });
@@ -923,7 +1215,6 @@
                 });
                 content.innerHTML = reportHtml;
             } 
-            /* ==================== 保護區塊結束 ==================== */
             
             else {
                 // Regular Checklist or Maintenance Report
@@ -950,33 +1241,32 @@
             const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定'; 
             document.getElementById('device-primary-owner').textContent = ownerName; 
             document.getElementById('user-name-display').textContent = loggedInUser.name; 
-            const today = new Date().toISOString().slice(0,10); 
+            const today = window.app.formatDate(new Date()); 
             const dateInput = document.getElementById('check-date-input'); 
             dateInput.value = today; 
             window.app.updateWeekDisplay(today);
             
-            // --- UI Hint for Overdue Dates (Checklist) ---
-            const overdueContainer = document.getElementById('overdue-hint-container');
-            const overdueList = document.getElementById('overdue-dates-list');
+            // --- Auto-Expand Calendar if Overdue ---
             const missedDates = window.app.calculateOverdueDates(eq.nextCheckDate, eq.checkSchedule);
-            if (missedDates.length > 0) {
-                overdueContainer.classList.remove('hidden');
-                overdueList.innerHTML = '';
-                missedDates.forEach(d => {
-                    const dateStr = d.toISOString().slice(0,10);
-                    // Click to set date
-                    const badge = document.createElement('span');
-                    badge.className = 'bg-red-100 text-red-600 px-2 py-1 rounded text-xs cursor-pointer hover:bg-red-200 border border-red-200';
-                    badge.textContent = dateStr;
-                    badge.onclick = () => { 
-                        document.getElementById('check-date-input').value = dateStr; 
-                        window.app.updateWeekDisplay(dateStr);
-                        showToast(`已切換補登日期: ${dateStr}`);
-                    };
-                    overdueList.appendChild(badge);
-                });
+            const { start: thisWeekStart } = window.app.getThisWeekRange();
+            const realOverdue = missedDates.filter(d => d < thisWeekStart);
+            const calendarContainer = document.getElementById('calendar-view-container');
+
+            if (realOverdue.length > 0) {
+                // 自動展開月曆
+                calendarContainer.classList.remove('hidden');
+                
+                // 設定月曆月份為最近一個逾期項目的月份
+                const latestOverdue = realOverdue[realOverdue.length - 1];
+                const yyyy = latestOverdue.getFullYear();
+                const mm = String(latestOverdue.getMonth() + 1).padStart(2, '0');
+                document.getElementById('calendar-month-select').value = `${yyyy}-${mm}`;
+                
+                window.app.renderCalendarView();
+                // 可以選擇顯示一個溫和的提示，或完全不顯示
+                // showToast("已自動展開月曆供補登", "info");
             } else {
-                overdueContainer.classList.add('hidden');
+                calendarContainer.classList.add('hidden');
             }
 
             const container = document.getElementById('checklist-items-container'); 
@@ -984,7 +1274,7 @@
             if (eq.items) { eq.items.forEach(cat => { const group = document.createElement('div'); group.innerHTML = `<h3 class="font-bold text-lg mb-2 text-slate-600 border-b pb-1">${cat.category}</h3>`; cat.subItems.forEach(item => { group.innerHTML += `<div class="card p-4 mb-3 item-row" data-cat="${cat.category}" data-text="${item.text}"><div class="flex justify-between items-center"><span class="text-slate-800 font-medium">${item.text}</span><div class="space-x-1 flex-shrink-0"><button onclick="window.app.setStatus(this, 'normal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">正常</button><button onclick="window.app.setStatus(this, 'abnormal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">異常</button></div></div><input type="text" class="abnormal-input hidden w-full mt-2 p-2 border rounded text-sm bg-red-50 text-red-700 placeholder-red-300" placeholder="請說明異常原因..."></div>`; }); container.appendChild(group); }); } 
         }
         window.app.setStatus = function(btn, status) { const row = btn.closest('.item-row'); row.querySelectorAll('.status-btn').forEach(b => { b.classList.remove('selected', 'selected-normal', 'selected-abnormal', 'bg-green-500', 'bg-red-500', 'text-white'); }); btn.classList.add('selected'); if(status === 'normal') btn.classList.add('selected-normal', 'bg-green-500', 'text-white'); else btn.classList.add('selected-abnormal', 'bg-red-500', 'text-white'); const input = row.querySelector('.abnormal-input'); if(status === 'abnormal') input.classList.remove('hidden'); else input.classList.add('hidden'); row.dataset.status = status; };
-        window.app.submitChecklist = async function(btn) { if (loggedInUser.role === 'guest') return; btn.disabled = true; btn.innerText = "提交中..."; try { const dateStr = document.getElementById('check-date-input').value; const selectedDate = new Date(dateStr); const now = new Date(); selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds()); const rows = document.querySelectorAll('.item-row'); const items = []; rows.forEach(r => { items.push({ category: r.dataset.cat, text: r.dataset.text, status: r.dataset.status === 'abnormal' ? '異常' : '正常', details: r.querySelector('.abnormal-input').value }); }); const record = { deviceId: currentCheckId, deviceName: equipmentDatabase[currentCheckId].name, userId: loggedInUser.id, userName: loggedInUser.name, checkTimestamp: Timestamp.fromDate(selectedDate), createdTimestamp: serverTimestamp(), summaryNotes: document.getElementById('summary-notes').value, items: items }; await setDoc(doc(getCollectionRef("check_history")), record); const eq = equipmentDatabase[currentCheckId]; if (eq && eq.checkSchedule) { const nextDate = window.app.calculateNextScheduleDate(eq.checkSchedule, selectedDate); if (nextDate) { await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: nextDate.toISOString().slice(0,10) }); } } else { const cycle = parseInt(eq.checkCycleDays) || 7; const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + cycle); await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: nextDate.toISOString().slice(0,10) }); } showToast('提交成功', 'success'); window.app.resetApp(); } catch (e) { console.error(e); showToast('提交失敗: ' + e.message, 'error'); } finally { btn.disabled = false; btn.innerText = "提交"; } };
+        window.app.submitChecklist = async function(btn) { if (loggedInUser.role === 'guest') return; btn.disabled = true; btn.innerText = "提交中..."; try { const dateStr = document.getElementById('check-date-input').value; const selectedDate = new Date(dateStr); const now = new Date(); selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds()); const rows = document.querySelectorAll('.item-row'); const items = []; rows.forEach(r => { items.push({ category: r.dataset.cat, text: r.dataset.text, status: r.dataset.status === 'abnormal' ? '異常' : '正常', details: r.querySelector('.abnormal-input').value }); }); const record = { deviceId: currentCheckId, deviceName: equipmentDatabase[currentCheckId].name, userId: loggedInUser.id, userName: loggedInUser.name, checkTimestamp: Timestamp.fromDate(selectedDate), createdTimestamp: serverTimestamp(), summaryNotes: document.getElementById('summary-notes').value, items: items }; await setDoc(doc(getCollectionRef("check_history")), record); const eq = equipmentDatabase[currentCheckId]; if (eq && eq.checkSchedule) { const nextDate = window.app.calculateNextScheduleDate(eq.checkSchedule, selectedDate); if (nextDate) { await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: window.app.formatDate(nextDate) }); } } else { const cycle = parseInt(eq.checkCycleDays) || 7; const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + cycle); await updateDoc(getDocRef("equipment", currentCheckId), { nextCheckDate: window.app.formatDate(nextDate) }); } showToast('提交成功', 'success'); window.app.resetApp(); } catch (e) { console.error(e); showToast('提交失敗: ' + e.message, 'error'); } finally { btn.disabled = false; btn.innerText = "提交"; } };
         window.app.resetApp = function() { document.getElementById('checklist-section').classList.add('hidden'); document.getElementById('main-content').classList.remove('hidden'); currentCheckId = null; };
         window.app.toggleManagementMode = function() { const userMode = document.getElementById('user-mode'); const adminMode = document.getElementById('admin-mode'); const btn = document.getElementById('toggle-mode-btn'); if (loggedInUser.role === 'operator') { return showToast("權限不足：僅管理員可進入管理後台", "error"); } if (userMode.classList.contains('hidden')) { userMode.classList.remove('hidden'); adminMode.classList.add('hidden'); btn.textContent = "⚙️ 管理後台"; } else { userMode.classList.add('hidden'); adminMode.classList.remove('hidden'); btn.textContent = "⬅️ 返回點檢"; window.app.renderEquipmentList(); } };
         window.app.switchAdminTab = function(tab) { document.querySelectorAll('[id^=admin-tab-content]').forEach(d => d.classList.add('hidden')); document.getElementById(`admin-tab-content-${tab}`).classList.remove('hidden'); document.querySelectorAll('#admin-mode nav button').forEach(b => b.classList.remove('admin-tab-active', 'text-indigo-600')); document.getElementById(`tab-${tab}`).classList.add('admin-tab-active'); if(tab === 'users') window.app.renderUserList(); if(tab === 'equipment') window.app.renderEquipmentList(); if(tab === 'templates') window.app.renderTemplateList(); if(tab === 'checklistHistory') window.app.renderChecklistHistory(null, null, true); if(tab === 'maintenanceHistory') window.app.renderMaintenanceHistory(null, null, true); };
@@ -1080,30 +1370,11 @@
             window.app.toggleMaintType(); 
             
             // Set Today
-            const today = new Date().toISOString().slice(0,10);
+            const today = window.app.formatDate(new Date());
             document.getElementById('maint-date-input').value = today;
 
-            // --- UI Hint for Overdue Dates (Maintenance) ---
-            const overdueContainer = document.getElementById('maint-overdue-hint-container');
-            const overdueList = document.getElementById('maint-overdue-dates-list');
-            const missedDates = window.app.calculateOverdueDates(eq.nextCleaningDate, eq.cleaningSchedule);
-            if (missedDates.length > 0) {
-                overdueContainer.classList.remove('hidden');
-                overdueList.innerHTML = '';
-                missedDates.forEach(d => {
-                    const dateStr = d.toISOString().slice(0,10);
-                    const badge = document.createElement('span');
-                    badge.className = 'bg-orange-100 text-orange-600 px-2 py-1 rounded text-xs cursor-pointer hover:bg-orange-200 border border-orange-200';
-                    badge.textContent = dateStr;
-                    badge.onclick = () => { 
-                        document.getElementById('maint-date-input').value = dateStr; 
-                        showToast(`已切換補登日期: ${dateStr}`);
-                    };
-                    overdueList.appendChild(badge);
-                });
-            } else {
-                overdueContainer.classList.add('hidden');
-            }
+            // --- 移除了紅色逾期文字提醒 (Option A) ---
+            // 保養彈窗這裡暫時不實作自動展開月曆，因為沒有月曆元件
 
             document.getElementById('maintenance-modal').classList.remove('hidden'); 
         };
@@ -1112,7 +1383,6 @@
         window.app.closeMaintenanceModal = function() { document.getElementById('maintenance-modal').classList.add('hidden'); };
         window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
         
-        // --- NEW: Log Maintenance Implementation ---
         window.app.logMaintenance = async function(btn) {
             if (loggedInUser.role === 'guest') return;
             btn.disabled = true;
@@ -1121,7 +1391,6 @@
                 const dateStr = document.getElementById('maint-date-input').value;
                 const selectedDate = new Date(dateStr);
                 const now = new Date();
-                // Merge selected date with current time for precise ordering
                 selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 
                 const type = document.getElementById('maintenance-type').value;
@@ -1134,13 +1403,12 @@
                     componentName: type === 'replacement' ? document.getElementById('maintenance-component-name').value : null,
                     notes: document.getElementById('maintenance-notes').value,
                     imageUrl: document.getElementById('maint-image-preview').dataset.imageDataUrl || null,
-                    timestamp: Timestamp.fromDate(selectedDate), // Selected Date
-                    createdTimestamp: serverTimestamp() // Actual Time
+                    timestamp: Timestamp.fromDate(selectedDate), 
+                    createdTimestamp: serverTimestamp()
                 };
                 
                 await addDoc(getCollectionRef("maintenance_history"), record);
                 
-                // Update next cleaning date if it was a cleaning task
                 if (type === 'cleaning') {
                     const eq = equipmentDatabase[currentMaintEqId];
                     if (eq) {
@@ -1151,9 +1419,10 @@
                             const cycle = parseInt(eq.cleaningCycleDays) || 30;
                             nextDate = new Date(selectedDate);
                             nextDate.setDate(nextDate.getDate() + cycle);
+                            nextDate = window.app.adjustForWeekend(nextDate); // 確保清潔日也跳過週末
                         }
                         if (nextDate) {
-                            await updateDoc(getDocRef("equipment", currentMaintEqId), { nextCleaningDate: nextDate.toISOString().slice(0,10) });
+                            await updateDoc(getDocRef("equipment", currentMaintEqId), { nextCleaningDate: window.app.formatDate(nextDate) });
                         }
                     }
                 }
@@ -1176,7 +1445,7 @@
         window.app.moveBackupUser = function(index, direction) { if(!window.app.currentBackupList) return; const newIndex = index + direction; if(newIndex < 0 || newIndex >= window.app.currentBackupList.length) return; const temp = window.app.currentBackupList[index]; window.app.currentBackupList[index] = window.app.currentBackupList[newIndex]; window.app.currentBackupList[newIndex] = temp; window.app.renderBackupList(); };
         window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const primarySel = document.getElementById('edit-primary-owner'); const backupAdder = document.getElementById('edit-backup-adder-select'); primarySel.innerHTML = '<option value="">請選擇負責人...</option>'; backupAdder.innerHTML = '<option value="">選擇人員加入...</option>'; Object.values(userDatabase).forEach(u => { primarySel.add(new Option(u.name, u.id)); backupAdder.add(new Option(u.name, u.id)); }); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; window.app.currentBackupList = []; if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; const checkSchedule = eq.checkSchedule || { mode: 'interval', interval: eq.checkCycleDays || 7, weekdays: [] }; document.querySelector(`input[name="checkMode"][value="${checkSchedule.mode}"]`).checked = true; document.getElementById('edit-check-interval').value = checkSchedule.interval || 7; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => { cb.checked = checkSchedule.weekdays ? checkSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('check'); const cleaningSchedule = eq.cleaningSchedule || { mode: 'interval', interval: eq.cleaningCycleDays || 30, weekdays: [] }; const savedCleanMode = cleaningSchedule.mode; if(savedCleanMode && document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`)) { document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`).checked = true; } else { document.querySelector(`input[name="cleanMode"][value="interval"]`).checked = true; } document.getElementById('edit-clean-interval').value = cleaningSchedule.interval || 30; document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => { cb.checked = cleaningSchedule.weekdays ? cleaningSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(eq.primaryOwnerId) primarySel.value = eq.primaryOwnerId; if(eq.backupOwnerIds && Array.isArray(eq.backupOwnerIds)) { window.app.currentBackupList = [...eq.backupOwnerIds]; } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); document.querySelector('input[name="checkMode"][value="interval"]').checked = true; document.querySelector('input[name="cleanMode"][value="interval"]').checked = true; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => cb.checked = false); document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => cb.checked = false); document.getElementById('edit-check-interval').value = 7; document.getElementById('edit-clean-interval').value = 30; window.app.toggleScheduleMode('check'); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = false; imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } window.app.renderBackupList(); window.app.toggleEditorSections(); };
         window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); window.app.renderEquipmentList(); };
-        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()) || new Date(); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()) || new Date(); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: nextCheckDate.toISOString().slice(0,10), nextCleaningDate: nextCleaningDate.toISOString().slice(0,10) }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
+        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()) || new Date(); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()) || new Date(); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: window.app.formatDate(nextCheckDate), nextCleaningDate: window.app.formatDate(nextCleaningDate) }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
         window.app.showScanner = function() { const modal = document.getElementById('qr-scanner-modal'); const content = document.getElementById('qr-scanner-content'); modal.classList.remove('hidden'); modal.classList.add('flex'); content.classList.remove('hidden'); html5QrCode = new Html5Qrcode("qr-reader"); const config = { fps: 10, qrbox: { width: 250, height: 250 } }; html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => { if (decodedText.includes("?id=")) { const id = decodedText.split("?id=")[1]; window.app.hideScanner(); window.app.handleScanResult(id); } else { if (equipmentDatabase[decodedText]) { window.app.hideScanner(); window.app.handleScanResult(decodedText); } } }, (errorMessage) => { }).catch(err => { console.error(err); alert("無法啟動相機，請確認權限或使用 HTTPS 連線。"); window.app.hideScanner(); }); };

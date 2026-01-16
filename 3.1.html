@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>銲接資料管理系統 (報表修復版)</title>
+    <title>銲接資料管理系統 (連續編輯版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -394,7 +394,16 @@
     <div id="formModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
         <div id="modalDialog" class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-7xl">
             <div class="flex justify-between items-center pb-4 border-b">
-                <h3 id="modalTitle" class="text-2xl font-bold"></h3>
+                <div class="flex items-center gap-4">
+                    <h3 id="modalTitle" class="text-2xl font-bold"></h3>
+                    <!-- NEW: Nav Buttons Container in Header with Info Display -->
+                    <div id="modalNavButtons" class="hidden flex items-center space-x-2">
+                        <button id="modalPrevBtn" class="btn btn-secondary py-1 px-3 text-sm">&lt; 上一筆</button>
+                        <!-- Added Info Span -->
+                        <span id="modalNavInfo" class="text-sm font-bold text-blue-800 bg-blue-50 px-3 py-1 rounded border border-blue-100 min-w-[150px] text-center truncate max-w-[300px]"></span>
+                        <button id="modalNextBtn" class="btn btn-secondary py-1 px-3 text-sm">下一筆 &gt;</button>
+                    </div>
+                </div>
                 <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="mt-5"><form id="modalForm" class="space-y-4 max-h-[75vh] overflow-y-auto p-2"></form></div>
@@ -913,7 +922,8 @@
         class UIManager {
             constructor(dataManager) {
                 this.dm = dataManager;
-                this.state = { visibleColumns: JSON.parse(localStorage.getItem(CONFIG.VISIBLE_COLUMNS_KEY) || '[]'), showExtra: false, searchTerm: '', selectedRowIds: [], showArchived: false, isCustomSearchResult: false };
+                // NEW: visibleData to track what's currently shown for navigation
+                this.state = { visibleColumns: JSON.parse(localStorage.getItem(CONFIG.VISIBLE_COLUMNS_KEY) || '[]'), showExtra: false, searchTerm: '', selectedRowIds: [], showArchived: false, isCustomSearchResult: false, visibleData: [] };
                 if (this.state.visibleColumns.length === 0) this.state.visibleColumns = CONFIG.CANONICAL_COLUMN_ORDER.filter(c => !['銲接人員', '拉力棒加工人員', '衝擊片加工人員', '銲接模式', '鋼板材質', '電流', '電壓'].includes(c));
                 this.bindEvents();
             }
@@ -1052,6 +1062,10 @@
                 });
                 document.getElementById('closeModalBtn').addEventListener('click', () => this.closeModal('formModal'));
                 document.getElementById('cancelModalBtn').addEventListener('click', () => this.closeModal('formModal'));
+                
+                // NEW: Modal Nav Button Listeners
+                document.getElementById('modalPrevBtn').addEventListener('click', () => this.navigateModal('prev'));
+                document.getElementById('modalNextBtn').addEventListener('click', () => this.navigateModal('next'));
                 
                 document.getElementById('addDataBtn').addEventListener('click', async () => {
                     Utils.showLoading('取得最新編號...');
@@ -1338,6 +1352,9 @@
                     data = data.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(this.state.searchTerm)));
                 }
 
+                // NEW: Store visible data for navigation
+                this.state.visibleData = data;
+
                 if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="100%" class="text-center py-8 text-gray-500">無資料 (或是已全部被隱藏)</td></tr>`; return; }
 
                 const extraColumns = ['銲接人員', '拉力棒加工人員', '衝擊片加工人員', '銲接模式', '鋼板材質', '電流', '電壓'];
@@ -1440,10 +1457,67 @@
                 const tbody = document.getElementById('settingsTableBody');
                 if(tbody) { new Sortable(tbody, { animation: 150, handle: '.drag-handle', onEnd: async (evt) => { Utils.showLoading('更新排序中...'); const rows = Array.from(tbody.querySelectorAll('tr')); const batch = window.fb.writeBatch(window.fb.db); rows.forEach((row, index) => { const id = row.dataset.id; const ref = window.fb.doc(window.fb.db, tableName, id); batch.update(ref, { sortOrder: index }); }); await batch.commit(); Utils.hideLoading(); } }); }
             }
+            
+            // NEW: Modal Navigation Method
+            async navigateModal(direction) {
+                const currentId = document.getElementById('saveModalBtn').dataset.docId;
+                if (!currentId) return;
+
+                const list = this.state.visibleData;
+                const idx = list.findIndex(d => d._docId === currentId);
+                if (idx === -1) return;
+
+                const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
+                if (nextIdx < 0 || nextIdx >= list.length) return; // Boundary check
+
+                const nextId = list[nextIdx]._docId;
+
+                // Option B: Auto Save and Move Next
+                Utils.showLoading('儲存並切換中...');
+                try {
+                    // Force save current record first (don't close modal)
+                    await this.handleSave(CONFIG.COLLECTIONS.DATA, false); 
+                    
+                    // Re-open modal with next ID (simulates navigation)
+                    this.openFormModal(CONFIG.COLLECTIONS.DATA, nextId);
+                } catch(e) {
+                    console.error("Navigation Save Error", e);
+                    // Error is handled in handleSave (Toast shown), user stays on current page
+                } finally {
+                    Utils.hideLoading();
+                }
+            }
 
             openFormModal(tableName, docId = null, prefillId = null) {
                 const modal = document.getElementById('formModal'); const form = document.getElementById('modalForm'); const title = document.getElementById('modalTitle'); const saveBtn = document.getElementById('saveModalBtn');
+                const navButtons = document.getElementById('modalNavButtons');
+                const prevBtn = document.getElementById('modalPrevBtn');
+                const nextBtn = document.getElementById('modalNextBtn');
+                const navInfo = document.getElementById('modalNavInfo'); // NEW: Display element
+
                 title.textContent = `${docId ? '編輯' : '新增'} ${tableName}`; saveBtn.dataset.tableName = tableName; saveBtn.dataset.docId = docId || '';
+                
+                // NEW: Handle Nav Buttons Visibility and Info Display
+                if (tableName === CONFIG.COLLECTIONS.DATA && docId) {
+                    const list = this.state.visibleData;
+                    const idx = list.findIndex(d => d._docId === docId);
+                    if (idx !== -1) {
+                        navButtons.classList.remove('hidden');
+                        prevBtn.disabled = idx === 0;
+                        nextBtn.disabled = idx === list.length - 1;
+                        
+                        // NEW: Update Info Text
+                        const currentData = list[idx];
+                        if (navInfo) {
+                            navInfo.textContent = `#${currentData['筆數']} ${currentData['品名'] || ''}`;
+                        }
+                    } else {
+                        navButtons.classList.add('hidden');
+                    }
+                } else {
+                    navButtons.classList.add('hidden');
+                }
+
                 let data = {};
                 if (docId) {
                     if (tableName === CONFIG.COLLECTIONS.DATA) data = this.dm.mainData.find(d => d._docId === docId) || {};
@@ -1594,8 +1668,10 @@
                 return entry;
             }
 
-            async handleSave(tableName) {
-                Utils.showLoading('儲存中...');
+            // MODIFIED: Added shouldClose parameter
+            async handleSave(tableName, shouldClose = true) {
+                if(shouldClose) Utils.showLoading('儲存中...'); // If not closing (navigating), custom loader text is used
+                
                 const saveBtn = document.getElementById('saveModalBtn');
                 let newData = {};
                 if(tableName === CONFIG.COLLECTIONS.DATA) newData = this.getFormDataFromModal();
@@ -1631,8 +1707,16 @@
                             }
                         }
                     }
-                    this.closeModal('formModal'); Utils.showToast('儲存成功');
-                } catch(e) { Utils.showToast('儲存失敗:'+e.message, 'error'); } finally { Utils.hideLoading(); }
+                    if(shouldClose) {
+                        this.closeModal('formModal'); 
+                        Utils.showToast('儲存成功');
+                    }
+                } catch(e) { 
+                    Utils.showToast('儲存失敗:'+e.message, 'error'); 
+                    throw e; // Rethrow so navigation stops
+                } finally { 
+                    if(shouldClose) Utils.hideLoading(); 
+                }
             }
             
             closeModal(id) { document.getElementById(id).classList.add('hidden'); }
