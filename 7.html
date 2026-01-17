@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樣品庫存管理系統 v2.9.13 (自訂版面)</title>
+    <title>樣品庫存管理系統 v2.9.15 (自訂版面)</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -51,6 +51,14 @@
         @keyframes pulse-border { 0% { border-color: rgba(168, 85, 247, 0.5); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); } 70% { border-color: rgba(168, 85, 247, 0); box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); } 100% { border-color: rgba(168, 85, 247, 0); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); } }
         .sortable-header { cursor: pointer; user-select: none; }
         .sortable-header:hover { background-color: #f1f5f9; }
+        
+        /* Print Styles */
+        @media print {
+            @page { size: landscape; margin: 10mm; }
+            body * { visibility: hidden; }
+            #report-print-container, #report-print-container * { visibility: visible; }
+            #report-print-container { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
 <body class="text-slate-800 h-screen w-screen flex flex-col md:flex-row">
@@ -79,7 +87,25 @@
             <div class="flex items-center gap-2 md:gap-4 flex-1">
                 <div class="md:hidden bg-indigo-600 p-1.5 rounded text-white shrink-0"><i class="ph ph-cube text-lg"></i></div>
                 <div class="relative w-full max-w-[200px]"><div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none"><i class="ph ph-user text-slate-500"></i></div><select id="globalOperatorSelect" class="bg-indigo-50 border border-indigo-200 text-indigo-900 text-sm font-bold rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-8 p-2.5 shadow-sm cursor-pointer"><option value="">請選擇操作人員...</option></select></div>
-                <div id="top-search-bar" class="relative group w-full max-w-xs hidden md:block"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="ph ph-magnifying-glass text-slate-400"></i></div><input type="text" id="globalSearchInput" class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition duration-150 ease-in-out sm:text-sm" placeholder="搜尋庫存..."></div>
+                
+                <!-- Desktop Search Bar with Dropdown (Option A) -->
+                <div id="top-search-bar" class="hidden md:flex items-center gap-2 w-full max-w-md">
+                    <select id="globalSearchField" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 w-24 shrink-0 cursor-pointer shadow-sm">
+                        <option value="sampleName" selected>品名</option>
+                        <option value="all">全部</option>
+                        <option value="wireDiameter">線徑</option>
+                        <option value="manufacturer">廠商</option>
+                        <option value="storageLocation">位置</option>
+                        <option value="notes">備註</option>
+                    </select>
+                    <div class="relative w-full group">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="ph ph-magnifying-glass text-slate-400"></i>
+                        </div>
+                        <input type="text" id="globalSearchInput" class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition duration-150 ease-in-out sm:text-sm shadow-sm" placeholder="搜尋...">
+                    </div>
+                </div>
+
             </div>
             <div class="flex items-center gap-2 md:gap-3 shrink-0">
                 <button class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onclick="document.getElementById('mobileSearchPanel').classList.toggle('hidden')"><i class="ph ph-magnifying-glass text-xl"></i></button>
@@ -92,7 +118,18 @@
             </div>
         </header>
 
-        <div id="mobileSearchPanel" class="hidden md:hidden bg-white p-4 border-b border-slate-200 absolute top-16 left-0 right-0 z-10 shadow-md"><input type="text" id="mobileSearchInput" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="搜尋樣品..."></div>
+        <!-- Mobile Search Panel with Dropdown -->
+        <div id="mobileSearchPanel" class="hidden md:hidden bg-white p-4 border-b border-slate-200 absolute top-16 left-0 right-0 z-10 shadow-md flex gap-2">
+            <select id="mobileSearchField" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 w-24 shrink-0">
+                 <option value="sampleName" selected>品名</option>
+                 <option value="all">全部</option>
+                 <option value="wireDiameter">線徑</option>
+                 <option value="manufacturer">廠商</option>
+                 <option value="storageLocation">位置</option>
+                 <option value="notes">備註</option>
+            </select>
+            <input type="text" id="mobileSearchInput" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="搜尋...">
+        </div>
 
         <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 no-scrollbar" id="main-scroll-area">
             <div id="page-header-inventory" class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4"><div><h2 class="text-2xl font-bold text-slate-800">庫存總覽</h2><p class="text-slate-500 text-sm mt-1">管理與追蹤您的所有樣品</p></div><div class="flex items-center gap-3 w-full md:w-auto"><select id="cabinetFilter" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full md:w-48 p-2.5"><option value="all">所有櫃位</option></select></div></div>
@@ -137,7 +174,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, deleteDoc, query, writeBatch, getDoc, updateDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, deleteDoc, query, writeBatch, getDoc, updateDoc, orderBy, limit, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyCDLS5yzP9yMeyhGJMePFCCUwpKpob6S84", authDomain: "rdspools-6dc53.firebaseapp.com", projectId: "rdspools-6dc53", storageBucket: "rdspools-6dc53.appspot.com", messagingSenderId: "1052447565403", appId: "1:1052447565403:web:23498fc330636ecb38817e", measurementId: "G-6DYX4YRN7D" };
         const app = initializeApp(firebaseConfig);
@@ -325,14 +362,16 @@
             if (page === 'inventory') {
                 dom.contentInventory.classList.remove('hidden');
                 dom.contentRfid.classList.add('hidden');
-                dom.topSearchBar.classList.remove('hidden');
+                // dom.topSearchBar.classList.remove('hidden'); // Logic changed for flex
+                if(window.innerWidth >= 768) document.getElementById('top-search-bar').style.display = 'flex';
                 dom.viewToggle.classList.remove('hidden');
                 document.getElementById('page-header-inventory').classList.remove('hidden');
                 qrButtons.forEach(btn => btn && btn.classList.remove('hidden'));
             } else {
                 dom.contentInventory.classList.add('hidden');
                 dom.contentRfid.classList.remove('hidden');
-                dom.topSearchBar.classList.add('hidden');
+                // dom.topSearchBar.classList.add('hidden');
+                document.getElementById('top-search-bar').style.display = 'none';
                 dom.viewToggle.classList.add('hidden');
                 document.getElementById('page-header-inventory').classList.add('hidden');
                 qrButtons.forEach(btn => btn && btn.classList.add('hidden'));
@@ -346,14 +385,45 @@
         window.switchPage = switchPage;
 
         function getFilteredInventory() {
-            const query = dom.globalSearch ? dom.globalSearch.value.toLowerCase().trim() : '';
+            // Updated Search Logic for Option A
+            
+            // Determine active search input (Desktop or Mobile)
+            let query = '';
+            let field = 'sampleName';
+            
+            const desktopInput = document.getElementById('globalSearchInput');
+            const desktopField = document.getElementById('globalSearchField');
+            const mobileInput = document.getElementById('mobileSearchInput');
+            const mobileField = document.getElementById('mobileSearchField');
+
+            if (window.innerWidth < 768 && mobileInput && mobileInput.value.trim() !== '') {
+                 query = mobileInput.value.toLowerCase().trim();
+                 field = mobileField.value;
+            } else if (desktopInput) {
+                 query = desktopInput.value.toLowerCase().trim();
+                 field = desktopField.value;
+            }
+
             const cabFilter = document.getElementById('cabinetFilter');
             const cabinet = cabFilter ? cabFilter.value : 'all';
+
             let data = sampleInventory.filter(s => {
-                const matchText = Object.values(s).join(' ').toLowerCase().includes(query) || (s.epc && s.epc.toLowerCase().includes(query));
+                let matchText = false;
+                if (!query) {
+                    matchText = true;
+                } else if (field === 'all') {
+                    // Full text search
+                    matchText = Object.values(s).join(' ').toLowerCase().includes(query) || (s.epc && s.epc.toLowerCase().includes(query));
+                } else {
+                    // Specific field search
+                    const val = s[field] ? String(s[field]).toLowerCase() : '';
+                    matchText = val.includes(query);
+                }
+                
                 const matchCabinet = cabinet === 'all' || (!cabinet) || s.storageLocation.startsWith(cabinet);
                 return matchText && matchCabinet;
             });
+
             if (sortState.column === 'storageLocation') {
                 data.sort((a, b) => {
                     const valA = a.storageLocation || '';
@@ -473,10 +543,115 @@
             const content = document.getElementById('reportContent');
             const data = sampleInventory.sort((a,b) => (a.storageLocation||'').localeCompare(b.storageLocation||''));
             if (data.length === 0) { content.innerHTML = '<p class="text-center text-slate-500 py-8">無資料</p>'; return; }
-            let html = `<div class="mb-4"><h2 class="text-xl font-bold">庫存清單</h2><p class="text-sm text-slate-500">時間: ${new Date().toLocaleString()} | 共 ${data.length} 筆資料</p></div><table class="w-full text-sm text-left border-collapse"><thead class="bg-slate-100"><tr><th class="p-2 border">位置</th><th class="p-2 border">名稱</th><th class="p-2 border">線徑</th><th class="p-2 border">標準</th><th class="p-2 border">廠商</th><th class="p-2 border">EPC</th></tr></thead><tbody>`;
-            data.forEach(s => { html += `<tr class="border-b"><td class="p-2 border">${s.storageLocation}</td><td class="p-2 border font-medium">${s.sampleName}</td><td class="p-2 border">${s.wireDiameter}</td><td class="p-2 border">${s.applicableStandard||''}</td><td class="p-2 border">${s.manufacturer||''}</td><td class="p-2 border font-mono text-xs">${s.epc||'-'}</td></tr>`; });
-            html += '</tbody></table>';
+            
+            // Updated Report Headers (Removed EPC, Added Details)
+            let html = `
+                <div class="mb-4">
+                    <h2 class="text-xl font-bold">庫存清單</h2>
+                    <p class="text-sm text-slate-500">時間: ${new Date().toLocaleString()} | 共 ${data.length} 筆資料</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left border-collapse min-w-[1000px]">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-2 border">位置</th>
+                                <th class="p-2 border">名稱</th>
+                                <th class="p-2 border">線徑</th>
+                                <th class="p-2 border">標準</th>
+                                <th class="p-2 border">製造商</th>
+                                <th class="p-2 border">配方代號</th>
+                                <th class="p-2 border">批號</th>
+                                <th class="p-2 border">爐號</th>
+                                <th class="p-2 border">製程明細</th>
+                                <th class="p-2 border">備註</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            
+            data.forEach(s => { 
+                html += `
+                    <tr class="border-b">
+                        <td class="p-2 border whitespace-nowrap">${s.storageLocation}</td>
+                        <td class="p-2 border font-medium whitespace-nowrap">${s.sampleName}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.wireDiameter}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.applicableStandard||''}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.manufacturer||''}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.formulaCode||''}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.batchNo||''}</td>
+                        <td class="p-2 border whitespace-nowrap">${s.furnaceNo||''}</td>
+                        <td class="p-2 border">${s.processDetails||''}</td>
+                        <td class="p-2 border text-xs">${s.notes||''}</td>
+                    </tr>`; 
+            });
+            html += '</tbody></table></div>';
             content.innerHTML = html;
+        }
+
+        // New function for downloading CSV
+        function downloadReportCsv() {
+            const data = sampleInventory.sort((a,b) => (a.storageLocation||'').localeCompare(b.storageLocation||''));
+            if (data.length === 0) return showToast('無資料可下載', 'error');
+
+            // BOM for Excel compatibility with UTF-8
+            let csvContent = "\uFEFF";
+            
+            // Header
+            csvContent += "位置,名稱,線徑,標準,製造商,配方代號,批號,爐號,製程明細,備註\n";
+
+            data.forEach(s => {
+                const row = [
+                    s.storageLocation,
+                    s.sampleName,
+                    s.wireDiameter,
+                    s.applicableStandard || '',
+                    s.manufacturer || '',
+                    s.formulaCode || '',
+                    s.batchNo || '',
+                    s.furnaceNo || '',
+                    s.processDetails || '',
+                    s.notes || ''
+                ].map(item => `"${(item || '').toString().replace(/"/g, '""')}"`); // Quote and escape quotes
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `庫存報表_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // New function for printing report
+        function printReport() {
+            const content = document.getElementById('reportContent').innerHTML;
+            if (!content || content.includes('無資料')) return showToast('無內容可列印', 'error');
+
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>庫存報表列印</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write(`
+                @page { size: landscape; margin: 15mm; }
+                body { font-family: "Noto Sans TC", sans-serif; -webkit-print-color-adjust: exact; }
+                table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+                th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+                thead { background-color: #f3f4f6; font-weight: bold; display: table-header-group; }
+                tr { page-break-inside: avoid; }
+                h2 { margin-bottom: 5px; }
+                p { font-size: 9pt; color: #666; margin-top: 0; }
+            `);
+            printWindow.document.write('</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(content);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
         }
 
         function openActionModal(action, sample) {
@@ -535,12 +710,54 @@
             });
         }
 
+        // Function to unbind RFID
+        window.unbindRfid = function(sampleId) {
+            const sample = sampleInventory.find(s => s.id === sampleId);
+            if (!sample) return;
+
+            openConfirmation('解除綁定', `確定要解除 "${sample.sampleName}" 的 RFID 綁定嗎？`, async () => {
+                try {
+                    await updateDoc(doc(db, 'sampleSystem/data/inventory', sampleId), { 
+                        epc: deleteField(),
+                        lastModifiedBy: getCurrentOperator(), 
+                        lastModifiedAt: serverTimestamp() 
+                    });
+                    await logAction('解除綁定', getCurrentOperator(), sample.sampleName, `解除 EPC: ${sample.epc}`);
+                    showToast('已解除綁定', 'success');
+                    closeModal(modals.sampleDetail);
+                    // Optionally reopen to show updated state, but closing is safer
+                } catch(e) {
+                    console.error(e);
+                    showToast('解除綁定失敗', 'error');
+                }
+            });
+        };
+
         function window_showSampleDetails(sample) {
              const content = document.getElementById('sampleDetailContent');
              const hasRfid = !!sample.epc;
-             content.innerHTML = `<div class="space-y-4"><div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-start"><div><h4 class="text-xl font-bold text-slate-800 flex items-center gap-2">${sample.sampleName} ${hasRfid ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">RFID</span>' : ''}</h4><p class="text-indigo-600 font-mono mt-1">${sample.storageLocation}</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">線徑</span><span class="font-medium">${sample.wireDiameter}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">RFID EPC</span><span class="font-mono text-xs ${hasRfid ? 'text-purple-600 font-bold' : 'text-slate-300'}">${sample.epc || '尚未綁定'}</span></div><div class="p-3 border rounded-lg col-span-2 bg-yellow-50 border-yellow-100"><span class="block text-xs text-yellow-600 font-bold mb-1">備註</span><span class="text-slate-700">${sample.notes || '無備註'}</span></div></div></div>`;
+             
+             // Dynamic button: Bind or Unbind
+             let rfidButtonHtml;
+             if (hasRfid) {
+                 rfidButtonHtml = `<button onclick="unbindRfid('${sample.id}')" class="px-4 py-3 bg-red-50 text-red-700 rounded-lg border border-red-200 flex items-center gap-2 font-medium hover:bg-red-100"><i class="ph ph-link-break"></i> 解除綁定</button>`;
+             } else {
+                 rfidButtonHtml = `<button onclick="closeModal(document.getElementById('sampleDetailModal')); switchPage('rfid'); switchRfidMode('bind'); setTimeout(() => { document.getElementById('bind-search-input').value='${sample.sampleName}'; }, 100);" class="px-4 py-3 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 flex items-center gap-2 font-medium hover:bg-purple-100"><i class="ph ph-link"></i> 綁定 RFID</button>`;
+             }
+
+             content.innerHTML = `<div class="space-y-4"><div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-start"><div><h4 class="text-xl font-bold text-slate-800 flex items-center gap-2">${sample.sampleName} ${hasRfid ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">RFID</span>' : ''}</h4><p class="text-indigo-600 font-mono mt-1">${sample.storageLocation}</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">線徑</span><span class="font-medium">${sample.wireDiameter}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">RFID EPC</span><span class="font-mono text-xs ${hasRfid ? 'text-purple-600 font-bold' : 'text-slate-300'}">${sample.epc || '尚未綁定'}</span></div><div class="p-3 border rounded-lg col-span-2 bg-yellow-50 border-yellow-100"><span class="block text-xs text-yellow-600 font-bold mb-1">備註</span><span class="text-slate-700">${sample.notes || '無備註'}</span></div></div>
+             
+             <div class="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm grid grid-cols-2 gap-y-2 text-slate-600">
+                <div><span class="text-slate-400 text-xs block">配方代號</span>${sample.formulaCode || '-'}</div>
+                <div><span class="text-slate-400 text-xs block">批號</span>${sample.batchNo || '-'}</div>
+                <div><span class="text-slate-400 text-xs block">爐號</span>${sample.furnaceNo || '-'}</div>
+                <div><span class="text-slate-400 text-xs block">製造商</span>${sample.manufacturer || '-'}</div>
+                <div class="col-span-2"><span class="text-slate-400 text-xs block">製程明細</span>${sample.processDetails || '-'}</div>
+             </div>
+             </div>`;
+             
              const footer = document.getElementById('sampleDetailFooter');
-             footer.innerHTML = `<button onclick="closeModal(document.getElementById('sampleDetailModal'))" class="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">關閉</button><div class="flex gap-2"><button onclick="closeModal(document.getElementById('sampleDetailModal')); switchPage('rfid'); switchRfidMode('bind'); setTimeout(() => { document.getElementById('bind-search-input').value='${sample.sampleName}'; }, 100);" class="px-4 py-3 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 flex items-center gap-2 font-medium hover:bg-purple-100"><i class="ph ph-link"></i> 綁定 RFID</button><button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openQrModal(window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 flex items-center gap-2 font-medium"><i class="ph ph-qr-code"></i> QR Code</button><button onclick="closeModal(document.getElementById('sampleDetailModal')); openEditSampleModal(window.sampleInventory.find(s=>s.id==='${sample.id}'));" class="px-4 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium">修改</button></div>`;
+             footer.innerHTML = `<button onclick="closeModal(document.getElementById('sampleDetailModal'))" class="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">關閉</button><div class="flex gap-2">${rfidButtonHtml}<button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openQrModal(window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 flex items-center gap-2 font-medium"><i class="ph ph-qr-code"></i> QR Code</button><button onclick="closeModal(document.getElementById('sampleDetailModal')); openEditSampleModal(window.sampleInventory.find(s=>s.id==='${sample.id}'));" class="px-4 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium">修改</button></div>`;
              openModal(modals.sampleDetail);
         }
         window.showSampleDetails = window_showSampleDetails;
@@ -920,6 +1137,11 @@
             if(thLocation) thLocation.addEventListener('click', () => { sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc'; renderInventory(); });
 
             safeAddListener('nav-report', 'click', () => { renderReportPreview(); openModal(modals.report); });
+            
+            // --- NEW: Report Button Listeners ---
+            safeAddListener('downloadCsvBtn', 'click', downloadReportCsv);
+            safeAddListener('printReportBtn', 'click', printReport);
+
             safeAddListener('nav-history', 'click', () => { renderAllHistoryTables(); openModal(modals.history); });
             
             safeAddListener('nav-settings', 'click', () => { tempSystemConfig = JSON.parse(JSON.stringify(systemConfig)); renderSettingsUI(tempSystemConfig); openModal(modals.settings); });
@@ -1212,6 +1434,16 @@
             });
             const globalSearch = document.getElementById('globalSearchInput');
             if (globalSearch) globalSearch.addEventListener('input', renderInventory);
+            
+            // New Event Listeners for Search Dropdowns
+            const searchFieldSelect = document.getElementById('globalSearchField');
+            if(searchFieldSelect) searchFieldSelect.addEventListener('change', renderInventory);
+            
+            const mobileSearchField = document.getElementById('mobileSearchField');
+            if(mobileSearchField) mobileSearchField.addEventListener('change', renderInventory);
+            
+            const mobileSearchInput = document.getElementById('mobileSearchInput');
+            if(mobileSearchInput) mobileSearchInput.addEventListener('input', renderInventory);
         });
 
         // Expose functions and data for inline HTML handlers
