@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樣品庫存管理系統 v2.9.15 (自訂版面)</title>
+    <title>樣品庫存管理系統 v2.9.18 (自訂版面)</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -702,9 +702,30 @@
                 const isSelected = s.id === bindTargetId;
                 const div = document.createElement('div');
                 div.className = isSelected 
-                    ? "p-3 rounded-lg border-2 border-purple-500 bg-purple-50 cursor-pointer transition flex justify-between items-center group shadow-sm"
-                    : "p-3 rounded-lg border border-slate-100 bg-white hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition flex justify-between items-center group";
-                div.innerHTML = `<div><div class="font-bold text-slate-700 text-sm group-hover:text-purple-700">${s.sampleName}</div><div class="text-xs text-slate-400">${s.storageLocation}</div></div><i class="ph ${isSelected ? 'ph-check-circle-fill text-purple-600 text-xl' : 'ph-caret-right text-slate-300 group-hover:text-purple-400'}"></i>`;
+                    ? "p-3 rounded-lg border-2 border-purple-500 bg-purple-50 cursor-pointer transition flex justify-between items-center group shadow-sm text-left"
+                    : "p-3 rounded-lg border border-slate-100 bg-white hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition flex justify-between items-center group text-left";
+                
+                // Helper to join non-empty strings with separator
+                const joinParts = (parts) => parts.filter(p => p && p.trim() !== '').join(' | ');
+
+                const line2 = joinParts([s.wireDiameter ? `${s.wireDiameter}` : '', s.manufacturer]);
+                
+                const line3Parts = [];
+                if(s.batchNo) line3Parts.push(`批:${s.batchNo}`);
+                if(s.furnaceNo) line3Parts.push(`爐:${s.furnaceNo}`);
+                if(s.formulaCode) line3Parts.push(`配:${s.formulaCode}`);
+                const line3 = line3Parts.join(' | ');
+
+                div.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-3">
+                        <div class="font-bold text-slate-800 text-sm md:text-base mb-0.5 group-hover:text-purple-700 break-words">${s.sampleName}</div>
+                        <div class="text-xs text-slate-600 mb-0.5 font-medium">${line2 || '<span class="text-slate-300">-</span>'}</div>
+                        <div class="text-[10px] text-slate-500 mb-1 font-mono tracking-tight">${line3 || '<span class="opacity-0">-</span>'}</div>
+                        <div class="text-xs text-slate-400 flex items-center gap-1"><i class="ph ph-map-pin"></i> ${s.storageLocation}</div>
+                    </div>
+                    <div class="shrink-0 pl-1">
+                        <i class="ph ${isSelected ? 'ph-check-circle-fill text-purple-600 text-2xl' : 'ph-caret-right text-slate-300 group-hover:text-purple-400 text-xl'}"></i>
+                    </div>`;
                 div.onclick = () => selectBindTarget(s);
                 list.appendChild(div);
             });
@@ -744,6 +765,10 @@
              } else {
                  rfidButtonHtml = `<button onclick="closeModal(document.getElementById('sampleDetailModal')); switchPage('rfid'); switchRfidMode('bind'); setTimeout(() => { document.getElementById('bind-search-input').value='${sample.sampleName}'; }, 100);" class="px-4 py-3 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 flex items-center gap-2 font-medium hover:bg-purple-100"><i class="ph ph-link"></i> 綁定 RFID</button>`;
              }
+             
+             // New Stage Button
+             let stageButtonHtml = `<button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openActionModal('stage', window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 flex items-center gap-2 font-medium hover:bg-amber-100"><i class="ph ph-tray"></i> 移入暫存</button>`;
+
 
              content.innerHTML = `<div class="space-y-4"><div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-start"><div><h4 class="text-xl font-bold text-slate-800 flex items-center gap-2">${sample.sampleName} ${hasRfid ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">RFID</span>' : ''}</h4><p class="text-indigo-600 font-mono mt-1">${sample.storageLocation}</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">線徑</span><span class="font-medium">${sample.wireDiameter}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">RFID EPC</span><span class="font-mono text-xs ${hasRfid ? 'text-purple-600 font-bold' : 'text-slate-300'}">${sample.epc || '尚未綁定'}</span></div><div class="p-3 border rounded-lg col-span-2 bg-yellow-50 border-yellow-100"><span class="block text-xs text-yellow-600 font-bold mb-1">備註</span><span class="text-slate-700">${sample.notes || '無備註'}</span></div></div>
              
@@ -757,7 +782,7 @@
              </div>`;
              
              const footer = document.getElementById('sampleDetailFooter');
-             footer.innerHTML = `<button onclick="closeModal(document.getElementById('sampleDetailModal'))" class="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">關閉</button><div class="flex gap-2">${rfidButtonHtml}<button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openQrModal(window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 flex items-center gap-2 font-medium"><i class="ph ph-qr-code"></i> QR Code</button><button onclick="closeModal(document.getElementById('sampleDetailModal')); openEditSampleModal(window.sampleInventory.find(s=>s.id==='${sample.id}'));" class="px-4 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium">修改</button></div>`;
+             footer.innerHTML = `<button onclick="closeModal(document.getElementById('sampleDetailModal'))" class="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">關閉</button><div class="flex gap-2">${stageButtonHtml}${rfidButtonHtml}<button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openQrModal(window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-50 flex items-center gap-2 font-medium"><i class="ph ph-qr-code"></i> QR Code</button><button onclick="closeModal(document.getElementById('sampleDetailModal')); openEditSampleModal(window.sampleInventory.find(s=>s.id==='${sample.id}'));" class="px-4 py-3 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium">修改</button></div>`;
              openModal(modals.sampleDetail);
         }
         window.showSampleDetails = window_showSampleDetails;
@@ -961,6 +986,7 @@
         }
 
         async function stopScanner() { if (html5QrCode && isScannerRunning) { try { await html5QrCode.stop(); html5QrCode.clear(); isScannerRunning = false; } catch (err) {} } }
+        
         window.startScanner = async function(mode) {
             if (isScannerRunning) await stopScanner();
             window.scannerMode = mode; openModal(modals.qrScanner);
@@ -970,7 +996,22 @@
                 html5QrCode.start({ facingMode: "environment" }, config, (txt) => {
                      stopScanner().then(() => {
                          closeModal(modals.qrScanner);
-                         if (mode === 'search') { document.getElementById('globalSearchInput').value = txt; renderInventory(); }
+                         // NEW LOGIC: Check if scanned text is an ID first
+                         const matchedSample = sampleInventory.find(s => s.id === txt);
+                         
+                         if (matchedSample) {
+                             // If ID matches, show details (RFID-like behavior)
+                             showSampleDetails(matchedSample);
+                             playSound('success');
+                             showToast(`已掃描: ${matchedSample.sampleName}`, 'success');
+                         } else {
+                             // If not an ID, treat as search text
+                             if (mode === 'search' || mode === 'action') {
+                                 document.getElementById('globalSearchInput').value = txt;
+                                 renderInventory();
+                                 showToast(`已填入搜尋關鍵字: ${txt}`, 'info');
+                             }
+                         }
                      });
                 }).catch(console.error);
             }, 300);
@@ -1453,7 +1494,7 @@
         window.openQrModal = openQrModal;
         window.resetBindSelection = resetBindSelection;
         // window.sampleInventory is set inside onSnapshot
-        
+        window.openActionModal = openActionModal;
     </script>
 </body>
 </html>
