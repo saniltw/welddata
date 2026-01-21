@@ -111,7 +111,11 @@
                 </div>
             </div>
             
-            <div id="loader" class="flex flex-col items-center justify-center py-20 text-slate-500"><i class="ph ph-spinner animate-spin text-4xl text-blue-600 mb-3"></i><p>正在同步設備資料庫...</p></div>
+            <div id="loader" class="flex flex-col items-center justify-center py-20 text-slate-500">
+                <i class="ph ph-spinner animate-spin text-4xl text-blue-600 mb-3"></i>
+                <p id="loader-text" class="font-medium animate-pulse">正在初始化系統...</p>
+                <p class="text-xs text-slate-400 mt-2">首次載入可能需要較長時間建立連線</p>
+            </div>
 
             <!-- Inventory List View -->
             <div id="content-area-inventory" class="hidden pb-20"> 
@@ -381,6 +385,8 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        
+        // 2. 改回最標準的初始化方式，不強制使用長輪詢
         const db = getFirestore(app);
 
         // State Variables
@@ -898,8 +904,19 @@
         // --- Auth Listener Setup ---
         
         function setupAuthListener() {
+            const loaderText = document.getElementById('loader-text');
+            
+            // 初始狀態
+            if(loaderText) loaderText.textContent = '正在初始化...';
+
             onAuthStateChanged(auth, user => {
                 if (user) {
+                    // 階段 2：已取得身分，開始監聽資料庫
+                    if(loaderText) {
+                        loaderText.textContent = '連線成功，正在同步資料庫...';
+                        loaderText.classList.remove('text-blue-600'); // Reset color just in case
+                    }
+
                     setupRfidListeners();
                     onSnapshot(query(collection(db, 'equipment')), snap => {
                         equipmentInventory = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -926,6 +943,11 @@
                         if(currentPage === 'rfid' && rfidMode === 'stocktake') updateStocktakeDropdown();
                     });
                 } else {
+                    // 階段 1：需要登入
+                    if(loaderText) {
+                        loaderText.textContent = '正在建立安全連線 (登入中)...';
+                        loaderText.classList.add('text-blue-600');
+                    }
                     signInAnonymously(auth);
                 }
             });
