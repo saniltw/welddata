@@ -112,7 +112,7 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.3.0 (Smart Calendar Expand)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.3.1 (Maint Patch)</p>
         </div>
     </div>
 
@@ -270,11 +270,21 @@
                     <h2 id="editor-title" class="text-2xl font-semibold mb-6 text-slate-800">編輯設備</h2>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-medium text-slate-500">設備編號 (ID)</label><input type="text" id="edit-device-id" class="w-full p-2 border rounded"></div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500">設備編號 (ID)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="edit-device-id" class="w-full p-2 border rounded">
+                                    <button onclick="window.app.generateEquipmentId()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs whitespace-nowrap">🪄 自動產生</button>
+                                </div>
+                            </div>
                             <div><label class="block text-xs font-medium text-slate-500">設備名稱</label><input type="text" id="edit-device-name" class="w-full p-2 border rounded"></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-medium text-slate-500">設備區分</label><select id="edit-device-category-select" class="w-full p-2 border rounded mb-2"></select><input type="text" id="edit-device-category-new" class="w-full p-2 border rounded hidden" placeholder="輸入新分類..."></div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500">設備區分</label>
+                                <select id="edit-device-category-select" onchange="window.app.toggleCategoryInput()" class="w-full p-2 border rounded mb-2"></select>
+                                <input type="text" id="edit-device-category-new" class="w-full p-2 border rounded hidden" placeholder="輸入新分類...">
+                            </div>
                             <div><label class="block text-xs font-medium text-slate-500">放置地點</label><input type="text" id="edit-device-location" class="w-full p-2 border rounded"></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -291,14 +301,23 @@
                         <hr class="my-4 border-slate-200">
                         <div id="editor-section-check-schedule" class="border border-indigo-200 rounded-lg bg-indigo-50 p-4">
                             <h3 class="font-bold text-indigo-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>點檢排程設定</h3>
-                            <div class="flex gap-6 mb-3 text-sm"><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="weekly" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="interval" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
+                            <div class="flex gap-4 mb-3 text-sm flex-wrap">
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="weekly" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="interval" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="none" class="mr-2 text-gray-500" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-gray-600">無 (不需執行)</span></label>
+                            </div>
                             <div id="check-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日，以免無人執行造成系統逾期判定。</p></div>
                             <div id="check-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-check-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('check')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-indigo-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計點檢日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-indigo-600"><span id="check-preview-1">--</span><span class="text-slate-300">|</span><span id="check-preview-2">--</span></div></div>
                         </div>
                         <div id="editor-section-clean-schedule" class="border border-orange-200 rounded-lg bg-orange-50 p-4 mt-4">
                             <h3 class="font-bold text-orange-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>清潔排程設定</h3>
-                            <div class="flex gap-4 mb-3 text-sm flex-wrap"><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="weekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="biweekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (隔週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="interval" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
+                            <div class="flex gap-4 mb-3 text-sm flex-wrap">
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="weekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="biweekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (隔週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="interval" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="none" class="mr-2 text-gray-500" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-gray-600">無 (不需執行)</span></label>
+                            </div>
                             <div id="clean-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日。</p></div>
                             <div id="clean-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-clean-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('clean')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-orange-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計清潔日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-orange-600"><span id="clean-preview-1">--</span><span class="text-slate-300">|</span><span id="clean-preview-2">--</span></div></div>
@@ -573,13 +592,30 @@
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const weeklyDiv = document.getElementById(`${type}-weekly-input`);
             const intervalDiv = document.getElementById(`${type}-interval-input`);
-            if (mode === 'weekly' || mode === 'biweekly') { weeklyDiv.classList.remove('hidden'); intervalDiv.classList.add('hidden'); } else { weeklyDiv.classList.add('hidden'); intervalDiv.classList.remove('hidden'); }
+            
+            // 重置顯示狀態
+            weeklyDiv.classList.add('hidden');
+            intervalDiv.classList.add('hidden');
+
+            if (mode === 'weekly' || mode === 'biweekly') { 
+                weeklyDiv.classList.remove('hidden'); 
+            } else if (mode === 'interval') { 
+                intervalDiv.classList.remove('hidden'); 
+            }
+            // mode === 'none' 則保持全部隱藏
+
             window.app.updateSchedulePreview(type);
         };
         window.app.updateSchedulePreview = function(type) {
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const today = new Date(); let nextDates = [];
             
+            if (mode === 'none') {
+                document.getElementById(`${type}-preview-1`).textContent = "無需執行";
+                document.getElementById(`${type}-preview-2`).textContent = "";
+                return;
+            }
+
             if (mode === 'weekly') { 
                 const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); 
                 if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
@@ -614,6 +650,8 @@
         // **核心修改：所有下次日期計算，最後都要經過 adjustForWeekend**
         window.app.calculateNextScheduleDate = function(schedule, fromDate) { 
             if (!schedule) return null; 
+            if (schedule.mode === 'none') return null; // 如果是不需執行，直接回傳 null
+
             const start = new Date(fromDate); 
             let resultDate = null;
 
@@ -639,6 +677,9 @@
         
         window.app.calculateOverdueDates = function(nextDateStr, schedule) {
             if (!nextDateStr || !schedule) return [];
+            // 如果排程是 none，或根本沒有設定排程，就不會有逾期
+            if (schedule.mode === 'none') return [];
+            
             const nextDate = new Date(nextDateStr);
             const today = new Date();
             today.setHours(0,0,0,0);
@@ -827,10 +868,10 @@
                     if(isDone) {
                         completedItems.push({ name: eq.name, id: eq.id });
                     } else {
-                        const nextDate = eq.nextCheckDate ? new Date(eq.nextCheckDate) : new Date(0);
-                        // 判定邏輯: 
-                        // 1. 如果 nextDate 小於 本週一 => Overdue (Red)
-                        // 2. 如果 nextDate 在 本週一 ~ 本週日 => Pending (This Week)
+                        // 如果 nextCheckDate 是 "不需執行" (null 或不存在)
+                        if (!eq.nextCheckDate) return; 
+                        
+                        const nextDate = new Date(eq.nextCheckDate);
                         
                         // nextDate 不需要時分秒
                         nextDate.setHours(0,0,0,0);
@@ -851,7 +892,10 @@
                     if(isDone) {
                         completedItems.push({ name: eq.name, id: eq.id });
                     } else {
-                        const nextDate = eq.nextCleaningDate ? new Date(eq.nextCleaningDate) : new Date(0);
+                         // 如果 nextCleaningDate 是 "不需執行" (null 或不存在)
+                         if (!eq.nextCleaningDate) return;
+
+                        const nextDate = new Date(eq.nextCleaningDate);
                         nextDate.setHours(0,0,0,0);
                         const thisWeekStart = new Date(start); thisWeekStart.setHours(0,0,0,0);
                         const thisWeekEnd = new Date(end); thisWeekEnd.setHours(23,59,59,999);
@@ -1508,7 +1552,7 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         // 將最大寬度從 800 改為 500
-                        const MAX_WIDTH = 500;
+                        const MAX_WIDTH = 500; 
                         let width = img.width;
                         let height = img.height;
                         
@@ -1575,9 +1619,34 @@
             } 
             window.app.renderBackupList(); 
             window.app.toggleEditorSections(); 
+            // 確保分類輸入框狀態正確 (如果有預設值需不需要顯示)
+            window.app.toggleCategoryInput();
         };
+
+        // --- 新增: 設備編號自動產生 ---
+        window.app.generateEquipmentId = function() {
+            const now = new Date();
+            // YYYYMMDD
+            const dateStr = now.toISOString().slice(0,10).replace(/-/g, '');
+            // 3碼隨機大寫字母或數字
+            const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const id = `EQ-${dateStr}-${random}`;
+            document.getElementById('edit-device-id').value = id;
+        };
+
+        // --- 新增: 設備分類輸入框顯示切換 ---
+        window.app.toggleCategoryInput = function() {
+            const val = document.getElementById('edit-device-category-select').value;
+            const input = document.getElementById('edit-device-category-new');
+            if(val === '__new__') {
+                input.classList.remove('hidden');
+            } else {
+                input.classList.add('hidden');
+            }
+        };
+
         window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); window.app.renderEquipmentList(); };
-        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()) || new Date(); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()) || new Date(); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: window.app.formatDate(nextCheckDate), nextCleaningDate: window.app.formatDate(nextCleaningDate) }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
+        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: nextCheckDate ? window.app.formatDate(nextCheckDate) : null, nextCleaningDate: nextCleaningDate ? window.app.formatDate(nextCleaningDate) : null }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
         window.app.showScanner = function() { const modal = document.getElementById('qr-scanner-modal'); const content = document.getElementById('qr-scanner-content'); modal.classList.remove('hidden'); modal.classList.add('flex'); content.classList.remove('hidden'); html5QrCode = new Html5Qrcode("qr-reader"); const config = { fps: 10, qrbox: { width: 250, height: 250 } }; html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => { if (decodedText.includes("?id=")) { const id = decodedText.split("?id=")[1]; window.app.hideScanner(); window.app.handleScanResult(id); } else { if (equipmentDatabase[decodedText]) { window.app.hideScanner(); window.app.handleScanResult(decodedText); } } }, (errorMessage) => { }).catch(err => { console.error(err); alert("無法啟動相機，請確認權限或使用 HTTPS 連線。"); window.app.hideScanner(); }); };
