@@ -1381,7 +1381,44 @@
 
         window.app.toggleMaintType = function() { const type = document.getElementById('maintenance-type').value; const selector = document.getElementById('maintenance-component-selector'); if(type === 'replacement') selector.classList.remove('hidden'); else selector.classList.add('hidden'); };
         window.app.closeMaintenanceModal = function() { document.getElementById('maintenance-modal').classList.add('hidden'); };
-        window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
+        
+        // 修改 1: 加強保養圖片壓縮
+        window.app.handleMaintImageUpload = function(input) { 
+            if(!input.files[0]) return; 
+            const file = input.files[0]; 
+            const reader = new FileReader(); 
+            reader.onload = function(e) { 
+                const img = new Image(); 
+                img.onload = function() { 
+                    const canvas = document.createElement('canvas'); 
+                    // 將最大寬度從 800 改為 500，大幅減少像素量
+                    const MAX_WIDTH = 500; 
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    
+                    canvas.width = width; 
+                    canvas.height = height; 
+                    const ctx = canvas.getContext('2d'); 
+                    ctx.drawImage(img, 0, 0, width, height); 
+                    
+                    // 將品質從 0.7 改為 0.5
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5); 
+                    const preview = document.getElementById('maint-image-preview'); 
+                    preview.src = dataUrl; 
+                    preview.dataset.imageDataUrl = dataUrl; 
+                    
+                    // 可以在 Console 顯示壓縮後的大小，方便除錯
+                    console.log(`保養圖片壓縮後大小: ~${Math.round(dataUrl.length / 1024)} KB`);
+                }; 
+                img.src = e.target.result; 
+            }; 
+            reader.readAsDataURL(file); 
+        };
         
         window.app.logMaintenance = async function(btn) {
             if (loggedInUser.role === 'guest') return;
@@ -1443,14 +1480,109 @@
         window.app.addBackupUser = function() { const select = document.getElementById('edit-backup-adder-select'); const uid = select.value; if(!uid) return; if(!window.app.currentBackupList) window.app.currentBackupList = []; if(window.app.currentBackupList.includes(uid)) { showToast("此人員已在清單中", "error"); return; } const primary = document.getElementById('edit-primary-owner').value; if(primary === uid) { showToast("此人員已是主要負責人", "error"); return; } window.app.currentBackupList.push(uid); window.app.renderBackupList(); select.value = ""; };
         window.app.removeBackupUser = function(index) { if(!window.app.currentBackupList) return; window.app.currentBackupList.splice(index, 1); window.app.renderBackupList(); };
         window.app.moveBackupUser = function(index, direction) { if(!window.app.currentBackupList) return; const newIndex = index + direction; if(newIndex < 0 || newIndex >= window.app.currentBackupList.length) return; const temp = window.app.currentBackupList[index]; window.app.currentBackupList[index] = window.app.currentBackupList[newIndex]; window.app.currentBackupList[newIndex] = temp; window.app.renderBackupList(); };
-        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const primarySel = document.getElementById('edit-primary-owner'); const backupAdder = document.getElementById('edit-backup-adder-select'); primarySel.innerHTML = '<option value="">請選擇負責人...</option>'; backupAdder.innerHTML = '<option value="">選擇人員加入...</option>'; Object.values(userDatabase).forEach(u => { primarySel.add(new Option(u.name, u.id)); backupAdder.add(new Option(u.name, u.id)); }); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; window.app.currentBackupList = []; if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; const checkSchedule = eq.checkSchedule || { mode: 'interval', interval: eq.checkCycleDays || 7, weekdays: [] }; document.querySelector(`input[name="checkMode"][value="${checkSchedule.mode}"]`).checked = true; document.getElementById('edit-check-interval').value = checkSchedule.interval || 7; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => { cb.checked = checkSchedule.weekdays ? checkSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('check'); const cleaningSchedule = eq.cleaningSchedule || { mode: 'interval', interval: eq.cleaningCycleDays || 30, weekdays: [] }; const savedCleanMode = cleaningSchedule.mode; if(savedCleanMode && document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`)) { document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`).checked = true; } else { document.querySelector(`input[name="cleanMode"][value="interval"]`).checked = true; } document.getElementById('edit-clean-interval').value = cleaningSchedule.interval || 30; document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => { cb.checked = cleaningSchedule.weekdays ? cleaningSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(eq.primaryOwnerId) primarySel.value = eq.primaryOwnerId; if(eq.backupOwnerIds && Array.isArray(eq.backupOwnerIds)) { window.app.currentBackupList = [...eq.backupOwnerIds]; } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); document.querySelector('input[name="checkMode"][value="interval"]').checked = true; document.querySelector('input[name="cleanMode"][value="interval"]').checked = true; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => cb.checked = false); document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => cb.checked = false); document.getElementById('edit-check-interval').value = 7; document.getElementById('edit-clean-interval').value = 30; window.app.toggleScheduleMode('check'); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = false; imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } window.app.renderBackupList(); window.app.toggleEditorSections(); };
+        window.app.showEditor = function(id = null) { 
+            document.getElementById('equipment-list-section').classList.add('hidden'); 
+            document.getElementById('equipment-editor-section').classList.remove('hidden'); 
+            document.getElementById('item-editor-container').innerHTML = ''; 
+            document.getElementById('component-editor-container').innerHTML = ''; 
+            const sel = document.getElementById('edit-device-category-select'); 
+            const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; 
+            sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; 
+            cats.forEach(c => sel.add(new Option(c, c))); 
+            const primarySel = document.getElementById('edit-primary-owner'); 
+            const backupAdder = document.getElementById('edit-backup-adder-select'); 
+            primarySel.innerHTML = '<option value="">請選擇負責人...</option>'; 
+            backupAdder.innerHTML = '<option value="">選擇人員加入...</option>'; 
+            Object.values(userDatabase).forEach(u => { primarySel.add(new Option(u.name, u.id)); backupAdder.add(new Option(u.name, u.id)); }); 
+            const imgPreview = document.getElementById('image-preview'); 
+            document.getElementById('edit-device-image').value = ''; 
+            window.app.currentBackupList = []; 
+            
+            // 處理設備編輯時的圖片上傳邏輯 (修改 2: 加強設備圖片壓縮)
+            document.getElementById('edit-device-image').onchange = function(e) {
+                if(!this.files[0]) return;
+                const file = this.files[0];
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        // 將最大寬度從 800 改為 500
+                        const MAX_WIDTH = 500;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 將品質從 0.7 改為 0.5
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                        imgPreview.src = dataUrl;
+                        imgPreview.dataset.imageDataUrl = dataUrl;
+                        console.log(`設備圖片壓縮後大小: ~${Math.round(dataUrl.length / 1024)} KB`);
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+
+            if(id) { 
+                const eq = equipmentDatabase[id]; 
+                document.getElementById('edit-device-id').value = eq.id; 
+                document.getElementById('edit-device-name').value = eq.name; 
+                document.getElementById('edit-device-location').value = eq.location || ''; 
+                document.getElementById('edit-device-asset').value = eq.assetNumber || ''; 
+                document.getElementById('edit-device-status').value = eq.status || '使用中'; 
+                const checkSchedule = eq.checkSchedule || { mode: 'interval', interval: eq.checkCycleDays || 7, weekdays: [] }; 
+                document.querySelector(`input[name="checkMode"][value="${checkSchedule.mode}"]`).checked = true; 
+                document.getElementById('edit-check-interval').value = checkSchedule.interval || 7; 
+                document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => { cb.checked = checkSchedule.weekdays ? checkSchedule.weekdays.includes(parseInt(cb.value)) : false; }); 
+                window.app.toggleScheduleMode('check'); 
+                const cleaningSchedule = eq.cleaningSchedule || { mode: 'interval', interval: eq.cleaningCycleDays || 30, weekdays: [] }; 
+                const savedCleanMode = cleaningSchedule.mode; 
+                if(savedCleanMode && document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`)) { document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`).checked = true; } else { document.querySelector(`input[name="cleanMode"][value="interval"]`).checked = true; } 
+                document.getElementById('edit-clean-interval').value = cleaningSchedule.interval || 30; 
+                document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => { cb.checked = cleaningSchedule.weekdays ? cleaningSchedule.weekdays.includes(parseInt(cb.value)) : false; }); 
+                window.app.toggleScheduleMode('clean'); 
+                document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; 
+                if(eq.category) sel.value = eq.category; 
+                if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); 
+                if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); 
+                if(eq.primaryOwnerId) primarySel.value = eq.primaryOwnerId; 
+                if(eq.backupOwnerIds && Array.isArray(eq.backupOwnerIds)) { window.app.currentBackupList = [...eq.backupOwnerIds]; } 
+                imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; 
+                imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; 
+            } else { 
+                ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); 
+                document.querySelector('input[name="checkMode"][value="interval"]').checked = true; 
+                document.querySelector('input[name="cleanMode"][value="interval"]').checked = true; 
+                document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => cb.checked = false); 
+                document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => cb.checked = false); 
+                document.getElementById('edit-check-interval').value = 7; 
+                document.getElementById('edit-clean-interval').value = 30; 
+                window.app.toggleScheduleMode('check'); 
+                window.app.toggleScheduleMode('clean'); 
+                document.getElementById('edit-device-include-kt').checked = false; 
+                imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; 
+                imgPreview.dataset.imageDataUrl = ''; 
+            } 
+            window.app.renderBackupList(); 
+            window.app.toggleEditorSections(); 
+        };
         window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); window.app.renderEquipmentList(); };
         window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()) || new Date(); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()) || new Date(); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: window.app.formatDate(nextCheckDate), nextCleaningDate: window.app.formatDate(nextCleaningDate) }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
         window.app.showScanner = function() { const modal = document.getElementById('qr-scanner-modal'); const content = document.getElementById('qr-scanner-content'); modal.classList.remove('hidden'); modal.classList.add('flex'); content.classList.remove('hidden'); html5QrCode = new Html5Qrcode("qr-reader"); const config = { fps: 10, qrbox: { width: 250, height: 250 } }; html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => { if (decodedText.includes("?id=")) { const id = decodedText.split("?id=")[1]; window.app.hideScanner(); window.app.handleScanResult(id); } else { if (equipmentDatabase[decodedText]) { window.app.hideScanner(); window.app.handleScanResult(decodedText); } } }, (errorMessage) => { }).catch(err => { console.error(err); alert("無法啟動相機，請確認權限或使用 HTTPS 連線。"); window.app.hideScanner(); }); };
-        window.app.hideScanner = function() { if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); document.getElementById('qr-scanner-modal').classList.add('hidden'); document.getElementById('qr-scanner-modal').classList.remove('flex'); }).catch(err => console.error(err)); } else { document.getElementById('qr-scanner-modal').classList.add('hidden'); document.getElementById('qr-scanner-modal').classList.remove('flex'); } };
-        window.app.handleScanResult = function(id) { const eq = equipmentDatabase[id]; if (eq) { const modal = document.getElementById('scan-action-modal'); const content = document.getElementById('scan-action-content'); document.getElementById('scan-match-name').textContent = eq.name; const btnCheck = document.getElementById('btn-scan-checklist'); const btnMaint = document.getElementById('btn-scan-maintenance'); const btnPart = document.getElementById('btn-scan-part'); btnCheck.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('check'); startChecklist(id); }; btnMaint.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('clean'); window.app.showMaintenanceModal(id); }; btnPart.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('part'); window.app.handleManualReplaceOpen(id); }; modal.classList.remove('hidden'); content.classList.remove('hidden'); } else { showToast("找不到設備 ID: " + id, "error"); } };
+        // 刪除了舊的 window.app.handleImageUpload 定義，因為它已經整合到 showEditor 中了
+        
         window.app.renderTemplateList = function() { const container = document.getElementById('template-list-container'); container.innerHTML = ''; if(Object.keys(templateDatabase).length === 0) { container.innerHTML = '<p class="text-center text-gray-400">尚無範本</p>'; return; } Object.values(templateDatabase).forEach(t => { container.innerHTML += `<div class="card p-4 flex justify-between items-center"><span class="font-bold">${t.name}</span><div class="flex gap-2"><button onclick="window.app.showTemplateEditor('${t.id}')" class="text-blue-600 text-sm border px-2 py-1 rounded">編輯</button><button onclick="window.app.deleteTemplate('${t.id}')" class="text-red-600 text-sm border px-2 py-1 rounded">刪除</button></div></div>`; }); };
         window.app.showTemplateEditor = function(id = null) { document.getElementById('template-list-section').classList.add('hidden'); document.getElementById('template-editor-section').classList.remove('hidden'); document.getElementById('template-item-editor-container').innerHTML = ''; if(id) { const t = templateDatabase[id]; document.getElementById('edit-template-id').value = t.id; document.getElementById('edit-template-name').value = t.name; if(t.items) t.items.forEach(i => window.app.addCategoryEditor(i, 'template-item-editor-container')); } else { document.getElementById('edit-template-id').value = ''; document.getElementById('edit-template-name').value = ''; } };
         window.app.showTemplateList = function() { document.getElementById('template-list-section').classList.remove('hidden'); document.getElementById('template-editor-section').classList.add('hidden'); };

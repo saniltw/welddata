@@ -2,1112 +2,1013 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>設備資產盤點系統 v1.2</title>
-    <script src="https://cdn-tailwindcss.vercel.app/"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資產盤點系統 (RFID版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- QR Code & Zipping Libraries -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script type="text/javascript" src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
-    
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f8fafc; overflow: hidden; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .modal-backdrop { background-color: rgba(15, 23, 42, 0.6); transition: opacity 0.3s ease; }
-        .modal-content { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
-        .modal-hidden { opacity: 0; pointer-events: none; }
-        .modal-visible { opacity: 1; pointer-events: auto; }
-        .modal-content-hidden { transform: scale(0.95) translateY(10px); opacity: 0; }
-        .modal-content-visible { transform: scale(1) translateY(0); opacity: 1; }
-        .table-row-hover:hover { background-color: #f1f5f9; }
-        .scan-line { position: absolute; width: 100%; height: 2px; background: #ef4444; box-shadow: 0 0 4px #ef4444; top: 0; left: 0; animation: scan 2s infinite linear; }
-        @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
-        .rfid-focus-ring { animation: pulse-border 2s infinite; }
-        @keyframes pulse-border { 0% { border-color: rgba(168, 85, 247, 0.5); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); } 70% { border-color: rgba(168, 85, 247, 0); box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); } 100% { border-color: rgba(168, 85, 247, 0); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); } }
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #4f46e5; animation: spin 1s ease infinite; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); border: 1px solid #e5e7eb; }
+        .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            -webkit-appearance: none; appearance: none;
+        }
+        .admin-tab-active { color: #4f46e5; border-color: #4f46e5; }
+        .status-dot { height: 0.6rem; width: 0.6rem; border-radius: 50%; display: inline-block; margin-right: 0.3rem; }
+        .status-dot.active { background-color: #22c55e; }
+        .status-dot.repair { background-color: #eab308; }
+        .status-dot.unused { background-color: #9ca3af; }
         
-        /* Status Colors */
-        .status-using { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; } /* 使用中 - Green */
-        .status-repair { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; } /* 維修中 - Red */
-        .status-unused { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; } /* 未使用 - Gray */
+        /* 權限控制樣式 */
+        .role-guest .action-edit, 
+        .role-guest .action-delete, 
+        .role-guest .action-add,
+        .role-guest .action-bind, 
+        .role-guest .action-unbind,
+        .role-guest .action-submit { display: none !important; }
+
+        /* Operator 也不能執行管理員的綁定操作 */
+        .role-operator .action-bind,
+        .role-operator .action-unbind { display: none !important; }
+        
+        /* Progress Bar */
+        .progress-bar-container { width: 100%; background-color: #e2e8f0; border-radius: 9999px; height: 20px; overflow: hidden; position: relative; }
+        .progress-bar-fill { height: 100%; border-radius: 9999px; transition: width 0.3s ease-in-out; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
+
+        /* User Switcher Hover Effect */
+        #user-status-container { @apply cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors border border-transparent hover:border-gray-200; }
+
+        /* Pagination Controls */
+        .pagination-btn { @apply px-3 py-1 border rounded bg-white text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium; }
+        .pagination-info { @apply text-sm text-gray-600 font-mono mx-2; }
+
+        /* RFID Input Focus Animation */
+        .rfid-listening { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+        
+        /* Scan Flash Animation */
+        @keyframes flash-green { 0% { background-color: #dcfce7; } 100% { background-color: white; } }
+        .scan-success { animation: flash-green 1s ease-out; }
     </style>
 </head>
-<body class="text-slate-800 h-screen w-screen flex flex-col md:flex-row">
+<body class="bg-slate-50">
 
-    <input id="rfidHiddenInput" type="text" class="absolute opacity-0 -z-10 h-0 w-0" autocomplete="off">
-
-    <!-- Sidebar -->
-    <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white border-r border-slate-800 z-20 shadow-xl">
-        <div class="p-6 flex items-center gap-3 border-b border-slate-800">
-            <div class="bg-blue-500 p-2 rounded-lg"><i class="ph ph-wrench text-xl text-white"></i></div>
-            <h1 class="text-lg font-bold tracking-wide">設備資產盤點</h1>
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 flex flex-col items-center justify-center z-[100]">
+        <div class="spinner"></div>
+        <p id="loading-text" class="mt-4 text-slate-600 font-bold">系統載入中，正在同步資料...</p>
+        <div id="loading-status-details" class="mt-2 text-xs text-slate-400 space-y-1">
+            <!-- 詳細載入狀態將由 JS 插入 -->
         </div>
-        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-1">
-            <button id="nav-inventory" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 text-white shadow-md transition-colors"><i class="ph ph-list-dashes text-xl"></i><span class="font-medium">設備總覽</span></button>
-            <button id="nav-rfid" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"><i class="ph ph-wifi-high text-xl"></i><span class="font-medium">RFID 作業</span></button>
-        </nav>
-        <div class="p-4 border-t border-slate-800"><div class="flex items-center gap-3 px-4 py-2"><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300" id="user-avatar">U</div><div><p class="text-sm font-medium text-white" id="current-user-display">使用者</p><p class="text-xs text-slate-500">已連線</p></div></div></div>
-    </aside>
+        <button id="reload-btn" onclick="window.location.reload()" class="mt-6 bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-300 hidden">
+            網路連線緩慢？點擊重新整理
+        </button>
+    </div>
 
-    <!-- Main Content -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-6 shadow-sm z-10 shrink-0 gap-2">
-            <div class="flex items-center gap-2 md:gap-4 flex-1">
-                <div class="md:hidden bg-blue-600 p-1.5 rounded text-white shrink-0"><i class="ph ph-wrench text-lg"></i></div>
+    <!-- 登入/切換使用者 Modal -->
+    <div id="user-switch-modal" class="fixed inset-0 bg-slate-900 bg-opacity-95 flex items-center justify-center p-4 z-[150] hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full">
+            <div class="flex justify-end">
+                <button onclick="document.getElementById('user-switch-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-slate-800">切換使用者</h1>
+                <p class="text-slate-500 mt-2">請選擇您的身分</p>
+            </div>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">使用者</label>
+                    <select id="login-user-select" class="form-select w-full p-3 border border-gray-300 rounded-xl text-lg bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                        <option value="guest" selected>👤 訪客 (僅供檢視)</option>
+                        <!-- 使用者列表將由 JS 動態載入 -->
+                    </select>
+                </div>
                 
-                <!-- Desktop Search Bar -->
-                <div id="top-search-bar" class="hidden md:flex items-center gap-2 w-full max-w-lg">
-                    <select id="globalSearchField" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 w-28 shrink-0 cursor-pointer shadow-sm">
-                        <option value="name" selected>設備名稱</option>
-                        <option value="all">全部欄位</option>
-                        <option value="assetNumber">資產編號</option>
-                        <option value="category">分類</option>
-                    </select>
-                    <div class="relative w-full group">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="ph ph-magnifying-glass text-slate-400"></i>
-                        </div>
-                        <input type="text" id="globalSearchInput" class="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg leading-5 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition duration-150 ease-in-out sm:text-sm shadow-sm" placeholder="搜尋設備...">
-                    </div>
-                </div>
+                <button onclick="window.app.handleLogin()" class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl text-lg hover:bg-indigo-700 shadow-lg transform transition hover:scale-[1.02]">
+                    確認切換
+                </button>
             </div>
-            
-            <div class="flex items-center gap-2 md:gap-3 shrink-0">
-                <button class="md:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg" onclick="document.getElementById('mobileSearchPanel').classList.toggle('hidden')"><i class="ph ph-magnifying-glass text-xl"></i></button>
-                <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-                <!-- QR Code Button (Backup) -->
-                <button id="topScanBtn" class="bg-slate-700 hover:bg-slate-800 text-white p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"><i class="ph ph-qr-code text-lg"></i><span class="hidden md:inline font-medium text-sm">QR 掃描</span></button>
-                <button id="topAddBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"><i class="ph ph-plus text-lg"></i><span class="hidden md:inline font-medium text-sm">新增設備</span></button>
-            </div>
-        </header>
-
-        <!-- Mobile Search Panel -->
-        <div id="mobileSearchPanel" class="hidden md:hidden bg-white p-4 border-b border-slate-200 absolute top-16 left-0 right-0 z-10 shadow-md flex gap-2">
-            <select id="mobileSearchField" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 w-28 shrink-0">
-                 <option value="name" selected>名稱</option>
-                 <option value="all">全部</option>
-                 <option value="assetNumber">資產編號</option>
-            </select>
-            <input type="text" id="mobileSearchInput" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="搜尋...">
+            <p class="text-center text-xs text-slate-400 mt-6">資產盤點系統 v1.2 (Strict Load)</p>
         </div>
-
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 no-scrollbar" id="main-scroll-area">
-            <div id="page-header-inventory" class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div><h2 class="text-2xl font-bold text-slate-800">設備總覽</h2><p class="text-slate-500 text-sm mt-1">管理與追蹤全廠資產狀態</p></div>
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <select id="categoryFilter" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full md:w-48 p-2.5">
-                        <option value="all">所有分類</option>
-                    </select>
-                     <select id="statusFilter" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full md:w-36 p-2.5">
-                        <option value="all">所有狀態</option>
-                        <option value="使用中">使用中</option>
-                        <option value="維修中">維修中</option>
-                        <option value="未使用">未使用</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div id="loader" class="flex flex-col items-center justify-center py-20 text-slate-500">
-                <i class="ph ph-spinner animate-spin text-4xl text-blue-600 mb-3"></i>
-                <p id="loader-text" class="font-medium animate-pulse">正在初始化系統...</p>
-                <p class="text-xs text-slate-400 mt-2">首次載入可能需要較長時間建立連線</p>
-            </div>
-
-            <!-- Inventory List View -->
-            <div id="content-area-inventory" class="hidden pb-20"> 
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-600">
-                            <thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th class="px-6 py-4">設備名稱</th>
-                                    <th class="px-6 py-4">資產編號</th>
-                                    <th class="px-6 py-4">分類</th>
-                                    <th class="px-6 py-4">現況</th>
-                                    <th class="px-6 py-4">RFID</th>
-                                    <th class="px-6 py-4 text-right">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventory-table-body" class="divide-y divide-slate-100"></tbody>
-                        </table>
-                    </div>
-                    <div id="list-empty-state" class="hidden p-10 text-center text-slate-500">
-                        <i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i>
-                        <p>沒有符合條件的設備</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RFID View -->
-            <div id="content-area-rfid" class="hidden h-full flex flex-col pb-20">
-                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-wifi-high text-purple-600"></i> RFID 作業中心</h2>
-                        <p class="text-slate-500 text-sm mt-1">請確保 RFID 讀取器已連接 (HID 模式)</p>
-                    </div>
-                    <div class="bg-slate-200 p-1 rounded-lg flex text-sm font-medium">
-                        <button id="rfid-mode-search" class="px-4 py-1.5 rounded-md bg-white text-purple-700 shadow-sm transition-all" onclick="switchRfidMode('search')"><i class="ph ph-magnifying-glass"></i> 搜尋</button>
-                        <button id="rfid-mode-bind" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('bind')"><i class="ph ph-link"></i> 綁定</button>
-                        <button id="rfid-mode-stocktake" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('stocktake')"><i class="ph ph-clipboard-text"></i> 盤點</button>
-                    </div>
-                </div>
-
-                <!-- RFID Status Card -->
-                <div id="rfid-status-card" class="bg-white rounded-xl p-6 border-2 border-slate-200 cursor-pointer hover:border-purple-300 transition mb-6 shadow-sm flex items-center gap-4 relative overflow-hidden group">
-                    <div id="rfid-status-icon-bg" class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform"><i class="ph ph-barcode text-3xl"></i></div>
-                    <div class="flex-1">
-                        <h3 id="rfid-status-title" class="text-lg font-bold text-slate-700">掃描器未就緒</h3>
-                        <p id="rfid-status-desc" class="text-slate-500 text-sm">點擊此區域以啟用 RFID 接收模式</p>
-                    </div>
-                    <div class="text-xs text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded border">HID Mode</div>
-                </div>
-
-                <!-- Mode 1: Search -->
-                <div id="rfid-view-search" class="flex-1 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                    <i class="ph ph-wifi-high text-6xl mb-4 opacity-20"></i>
-                    <p class="text-lg font-medium">等待掃描...</p>
-                    <p class="text-sm">直接掃描標籤以檢視設備詳情</p>
-                </div>
-
-                <!-- Mode 2: Bind -->
-                <div id="rfid-view-bind" class="hidden flex-1 flex flex-col md:flex-row gap-6 h-full overflow-hidden">
-                    <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 bg-slate-50">
-                            <h3 class="font-bold text-slate-700 mb-2">1. 選擇未綁定設備</h3>
-                            <input type="text" id="bind-search-input" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" placeholder="輸入設備名稱或資產編號...">
-                        </div>
-                        <div id="unbound-list" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
-                    </div>
-                    <div class="flex-1 bg-purple-50 rounded-xl border border-purple-100 flex flex-col items-center justify-center p-6 text-center">
-                        <div id="bind-step-2-inactive" class="opacity-50">
-                            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 mx-auto shadow-sm"><i class="ph ph-arrow-left text-3xl text-purple-300"></i></div>
-                            <h3 class="font-bold text-purple-900 text-lg">2. 等待選擇</h3>
-                            <p class="text-purple-600 text-sm mt-1">請先從左側選擇一個設備</p>
-                        </div>
-                        <div id="bind-step-2-active" class="hidden w-full">
-                            <div class="bg-white p-6 rounded-xl shadow-lg border-2 border-purple-200 mb-6 max-w-sm mx-auto rfid-focus-ring">
-                                <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">正在綁定</h4>
-                                <h2 id="bind-target-name" class="text-2xl font-bold text-purple-700 mb-2">設備名稱</h2>
-                                <p id="bind-target-id" class="text-slate-500 font-mono text-sm bg-slate-100 py-1 px-2 rounded inline-block">ID</p>
-                            </div>
-                            <div class="animate-pulse">
-                                <i class="ph ph-wifi-high text-5xl text-purple-500 mb-2"></i>
-                                <p class="font-bold text-purple-800">請掃描新的 RFID 標籤</p>
-                                <button onclick="resetBindSelection()" class="mt-4 text-sm text-slate-400 hover:text-slate-600 underline">取消選取</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Mode 3: Stocktake (Category Based) -->
-                <div id="rfid-view-stocktake" class="hidden flex-1 flex flex-col h-full overflow-hidden bg-white rounded-xl shadow-sm border border-slate-200">
-                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap gap-4 items-end">
-                        <div class="flex-1">
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">選擇盤點範圍 (分類)</label>
-                            <select id="stocktake-category" class="w-full md:w-64 px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white font-medium">
-                                <option value="">請選擇分類...</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="startStocktake()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition flex items-center gap-2"><i class="ph ph-play"></i> 開始盤點</button>
-                            <button onclick="resetStocktake()" class="bg-white text-slate-600 px-4 py-2 rounded-lg text-sm font-bold border border-slate-300 hover:bg-slate-50 transition">重置</button>
-                        </div>
-                    </div>
-                    <div class="flex border-b border-slate-200 divide-x divide-slate-100 bg-white">
-                        <div class="flex-1 p-3 text-center">
-                            <div class="text-xs text-slate-500">應盤數量</div>
-                            <div id="st-count-expected" class="text-xl font-bold text-slate-800">0</div>
-                        </div>
-                        <div class="flex-1 p-3 text-center bg-green-50">
-                            <div class="text-xs text-green-600 font-bold">已盤 (相符)</div>
-                            <div id="st-count-scanned" class="text-xl font-bold text-green-700">0</div>
-                        </div>
-                        <div class="flex-1 p-3 text-center bg-red-50">
-                            <div class="text-xs text-red-600 font-bold">異常 (非此分類/未知)</div>
-                            <div id="st-count-error" class="text-xl font-bold text-red-700">0</div>
-                        </div>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-0 bg-slate-50 relative">
-                        <div id="stocktake-list" class="divide-y divide-slate-200">
-                            <div class="p-8 text-center text-slate-400">
-                                <i class="ph ph-clipboard-text text-4xl mb-2 opacity-30"></i>
-                                <p>請選擇分類並點擊「開始盤點」</p>
-                                <p class="text-xs mt-2 text-slate-300">支援「全部分類」總盤點</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Bottom Mobile Nav -->
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center h-16 z-30 pb-safe">
-            <button id="mobile-nav-inventory" class="flex flex-col items-center justify-center w-full h-full text-blue-600">
-                <i class="ph ph-list-dashes text-2xl"></i><span class="text-[10px] font-medium mt-1">設備</span>
-            </button>
-            <button id="mobile-nav-rfid" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-purple-600">
-                <i class="ph ph-wifi-high text-2xl"></i><span class="text-[10px] font-medium mt-1">RFID</span>
-            </button>
-             <button id="mobile-nav-add" class="flex flex-col items-center justify-center w-full h-full -mt-6">
-                <div class="bg-blue-600 rounded-full p-4 shadow-lg text-white transform hover:scale-105 transition"><i class="ph ph-plus text-2xl"></i></div>
-            </button>
-            <button id="mobile-nav-scan" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-slate-600">
-                <i class="ph ph-qr-code text-2xl"></i><span class="text-[10px] font-medium mt-1">QR</span>
-            </button>
-        </nav>
     </div>
 
-    <!-- Modals -->
+    <!-- App Container (User Mode) -->
+    <div id="app-container" class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8 hidden">
+        <!-- Main Content -->
+        <div class="flex justify-between items-center mb-6">
+            <div id="user-status-container" onclick="window.app.showUserSwitchModal()" title="點擊切換使用者">
+                <div id="logged-in-view" class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                        <span id="user-avatar-text">訪</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="flex items-center">
+                            <strong id="logged-in-name" class="text-slate-700 text-sm">訪客</strong>
+                            <span id="role-badge" class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-gray-200 text-gray-700">訪客</span>
+                        </div>
+                        <span class="text-[10px] text-indigo-500 cursor-pointer">切換使用者</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <!-- 新增：RFID 開關按鈕 -->
+                <button id="rfid-toggle-btn" onclick="window.app.toggleRfidListener()" class="hidden sm:flex items-center text-xs font-bold bg-green-100 text-green-700 border border-green-200 px-3 py-1 rounded-full hover:bg-green-200 transition-colors" title="點擊暫停/開啟 RFID 監聽">
+                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" id="rfid-status-dot"></span>
+                    <span id="rfid-status-text">監聽中</span>
+                </button>
+                <button id="toggle-mode-btn" onclick="window.app.toggleManagementMode()" class="bg-slate-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-slate-800 text-sm hidden">⚙️ 管理後台</button>
+            </div>
+        </div>
+
+        <!-- 盤點模式 (User Mode) -->
+        <div id="user-mode">
+            <header class="mb-6 border-b pb-4">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-800 flex items-center">
+                            📦 資產盤點系統
+                        </h1>
+                        <p class="text-slate-500 mt-1 text-sm">請使用 RFID 掃描槍進行盤點 (一物一碼)</p>
+                    </div>
+                    <div class="text-right">
+                         <label class="text-xs font-bold text-slate-500 block mb-1">當前盤點場次</label>
+                         <input type="month" id="inventory-session-select" class="border rounded p-1 text-sm font-bold text-indigo-700 bg-white" onchange="window.app.changeInventorySession()">
+                    </div>
+                </div>
+                <p class="text-red-500 font-bold hidden guest-warning mt-2 text-sm bg-red-50 p-2 rounded">⚠️ 訪客模式：僅供檢視，無法執行盤點寫入</p>
+            </header>
+
+            <!-- 盤點儀表板 -->
+            <div id="inventory-dashboard" class="space-y-6">
+                
+                <!-- 統計卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="card p-4 border-l-4 border-slate-500">
+                        <p class="text-xs text-slate-500 font-bold uppercase">應盤資產總數</p>
+                        <p id="total-assets-count" class="text-3xl font-bold text-slate-700 mt-1">0</p>
+                    </div>
+                    <div class="card p-4 border-l-4 border-green-500 bg-green-50">
+                        <p class="text-xs text-green-600 font-bold uppercase">已盤點數量</p>
+                        <p id="counted-assets-count" class="text-3xl font-bold text-green-700 mt-1">0</p>
+                    </div>
+                    <div class="card p-4 border-l-4 border-red-500">
+                        <p class="text-xs text-red-500 font-bold uppercase">未盤點數量</p>
+                        <p id="uncounted-assets-count" class="text-3xl font-bold text-red-700 mt-1">0</p>
+                    </div>
+                </div>
+
+                <!-- 進度條 -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-slate-700">盤點進度</h3>
+                        <span id="progress-percentage" class="text-indigo-600 font-bold">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div id="main-progress-bar" class="progress-bar-fill bg-indigo-600" style="width: 0%">0%</div>
+                    </div>
+                </div>
+
+                <!-- 掃描回饋區 (最新掃描) -->
+                <div id="last-scan-feedback" class="hidden p-4 rounded-lg border-2 border-green-500 bg-green-50 text-center transition-all">
+                    <p class="text-green-800 text-sm font-bold mb-1">掃描成功！</p>
+                    <p id="last-scan-name" class="text-2xl font-bold text-slate-800">設備名稱</p>
+                    <p id="last-scan-id" class="text-xs text-slate-500 font-mono mt-1">ID: ...</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 已盤清單 -->
+                    <div class="card p-0 overflow-hidden h-96 flex flex-col">
+                        <div class="p-3 bg-green-100 border-b border-green-200 flex justify-between items-center">
+                            <h3 class="font-bold text-green-800">✅ 已盤點清單 (最新 20 筆)</h3>
+                            <span id="counted-list-badge" class="bg-white text-green-600 px-2 py-0.5 rounded text-xs font-bold">0</span>
+                        </div>
+                        <div id="counted-list-container" class="flex-1 overflow-y-auto p-2 space-y-2 bg-white">
+                            <p class="text-center text-gray-400 text-sm mt-4">尚無盤點紀錄</p>
+                        </div>
+                    </div>
+
+                    <!-- 未盤清單 -->
+                    <div class="card p-0 overflow-hidden h-96 flex flex-col">
+                        <div class="p-3 bg-red-100 border-b border-red-200 flex justify-between items-center">
+                            <h3 class="font-bold text-red-800">❌ 未盤點清單</h3>
+                            <div class="flex gap-2">
+                                <select id="uncounted-category-filter" onchange="window.app.renderUncountedList()" class="text-xs border rounded p-1"><option value="ALL">全部分類</option></select>
+                                <span id="uncounted-list-badge" class="bg-white text-red-600 px-2 py-0.5 rounded text-xs font-bold">0</span>
+                            </div>
+                        </div>
+                        <div id="uncounted-list-container" class="flex-1 overflow-y-auto p-2 space-y-2 bg-white">
+                            <p class="text-center text-gray-400 text-sm mt-4">載入中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理後台 (Admin Mode) -->
+        <div id="admin-mode" class="hidden">
+            <header class="mb-6"><h1 class="text-4xl font-bold text-slate-800">管理後台</h1></header>
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="flex -mb-px space-x-4 overflow-x-auto text-sm font-medium">
+                    <button onclick="window.app.switchAdminTab('equipment')" id="tab-equipment" class="px-1 py-3 border-b-2 admin-tab-active">設備管理 & RFID 綁定</button>
+                    <button onclick="window.app.switchAdminTab('users')" id="tab-users" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">人員管理</button>
+                    <button onclick="window.app.switchAdminTab('inventoryHistory')" id="tab-inventoryHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">盤點歷史紀錄</button>
+                </nav>
+            </div>
+            
+            <div id="admin-tab-content-equipment">
+                <div id="equipment-list-section">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-slate-800">設備列表 (含 RFID 綁定)</h2>
+                        <button onclick="window.app.showEditor()" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 shadow-sm action-add">新增設備</button>
+                    </div>
+                    <div id="equipment-category-tabs" class="mb-6"></div>
+                    <div id="equipment-list-container"></div>
+                </div>
+                
+                <!-- 設備編輯器 (簡化版，移除點檢排程等) -->
+                <div id="equipment-editor-section" class="hidden card p-6">
+                    <h2 id="editor-title" class="text-2xl font-semibold mb-6 text-slate-800">編輯設備</h2>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-medium text-slate-500">設備編號 (ID)</label><input type="text" id="edit-device-id" class="w-full p-2 border rounded"></div>
+                            <div><label class="block text-xs font-medium text-slate-500">設備名稱</label><input type="text" id="edit-device-name" class="w-full p-2 border rounded"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-medium text-slate-500">設備區分</label><select id="edit-device-category-select" class="w-full p-2 border rounded mb-2"></select><input type="text" id="edit-device-category-new" class="w-full p-2 border rounded hidden" placeholder="輸入新分類..."></div>
+                            <div><label class="block text-xs font-medium text-slate-500">放置地點</label><input type="text" id="edit-device-location" class="w-full p-2 border rounded"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-medium text-slate-500">資產編號</label><input type="text" id="edit-device-asset" class="w-full p-2 border rounded"></div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500">現況</label>
+                                <select id="edit-device-status" class="w-full p-2 border rounded form-select">
+                                    <option value="使用中">使用中</option>
+                                    <option value="維修中">維修中</option>
+                                    <option value="未使用">未使用</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div><label class="block text-xs font-medium text-slate-500 mb-2">設備圖片</label><div class="flex items-center gap-4"><img id="image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border"><button type="button" onclick="document.getElementById('edit-device-image').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50">📷 拍照 / 上傳</button><input type="file" id="edit-device-image" accept="image/*" class="hidden" onchange="window.app.handleImageUpload(this)"></div></div>
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button onclick="window.app.showList()" class="bg-slate-200 py-2 px-4 rounded">取消</button>
+                        <button onclick="window.app.saveEquipment(this)" class="bg-indigo-600 text-white py-2 px-4 rounded">儲存變更</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="admin-tab-content-users" class="hidden">
+                 <div class="flex justify-between items-center mb-4"><h2 class="text-2xl font-semibold">人員列表</h2><button onclick="window.app.showUserEditor()" class="bg-indigo-600 text-white px-4 py-2 rounded action-add">新增</button></div>
+                <div id="user-list-container" class="space-y-2"></div>
+                <div id="user-editor-section" class="hidden card p-6">
+                    <h2 id="user-editor-title" class="text-xl font-bold mb-4">編輯人員</h2>
+                    <div class="space-y-3"><input type="text" id="edit-user-id" placeholder="ID" class="w-full p-2 border rounded"><input type="text" id="edit-user-name" placeholder="姓名" class="w-full p-2 border rounded"><select id="edit-user-role" class="w-full p-2 border rounded"><option value="operator">操作員</option><option value="manager">管理員</option></select><input type="password" id="edit-user-password" placeholder="密碼 (管理員必填)" class="w-full p-2 border rounded hidden"></div>
+                    <div class="flex justify-end gap-2 mt-4"><button onclick="window.app.showUserList()" class="bg-gray-200 px-4 py-2 rounded">取消</button><button onclick="window.app.saveUser(this)" class="bg-indigo-600 text-white px-4 py-2 rounded">儲存</button></div>
+                </div>
+            </div>
+
+             <div id="admin-tab-content-inventoryHistory" class="hidden">
+                <h2 class="text-2xl font-semibold mb-4">盤點歷史紀錄 (所有紀錄)</h2>
+                <div id="inventory-history-log-container"></div>
+             </div>
+        </div>
+    </div>
     
-    <!-- Add/Edit Device Modal -->
-    <div id="deviceModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 modal-content modal-content-hidden flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center p-5 border-b border-slate-100">
-                <h3 class="text-xl font-bold text-slate-800" id="deviceModalTitle">新增設備</h3>
-                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-2xl"></i></button>
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-modal" class="fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center p-4 z-[200] hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full transform transition-all scale-100">
+            <div class="mb-4">
+                <h3 class="text-xl font-bold text-slate-900 text-center mb-2">確認操作</h3>
+                <p id="custom-confirm-msg" class="text-sm text-slate-500 text-center">確定要執行此操作嗎？</p>
             </div>
-            <div class="p-6 overflow-y-auto">
-                <form id="device-form" class="space-y-5">
-                    <input type="hidden" id="editDeviceId">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">設備名稱 <span class="text-red-500">*</span></label>
-                        <input type="text" id="inputName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: 電動堆高機 A01">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">資產編號 / 財產編號</label>
-                        <input type="text" id="inputAssetNumber" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="例如: AS-2023-001">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">分類 (Category)</label>
-                            <div class="relative">
-                                <input type="text" id="inputCategory" list="categoryList" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                                <datalist id="categoryList"></datalist>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">現況 (Status)</label>
-                            <select id="inputStatus" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                                <option value="使用中">使用中</option>
-                                <option value="維修中">維修中</option>
-                                <option value="未使用">未使用</option>
-                                <option value="報廢">報廢</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex justify-end pt-4 gap-3">
-                        <button type="button" class="close-modal-btn px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50">取消</button>
-                        <button type="submit" class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition">儲存設備</button>
-                    </div>
-                </form>
+            <div class="flex flex-col gap-2 sm:flex-row-reverse">
+                <button id="custom-confirm-btn-yes" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 sm:w-auto sm:text-sm">確定</button>
+                <button onclick="window.app.closeConfirmModal()" class="w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:w-auto sm:text-sm">取消</button>
             </div>
         </div>
     </div>
 
-    <!-- Details Modal -->
-    <div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 modal-content modal-content-hidden flex flex-col">
-            <div class="p-4 border-b flex justify-between">
-                <h3 class="font-bold text-lg">設備詳情</h3>
-                <button class="close-modal-btn"><i class="ph ph-x text-xl"></i></button>
+    <!-- RFID Binding Modal -->
+    <div id="rfid-bind-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-[160] hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-6">
+                <svg class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
             </div>
-            <div id="detailContent" class="p-6 space-y-4">
-                <!-- Content injected via JS -->
-            </div>
-            <div class="p-4 border-t bg-slate-50 flex justify-end gap-2" id="detailFooter">
-                <!-- Buttons injected via JS -->
-            </div>
-        </div>
-    </div>
-
-    <!-- QR Scanner Modal -->
-    <div id="qrScannerModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-4 modal-content modal-content-hidden flex flex-col relative overflow-hidden">
-            <div class="flex justify-between items-center mb-4 shrink-0">
-                <h3 class="text-lg font-bold">掃描 QR Code</h3>
-                <button class="close-scanner-btn text-slate-500"><i class="ph ph-x text-xl"></i></button>
-            </div>
-            <div class="relative w-full aspect-square rounded-lg overflow-hidden bg-black">
-                <div id="qr-reader" class="w-full h-full"></div>
-                <div class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
-                    <div class="w-2/3 h-2/3 border-2 border-white/40 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-                        <div class="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-blue-500 -mt-1 -ml-1 rounded-tl-sm"></div>
-                        <div class="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-blue-500 -mt-1 -mr-1 rounded-tr-sm"></div>
-                        <div class="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-blue-500 -mb-1 -ml-1 rounded-bl-sm"></div>
-                        <div class="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-blue-500 -mb-1 -mr-1 rounded-br-sm"></div>
-                        <div class="scan-line"></div>
-                    </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">RFID 綁定模式</h2>
+            <p class="text-slate-500 mb-6">正在為 <span id="bind-target-name" class="font-bold text-indigo-600">設備</span> 綁定標籤</p>
+            
+            <div class="bg-slate-100 p-4 rounded-lg mb-6 relative">
+                <p class="text-sm text-slate-500 mb-2">請使用 RFID 掃描槍掃描標籤...</p>
+                <input type="text" id="rfid-bind-input" class="w-full p-3 border-2 border-slate-300 rounded-lg text-center font-mono font-bold text-xl focus:border-indigo-500 outline-none" placeholder="等待掃描..." autocomplete="off">
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                     <span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-indigo-400 opacity-75 right-4"></span>
                 </div>
             </div>
-            <p class="text-center text-sm text-slate-500 mt-4">對準設備上的 QR Code 即可搜尋</p>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="notification-toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl z-[70] transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3">
-        <i class="ph ph-info text-blue-400 text-lg"></i>
-        <span id="notification-message" class="font-medium">Notification</span>
-    </div>
-
-    <!-- Confirmation Modal -->
-    <div id="confirmationModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden">
-        <div class="bg-white rounded-xl shadow-lg w-80 p-6 modal-content modal-content-hidden">
-            <h3 id="confirmationTitle" class="font-bold text-lg mb-2">確認</h3>
-            <p id="confirmationMessage" class="text-slate-600 mb-4">Content</p>
-            <div class="flex justify-end gap-2">
-                <button id="confirmCancelBtn" class="px-4 py-2 bg-slate-100 rounded text-slate-600">取消</button>
-                <button id="confirmActionBtn" class="px-4 py-2 bg-red-600 text-white rounded">確認</button>
+            
+            <div class="flex gap-3 justify-center">
+                <button onclick="window.app.closeBindModal()" class="px-6 py-2 bg-slate-200 rounded-lg text-slate-700 font-bold hover:bg-slate-300">取消</button>
+                <button onclick="window.app.confirmBind()" class="px-6 py-2 bg-indigo-600 rounded-lg text-white font-bold hover:bg-indigo-700">手動確認</button>
             </div>
         </div>
     </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[210] space-y-3 w-full max-w-xs"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, collection, addDoc, serverTimestamp, deleteDoc, query, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, updateDoc, Timestamp, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Config updated by user
-        const firebaseConfig = {
-            apiKey: "AIzaSyDPpMCssbitCn2wE7WEqefL2czjIsRuyBw",
-            authDomain: "checklist-20250825.firebaseapp.com",
-            databaseURL: "https://checklist-20250825-default-rtdb.firebaseio.com",
-            projectId: "checklist-20250825",
-            storageBucket: "checklist-20250825.firebasestorage.app",
-            messagingSenderId: "899658463753",
-            appId: "1:899658463753:web:71819671db2cdf6bf4d6d8",
-            measurementId: "G-FH3F97BZ7F"
+        let equipmentDatabase = {}, userDatabase = {}, rfidBindings = {}, inventoryRecords = [];
+        let loggedInUser = null;
+        let currentInventorySession = ""; // YYYY-MM
+        let bindTargetId = null; // 當前正在綁定的設備 ID
+        let isRfidEnabled = true; // 新增：RFID 開關狀態
+
+        // 嚴格載入模式狀態 (New)
+        let dataSyncStatus = {
+            users: false,
+            equipment: false,
+            bindings: false
         };
+        let isAppReady = false;
+
+        // RFID Buffer
+        let rfidBuffer = "";
+        let rfidTimer = null;
+        const RFID_TIMEOUT = 100; // ms
+
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded shadow-lg text-white font-bold transition-opacity duration-500 opacity-0 transform translate-y-2 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => { toast.classList.remove('opacity-0', 'translate-y-2'); });
+            setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => { if (container.contains(toast)) { container.removeChild(toast); } }, 500); }, 3000);
+        };
+
+        window.app = {}; 
         
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        
-        // 2. 改回最標準的初始化方式，不強制使用長輪詢
-        const db = getFirestore(app);
-
-        // State Variables
-        let currentPage = 'inventory'; 
-        let equipmentInventory = [];
-        let html5QrCode = null; 
-        let isScannerRunning = false; 
-        let rfidMode = 'search'; 
-        let bindTargetId = null;
-        let isRfidFocused = false;
-        let pendingConfirmCallback = null;
-        
-        // Stocktake State
-        let stocktakeState = { 
-            active: false, 
-            targetCategory: null, 
-            expectedItems: [], 
-            scannedItems: new Set(), 
-            intruders: [] 
+        // --- 新增：RFID 開關邏輯 ---
+        window.app.toggleRfidListener = function() {
+            isRfidEnabled = !isRfidEnabled;
+            const btn = document.getElementById('rfid-toggle-btn');
+            const dot = document.getElementById('rfid-status-dot');
+            const text = document.getElementById('rfid-status-text');
+            
+            if (isRfidEnabled) {
+                // 開啟狀態
+                btn.classList.remove('bg-red-100', 'text-red-700', 'border-red-200', 'hover:bg-red-200');
+                btn.classList.add('bg-green-100', 'text-green-700', 'border-green-200', 'hover:bg-green-200');
+                dot.classList.remove('bg-red-500');
+                dot.classList.add('bg-green-500', 'animate-pulse');
+                text.textContent = "監聽中";
+                showToast("RFID 監聽已開啟", "success");
+            } else {
+                // 暫停狀態
+                btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-200', 'hover:bg-green-200');
+                btn.classList.add('bg-red-100', 'text-red-700', 'border-red-200', 'hover:bg-red-200');
+                dot.classList.remove('bg-green-500', 'animate-pulse');
+                dot.classList.add('bg-red-500');
+                text.textContent = "已暫停";
+                showToast("RFID 監聽已暫停", "info");
+            }
+            // 點擊後失焦，避免 Enter 觸發
+            btn.blur();
         };
 
-        const dom = {
-            contentInventory: document.getElementById('content-area-inventory'),
-            contentRfid: document.getElementById('content-area-rfid'),
-            navInv: document.getElementById('nav-inventory'),
-            navRfid: document.getElementById('nav-rfid'),
-            mobileNavInv: document.getElementById('mobile-nav-inventory'),
-            mobileNavRfid: document.getElementById('mobile-nav-rfid'),
-            rfidStatusCard: document.getElementById('rfid-status-card'),
-            rfidStatusIconBg: document.getElementById('rfid-status-icon-bg'),
-            rfidStatusTitle: document.getElementById('rfid-status-title'),
-            rfidStatusDesc: document.getElementById('rfid-status-desc'),
-            rfidViewSearch: document.getElementById('rfid-view-search'),
-            rfidViewBind: document.getElementById('rfid-view-bind'),
-            rfidViewStocktake: document.getElementById('rfid-view-stocktake'),
-            rfidBtnSearch: document.getElementById('rfid-mode-search'),
-            rfidBtnBind: document.getElementById('rfid-mode-bind'),
-            rfidBtnStocktake: document.getElementById('rfid-mode-stocktake'),
-            unboundList: document.getElementById('unbound-list'),
-            bindSearchInput: document.getElementById('bind-search-input'),
-            stCategory: document.getElementById('stocktake-category'),
-            stCountExpected: document.getElementById('st-count-expected'),
-            stCountScanned: document.getElementById('st-count-scanned'),
-            stCountError: document.getElementById('st-count-error'),
-            stList: document.getElementById('stocktake-list')
+        // --- RFID Handler (Global Listener) ---
+        // 核心邏輯：HID 模式掃描槍會像鍵盤一樣快速輸入字元並以 Enter 結束
+        document.addEventListener('keydown', (e) => {
+            // 如果是在綁定視窗的 Input，我們讓它自然輸入，然後監聽 Enter
+            if (document.activeElement.id === 'rfid-bind-input') {
+                if (e.key === 'Enter') {
+                    window.app.confirmBind();
+                }
+                return;
+            }
+
+            // 如果是在其他輸入框打字，忽略
+            const activeTag = document.activeElement.tagName;
+            if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+
+            // 檢查全域開關 (Feature 1)
+            if (!isRfidEnabled) return;
+
+            // 開始接收 HID 訊號
+            if (e.key === 'Enter') {
+                if (rfidBuffer.length > 3) { // 假設 Tag 至少 3 碼
+                    // 攔截 Enter 鍵，避免觸發按鈕點擊 (Fix Issue 2)
+                    e.preventDefault();
+                    window.app.handleGlobalScan(rfidBuffer);
+                }
+                rfidBuffer = "";
+            } else {
+                // 過濾非字元鍵 (Shift, Ctrl 等)
+                if (e.key.length === 1) {
+                    rfidBuffer += e.key;
+                    // 如果太久沒輸入下一碼，視為手動打字，清空 Buffer
+                    clearTimeout(rfidTimer);
+                    rfidTimer = setTimeout(() => { rfidBuffer = ""; }, RFID_TIMEOUT);
+                }
+            }
+        });
+
+        // 處理全域掃描 (盤點模式)
+        window.app.handleGlobalScan = async function(code) {
+            // 防呆檢查 (New Feature): 資料尚未準備好，禁止操作
+            if (!isAppReady) {
+                window.app.playErrorSound();
+                showToast("系統載入中，請稍候...", "warning");
+                return;
+            }
+
+            // 必須在 User Mode 且不在 Modal 中
+            const userMode = document.getElementById('user-mode');
+            if (userMode.classList.contains('hidden')) return; // 在管理後台不觸發盤點
+            if (!document.getElementById('user-switch-modal').classList.contains('hidden')) return;
+
+            console.log("Scanned RFID:", code);
+
+            // 1. 查找綁定
+            const binding = rfidBindings[code];
+
+            if (!binding) {
+                window.app.playErrorSound();
+                showToast(`無效標籤: ${code} (未綁定設備)`, "error");
+                return;
+            }
+
+            const eqId = binding.equipmentId;
+            const eq = equipmentDatabase[eqId];
+
+            if (!eq) {
+                window.app.playErrorSound();
+                showToast(`找不到對應設備 (ID: ${eqId})`, "error");
+                return;
+            }
+
+            // 2. 執行盤點寫入 (一物一碼)
+            await window.app.submitInventoryRecord(eq, code);
         };
 
-        const modals = {
-            device: document.getElementById('deviceModal'),
-            detail: document.getElementById('detailModal'),
-            qrScanner: document.getElementById('qrScannerModal'),
-            confirmation: document.getElementById('confirmationModal')
-        };
+        window.app.submitInventoryRecord = async function(eq, rfidCode) {
+            if (loggedInUser.role === 'guest') {
+                window.app.playErrorSound();
+                showToast("訪客無法執行盤點寫入", "error");
+                return;
+            }
 
-        // --- Helpers ---
+            // 檢查本場次是否已盤點過 (避免重複計數，雖然資料庫可以存，但 UI 要提示)
+            const alreadyCounted = inventoryRecords.some(r => r.sessionId === currentInventorySession && r.equipmentId === eq.id);
+            
+            if (alreadyCounted) {
+                window.app.playSuccessSound(true); // Double beep for "Already done"
+                showToast(`重複掃描: ${eq.name}`, "info");
+                window.app.updateLastScanFeedback(eq, "重複盤點");
+                return;
+            }
 
-        function openModal(modal) {
-            modal.classList.remove('modal-hidden');
-            modal.classList.add('modal-visible');
-            modal.querySelector('.modal-content').classList.remove('modal-content-hidden');
-            modal.querySelector('.modal-content').classList.add('modal-content-visible');
-        }
-
-        function closeModal(modal) {
-             if(modal.classList.contains('modal-backdrop')) {
-                modal.querySelector('.modal-content').classList.add('modal-content-hidden');
-                setTimeout(() => {
-                    modal.classList.add('modal-hidden');
-                    modal.classList.remove('modal-visible');
-                }, 300);
-             }
-        }
-        window.closeModal = closeModal;
-
-        function openConfirmation(title, message, callback) {
-            document.getElementById('confirmationTitle').textContent = title;
-            document.getElementById('confirmationMessage').textContent = message;
-            pendingConfirmCallback = callback;
-            openModal(modals.confirmation);
-        }
-
-        function showToast(msg, type = 'info') {
-            const toast = document.getElementById('notification-toast');
-            const msgEl = document.getElementById('notification-message');
-            const iconEl = toast.querySelector('i');
-            msgEl.textContent = msg;
-            if (type === 'success') iconEl.className = 'ph ph-check-circle text-green-400 text-lg';
-            else if (type === 'error') iconEl.className = 'ph ph-x-circle text-red-400 text-lg';
-            else if (type === 'bind') iconEl.className = 'ph ph-link text-purple-400 text-lg';
-            else iconEl.className = 'ph ph-info text-blue-400 text-lg';
-            toast.classList.remove('opacity-0', 'translate-y-10');
-            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-10'), 3000);
-        }
-
-        function playSound(type) {
             try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                const now = ctx.currentTime;
-                if (type === 'success') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
-                    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                    osc.start(now); osc.stop(now + 0.15);
-                } else if (type === 'bind') { 
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now);
-                    gain.gain.setValueAtTime(0.1, now); 
-                    osc.start(now); osc.stop(now + 0.1);
-                    setTimeout(() => {
-                        const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
-                        o2.connect(g2); g2.connect(ctx.destination);
-                        o2.frequency.setValueAtTime(1200, ctx.currentTime);
-                        g2.gain.setValueAtTime(0.1, ctx.currentTime); g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-                        o2.start(); o2.stop(ctx.currentTime + 0.1);
-                    }, 150);
-                } else if (type === 'error') {
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(200, now);
-                    gain.gain.setValueAtTime(0.1, now); osc.start(now); osc.stop(now + 0.3);
+                const record = {
+                    sessionId: currentInventorySession,
+                    equipmentId: eq.id,
+                    equipmentName: eq.name,
+                    rfidCode: rfidCode,
+                    userId: loggedInUser.id,
+                    userName: loggedInUser.name,
+                    timestamp: serverTimestamp(),
+                    scanTimeStr: new Date().toLocaleString()
+                };
+
+                // 寫入 inventory_records
+                await addDoc(getCollectionRef("inventory_records"), record);
+                
+                window.app.playSuccessSound();
+                showToast(`盤點成功: ${eq.name}`, "success");
+                window.app.updateLastScanFeedback(eq, "掃描成功");
+
+            } catch(e) {
+                console.error(e);
+                window.app.playErrorSound();
+                showToast("寫入失敗: " + e.message, "error");
+            }
+        };
+
+        window.app.updateLastScanFeedback = function(eq, statusText) {
+            const box = document.getElementById('last-scan-feedback');
+            document.getElementById('last-scan-name').textContent = eq.name;
+            document.getElementById('last-scan-id').textContent = `ID: ${eq.id} | ${statusText}`;
+            box.classList.remove('hidden', 'bg-green-50', 'bg-yellow-50', 'border-green-500', 'border-yellow-500');
+            
+            // Trigger animation
+            void box.offsetWidth; 
+
+            if (statusText === '重複盤點') {
+                box.classList.add('bg-yellow-50', 'border-yellow-500');
+            } else {
+                box.classList.add('bg-green-50', 'border-green-500', 'scan-success');
+            }
+        };
+
+        window.app.playSuccessSound = function(isRepeat = false) {
+            // Simple oscillator beep
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            if (isRepeat) {
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+                // Second beep
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+                gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.15);
+                osc2.start(ctx.currentTime + 0.15);
+                osc2.stop(ctx.currentTime + 0.25);
+            } else {
+                osc.frequency.setValueAtTime(1200, ctx.currentTime); // High pitch for success
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            }
+        };
+
+        window.app.playErrorSound = function() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, ctx.currentTime); // Low pitch
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        };
+
+        let confirmCallback = null;
+        window.app.confirmAction = function(message, callback) { document.getElementById('custom-confirm-msg').textContent = message; confirmCallback = callback; document.getElementById('custom-confirm-modal').classList.remove('hidden'); document.getElementById('custom-confirm-modal').classList.add('flex'); };
+        window.app.closeConfirmModal = function() { document.getElementById('custom-confirm-modal').classList.add('hidden'); document.getElementById('custom-confirm-modal').classList.remove('flex'); confirmCallback = null; };
+        const confirmBtn = document.getElementById('custom-confirm-btn-yes'); if(confirmBtn) { confirmBtn.onclick = function() { if (confirmCallback) confirmCallback(); window.app.closeConfirmModal(); }; }
+
+        const firebaseConfig = { apiKey: "", authDomain: "checklist-20250825.firebaseapp.com", databaseURL: "https://checklist-20250825-default-rtdb.firebaseio.com", projectId: "checklist-20250825", storageBucket: "checklist-20250825.appspot.com", messagingSenderId: "899658463753", appId: "1:899658463753:web:71819671db2cdf6bf4d6d8", measurementId: "G-FH3F97BZ7F" };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        function getCollectionRef(name) { return collection(db, name); }
+        function getDocRef(colName, docId) { return doc(db, colName, docId); }
+
+        const init = () => {
+            window.app.loginAsGuest();
+            startListeners();
+            // Set default session to current month
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            currentInventorySession = `${yyyy}-${mm}`;
+            const sessionSelect = document.getElementById('inventory-session-select');
+            if(sessionSelect) sessionSelect.value = currentInventorySession;
+            
+            // Timeout Watchdog (New Feature)
+            setTimeout(() => {
+                if (!isAppReady) {
+                    const reloadBtn = document.getElementById('reload-btn');
+                    if (reloadBtn) reloadBtn.classList.remove('hidden');
+                    const loadingText = document.getElementById('loading-text');
+                    if (loadingText) loadingText.textContent = "網路連線緩慢，同步超時";
                 }
-            } catch (e) {}
-        }
+            }, 15000); // 15 seconds
+        };
         
-        async function logAction(action, details) {
-            await addDoc(collection(db, 'inventory_logs'), {
-                action, details, userId: auth.currentUser?.uid || 'anon', timestamp: serverTimestamp()
-            });
-        }
+        // --- Strict Loading Check Logic ---
+        function checkDataReadiness() {
+            const details = document.getElementById('loading-status-details');
+            if(details) {
+                details.innerHTML = `
+                    <p>人員資料: ${dataSyncStatus.users ? '✅' : '⏳'}</p>
+                    <p>設備清單: ${dataSyncStatus.equipment ? '✅' : '⏳'}</p>
+                    <p>RFID 對照表: ${dataSyncStatus.bindings ? '✅' : '⏳'}</p>
+                `;
+            }
 
-        function switchPage(page) {
-            currentPage = page;
-            const activeClass = "bg-blue-600 text-white shadow-md";
-            const inactiveClass = "text-slate-400 hover:text-white hover:bg-slate-800";
-            const mobileActive = "text-blue-600";
-            const mobileInactive = "text-slate-400";
-            const mobileActiveRfid = "text-purple-600";
-
-            dom.navInv.className = `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'inventory' ? activeClass : inactiveClass}`;
-            dom.navRfid.className = `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${page === 'rfid' ? 'bg-purple-600 text-white shadow-md' : inactiveClass}`;
-            dom.mobileNavInv.className = `flex flex-col items-center justify-center w-full h-full ${page === 'inventory' ? mobileActive : mobileInactive}`;
-            dom.mobileNavRfid.className = `flex flex-col items-center justify-center w-full h-full ${page === 'rfid' ? mobileActiveRfid : mobileInactive}`;
-
-            if (page === 'inventory') {
-                dom.contentInventory.classList.remove('hidden');
-                dom.contentRfid.classList.add('hidden');
-                if(window.innerWidth >= 768) document.getElementById('top-search-bar').style.display = 'flex';
-                document.getElementById('page-header-inventory').classList.remove('hidden');
-            } else {
-                dom.contentInventory.classList.add('hidden');
-                dom.contentRfid.classList.remove('hidden');
-                document.getElementById('top-search-bar').style.display = 'none';
-                document.getElementById('page-header-inventory').classList.add('hidden');
-                stopScanner();
-                if (rfidMode === 'bind') renderRfidUnboundList();
-                if (rfidMode === 'stocktake') updateStocktakeDropdown();
-                document.getElementById('rfidHiddenInput').focus();
+            if (dataSyncStatus.users && dataSyncStatus.equipment && dataSyncStatus.bindings) {
+                console.log("All data synced. App Ready.");
+                isAppReady = true;
+                window.app.hideLoading();
             }
         }
-        window.switchPage = switchPage;
 
-        // --- Inventory Logic ---
+        window.app.hideLoading = function() {
+            // 只有當 App Ready 且 已經有登入者 (loginAsGuest 預設會登入) 時，才真正隱藏
+            if (isAppReady && loggedInUser) {
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                // 如果是手動重整且還未切換過使用者，預設會進入 Guest Mode，不需要彈 Modal
+                // 除非想強制第一次顯示 Switch Modal? 目前邏輯是直接進入 App Container
+            }
+        };
+        
+        window.app.changeInventorySession = function() {
+            currentInventorySession = document.getElementById('inventory-session-select').value;
+            window.app.renderInventoryDashboard();
+        };
 
-        function getFilteredInventory() {
-            let query = '';
-            let field = 'name';
+        window.app.loginAsGuest = function() { 
+            loggedInUser = { id: 'guest', name: '訪客', role: 'guest' }; 
+            // 注意：這裡不再隱藏 loading-overlay，而是等待 checkDataReadiness
+            updateUIState(); 
+        };
+        
+        window.app.showUserSwitchModal = function() { document.getElementById('user-switch-modal').classList.remove('hidden'); renderLoginOptions(); };
+        
+        window.app.renderInventoryDashboard = function() {
+            if (!equipmentDatabase) return;
             
-            const desktopInput = document.getElementById('globalSearchInput');
-            const desktopField = document.getElementById('globalSearchField');
-            const mobileInput = document.getElementById('mobileSearchInput');
-            const mobileField = document.getElementById('mobileSearchField');
+            const totalAssetsEl = document.getElementById('total-assets-count');
+            const countedAssetsEl = document.getElementById('counted-assets-count');
+            const uncountedAssetsEl = document.getElementById('uncounted-assets-count');
+            const progressEl = document.getElementById('main-progress-bar');
+            const progressText = document.getElementById('progress-percentage');
+            const countedList = document.getElementById('counted-list-container');
+            
+            // 1. 計算應盤總數 (Active Equipment)
+            const activeEquipments = Object.values(equipmentDatabase).filter(e => e.status !== '未使用'); // 假設"未使用"的不需盤點
+            const total = activeEquipments.length;
+            totalAssetsEl.textContent = total;
 
-            if (window.innerWidth < 768 && mobileInput && mobileInput.value.trim() !== '') {
-                 query = mobileInput.value.toLowerCase().trim();
-                 field = mobileField.value;
-            } else if (desktopInput) {
-                 query = desktopInput.value.toLowerCase().trim();
-                 field = desktopField.value;
+            // 2. 篩選本場次紀錄
+            const sessionRecords = inventoryRecords.filter(r => r.sessionId === currentInventorySession);
+            // Unique Equipment Counted
+            const countedIds = new Set(sessionRecords.map(r => r.equipmentId));
+            const countedCount = countedIds.size;
+            
+            countedAssetsEl.textContent = countedCount;
+            uncountedAssetsEl.textContent = total - countedCount;
+
+            // 3. 進度條
+            const percent = total === 0 ? 0 : Math.round((countedCount / total) * 100);
+            progressEl.style.width = `${percent}%`;
+            progressEl.textContent = `${percent}%`;
+            progressText.textContent = `${percent}%`;
+
+            // 4. 渲染已盤點列表 (最新 20 筆)
+            // Sort by timestamp desc
+            const sortedRecords = [...sessionRecords].sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)).slice(0, 20);
+            
+            document.getElementById('counted-list-badge').textContent = countedCount;
+
+            if (sortedRecords.length === 0) {
+                countedList.innerHTML = '<p class="text-center text-gray-400 text-sm mt-4">尚無盤點紀錄</p>';
+            } else {
+                countedList.innerHTML = sortedRecords.map(r => `
+                    <div class="flex justify-between items-center p-2 border-b last:border-0 hover:bg-slate-50">
+                        <div>
+                            <div class="font-bold text-slate-700 text-sm">${r.equipmentName}</div>
+                            <div class="text-xs text-gray-400 font-mono">${r.rfidCode}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-500">${new Date(r.timestamp?.toDate()).toLocaleTimeString()}</div>
+                            <div class="text-[10px] text-gray-400">${r.userName}</div>
+                        </div>
+                    </div>
+                `).join('');
             }
 
-            const catFilter = document.getElementById('categoryFilter').value;
-            const statFilter = document.getElementById('statusFilter').value;
+            // 5. 渲染未盤點列表 (需配合分類篩選)
+            window.app.renderUncountedList(countedIds);
+        };
 
-            return equipmentInventory.filter(s => {
-                let matchText = false;
-                if (!query) matchText = true;
-                else if (field === 'all') {
-                    matchText = Object.values(s).join(' ').toLowerCase().includes(query);
-                } else {
-                    const val = s[field] ? String(s[field]).toLowerCase() : '';
-                    matchText = val.includes(query);
+        window.app.renderUncountedList = function(countedIdsSet = null) {
+            if (!countedIdsSet) {
+                 const sessionRecords = inventoryRecords.filter(r => r.sessionId === currentInventorySession);
+                 countedIdsSet = new Set(sessionRecords.map(r => r.equipmentId));
+            }
+
+            const container = document.getElementById('uncounted-list-container');
+            const filterCat = document.getElementById('uncounted-category-filter').value;
+            
+            // Populate filter if empty
+            const catFilterEl = document.getElementById('uncounted-category-filter');
+            if (catFilterEl.options.length === 1) {
+                const cats = new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'));
+                cats.forEach(c => catFilterEl.add(new Option(c, c)));
+            }
+
+            const uncounted = Object.values(equipmentDatabase).filter(e => {
+                if (e.status === '未使用') return false;
+                if (countedIdsSet.has(e.id)) return false;
+                if (filterCat !== 'ALL' && (e.category || '未分類') !== filterCat) return false;
+                return true;
+            });
+
+            document.getElementById('uncounted-list-badge').textContent = uncounted.length;
+
+            if (uncounted.length === 0) {
+                 container.innerHTML = '<p class="text-center text-green-500 text-sm mt-4">🎉 該分類已全部盤點完成</p>';
+            } else {
+                container.innerHTML = uncounted.map(e => `
+                    <div class="p-2 border-b last:border-0 hover:bg-slate-50 flex justify-between items-center">
+                        <div>
+                             <div class="font-bold text-slate-700 text-sm">${e.name}</div>
+                             <div class="text-xs text-gray-400">${e.category || '未分類'} | ${e.location || '無地點'}</div>
+                        </div>
+                        <div class="text-xs text-red-400 font-bold">未盤</div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        function startListeners() {
+            onSnapshot(getCollectionRef("users"), (snap) => { 
+                let newData = {}; snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; }); userDatabase = newData; renderLoginOptions(); 
+                const listContainer = document.getElementById('user-list-container');
+                if (listContainer && listContainer.offsetParent) window.app.renderUserList();
+                // Flag ready
+                dataSyncStatus.users = true;
+                checkDataReadiness();
+            });
+            onSnapshot(getCollectionRef("equipment"), (snap) => {
+                let newData = {}; snap.forEach(d => { newData[d.id] = { id: d.id, ...d.data() }; });
+                equipmentDatabase = newData;
+                window.app.renderEquipmentList();
+                window.app.renderInventoryDashboard();
+                // Flag ready
+                dataSyncStatus.equipment = true;
+                checkDataReadiness();
+            });
+            
+            // 監聽 RFID Bindings (方案 B)
+            onSnapshot(getCollectionRef("rfid_bindings"), (snap) => {
+                rfidBindings = {};
+                snap.forEach(d => {
+                    rfidBindings[d.id] = { rfidCode: d.id, ...d.data() };
+                });
+                console.log("RFID Bindings synced:", Object.keys(rfidBindings).length);
+                if (document.getElementById('equipment-list-section').offsetParent) {
+                    window.app.renderEquipmentList();
                 }
-                
-                const matchCat = catFilter === 'all' || s.category === catFilter;
-                const matchStat = statFilter === 'all' || s.status === statFilter;
-                
-                return matchText && matchCat && matchStat;
+                // Flag ready
+                dataSyncStatus.bindings = true;
+                checkDataReadiness();
+            });
+
+            // 監聽 Inventory Records (不強制擋 App Load，因為歷史紀錄可能很大，但通常也很快)
+            onSnapshot(getCollectionRef("inventory_records"), (snap) => {
+                inventoryRecords = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                window.app.renderInventoryDashboard();
+                const historyEl = document.getElementById('admin-tab-content-inventoryHistory');
+                if (historyEl && historyEl.offsetParent) window.app.renderInventoryHistory();
             });
         }
 
-        function renderInventory() {
-            const data = getFilteredInventory();
-            const tbody = document.getElementById('inventory-table-body');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-            const emptyState = document.getElementById('list-empty-state');
+        function renderLoginOptions() { const select = document.getElementById('login-user-select'); if(!select) return; select.innerHTML = '<option value="guest" selected>👤 訪客 (僅供檢視)</option>'; Object.values(userDatabase).forEach(user => { const roleText = user.role === 'manager' ? '👑 管理員' : '🔧 操作員'; select.add(new Option(`${roleText} - ${user.name}`, user.id)); }); }
+        
+        window.app.handleLogin = function() { 
+            const select = document.getElementById('login-user-select'); 
+            const userId = select.value; 
+            if (userId === 'guest') { loggedInUser = { id: 'guest', name: '訪客', role: 'guest' }; } 
+            else { loggedInUser = userDatabase[userId]; } 
             
-            if (data.length === 0) {
-                if(emptyState) emptyState.classList.remove('hidden');
-            } else {
-                if(emptyState) emptyState.classList.add('hidden');
-                data.forEach(s => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors group table-row-hover';
-                    
-                    const hasRfid = !!s.rfid_epc;
-                    
-                    let statusClass = 'status-unused';
-                    if (s.status === '使用中') statusClass = 'status-using';
-                    else if (s.status === '維修中') statusClass = 'status-repair';
+            if (!loggedInUser) return showToast("登入錯誤，請重試", "error"); 
+            document.getElementById('user-switch-modal').classList.add('hidden'); 
+            updateUIState();
+            // 登入後嘗試 hideLoading (如果資料已經 ready)
+            window.app.hideLoading();
+        };
+        
+        window.app.logout = function() { window.app.showUserSwitchModal(); };
+        
+        function updateUIState() { const loggedInName = document.getElementById('logged-in-name'); const roleBadge = document.getElementById('role-badge'); const avatarText = document.getElementById('user-avatar-text'); const toggleBtn = document.getElementById('toggle-mode-btn'); const guestWarning = document.querySelector('.guest-warning'); loggedInName.textContent = loggedInUser.name; avatarText.textContent = loggedInUser.name.charAt(0); document.body.classList.remove('role-guest', 'role-operator', 'role-manager'); document.body.classList.add(`role-${loggedInUser.role}`); let roleName = '訪客'; let roleClass = 'bg-gray-200 text-gray-700'; if (loggedInUser.role === 'manager') { roleName = '管理員'; roleClass = 'bg-purple-100 text-purple-800'; } else if (loggedInUser.role === 'operator') { roleName = '操作員'; roleClass = 'bg-blue-100 text-blue-800'; } roleBadge.textContent = roleName; roleBadge.className = `ml-2 px-1.5 py-0.5 rounded text-[10px] ${roleClass}`; if (loggedInUser.role === 'guest') { if(guestWarning) guestWarning.classList.remove('hidden'); if(toggleBtn) toggleBtn.classList.remove('hidden'); } else { if(guestWarning) guestWarning.classList.add('hidden'); if(toggleBtn) { if (loggedInUser.role === 'operator') { toggleBtn.classList.add('hidden'); } else { toggleBtn.classList.remove('hidden'); } } } document.getElementById('user-mode').classList.remove('hidden'); window.app.renderEquipmentList(); }
+        
+        window.app.toggleManagementMode = function() { 
+            const userMode = document.getElementById('user-mode'); 
+            const adminMode = document.getElementById('admin-mode'); 
+            const btn = document.getElementById('toggle-mode-btn'); 
+            
+            if (loggedInUser.role === 'operator') { return showToast("權限不足：僅管理員可進入管理後台", "error"); } 
+            
+            if (userMode.classList.contains('hidden')) { 
+                userMode.classList.remove('hidden'); 
+                adminMode.classList.add('hidden'); 
+                btn.textContent = "⚙️ 管理後台"; 
+            } else { 
+                userMode.classList.add('hidden'); 
+                adminMode.classList.remove('hidden'); 
+                btn.textContent = "⬅️ 返回盤點"; 
+                window.app.renderEquipmentList(); 
+            }
+            // Fix Issue 2: 移除焦點，避免 Enter 鍵再次觸發此按鈕
+            btn.blur();
+        };
 
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-bold text-slate-900 group-hover:text-blue-600 cursor-pointer nav-detail">${s.name}</td>
-                        <td class="px-6 py-4 font-mono text-slate-500 text-xs">${s.assetNumber || s.id.substring(0,8)}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 rounded bg-slate-100 text-xs text-slate-600 border border-slate-200">${s.category || '未分類'}</span></td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 rounded text-xs font-bold ${statusClass}">${s.status || '未使用'}</span></td>
-                        <td class="px-6 py-4 hidden lg:table-cell">${hasRfid ? '<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 text-xs font-bold"><i class="ph ph-wifi-high"></i> 已綁定</span>' : '<span class="text-slate-300 text-xs">--</span>'}</td>
-                        <td class="px-6 py-4 text-right">
-                            <button class="text-slate-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition btn-detail" title="詳情">
-                                <i class="ph ph-info text-xl"></i>
-                            </button>
-                        </td>`;
-                    
-                    const clickHandler = () => showDeviceDetails(s);
-                    tr.querySelector('.nav-detail').addEventListener('click', clickHandler);
-                    tr.querySelector('.btn-detail').addEventListener('click', clickHandler);
-                    
-                    tbody.appendChild(tr);
+        window.app.switchAdminTab = function(tab) { 
+            document.querySelectorAll('[id^=admin-tab-content]').forEach(d => d.classList.add('hidden')); 
+            document.getElementById(`admin-tab-content-${tab}`).classList.remove('hidden'); 
+            document.querySelectorAll('#admin-mode nav button').forEach(b => {
+                b.classList.remove('admin-tab-active', 'text-indigo-600');
+                // Fix Issue 2: 移除 Nav 按鈕焦點
+                b.blur();
+            }); 
+            document.getElementById(`tab-${tab}`).classList.add('admin-tab-active'); 
+            
+            if(tab === 'users') window.app.renderUserList(); 
+            if(tab === 'equipment') window.app.renderEquipmentList(); 
+            if(tab === 'inventoryHistory') window.app.renderInventoryHistory(); 
+        };
+
+        window.app.renderEquipmentList = function() {
+            const tabsContainer = document.getElementById('equipment-category-tabs');
+            const listContainer = document.getElementById('equipment-list-container');
+            if(!equipmentDatabase || Object.keys(equipmentDatabase).length === 0) { listContainer.innerHTML = '<p class="text-center text-gray-400 py-4">無資料</p>'; tabsContainer.innerHTML = ''; return; }
+            const groups = {}; Object.values(equipmentDatabase).forEach(eq => { const cat = eq.category || '未分類'; if (!groups[cat]) groups[cat] = []; groups[cat].push(eq); });
+            const categories = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'zh-TW'));
+            let selectHtml = `<div class="flex items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm"><label class="mr-3 font-bold text-slate-700 flex items-center whitespace-nowrap"><svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>分類切換:</label><select id="eq-category-select" onchange="window.app.filterEquipmentCategory(this.value)" class="form-select w-full p-2 border border-gray-300 rounded text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 bg-slate-50"><option value="ALL">📋 全部顯示 (${Object.keys(equipmentDatabase).length} 台)</option>`;
+            categories.forEach(cat => { selectHtml += `<option value="${cat}">${cat} (${groups[cat].length})</option>`; }); selectHtml += `</select></div>`; tabsContainer.innerHTML = selectHtml; 
+            let listHtml = ''; categories.forEach((cat) => { listHtml += `<div id="cat-content-${cat}" class="eq-category-group space-y-3 mb-6"><h3 class="font-bold text-slate-500 text-sm border-b pb-1 mb-2 mt-4">${cat}</h3>`; groups[cat].forEach(eq => { const imgUrl = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; let statusClass = 'active'; if(eq.status==='維修中') statusClass='repair'; else if(eq.status==='未使用') statusClass='unused'; 
+            
+            // 檢查 RFID 綁定狀態 (Fix Issue 3)
+            const boundTag = Object.values(rfidBindings).find(b => b.equipmentId === eq.id);
+            const rfidBadge = boundTag 
+                ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold border border-indigo-200">RFID: ${boundTag.rfidCode}</span>` 
+                : `<span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] border border-gray-200">未綁定 RFID</span>`;
+
+            // 動態產生按鈕：綁定 或 解除
+            let bindButtonHtml = '';
+            if (boundTag) {
+                // 已綁定 -> 顯示解除按鈕
+                bindButtonHtml = `<button onclick="window.app.unbindRFID('${boundTag.rfidCode}', '${eq.name}')" class="bg-orange-100 text-orange-600 border border-orange-200 text-sm font-bold px-3 py-2 rounded hover:bg-orange-200 transition-colors action-unbind" title="解除 RFID 綁定">⛓️ 解除</button>`;
+            } else {
+                // 未綁定 -> 顯示綁定按鈕
+                bindButtonHtml = `<button onclick="window.app.openBindModal('${eq.id}')" class="bg-indigo-100 text-indigo-600 border border-indigo-200 text-sm font-bold px-3 py-2 rounded hover:bg-indigo-200 transition-colors action-bind" title="綁定 RFID">🔗 綁定</button>`;
+            }
+
+            listHtml += `
+            <div class="card p-4 flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition-shadow">
+                <img src="${imgUrl}" class="w-20 h-20 object-cover rounded-md border flex-shrink-0">
+                <div class="flex-grow text-center sm:text-left w-full">
+                    <h3 class="font-bold text-lg text-slate-800 flex items-center justify-center sm:justify-start gap-2">
+                        <span class="status-dot ${statusClass}"></span>${eq.name}
+                        ${rfidBadge}
+                    </h3>
+                    <div class="text-sm text-slate-500 mt-1 space-y-1">
+                        <p>🆔 ID: <span class="font-mono text-slate-700">${eq.id}</span> | 📍 ${eq.location || '未設定'}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 min-w-[200px] justify-center sm:justify-end">
+                    ${bindButtonHtml}
+                    <button onclick="window.app.showEditor('${eq.id}')" class="bg-blue-100 text-blue-600 border border-blue-200 text-sm font-bold px-3 py-2 rounded hover:bg-blue-200 transition-colors action-edit">編輯</button>
+                    <button onclick="window.app.deleteEquipment('${eq.id}')" class="bg-red-100 text-red-600 border border-red-200 text-sm font-bold px-3 py-2 rounded hover:bg-red-200 transition-colors action-delete">刪除</button>
+                </div>
+            </div>`; }); listHtml += '</div>'; }); listContainer.innerHTML = listHtml;
+        };
+        window.app.filterEquipmentCategory = function(selectedCat) { const allGroups = document.querySelectorAll('.eq-category-group'); allGroups.forEach(group => { if (selectedCat === 'ALL') { group.classList.remove('hidden'); } else { if (group.id === `cat-content-${selectedCat}`) { group.classList.remove('hidden'); } else { group.classList.add('hidden'); } } }); };
+        window.app.deleteEquipment = function(id) { window.app.confirmAction('確定刪除此設備？', async () => { try { await deleteDoc(getDocRef("equipment", id)); showToast("設備已刪除", "success"); } catch(e) { console.error(e); showToast("刪除失敗: " + e.message, "error"); } }); };
+        
+        // --- RFID Binding Logic ---
+        window.app.openBindModal = function(eqId) {
+            if (loggedInUser.role !== 'manager') return showToast("權限不足", "error");
+            bindTargetId = eqId;
+            const eq = equipmentDatabase[eqId];
+            document.getElementById('bind-target-name').textContent = eq.name;
+            const input = document.getElementById('rfid-bind-input');
+            input.value = "";
+            document.getElementById('rfid-bind-modal').classList.remove('hidden');
+            document.getElementById('rfid-bind-modal').classList.add('flex');
+            // Auto Focus
+            setTimeout(() => input.focus(), 100);
+        };
+
+        window.app.closeBindModal = function() {
+            document.getElementById('rfid-bind-modal').classList.add('hidden');
+            document.getElementById('rfid-bind-modal').classList.remove('flex');
+            bindTargetId = null;
+        };
+
+        window.app.confirmBind = async function() {
+            const input = document.getElementById('rfid-bind-input');
+            const code = input.value.trim();
+            if (!code) return showToast("請掃描或輸入 RFID 代碼", "error");
+            
+            // 防呆：多對一檢查 (Plan B)
+            if (rfidBindings[code] && rfidBindings[code].equipmentId !== bindTargetId) {
+                const conflictId = rfidBindings[code].equipmentId;
+                const conflictName = equipmentDatabase[conflictId]?.name || "未知設備";
+                window.app.playErrorSound();
+                showToast(`錯誤：此標籤已被 [${conflictName}] 使用`, "error");
+                input.value = ""; // Clear for retry
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, "rfid_bindings", code), {
+                    equipmentId: bindTargetId,
+                    updatedAt: serverTimestamp(),
+                    binderId: loggedInUser.id
+                });
+
+                window.app.playSuccessSound();
+                showToast("綁定成功！", "success");
+                window.app.closeBindModal();
+            } catch(e) {
+                console.error(e);
+                showToast("綁定失敗: " + e.message, "error");
+            }
+        };
+
+        // 新增：解除綁定功能 (Fix Issue 3)
+        window.app.unbindRFID = function(rfidCode, eqName) {
+            window.app.confirmAction(`確定要解除 [${eqName}] 的 RFID 綁定嗎？`, async () => {
+                try {
+                    await deleteDoc(doc(db, "rfid_bindings", rfidCode));
+                    showToast("解除綁定成功", "success");
+                    // 列表會因為 onSnapshot 自動更新
+                } catch(e) {
+                    console.error(e);
+                    showToast("解除失敗: " + e.message, "error");
+                }
+            });
+        };
+
+        // --- Inventory History in Admin ---
+        window.app.renderInventoryHistory = function() {
+            const container = document.getElementById('inventory-history-log-container');
+            if (!container) return;
+            
+            let html = `<div class="overflow-x-auto"><table class="min-w-full bg-white border border-gray-200 text-sm">
+                <thead class="bg-gray-50"><tr>
+                    <th class="py-2 px-4 border-b">時間</th>
+                    <th class="py-2 px-4 border-b">場次</th>
+                    <th class="py-2 px-4 border-b">設備</th>
+                    <th class="py-2 px-4 border-b">RFID</th>
+                    <th class="py-2 px-4 border-b">盤點人</th>
+                </tr></thead><tbody>`;
+            
+            // Sort records desc
+            const sorted = [...inventoryRecords].sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)).slice(0, 50); // Limit 50
+            
+            if (sorted.length === 0) {
+                 html += `<tr><td colspan="5" class="text-center py-4 text-gray-400">無盤點紀錄</td></tr>`;
+            } else {
+                sorted.forEach(r => {
+                    const time = r.timestamp ? new Date(r.timestamp.toDate()).toLocaleString() : 'N/A';
+                    html += `<tr class="hover:bg-gray-50">
+                        <td class="py-2 px-4 border-b">${time}</td>
+                        <td class="py-2 px-4 border-b font-mono">${r.sessionId}</td>
+                        <td class="py-2 px-4 border-b font-bold text-slate-700">${r.equipmentName}</td>
+                        <td class="py-2 px-4 border-b font-mono text-xs text-gray-500">${r.rfidCode}</td>
+                        <td class="py-2 px-4 border-b">${r.userName}</td>
+                    </tr>`;
                 });
             }
-        }
-
-        // --- RFID Logic ---
-
-        window.switchRfidMode = (mode) => {
-            rfidMode = mode;
-            bindTargetId = null;
-            document.getElementById('bind-step-2-active').classList.add('hidden');
-            document.getElementById('bind-step-2-inactive').classList.remove('hidden');
-            
-            const btnInactive = "px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all";
-            const btnActive = "px-4 py-1.5 rounded-md bg-white text-purple-700 shadow-sm transition-all";
-            
-            dom.rfidBtnSearch.className = mode === 'search' ? btnActive : btnInactive;
-            dom.rfidBtnBind.className = mode === 'bind' ? btnActive : btnInactive;
-            dom.rfidBtnStocktake.className = mode === 'stocktake' ? btnActive : btnInactive;
-            
-            dom.rfidViewSearch.classList.add('hidden');
-            dom.rfidViewBind.classList.add('hidden');
-            dom.rfidViewStocktake.classList.add('hidden');
-            
-            if (mode === 'search') dom.rfidViewSearch.classList.remove('hidden');
-            else if (mode === 'bind') { dom.rfidViewBind.classList.remove('hidden'); renderRfidUnboundList(); }
-            else if (mode === 'stocktake') { dom.rfidViewStocktake.classList.remove('hidden'); updateStocktakeDropdown(); }
-            
-            document.getElementById('rfidHiddenInput').focus();
-        };
-
-        function resetBindSelection() {
-            bindTargetId = null;
-            document.getElementById('bind-step-2-active').classList.add('hidden');
-            document.getElementById('bind-step-2-inactive').classList.remove('hidden');
-            renderRfidUnboundList();
-        }
-        window.resetBindSelection = resetBindSelection;
-
-        function selectBindTarget(eq) {
-            bindTargetId = eq.id;
-            document.getElementById('bind-step-2-inactive').classList.add('hidden');
-            document.getElementById('bind-step-2-active').classList.remove('hidden');
-            document.getElementById('bind-target-name').textContent = eq.name;
-            document.getElementById('bind-target-id').textContent = eq.assetNumber || eq.id;
-            renderRfidUnboundList();
-        }
-
-        function renderRfidUnboundList() {
-            const list = dom.unboundList;
-            list.innerHTML = '';
-            const term = dom.bindSearchInput.value.toLowerCase();
-            const unbound = equipmentInventory.filter(s => !s.rfid_epc && (s.name.toLowerCase().includes(term) || (s.assetNumber && s.assetNumber.toLowerCase().includes(term))));
-            
-            if (unbound.length === 0) { list.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm">無符合的未綁定設備</div>'; return; }
-            
-            unbound.forEach(s => {
-                const isSelected = s.id === bindTargetId;
-                const div = document.createElement('div');
-                div.className = isSelected 
-                    ? "p-3 rounded-lg border-2 border-purple-500 bg-purple-50 cursor-pointer transition flex justify-between items-center group shadow-sm text-left"
-                    : "p-3 rounded-lg border border-slate-100 bg-white hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition flex justify-between items-center group text-left";
-                
-                div.innerHTML = `
-                    <div class="flex-1 min-w-0 pr-3">
-                        <div class="font-bold text-slate-800 text-sm md:text-base mb-0.5 group-hover:text-purple-700 break-words">${s.name}</div>
-                        <div class="text-xs text-slate-500 font-mono">${s.assetNumber || s.id}</div>
-                    </div>
-                    <div class="shrink-0 pl-1">
-                        <i class="ph ${isSelected ? 'ph-check-circle-fill text-purple-600 text-2xl' : 'ph-caret-right text-slate-300 group-hover:text-purple-400 text-xl'}"></i>
-                    </div>`;
-                div.onclick = () => selectBindTarget(s);
-                list.appendChild(div);
-            });
-        }
-
-        // --- Stocktake Logic ---
-        
-        function updateStocktakeDropdown() {
-             const cats = [...new Set(equipmentInventory.map(e => e.category || '未分類'))].sort();
-             dom.stCategory.innerHTML = '<option value="">請選擇盤點範圍...</option><option value="ALL" class="font-bold text-blue-600">📦 所有分類 (全廠盤點)</option>';
-             cats.forEach(c => {
-                 dom.stCategory.innerHTML += `<option value="${c}">${c}</option>`;
-             });
-        }
-
-        window.startStocktake = () => {
-            const cat = dom.stCategory.value;
-            if (!cat) return showToast('請先選擇盤點範圍', 'error');
-            
-            let targetItems = [];
-            let displayTitle = "";
-            
-            if (cat === 'ALL') {
-                targetItems = equipmentInventory.filter(e => e.status !== '報廢'); 
-                displayTitle = "全廠盤點 (所有分類)";
-            } else {
-                targetItems = equipmentInventory.filter(e => e.category === cat && e.status !== '報廢');
-                displayTitle = `${cat}`;
-            }
-
-            stocktakeState = { 
-                active: true, 
-                targetCategory: cat, 
-                expectedItems: targetItems, 
-                scannedItems: new Set(), 
-                intruders: [] 
-            };
-            
-            renderStocktakeResults();
-            showToast(`開始盤點: ${displayTitle}`, 'success');
-            document.getElementById('rfidHiddenInput').focus();
-        };
-
-        window.resetStocktake = () => {
-            stocktakeState = { active: false, targetCategory: null, expectedItems: [], scannedItems: new Set(), intruders: [] };
-            dom.stList.innerHTML = '<div class="p-8 text-center text-slate-400"><i class="ph ph-clipboard-text text-4xl mb-2 opacity-30"></i><p>請選擇分類並點擊「開始盤點」</p><p class="text-xs mt-2 text-slate-300">支援「全部分類」總盤點</p></div>';
-            dom.stCountExpected.textContent = '0'; dom.stCountScanned.textContent = '0'; dom.stCountError.textContent = '0';
-        };
-
-        function renderStocktakeResults() {
-            dom.stCountExpected.textContent = stocktakeState.expectedItems.length;
-            dom.stCountScanned.textContent = stocktakeState.scannedItems.size;
-            dom.stCountError.textContent = stocktakeState.intruders.length;
-            
-            dom.stList.innerHTML = '';
-            
-            // Render Intruders (Errors) first
-            stocktakeState.intruders.forEach(item => {
-                const el = document.createElement('div');
-                el.className = "p-3 bg-red-50 border-l-4 border-red-500 flex justify-between items-center group";
-                el.innerHTML = `
-                    <div class="flex-1">
-                        <div class="font-bold text-red-800 flex items-center gap-2">
-                            ${item.name || '未知標籤'}
-                            <span class="text-xs font-normal text-red-600 border border-red-200 px-1 rounded bg-white">異常</span>
-                        </div>
-                        <div class="text-xs text-red-600 mt-0.5">分類: ${item.category || 'N/A'} (非目標)</div>
-                        <div class="text-[10px] text-slate-400 font-mono">${item.assetNumber || item.rfid_epc}</div>
-                    </div>`;
-                dom.stList.appendChild(el);
-            });
-
-            // Render Expected Items
-            stocktakeState.expectedItems.forEach(item => {
-                const isScanned = stocktakeState.scannedItems.has(item.id);
-                const el = document.createElement('div');
-                el.className = `p-3 border-b border-slate-100 flex justify-between items-center ${isScanned ? 'bg-green-50' : 'bg-white'}`;
-                el.innerHTML = `
-                    <div class="${isScanned ? 'opacity-100' : 'opacity-60'}">
-                        <div class="font-bold text-slate-700">${item.name}</div>
-                        <div class="text-xs text-slate-500">${item.assetNumber || item.id.substring(0,8)}</div>
-                    </div>
-                    ${isScanned ? '<span class="text-xs font-bold text-green-700 flex items-center gap-1"><i class="ph ph-check-circle-fill text-lg"></i> 已盤</span>' : '<span class="text-xs font-bold text-slate-400">未掃描</span>'}`;
-                dom.stList.appendChild(el);
-            });
-        }
-
-        // --- RFID Handling Core ---
-
-        async function handleRfidScan(epc) {
-            // 1. STOCKTAKE MODE
-            if (rfidMode === 'stocktake' && stocktakeState.active && currentPage === 'rfid') {
-                let item = equipmentInventory.find(s => s.rfid_epc === epc);
-                
-                if (!item) { 
-                    stocktakeState.intruders.push({ name: `未知標籤 (${epc})`, category: 'Unknown', rfid_epc: epc }); 
-                    renderStocktakeResults(); 
-                    playSound('error'); 
-                    return; 
-                }
-                
-                const isTarget = stocktakeState.targetCategory === 'ALL' 
-                    ? (item.status !== '報廢') 
-                    : (item.category === stocktakeState.targetCategory);
-
-                if (isTarget) {
-                    if (!stocktakeState.scannedItems.has(item.id)) { 
-                        stocktakeState.scannedItems.add(item.id); 
-                        renderStocktakeResults(); 
-                        playSound('success'); 
-                    }
-                } else {
-                    if (!stocktakeState.intruders.find(x => x.id === item.id)) { 
-                        stocktakeState.intruders.push(item); 
-                        renderStocktakeResults(); 
-                        playSound('error'); 
-                        showToast(`非本類別設備! ${item.name}`, 'error'); 
-                    }
-                }
-                return;
-            }
-
-            // 2. BIND MODE
-            if (rfidMode === 'bind' && bindTargetId && currentPage === 'rfid') {
-                const targetEq = equipmentInventory.find(s => s.id === bindTargetId);
-                if (!targetEq) return;
-                
-                const used = equipmentInventory.find(s => s.rfid_epc === epc);
-                if (used) { 
-                    playSound('error'); 
-                    showToast(`標籤已被 ${used.name} 使用！`, 'error'); 
-                    return; 
-                }
-                
-                try {
-                    await updateDoc(doc(db, 'equipment', bindTargetId), { rfid_epc: epc });
-                    await logAction('綁定 RFID', `設備: ${targetEq.name}, EPC: ${epc}`);
-                    playSound('bind'); 
-                    showToast(`綁定成功！`, 'bind'); 
-                    resetBindSelection(); 
-                } catch (e) { 
-                    showToast("綁定失敗", 'error'); 
-                }
-                return;
-            }
-
-            // 3. SEARCH MODE (Default)
-            let found = equipmentInventory.find(s => s.rfid_epc === epc);
-            if (!found) found = equipmentInventory.find(s => s.id === epc || s.assetNumber === epc);
-            
-            if (found) { 
-                playSound('success'); 
-                showToast(`已掃描: ${found.name}`, 'success'); 
-                showDeviceDetails(found); 
-            } else { 
-                playSound('error'); 
-                showToast(`未知的標籤: ${epc}`, 'error'); 
-            }
-        }
-
-        function setupRfidListeners() {
-            const hiddenInput = document.getElementById('rfidHiddenInput');
-            
-            const updateStatus = (focused) => {
-                isRfidFocused = focused;
-                if (focused) {
-                    dom.rfidStatusCard.className = "bg-white rounded-xl p-6 border-2 border-green-500 cursor-pointer shadow-md flex items-center gap-4 relative overflow-hidden group";
-                    dom.rfidStatusIconBg.className = "w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600";
-                    dom.rfidStatusTitle.textContent = "掃描器已就緒"; 
-                    dom.rfidStatusDesc.textContent = "系統正在監聽 RFID 訊號...";
-                } else {
-                    dom.rfidStatusCard.className = "bg-slate-50 rounded-xl p-6 border-2 border-slate-200 cursor-pointer hover:border-purple-300 transition mb-6 shadow-sm flex items-center gap-4 relative overflow-hidden group opacity-70";
-                    dom.rfidStatusIconBg.className = "w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-400";
-                    dom.rfidStatusTitle.textContent = "掃描器未連線"; 
-                    dom.rfidStatusDesc.textContent = "點擊此處以啟用掃描模式";
-                }
-            };
-
-            const maintainFocus = () => {
-                if (currentPage !== 'rfid') return;
-                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement !== hiddenInput) {
-                    if(document.activeElement !== dom.bindSearchInput) updateStatus(false);
-                    return;
-                }
-                hiddenInput.focus(); 
-                updateStatus(true);
-            };
-
-            document.addEventListener('click', (e) => { 
-                if (currentPage === 'rfid' && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) maintainFocus(); 
-            });
-            hiddenInput.addEventListener('blur', () => { if(currentPage === 'rfid') setTimeout(maintainFocus, 100); });
-            hiddenInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { 
-                    e.preventDefault(); 
-                    const epc = hiddenInput.value.trim(); 
-                    hiddenInput.value = ''; 
-                    if (epc) handleRfidScan(epc); 
-                }
-            });
-            dom.rfidStatusCard.addEventListener('click', () => { hiddenInput.focus(); updateStatus(true); });
-            dom.bindSearchInput.addEventListener('input', renderRfidUnboundList);
-        }
-
-        // --- Auth Listener Setup ---
-        
-        function setupAuthListener() {
-            const loaderText = document.getElementById('loader-text');
-            
-            // 初始狀態
-            if(loaderText) loaderText.textContent = '正在初始化...';
-
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    // 階段 2：已取得身分，開始監聽資料庫
-                    if(loaderText) {
-                        loaderText.textContent = '連線成功，正在同步資料庫...';
-                        loaderText.classList.remove('text-blue-600'); // Reset color just in case
-                    }
-
-                    setupRfidListeners();
-                    onSnapshot(query(collection(db, 'equipment')), snap => {
-                        equipmentInventory = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                        
-                        const cats = [...new Set(equipmentInventory.map(e => e.category || '未分類'))].sort();
-                        const catList = document.getElementById('categoryList');
-                        const catFilter = document.getElementById('categoryFilter');
-                        
-                        if(catList) {
-                            catList.innerHTML = '';
-                            cats.forEach(c => catList.innerHTML += `<option value="${c}">`);
-                        }
-                        if(catFilter && catFilter.innerHTML.includes('所有分類')) { 
-                            const currentVal = catFilter.value;
-                            catFilter.innerHTML = '<option value="all">所有分類</option>';
-                            cats.forEach(c => catFilter.innerHTML += `<option value="${c}">${c}</option>`);
-                            catFilter.value = currentVal;
-                        }
-
-                        document.getElementById('loader').classList.add('hidden');
-                        if(currentPage === 'inventory') dom.contentInventory.classList.remove('hidden');
-                        renderInventory();
-                        if(currentPage === 'rfid' && rfidMode === 'bind') renderRfidUnboundList();
-                        if(currentPage === 'rfid' && rfidMode === 'stocktake') updateStocktakeDropdown();
-                    });
-                } else {
-                    // 階段 1：需要登入
-                    if(loaderText) {
-                        loaderText.textContent = '正在建立安全連線 (登入中)...';
-                        loaderText.classList.add('text-blue-600');
-                    }
-                    signInAnonymously(auth);
-                }
-            });
-        }
-
-        // --- Modals & CRUD ---
-
-        function showDeviceDetails(eq) {
-            const content = document.getElementById('detailContent');
-            const footer = document.getElementById('detailFooter');
-            
-            const hasRfid = !!eq.rfid_epc;
-            
-            let rfidHtml = hasRfid 
-                ? `<div class="p-3 bg-green-50 rounded border border-green-100 flex justify-between items-center">
-                     <div><span class="text-xs text-green-600 font-bold block">已綁定 RFID</span><span class="text-sm font-mono">${eq.rfid_epc}</span></div>
-                     <button onclick="unbindRfid('${eq.id}')" class="text-xs bg-white text-red-600 border border-red-200 px-2 py-1 rounded hover:bg-red-50">解除</button>
-                   </div>`
-                : `<div class="p-3 bg-slate-50 rounded border border-slate-100 flex justify-between items-center">
-                     <span class="text-sm text-slate-500">尚未綁定 RFID</span>
-                     <button onclick="closeModal(document.getElementById('detailModal')); switchPage('rfid'); switchRfidMode('bind'); setTimeout(() => { document.getElementById('bind-search-input').value='${eq.name}'; }, 100);" class="text-xs bg-purple-600 text-white px-3 py-1 rounded shadow hover:bg-purple-700">去綁定</button>
-                   </div>`;
-
-            content.innerHTML = `
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="h-12 w-12 rounded bg-slate-100 flex items-center justify-center overflow-hidden">
-                        ${eq.imageUrl ? `<img src="${eq.imageUrl}" class="h-full w-full object-cover">` : '<i class="ph ph-wrench text-2xl text-slate-400"></i>'}
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold text-slate-800">${eq.name}</h4>
-                        <p class="text-sm text-slate-500 font-mono">${eq.assetNumber || eq.id}</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div class="p-2 border rounded"><span class="block text-xs text-slate-400">分類</span>${eq.category || '-'}</div>
-                    <div class="p-2 border rounded"><span class="block text-xs text-slate-400">狀態</span>${eq.status || '未使用'}</div>
-                    <div class="p-2 border rounded col-span-2"><span class="block text-xs text-slate-400">放置地點</span>${eq.location || '未設定 (僅供參考)'}</div>
-                </div>
-                ${rfidHtml}
-            `;
-
-            footer.innerHTML = `
-                <button onclick="window.editDevice('${eq.id}')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 font-medium">編輯</button>
-                <button onclick="closeModal(document.getElementById('detailModal'))" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">關閉</button>
-            `;
-            
-            openModal(modals.detail);
-        }
-        window.showDeviceDetails = showDeviceDetails;
-
-        window.unbindRfid = function(id) {
-            const eq = equipmentInventory.find(e => e.id === id);
-            openConfirmation('解除綁定', `確定要解除 ${eq.name} 的 RFID 綁定嗎？`, async () => {
-                try {
-                    await updateDoc(doc(db, 'equipment', id), { rfid_epc: deleteField() });
-                    showToast('已解除綁定', 'success');
-                    closeModal(modals.detail);
-                } catch(e) { showToast('解除失敗', 'error'); }
-            });
-        };
-
-        window.editDevice = function(id) {
-            closeModal(modals.detail);
-            const eq = equipmentInventory.find(e => e.id === id);
-            document.getElementById('deviceModalTitle').textContent = '編輯設備';
-            document.getElementById('editDeviceId').value = id;
-            document.getElementById('inputName').value = eq.name;
-            document.getElementById('inputAssetNumber').value = eq.assetNumber || '';
-            document.getElementById('inputCategory').value = eq.category || '';
-            document.getElementById('inputStatus').value = eq.status || '使用中';
-            openModal(modals.device);
-        };
-
-        document.getElementById('device-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('editDeviceId').value;
-            const data = {
-                name: document.getElementById('inputName').value,
-                assetNumber: document.getElementById('inputAssetNumber').value,
-                category: document.getElementById('inputCategory').value || '未分類',
-                status: document.getElementById('inputStatus').value,
-                lastModifiedAt: serverTimestamp()
-            };
-
-            try {
-                if (id) {
-                    await updateDoc(doc(db, 'equipment', id), data);
-                    showToast('設備更新成功', 'success');
-                } else {
-                    data.createdAt = serverTimestamp();
-                    await addDoc(collection(db, 'equipment'), data);
-                    showToast('設備新增成功', 'success');
-                }
-                closeModal(modals.device);
-            } catch(err) {
-                console.error(err);
-                showToast('儲存失敗', 'error');
-            }
-        });
-
-        // --- QR Code Scanner (Backup) ---
-        
-        async function stopScanner() { 
-            if (html5QrCode && isScannerRunning) { 
-                try { await html5QrCode.stop(); html5QrCode.clear(); isScannerRunning = false; } catch (err) {} 
-            } 
-        }
-        
-        window.startScanner = function() {
-            openModal(modals.qrScanner);
-            setTimeout(() => {
-                if (html5QrCode === null) html5QrCode = new Html5Qrcode("qr-reader");
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                html5QrCode.start({ facingMode: "environment" }, config, (txt) => {
-                     stopScanner().then(() => {
-                         closeModal(modals.qrScanner);
-                         handleRfidScan(txt); 
-                     });
-                }).catch(console.error);
-                isScannerRunning = true;
-            }, 300);
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
         };
         
-        // --- Initialization ---
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.close-modal-btn').forEach(b => b.addEventListener('click', (e) => closeModal(e.target.closest('.modal-backdrop'))));
-            document.querySelector('.close-scanner-btn').addEventListener('click', () => stopScanner().then(() => closeModal(modals.qrScanner)));
-            
-            document.getElementById('confirmActionBtn').addEventListener('click', () => { if (pendingConfirmCallback) pendingConfirmCallback(); closeModal(modals.confirmation); });
-            document.getElementById('confirmCancelBtn').addEventListener('click', () => closeModal(modals.confirmation));
-
-            dom.navInv.addEventListener('click', () => switchPage('inventory'));
-            dom.navRfid.addEventListener('click', () => switchPage('rfid'));
-            dom.mobileNavInv.addEventListener('click', () => switchPage('inventory'));
-            dom.mobileNavRfid.addEventListener('click', () => switchPage('rfid'));
-            
-            const updateInv = () => renderInventory();
-            ['globalSearchInput', 'mobileSearchInput', 'globalSearchField', 'mobileSearchField', 'categoryFilter', 'statusFilter'].forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', updateInv);
-            });
-            
-            const openAdd = () => {
-                document.getElementById('device-form').reset();
-                document.getElementById('editDeviceId').value = '';
-                document.getElementById('deviceModalTitle').textContent = '新增設備';
-                openModal(modals.device);
-            };
-            document.getElementById('topAddBtn').addEventListener('click', openAdd);
-            document.getElementById('mobile-nav-add').addEventListener('click', openAdd);
-            
-            document.getElementById('topScanBtn').addEventListener('click', window.startScanner);
-            document.getElementById('mobile-nav-scan').addEventListener('click', window.startScanner);
-
-            dom.bindSearchInput.addEventListener('input', renderRfidUnboundList);
-
-            // Start Logic
-            setupAuthListener();
-        });
+        // Editor Logic (Simplified)
+        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image').value = ''; if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; if(eq.category) sel.value = eq.category; imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } };
+        window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); window.app.renderEquipmentList(); };
+        window.app.saveEquipment = async function(btn) { 
+            const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `儲存中...`; } 
+            try { 
+                const id = document.getElementById('edit-device-id').value; 
+                const name = document.getElementById('edit-device-name').value; 
+                const catSelect = document.getElementById('edit-device-category-select'); 
+                const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; 
+                const imgPreview = document.getElementById('image-preview'); 
+                const data = { name, category: cat, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value }; 
+                await setDoc(getDocRef("equipment", id), data, { merge: true }); 
+                showToast('儲存成功', 'success'); window.app.showList(); 
+            } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } 
+        };
+        window.app.handleImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
+        
+        // Users Management
+        window.app.renderUserList = function() { const c = document.getElementById('user-list-container'); c.innerHTML = ''; Object.values(userDatabase).forEach(u => { c.innerHTML += `<div class="card p-3 flex justify-between items-center mb-2"><div><span class="font-bold">${u.name}</span> <span class="text-xs text-gray-500">(${u.role})</span></div><div class="space-x-2"><button onclick="window.app.showUserEditor('${u.id}')" class="text-blue-600 text-sm">編輯</button><button onclick="window.app.deleteUser('${u.id}')" class="text-red-600 text-sm">刪除</button></div></div>`; }); };
+        window.app.showUserEditor = (id = null) => { document.getElementById('user-list-container').classList.add('hidden'); document.getElementById('user-editor-section').classList.remove('hidden'); const roleSelect = document.getElementById('edit-user-role'); roleSelect.onchange = (e) => { document.getElementById('edit-user-password').classList.toggle('hidden', e.target.value !== 'manager'); }; if (id && userDatabase[id]) { const user = userDatabase[id]; document.getElementById('edit-user-id').value = id; document.getElementById('edit-user-id').disabled = true; document.getElementById('edit-user-name').value = user.name; roleSelect.value = user.role; } else { document.getElementById('edit-user-id').value = ''; document.getElementById('edit-user-id').disabled = false; document.getElementById('edit-user-name').value = ''; } };
+        window.app.saveUser = async function() { const id = document.getElementById('edit-user-id').value; const data = { name: document.getElementById('edit-user-name').value, role: document.getElementById('edit-user-role').value }; if(data.role === 'manager') data.password = document.getElementById('edit-user-password').value; await setDoc(getDocRef("users", id), data, { merge: true }); window.app.showUserList(); };
+        window.app.showUserList = function() { document.getElementById('user-list-container').classList.remove('hidden'); document.getElementById('user-editor-section').classList.add('hidden'); };
+        window.app.deleteUser = function(id) { window.app.confirmAction('確定刪除此使用者？', async () => { await deleteDoc(getDocRef("users", id)); showToast("使用者已刪除", "success"); }); };
+        
+        init();
     </script>
 </body>
 </html>
