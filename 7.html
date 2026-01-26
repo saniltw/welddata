@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樣品庫存管理系統 v3.0.0 (全能篩選+自動記憶)</title>
+    <title>樣品庫存管理系統 v3.1.0 (智慧連動篩選版)</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -65,7 +65,7 @@
 
     <input id="rfidHiddenInput" type="text" class="absolute opacity-0 -z-10 h-0 w-0" autocomplete="off">
     
-    <!-- Datalists for Autocomplete -->
+    <!-- Datalists for Autocomplete (Auto-populated from Inventory) -->
     <datalist id="steelGradeOptions"></datalist>
     <datalist id="manufacturerOptions"></datalist>
     <datalist id="standardOptions"></datalist>
@@ -141,7 +141,7 @@
         <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 no-scrollbar" id="main-scroll-area">
             <div id="page-header-inventory" class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div><h2 class="text-2xl font-bold text-slate-800">庫存總覽</h2><p class="text-slate-500 text-sm mt-1">管理與追蹤您的所有樣品</p></div>
-                <!-- Enhanced Filters: 4 Dropdowns (Cabinet, Steel Grade, Manufacturer, Standard) -->
+                <!-- Smart Linked Filters: 4 Dropdowns -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto">
                     <select id="cabinetFilter" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 shadow-sm">
                         <option value="all">所有櫃位</option>
@@ -161,7 +161,7 @@
 
             <!-- Inventory View -->
             <div id="content-area-inventory" class="hidden pb-20"> 
-                <div id="view-list" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200"><tr><th class="w-10 px-4 py-4 text-center"><input type="checkbox" id="selectAllInventory" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"></th><th class="px-6 py-4">樣品名稱</th><th class="px-6 py-4 sortable-header group" id="th-location">位置 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600"></i></th><th class="px-6 py-4">線徑</th><th class="px-6 py-4">鋼種</th><th class="px-6 py-4 hidden sm:table-cell">標準</th><th class="px-6 py-4 hidden md:table-cell">製造商</th><th class="px-6 py-4 hidden lg:table-cell">標籤狀態</th><th class="px-6 py-4 text-right">操作</th></tr></thead><tbody id="inventory-table-body" class="divide-y divide-slate-100"></tbody></table></div><div id="list-empty-state" class="hidden p-10 text-center text-slate-500"><i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i><p>沒有符合條件的樣品</p></div></div>
+                <div id="view-list" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200"><tr><th class="w-10 px-4 py-4 text-center"><input type="checkbox" id="selectAllInventory" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"></th><th class="px-6 py-4">樣品名稱</th><th class="px-6 py-4 sortable-header group" id="th-location">位置 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600"></i></th><th class="px-6 py-4">線徑</th><th class="px-6 py-4 text-indigo-700 font-medium bg-indigo-50">鋼種</th><th class="px-6 py-4 hidden sm:table-cell">標準</th><th class="px-6 py-4 hidden md:table-cell">製造商</th><th class="px-6 py-4 hidden lg:table-cell">標籤狀態</th><th class="px-6 py-4 text-right">操作</th></tr></thead><tbody id="inventory-table-body" class="divide-y divide-slate-100"></tbody></table></div><div id="list-empty-state" class="hidden p-10 text-center text-slate-500"><i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i><p>沒有符合條件的樣品</p></div></div>
                 <div id="view-grid" class="hidden space-y-8"></div>
             </div>
 
@@ -367,8 +367,8 @@
             if(val) sel.value = val;
         }
 
-        function updateFilterOptions() {
-            // Collect all unique values
+        // --- NEW: Update Form Datalists for Auto-complete ---
+        function updateFormSuggestions() {
             const grades = new Set();
             const manufacturers = new Set();
             const standards = new Set();
@@ -379,42 +379,113 @@
                 if (s.applicableStandard && s.applicableStandard.trim()) standards.add(s.applicableStandard.trim());
             });
 
-            // Helper to populate datalist and select
-            const populate = (id, dataSet, isSelect, defaultText) => {
-                const sorted = Array.from(dataSet).sort();
+            const populate = (id, dataSet) => {
                 const el = document.getElementById(id);
                 if (!el) return;
+                el.innerHTML = '';
+                Array.from(dataSet).sort().forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    el.appendChild(opt);
+                });
+            };
 
-                if (isSelect) {
-                    const currentVal = el.value;
-                    el.innerHTML = `<option value="all">${defaultText}</option>`;
-                    sorted.forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = item;
-                        opt.textContent = item;
-                        el.appendChild(opt);
-                    });
-                    if (sorted.includes(currentVal)) el.value = currentVal;
+            populate('steelGradeOptions', grades);
+            populate('manufacturerOptions', manufacturers);
+            populate('standardOptions', standards);
+        }
+
+        // --- NEW: Smart Linked Dropdown Logic ---
+        function updateLinkedFilters() {
+            // Get current selections
+            const selCab = document.getElementById('cabinetFilter').value;
+            const selGrade = document.getElementById('steelGradeFilter').value;
+            const selMfg = document.getElementById('manufacturerFilter').value;
+            const selStd = document.getElementById('standardFilter').value;
+
+            // Helper to populate select
+            const populateSelect = (id, options, currentSelection, defaultText) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                // Keep the "All" option
+                let html = `<option value="all">${defaultText}</option>`;
+                options.sort().forEach(opt => {
+                    html += `<option value="${opt}">${opt}</option>`;
+                });
+                el.innerHTML = html;
+                
+                // Restore selection if still valid, otherwise "all"
+                if (options.includes(currentSelection)) {
+                    el.value = currentSelection;
                 } else {
-                    // Datalist
-                    el.innerHTML = '';
-                    sorted.forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = item;
-                        el.appendChild(opt);
-                    });
+                    el.value = 'all';
                 }
             };
 
-            // Populate Datalists for Forms
-            populate('steelGradeOptions', grades, false);
-            populate('manufacturerOptions', manufacturers, false);
-            populate('standardOptions', standards, false);
+            // Calculate valid options for each filter based on the *other* 3 active filters
+            // 1. Valid Cabinets (based on Grade, Mfg, Std)
+            const validCabinets = new Set();
+            sampleInventory.forEach(s => {
+                const matchGrade = selGrade === 'all' || s.steelGrade === selGrade;
+                const matchMfg = selMfg === 'all' || s.manufacturer === selMfg;
+                const matchStd = selStd === 'all' || s.applicableStandard === selStd;
+                
+                if (matchGrade && matchMfg && matchStd && s.storageLocation) {
+                    const cab = s.storageLocation.split(' - ')[0]; // Extract "Cabinet" part
+                    if(cab) validCabinets.add(cab);
+                }
+            });
+            // Merge with system config cabinets to ensure even empty ones might show if needed (optional, here we show what has data)
+            // Or better: Show all cabinets from config, but maybe we only want ones with data?
+            // "Linked" usually implies narrowing down. Let's show cabinets that actually have matching items.
+            // But we should also include cabinets from systemConfig just in case.
+            // For now, let's stick to systemConfig for the base list but maybe we don't filter the Cabinet list?
+            // Actually, if I select "SUS304", I only want to see Cabinets that have SUS304.
+            populateSelect('cabinetFilter', Array.from(validCabinets), selCab, '所有櫃位');
 
-            // Populate Filter Selects
-            populate('steelGradeFilter', grades, true, '所有鋼種');
-            populate('manufacturerFilter', manufacturers, true, '所有廠商');
-            populate('standardFilter', standards, true, '所有標準');
+
+            // 2. Valid Grades (based on Cab, Mfg, Std)
+            const validGrades = new Set();
+            sampleInventory.forEach(s => {
+                const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
+                const matchCab = selCab === 'all' || cab === selCab;
+                const matchMfg = selMfg === 'all' || s.manufacturer === selMfg;
+                const matchStd = selStd === 'all' || s.applicableStandard === selStd;
+
+                if (matchCab && matchMfg && matchStd && s.steelGrade) {
+                    validGrades.add(s.steelGrade);
+                }
+            });
+            populateSelect('steelGradeFilter', Array.from(validGrades), selGrade, '所有鋼種');
+
+            // 3. Valid Manufacturers (based on Cab, Grade, Std)
+            const validMfgs = new Set();
+            sampleInventory.forEach(s => {
+                const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
+                const matchCab = selCab === 'all' || cab === selCab;
+                const matchGrade = selGrade === 'all' || s.steelGrade === selGrade;
+                const matchStd = selStd === 'all' || s.applicableStandard === selStd;
+
+                if (matchCab && matchGrade && matchStd && s.manufacturer) {
+                    validMfgs.add(s.manufacturer);
+                }
+            });
+            populateSelect('manufacturerFilter', Array.from(validMfgs), selMfg, '所有廠商');
+
+            // 4. Valid Standards (based on Cab, Grade, Mfg)
+            const validStds = new Set();
+            sampleInventory.forEach(s => {
+                const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
+                const matchCab = selCab === 'all' || cab === selCab;
+                const matchGrade = selGrade === 'all' || s.steelGrade === selGrade;
+                const matchMfg = selMfg === 'all' || s.manufacturer === selMfg;
+
+                if (matchCab && matchGrade && matchMfg && s.applicableStandard) {
+                    validStds.add(s.applicableStandard);
+                }
+            });
+            populateSelect('standardFilter', Array.from(validStds), selStd, '所有標準');
         }
 
         function updateAddFormSelects() {
@@ -548,7 +619,7 @@
                     const tr = document.createElement('tr');
                     tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors group table-row-hover';
                     const hasRfid = !!s.epc;
-                    tr.innerHTML = `<td class="px-4 py-4 text-center"><input type="checkbox" class="rounded text-indigo-600 w-4 h-4 cursor-pointer inventory-checkbox" data-id="${s.id}" ${selectedInventoryIds.has(s.id) ? 'checked' : ''}></td><td class="px-6 py-4 font-medium text-slate-900 group-hover:text-indigo-600 cursor-pointer nav-detail">${s.sampleName}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded bg-slate-100 text-xs font-mono text-slate-600 border border-slate-200">${s.storageLocation.replace('位置 ', '')}</span></td><td class="px-6 py-4 text-slate-500">${s.wireDiameter || '-'}</td><td class="px-6 py-4 text-slate-500">${s.steelGrade || '-'}</td><td class="px-6 py-4 hidden sm:table-cell text-slate-500">${s.applicableStandard || '-'}</td><td class="px-6 py-4 hidden md:table-cell text-slate-500">${s.manufacturer || '-'}</td><td class="px-6 py-4 hidden lg:table-cell">${hasRfid ? '<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 text-xs font-bold"><i class="ph ph-wifi-high"></i> RFID</span>' : '<span class="inline-flex items-center gap-1 bg-slate-50 text-slate-400 px-2 py-1 rounded border border-slate-100 text-xs">無標籤</span>'}</td><td class="px-6 py-4 text-right"><button class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-full hover:bg-indigo-50 transition quick-stage-btn" title="移至暫存" data-id="${s.id}"><i class="ph ph-tray text-xl"></i></button></td>`;
+                    tr.innerHTML = `<td class="px-4 py-4 text-center"><input type="checkbox" class="rounded text-indigo-600 w-4 h-4 cursor-pointer inventory-checkbox" data-id="${s.id}" ${selectedInventoryIds.has(s.id) ? 'checked' : ''}></td><td class="px-6 py-4 font-medium text-slate-900 group-hover:text-indigo-600 cursor-pointer nav-detail">${s.sampleName}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded bg-slate-100 text-xs font-mono text-slate-600 border border-slate-200">${s.storageLocation.replace('位置 ', '')}</span></td><td class="px-6 py-4 text-slate-500">${s.wireDiameter || '-'}</td><td class="px-6 py-4 text-indigo-700 font-medium bg-indigo-50">${s.steelGrade || '-'}</td><td class="px-6 py-4 hidden sm:table-cell text-slate-500">${s.applicableStandard || '-'}</td><td class="px-6 py-4 hidden md:table-cell text-slate-500">${s.manufacturer || '-'}</td><td class="px-6 py-4 hidden lg:table-cell">${hasRfid ? '<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 text-xs font-bold"><i class="ph ph-wifi-high"></i> RFID</span>' : '<span class="inline-flex items-center gap-1 bg-slate-50 text-slate-400 px-2 py-1 rounded border border-slate-100 text-xs">無標籤</span>'}</td><td class="px-6 py-4 text-right"><button class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-full hover:bg-indigo-50 transition quick-stage-btn" title="移至暫存" data-id="${s.id}"><i class="ph ph-tray text-xl"></i></button></td>`;
                     tr.querySelector('.nav-detail').addEventListener('click', () => showSampleDetails(s));
                     tr.querySelector('.quick-stage-btn').addEventListener('click', (e) => { e.stopPropagation(); openActionModal('stage', s); });
                     const cb = tr.querySelector('.inventory-checkbox');
@@ -1560,14 +1631,21 @@
             const cabinetFilter = document.getElementById('cabinetFilter');
             if (cabinetFilter) {
                 cabinetFilter.addEventListener('change', () => {
+                   // When cabinet changes, update the inventory view AND the other filters options
                    renderInventory(); 
+                   updateLinkedFilters(); // Ensure other filters reflect what's in this cabinet
                 });
             }
             
-            // --- NEW: Filter Listeners ---
+            // --- NEW: Filter Listeners with Linked Logic ---
             ['steelGradeFilter', 'manufacturerFilter', 'standardFilter'].forEach(id => {
                 const el = document.getElementById(id);
-                if(el) el.addEventListener('change', renderInventory);
+                if(el) {
+                    el.addEventListener('change', () => {
+                        renderInventory();
+                        updateLinkedFilters(); // Recalculate options based on new selection
+                    });
+                }
             });
 
             // --- Fix: Batch Download Logic (Enhanced for Single Item) ---
@@ -1702,7 +1780,14 @@
                     onSnapshot(doc(db, 'sampleSystem', 'config'), snap => {
                         systemConfig = snap.exists() ? snap.data() : { storageLayout: {}, personnel: [] };
                         const cabFilter = document.getElementById('cabinetFilter');
-                        if (cabFilter) { cabFilter.innerHTML = '<option value="all">所有櫃位</option>'; Object.keys(systemConfig.storageLayout || {}).forEach(k => cabFilter.innerHTML += `<option value="${k}">${k}</option>`); }
+                        if (cabFilter) { 
+                            // Initial population of cabinets from config
+                            // But LinkedFilters will override this to show only relevant cabinets if filtered
+                            // We can let LinkedFilters handle it, or pre-fill here.
+                            // Let's pre-fill here for initial state.
+                            cabFilter.innerHTML = '<option value="all">所有櫃位</option>'; 
+                            Object.keys(systemConfig.storageLayout || {}).forEach(k => cabFilter.innerHTML += `<option value="${k}">${k}</option>`); 
+                        }
                         updateGlobalOperatorOptions();
                         if(rfidMode === 'stocktake') initStocktakeUI();
                     });
@@ -1712,7 +1797,8 @@
                         const loader = document.getElementById('loader'); if (loader) loader.classList.add('hidden');
                         if(currentPage === 'inventory') dom.contentInventory.classList.remove('hidden');
                         
-                        updateFilterOptions(); // Update all filters (Steel Grade, Manufacturer, Standard)
+                        updateFormSuggestions(); // Update <datalist> for forms
+                        updateLinkedFilters();   // Update Top Filters based on current inventory & selection
                         renderInventory();
                         
                         if(currentPage === 'rfid' && rfidMode === 'bind') renderRfidUnboundList();
