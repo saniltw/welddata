@@ -112,7 +112,7 @@
                 </button>
             </div>
             
-            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.3.0 (Smart Calendar Expand)</p>
+            <p class="text-center text-xs text-slate-400 mt-6">系統版本 v5.4.1 (Config Fixed)</p>
         </div>
     </div>
 
@@ -226,8 +226,6 @@
                                 <div id="calendar-weeks-list" class="space-y-2"></div>
                             </div>
                             <!-- 結束新增 -->
-
-                            <!-- 已移除紅色逾期文字提醒 (Option A) -->
                         </div>
                     </div>
                 </div>
@@ -251,7 +249,7 @@
                     <button onclick="window.app.switchAdminTab('templates')" id="tab-templates" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">點檢範本</button>
                     <button onclick="window.app.switchAdminTab('users')" id="tab-users" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600 action-delete">人員管理</button>
                     <button onclick="window.app.switchAdminTab('checklistHistory')" id="tab-checklistHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">點檢紀錄</button>
-                    <button onclick="window.app.switchAdminTab('maintenanceHistory')" id="tab-maintenanceHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">保養紀錄</button>
+                    <button onclick="window.app.switchAdminTab('maintenanceHistory')" id="tab-maintenanceHistory" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">清潔保養紀錄</button>
                     <button onclick="window.app.switchAdminTab('reports')" id="tab-reports" class="px-1 py-3 border-b-2 border-transparent hover:text-indigo-600">報表輸出</button>
                 </nav>
             </div>
@@ -270,11 +268,21 @@
                     <h2 id="editor-title" class="text-2xl font-semibold mb-6 text-slate-800">編輯設備</h2>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-medium text-slate-500">設備編號 (ID)</label><input type="text" id="edit-device-id" class="w-full p-2 border rounded"></div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500">設備編號 (ID)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="edit-device-id" class="w-full p-2 border rounded">
+                                    <button onclick="window.app.generateEquipmentId()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs whitespace-nowrap">🪄 自動產生</button>
+                                </div>
+                            </div>
                             <div><label class="block text-xs font-medium text-slate-500">設備名稱</label><input type="text" id="edit-device-name" class="w-full p-2 border rounded"></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-medium text-slate-500">設備區分</label><select id="edit-device-category-select" class="w-full p-2 border rounded mb-2"></select><input type="text" id="edit-device-category-new" class="w-full p-2 border rounded hidden" placeholder="輸入新分類..."></div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500">設備區分</label>
+                                <select id="edit-device-category-select" onchange="window.app.toggleCategoryInput()" class="w-full p-2 border rounded mb-2"></select>
+                                <input type="text" id="edit-device-category-new" class="w-full p-2 border rounded hidden" placeholder="輸入新分類...">
+                            </div>
                             <div><label class="block text-xs font-medium text-slate-500">放置地點</label><input type="text" id="edit-device-location" class="w-full p-2 border rounded"></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -291,14 +299,23 @@
                         <hr class="my-4 border-slate-200">
                         <div id="editor-section-check-schedule" class="border border-indigo-200 rounded-lg bg-indigo-50 p-4">
                             <h3 class="font-bold text-indigo-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>點檢排程設定</h3>
-                            <div class="flex gap-6 mb-3 text-sm"><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="weekly" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="interval" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
+                            <div class="flex gap-4 mb-3 text-sm flex-wrap">
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="weekly" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="interval" class="mr-2 text-indigo-600" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="checkMode" value="none" class="mr-2 text-gray-500" onchange="window.app.toggleScheduleMode('check')"> <span class="font-bold text-gray-600">無 (不需執行)</span></label>
+                            </div>
                             <div id="check-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="checkWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('check')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日，以免無人執行造成系統逾期判定。</p></div>
                             <div id="check-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-check-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('check')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-indigo-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計點檢日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-indigo-600"><span id="check-preview-1">--</span><span class="text-slate-300">|</span><span id="check-preview-2">--</span></div></div>
                         </div>
                         <div id="editor-section-clean-schedule" class="border border-orange-200 rounded-lg bg-orange-50 p-4 mt-4">
                             <h3 class="font-bold text-orange-800 mb-3 flex items-center"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>清潔排程設定</h3>
-                            <div class="flex gap-4 mb-3 text-sm flex-wrap"><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="weekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="biweekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (隔週)</span></label><label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="interval" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label></div>
+                            <div class="flex gap-4 mb-3 text-sm flex-wrap">
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="weekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (每週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="biweekly" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定星期 (隔週)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="interval" class="mr-2 text-orange-600" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-slate-700">固定週期 (天數)</span></label>
+                                <label class="flex items-center cursor-pointer"><input type="radio" name="cleanMode" value="none" class="mr-2 text-gray-500" onchange="window.app.toggleScheduleMode('clean')"> <span class="font-bold text-gray-600">無 (不需執行)</span></label>
+                            </div>
                             <div id="clean-weekly-input" class="mb-3 hidden"><div class="flex flex-wrap gap-2"><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="1" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週一</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="2" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週二</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="3" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週三</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="4" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週四</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="5" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週五</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="6" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週六</label><label class="inline-flex items-center bg-white px-3 py-1.5 rounded border"><input type="checkbox" name="cleanWeekday" value="0" class="mr-2" onchange="window.app.updateSchedulePreview('clean')">週日</label></div><p class="text-xs text-orange-600 mt-1 font-bold">⚠️ 建議避免選擇週六、週日。</p></div>
                             <div id="clean-interval-input" class="mb-3 hidden"><div class="flex items-center"><span class="mr-2 text-slate-600">每</span><input type="number" id="edit-clean-interval" class="border rounded w-24 p-2 text-center font-mono" min="1" oninput="window.app.updateSchedulePreview('clean')"><span class="ml-2 text-slate-600">天 執行一次</span></div></div>
                             <div class="bg-white p-3 rounded border border-orange-100 mt-2"><p class="text-xs text-slate-500 mb-1">最近兩次預計清潔日期 (系統自動計算)：</p><div class="flex gap-4 font-mono font-bold text-orange-600"><span id="clean-preview-1">--</span><span class="text-slate-300">|</span><span id="clean-preview-2">--</span></div></div>
@@ -314,11 +331,16 @@
                             <div class="flex items-center gap-4">
                                 <img id="image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border">
                                 <div class="flex gap-2">
-                                    <button type="button" onclick="document.getElementById('edit-device-image-camera').click()" class="text-sm bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1 rounded hover:bg-indigo-100 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>拍照</button>
-                                    <button type="button" onclick="document.getElementById('edit-device-image-gallery').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>相簿</button>
+                                    <button type="button" onclick="document.getElementById('edit-device-camera').click()" class="text-sm bg-white border border-gray-300 px-3 py-2 rounded hover:bg-slate-50 flex items-center shadow-sm">
+                                        📷 拍照
+                                    </button>
+                                    <button type="button" onclick="document.getElementById('edit-device-image').click()" class="text-sm bg-white border border-gray-300 px-3 py-2 rounded hover:bg-slate-50 flex items-center shadow-sm">
+                                        📂 上傳
+                                    </button>
                                 </div>
-                                <input type="file" id="edit-device-image-camera" accept="image/*" capture="environment" class="hidden" onchange="window.app.handleImageUpload(this)">
-                                <input type="file" id="edit-device-image-gallery" accept="image/*" class="hidden" onchange="window.app.handleImageUpload(this)">
+                                <!-- 隱藏的 inputs -->
+                                <input type="file" id="edit-device-camera" accept="image/*" capture="environment" class="hidden" onchange="window.app.handleEditDeviceImage(this)">
+                                <input type="file" id="edit-device-image" accept="image/*" class="hidden" onchange="window.app.handleEditDeviceImage(this)">
                             </div>
                         </div>
                         <div id="editor-section-checklist-items"><hr class="my-4"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-slate-700">點檢項目設定</h3><button onclick="window.app.showTemplateModal()" class="text-sm bg-teal-500 text-white px-3 py-1 rounded hover:bg-teal-600">📑 從範本載入</button></div><div id="item-editor-container" class="space-y-4"></div><button onclick="window.app.addCategoryEditor(null, 'item-editor-container')" class="w-full bg-indigo-50 text-indigo-700 py-2 rounded border border-indigo-200">＋ 新增檢查分類</button></div>
@@ -355,15 +377,16 @@
 
              <div id="admin-tab-content-reports" class="hidden">
                  <h2 class="text-2xl font-semibold mb-4 text-slate-800">報表輸出中心</h2>
-                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                 <div class="card p-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-slate-500 mb-1">報表類型</label>
                             <select id="report-type" class="w-full p-2 border rounded bg-white">
                                 <option value="checklist">設備點檢紀錄表 (清單式)</option>
                                 <option value="overdue">逾期未執行報表 (週管理)</option>
                                 <option value="kt_weekly">廣泰金屬-週點檢表 (格式化)</option>
-                                <option value="maintenance">保養維修紀錄表</option>
-                                <option value="maintenance_with_images">清潔保養紀錄表 (含圖片)</option>
+                                <option value="maintenance">清潔保養紀錄表</option>
+                                <option value="maintenance_with_images">清潔保養紀錄表 (附圖)</option>
                                 <option value="analysis_retroactive">補登分析報表 (效率分析)</option>
                             </select>
                         </div>
@@ -390,7 +413,7 @@
                 <div id="checklist-history-log-container"></div>
              </div>
              <div id="admin-tab-content-maintenanceHistory" class="hidden">
-                <h2 class="text-2xl font-semibold mb-4">設備保養/維修紀錄</h2>
+                <h2 class="text-2xl font-semibold mb-4">設備清潔保養紀錄</h2>
                 <div id="maintenance-history-log-container"></div>
              </div>
         </div>
@@ -476,11 +499,15 @@
                     <div class="flex items-center gap-4">
                         <img id="maint-image-preview" src="https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片" class="w-24 h-24 object-cover rounded-md border">
                         <div class="flex gap-2">
-                            <button type="button" onclick="document.getElementById('maint-image-upload-camera').click()" class="text-sm bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1 rounded hover:bg-indigo-100 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>拍照</button>
-                            <button type="button" onclick="document.getElementById('maint-image-upload-gallery').click()" class="text-sm bg-white border px-3 py-1 rounded hover:bg-slate-50 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>相簿</button>
+                             <button type="button" onclick="document.getElementById('maint-camera-upload').click()" class="text-sm bg-white border border-gray-300 px-3 py-2 rounded hover:bg-slate-50 flex items-center shadow-sm">
+                                📷 拍照
+                            </button>
+                            <button type="button" onclick="document.getElementById('maint-image-upload').click()" class="text-sm bg-white border border-gray-300 px-3 py-2 rounded hover:bg-slate-50 flex items-center shadow-sm">
+                                📂 上傳
+                            </button>
                         </div>
-                        <input type="file" id="maint-image-upload-camera" accept="image/*" capture="environment" class="hidden" onchange="window.app.handleMaintImageUpload(this)">
-                        <input type="file" id="maint-image-upload-gallery" accept="image/*" class="hidden" onchange="window.app.handleMaintImageUpload(this)">
+                        <input type="file" id="maint-camera-upload" accept="image/*" capture="environment" class="hidden" onchange="window.app.handleMaintImageUpload(this)">
+                        <input type="file" id="maint-image-upload" accept="image/*" class="hidden" onchange="window.app.handleMaintImageUpload(this)">
                     </div>
                 </div>
             </div>
@@ -513,6 +540,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, serverTimestamp, updateDoc, Timestamp, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
         let equipmentDatabase = {}, userDatabase = {}, templateDatabase = {}, checkHistory = [], maintenanceHistory = [];
         let loggedInUser = null, currentCheckId = null, html5QrCode = null, currentMaintEqId = null;
@@ -546,8 +574,6 @@
             return `${year}-${month}-${day}`;
         };
         
-        // **核心修改：週末跳過邏輯**
-        // 將日期往後推，直到不是週六或週日
         window.app.adjustForWeekend = function(date) {
             const d = new Date(date);
             const day = d.getDay();
@@ -559,28 +585,20 @@
             return d;
         };
         
-        // **核心修改：取得週次範圍字串**
-        // 格式: 2025-W02 (01/06~01/12)
         window.app.getWeekRangeString = function(date) {
             if(!date) return '';
             const d = new Date(date);
-            // 找出該週的週一
             const day = d.getDay();
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
             const monday = new Date(d);
             monday.setDate(diff);
-            
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
-            
-            // 計算週數 (ISO Week Number 簡化版)
             const oneJan = new Date(d.getFullYear(), 0, 1);
             const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
             const weekNum = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
-
             const mStr = `${String(monday.getMonth()+1).padStart(2,'0')}/${String(monday.getDate()).padStart(2,'0')}`;
             const sStr = `${String(sunday.getMonth()+1).padStart(2,'0')}/${String(sunday.getDate()).padStart(2,'0')}`;
-            
             return `${d.getFullYear()}-W${String(weekNum).padStart(2,'0')} (${mStr}~${sStr})`;
         };
 
@@ -588,13 +606,23 @@
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const weeklyDiv = document.getElementById(`${type}-weekly-input`);
             const intervalDiv = document.getElementById(`${type}-interval-input`);
-            if (mode === 'weekly' || mode === 'biweekly') { weeklyDiv.classList.remove('hidden'); intervalDiv.classList.add('hidden'); } else { weeklyDiv.classList.add('hidden'); intervalDiv.classList.remove('hidden'); }
+            weeklyDiv.classList.add('hidden');
+            intervalDiv.classList.add('hidden');
+            if (mode === 'weekly' || mode === 'biweekly') { 
+                weeklyDiv.classList.remove('hidden'); 
+            } else if (mode === 'interval') { 
+                intervalDiv.classList.remove('hidden'); 
+            }
             window.app.updateSchedulePreview(type);
         };
         window.app.updateSchedulePreview = function(type) {
             const mode = document.querySelector(`input[name="${type}Mode"]:checked`).value;
             const today = new Date(); let nextDates = [];
-            
+            if (mode === 'none') {
+                document.getElementById(`${type}-preview-1`).textContent = "無需執行";
+                document.getElementById(`${type}-preview-2`).textContent = "";
+                return;
+            }
             if (mode === 'weekly') { 
                 const checked = Array.from(document.querySelectorAll(`input[name="${type}Weekday"]:checked`)).map(cb => parseInt(cb.value)); 
                 if (checked.length === 0) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
@@ -609,15 +637,12 @@
             else { 
                 const interval = parseInt(document.getElementById(`edit-${type}-interval`).value); 
                 if (!interval || interval < 1) { document.getElementById(`${type}-preview-1`).textContent = "--"; document.getElementById(`${type}-preview-2`).textContent = "--"; return; } 
-                
                 let d1 = new Date(today); 
                 d1.setDate(d1.getDate() + interval);
-                d1 = window.app.adjustForWeekend(d1); // 強制週末跳過
-
+                d1 = window.app.adjustForWeekend(d1);
                 let d2 = new Date(d1); 
                 d2.setDate(d2.getDate() + interval);
-                d2 = window.app.adjustForWeekend(d2); // 強制週末跳過
-                
+                d2 = window.app.adjustForWeekend(d2);
                 nextDates = [d1, d2]; 
             }
             if (nextDates.length > 0) document.getElementById(`${type}-preview-1`).textContent = window.app.formatDate(nextDates[0]); 
@@ -626,12 +651,11 @@
         
         window.app.calculateNextWeeklyDates = function(startDate, weekdays, count) { let dates = []; let current = new Date(startDate); current.setDate(current.getDate() + 1); let loopCount = 0; while (dates.length < count && loopCount < 365) { if (weekdays.includes(current.getDay())) { dates.push(new Date(current)); } current.setDate(current.getDate() + 1); loopCount++; } return dates; };
         
-        // **核心修改：所有下次日期計算，最後都要經過 adjustForWeekend**
         window.app.calculateNextScheduleDate = function(schedule, fromDate) { 
             if (!schedule) return null; 
+            if (schedule.mode === 'none') return null; 
             const start = new Date(fromDate); 
             let resultDate = null;
-
             if ((schedule.mode === 'weekly' || schedule.mode === 'biweekly') && schedule.weekdays && schedule.weekdays.length > 0) { 
                 const nextDates = window.app.calculateNextWeeklyDates(start, schedule.weekdays, 1); 
                 if (nextDates.length > 0) { 
@@ -644,8 +668,6 @@
                 next.setDate(next.getDate() + parseInt(schedule.interval)); 
                 resultDate = next;
             } 
-            
-            // 最終防線：確保存入資料庫的日期不是週末
             if (resultDate) {
                 return window.app.adjustForWeekend(resultDate);
             }
@@ -654,15 +676,12 @@
         
         window.app.calculateOverdueDates = function(nextDateStr, schedule) {
             if (!nextDateStr || !schedule) return [];
+            if (schedule.mode === 'none') return [];
             const nextDate = new Date(nextDateStr);
             const today = new Date();
             today.setHours(0,0,0,0);
             nextDate.setHours(0,0,0,0);
-
-            // 這裡不需要改，因為是否「算」逾期，由顯示層(Dashboard/Report)決定
-            // 這裡負責找出所有「在今天之前」應該發生但沒發生的日期點
             if (nextDate >= today) return []; 
-
             let missedDates = [];
             let current = new Date(nextDate);
             let loops = 0;
@@ -677,12 +696,10 @@
             return missedDates;
         };
         
-        // --- 新增: 月曆檢視相關功能 ---
         window.app.toggleCalendarView = function() {
             const container = document.getElementById('calendar-view-container');
             if (container.classList.contains('hidden')) {
                 container.classList.remove('hidden');
-                // Set default to current month if not set
                 if (!document.getElementById('calendar-month-select').value) {
                     const now = new Date();
                     const yyyy = now.getFullYear();
@@ -699,78 +716,34 @@
             const container = document.getElementById('calendar-weeks-list');
             const monthVal = document.getElementById('calendar-month-select').value;
             if (!monthVal || !currentCheckId) return;
-
             const [year, month] = monthVal.split('-').map(Number);
-            // 依據 KT 報表週次定義: 1-7, 8-14, 15-21, 22-28, 29-End
-            const endDate = new Date(year, month, 0); // Last day of month
-            
-            const weeks = [
-                { id: 1, start: 1, end: 7 },
-                { id: 2, start: 8, end: 14 },
-                { id: 3, start: 15, end: 21 },
-                { id: 4, start: 22, end: 28 },
-                { id: 5, start: 29, end: endDate.getDate() }
-            ];
-
+            const endDate = new Date(year, month, 0); 
+            const weeks = [ { id: 1, start: 1, end: 7 }, { id: 2, start: 8, end: 14 }, { id: 3, start: 15, end: 21 }, { id: 4, start: 22, end: 28 }, { id: 5, start: 29, end: endDate.getDate() } ];
             const deviceHistory = checkHistory.filter(h => h.deviceId === currentCheckId);
-            
             let html = '';
-            
             weeks.forEach(w => {
                 if (w.start > endDate.getDate()) return;
-
-                // 找尋是否有紀錄落在這個區間
                 const record = deviceHistory.find(h => {
                     const d = h.checkTimestamp.toDate();
                     return d.getFullYear() === year && d.getMonth() === (month - 1) && d.getDate() >= w.start && d.getDate() <= w.end;
                 });
-                
-                // 設定補登目標日期 (該週起始日)
                 const targetDate = new Date(year, month - 1, w.start);
                 const targetDateStr = window.app.formatDate(targetDate);
                 const isFuture = targetDate > new Date();
-
                 if (record) {
                     const recordDate = window.app.formatDate(record.checkTimestamp.toDate());
-                    html += `
-                        <div class="flex justify-between items-center p-2 bg-green-50 border border-green-200 rounded">
-                            <div class="flex items-center">
-                                 <span class="text-green-600 font-bold mr-2 text-sm">✅ 第 ${w.id} 週</span>
-                                 <span class="text-xs text-green-700">(${month}/${w.start}~${month}/${w.end})</span>
-                            </div>
-                            <span class="text-xs font-mono text-green-800 font-bold">已完成: ${recordDate}</span>
-                        </div>
-                    `;
+                    html += `<div class="flex justify-between items-center p-2 bg-green-50 border border-green-200 rounded"><div class="flex items-center"><span class="text-green-600 font-bold mr-2 text-sm">✅ 第 ${w.id} 週</span><span class="text-xs text-green-700">(${month}/${w.start}~${month}/${w.end})</span></div><span class="text-xs font-mono text-green-800 font-bold">已完成: ${recordDate}</span></div>`;
                 } else {
                      const statusText = isFuture ? '尚未開始' : '未完成';
                      const btnText = isFuture ? '預填' : '補登';
                      const btnClass = isFuture ? 'text-indigo-600 bg-indigo-50 border-indigo-200' : 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100';
-
-                    html += `
-                        <div class="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
-                            <div class="flex items-center">
-                                 <span class="text-gray-500 font-bold mr-2 text-sm">⬜ 第 ${w.id} 週</span>
-                                 <span class="text-xs text-gray-400">(${month}/${w.start}~${month}/${w.end})</span>
-                            </div>
-                            <button onclick="window.app.selectRetroactiveDate('${targetDateStr}')" class="px-3 py-1 text-xs font-bold border rounded ${btnClass}">
-                                ${btnText}
-                            </button>
-                        </div>
-                    `;
+                    html += `<div class="flex justify-between items-center p-2 bg-white border border-gray-200 rounded"><div class="flex items-center"><span class="text-gray-500 font-bold mr-2 text-sm">⬜ 第 ${w.id} 週</span><span class="text-xs text-gray-400">(${month}/${w.start}~${month}/${w.end})</span></div><button onclick="window.app.selectRetroactiveDate('${targetDateStr}')" class="px-3 py-1 text-xs font-bold border rounded ${btnClass}">${btnText}</button></div>`;
                 }
             });
-            
             container.innerHTML = html;
         };
 
-        window.app.selectRetroactiveDate = function(dateStr) {
-            document.getElementById('check-date-input').value = dateStr;
-            window.app.updateWeekDisplay(dateStr);
-            showToast(`已設定補登日期: ${dateStr}，請開始填寫表格`, 'success');
-            // 選擇性: 設定完日期後可以自動收起日曆，或保持開啟
-            // window.app.toggleCalendarView(); 
-        };
-        // --- 結束新增 ---
+        window.app.selectRetroactiveDate = function(dateStr) { document.getElementById('check-date-input').value = dateStr; window.app.updateWeekDisplay(dateStr); showToast(`已設定補登日期: ${dateStr}，請開始填寫表格`, 'success'); };
 
         let confirmCallback = null;
         window.app.confirmAction = function(message, callback) { document.getElementById('custom-confirm-msg').textContent = message; confirmCallback = callback; document.getElementById('custom-confirm-modal').classList.remove('hidden'); document.getElementById('custom-confirm-modal').classList.add('flex'); };
@@ -779,9 +752,10 @@
 
         window.app.printReport = function() { const reportContent = document.getElementById('report-content').innerHTML; if (!reportContent.trim()) { showToast("無報表內容可列印", "error"); return; } const title = document.getElementById('report-title').textContent; const printWindow = window.open('', '_blank'); if (!printWindow) { alert("瀏覽器攔截了彈跳視窗，請允許本網站的彈跳視窗以進行列印。"); return; } printWindow.document.write('<html><head><title>' + title + '</title><script src="https://cdn.tailwindcss.com"><\/script><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">'); const styles = document.querySelectorAll('style'); styles.forEach(style => { printWindow.document.write(style.outerHTML); }); printWindow.document.write('<style>body { background-color: white !important; margin: 0; padding: 20px; -webkit-print-color-adjust: exact; } .page-break { page-break-after: always; display: block; position: relative; } @media print { .page-break { break-after: page; } body { padding: 0; } }</style></head><body>'); printWindow.document.write(reportContent); printWindow.document.write('</body></html>'); printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); }, 1000); };
 
-        const firebaseConfig = { apiKey: "", authDomain: "checklist-20250825.firebaseapp.com", databaseURL: "https://checklist-20250825-default-rtdb.firebaseio.com", projectId: "checklist-20250825", storageBucket: "checklist-20250825.appspot.com", messagingSenderId: "899658463753", appId: "1:899658463753:web:71819671db2cdf6bf4d6d8", measurementId: "G-FH3F97BZ7F" };
+        const firebaseConfig = { apiKey: "AIzaSyDPpMCssbitCn2wE7WEqefL2czjIsRuyBw", authDomain: "checklist-20250825.firebaseapp.com", databaseURL: "https://checklist-20250825-default-rtdb.firebaseio.com", projectId: "checklist-20250825", storageBucket: "checklist-20250825.firebasestorage.app", messagingSenderId: "899658463753", appId: "1:899658463753:web:71819671db2cdf6bf4d6d8", measurementId: "G-FH3F97BZ7F" };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app);
         function getCollectionRef(name) { return collection(db, name); }
         function getDocRef(colName, docId) { return doc(db, colName, docId); }
 
@@ -799,6 +773,18 @@
             const reportTypeSelect = document.getElementById('report-type'); if(reportTypeSelect) { reportTypeSelect.addEventListener('change', window.app.handleReportTypeChange); }
         };
 
+        async function uploadImageToStorage(base64Data, filePath) {
+            if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
+            try {
+                const storageRef = ref(storage, filePath);
+                await uploadString(storageRef, base64Data, 'data_url');
+                return await getDownloadURL(storageRef);
+            } catch (e) {
+                console.error("Upload failed:", e);
+                throw new Error("圖片上傳失敗: " + e.message);
+            }
+        }
+
         window.app.loginAsGuest = function() { loggedInUser = { id: 'guest', name: '訪客', role: 'guest' }; document.getElementById('loading-overlay').classList.add('hidden'); document.getElementById('user-switch-modal').classList.add('hidden'); document.getElementById('app-container').classList.remove('hidden'); updateUIState(); };
         window.app.showUserSwitchModal = function() { document.getElementById('user-switch-modal').classList.remove('hidden'); renderLoginOptions(); };
         window.app.updateWeekDisplay = function(dateStr) { if(!dateStr) return; const date = new Date(dateStr); const day = date.getDate(); const month = date.getMonth() + 1; let week = 0; if(day <= 7) week = 1; else if(day <= 14) week = 2; else if(day <= 21) week = 3; else if(day <= 28) week = 4; else week = 5; const display = document.getElementById('week-display'); if(display) display.textContent = `${month}月 第 ${week} 週`; }
@@ -814,7 +800,7 @@
         };
         window.app.handleManualReplace = function() { const id = document.getElementById('manual-device-select').value; if (loggedInUser.role === 'guest') return showToast("訪客權限不足", "error"); window.app.handleManualReplaceOpen(id); };
         window.app.handleManualReplaceOpen = function(id) {
-             currentMaintEqId = id; document.getElementById('maint-device-name').textContent = equipmentDatabase[id].name; const compSelect = document.getElementById('maintenance-component-name'); compSelect.innerHTML = ''; document.getElementById('maintenance-notes').value = ''; document.getElementById('maint-image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; document.getElementById('maint-image-preview').removeAttribute('data-image-data-url'); document.getElementById('maint-image-upload-camera').value = ''; document.getElementById('maint-image-upload-gallery').value = ''; const comps = equipmentDatabase[id].components || []; if(comps.length > 0) comps.forEach(c => compSelect.add(new Option(c.name, c.name))); else compSelect.add(new Option('無零件資料', '')); document.getElementById('maintenance-type').value = 'replacement'; window.app.toggleMaintType(); 
+             currentMaintEqId = id; document.getElementById('maint-device-name').textContent = equipmentDatabase[id].name; const compSelect = document.getElementById('maintenance-component-name'); compSelect.innerHTML = ''; document.getElementById('maintenance-notes').value = ''; document.getElementById('maint-image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; document.getElementById('maint-image-preview').removeAttribute('data-image-data-url'); document.getElementById('maint-image-upload').value = ''; const comps = equipmentDatabase[id].components || []; if(comps.length > 0) comps.forEach(c => compSelect.add(new Option(c.name, c.name))); else compSelect.add(new Option('無零件資料', '')); document.getElementById('maintenance-type').value = 'replacement'; window.app.toggleMaintType(); 
              document.getElementById('maint-date-input').value = window.app.formatDate(new Date());
              document.getElementById('maintenance-modal').classList.remove('hidden');
         };
@@ -827,50 +813,39 @@
             const icon = document.getElementById('dashboard-icon'); const title = document.getElementById('dashboard-title');
             if(currentTaskMode === 'check') { icon.textContent = '📋'; title.textContent = '工作概覽 (點檢)'; } else if(currentTaskMode === 'clean') { icon.textContent = '🧹'; title.textContent = '工作概覽 (清潔)'; } else { icon.textContent = '⚙️'; title.textContent = '耗材更換紀錄'; }
             const ownerFilter = document.getElementById('dashboard-owner-filter').value; const categoryFilter = document.getElementById('dashboard-category-filter').value;
-            
             let pendingItems = []; 
             let completedItems = [];
-
             Object.values(equipmentDatabase).forEach(eq => {
                 if(categoryFilter !== 'ALL' && (eq.category || '未分類') !== categoryFilter) return; 
                 if(ownerFilter !== 'ALL' && eq.primaryOwnerId !== ownerFilter) return; 
                 if(eq.status !== '使用中') return;
                 
                 if(currentTaskMode === 'check') {
-                    // Check Logic
                     const isDone = checkHistory.some(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end && h.deviceId === eq.id; });
                     if(isDone) {
                         completedItems.push({ name: eq.name, id: eq.id });
                     } else {
-                        const nextDate = eq.nextCheckDate ? new Date(eq.nextCheckDate) : new Date(0);
-                        // 判定邏輯: 
-                        // 1. 如果 nextDate 小於 本週一 => Overdue (Red)
-                        // 2. 如果 nextDate 在 本週一 ~ 本週日 => Pending (This Week)
-                        
-                        // nextDate 不需要時分秒
+                        if (!eq.nextCheckDate) return; 
+                        const nextDate = new Date(eq.nextCheckDate);
                         nextDate.setHours(0,0,0,0);
                         const thisWeekStart = new Date(start); thisWeekStart.setHours(0,0,0,0);
                         const thisWeekEnd = new Date(end); thisWeekEnd.setHours(23,59,59,999);
-
                         if (nextDate < thisWeekStart) {
-                             // Overdue
                              pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCheckDate, status: 'overdue' });
                         } else if (nextDate <= thisWeekEnd) {
-                             // This Week
                              pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCheckDate, status: 'pending' });
                         }
                     }
                 } else if(currentTaskMode === 'clean') {
-                    // Clean Logic
                     const isDone = maintenanceHistory.some(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end && h.deviceId === eq.id && h.type === 'cleaning'; });
                     if(isDone) {
                         completedItems.push({ name: eq.name, id: eq.id });
                     } else {
-                        const nextDate = eq.nextCleaningDate ? new Date(eq.nextCleaningDate) : new Date(0);
+                         if (!eq.nextCleaningDate) return;
+                        const nextDate = new Date(eq.nextCleaningDate);
                         nextDate.setHours(0,0,0,0);
                         const thisWeekStart = new Date(start); thisWeekStart.setHours(0,0,0,0);
                         const thisWeekEnd = new Date(end); thisWeekEnd.setHours(23,59,59,999);
-
                         if (nextDate < thisWeekStart) {
                              pendingItems.push({ name: eq.name, id: eq.id, date: eq.nextCleaningDate, status: 'overdue' });
                         } else if (nextDate <= thisWeekEnd) {
@@ -879,63 +854,38 @@
                     }
                 }
             });
-
-            // Render Pending List
             todoList.innerHTML = ''; 
             if(pendingItems.length === 0) {
                 todoList.innerHTML = '<p class="text-center text-sm text-gray-400 py-2">目前無待辦事項</p>'; 
             } else { 
-                // Sort: Overdue first, then by date
                 pendingItems.sort((a,b) => {
                     if (a.status === 'overdue' && b.status !== 'overdue') return -1;
                     if (a.status !== 'overdue' && b.status === 'overdue') return 1;
                     return new Date(a.date) - new Date(b.date);
                 });
-
                 pendingItems.forEach(item => { 
                     const action = currentTaskMode === 'check' ? `window.app.startChecklist('${item.id}')` : `window.app.showMaintenanceModal('${item.id}')`; 
                     let statusHtml = '';
                     if (item.status === 'overdue') {
-                        // 逾期顯示週次區間
                         const rangeStr = window.app.getWeekRangeString(item.date);
                         statusHtml = `<div class="text-xs text-red-600 font-bold flex items-center mt-1">⚠️ 逾期: ${rangeStr}</div>`;
                     } else {
-                        // 本週待辦顯示日期
                         statusHtml = `<div class="text-xs text-slate-400 mt-1">預計: ${item.date || '本週'}</div>`;
                     }
-
-                    todoList.innerHTML += `
-                    <div class="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-2" onclick="${action}">
-                        <div>
-                            <div class="font-bold text-slate-700 text-sm">${item.name}</div>
-                            ${statusHtml}
-                        </div>
-                        <button class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded text-xs font-bold border border-indigo-100 hover:bg-indigo-100">執行</button>
-                    </div>`; 
+                    todoList.innerHTML += `<div class="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer mb-2" onclick="${action}"><div><div class="font-bold text-slate-700 text-sm">${item.name}</div>${statusHtml}</div><button class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded text-xs font-bold border border-indigo-100 hover:bg-indigo-100">執行</button></div>`; 
                 }); 
             }
-            
             completedList.innerHTML = ''; 
             if(completedItems.length === 0) completedList.innerHTML = '<p class="text-gray-400 text-xs pl-2">本週尚無完成項目</p>'; 
             else { 
-                completedItems.forEach(item => { 
-                    completedList.innerHTML += `<div class="flex items-center p-2 border-b border-gray-100 last:border-0"><span class="text-green-500 mr-2 font-bold">✓</span><span class="text-gray-500 text-sm line-through opacity-75">${item.name}</span></div>`; 
-                }); 
+                completedItems.forEach(item => { completedList.innerHTML += `<div class="flex items-center p-2 border-b border-gray-100 last:border-0"><span class="text-green-500 mr-2 font-bold">✓</span><span class="text-gray-500 text-sm line-through opacity-75">${item.name}</span></div>`; }); 
             }
-            
             document.getElementById('completed-section-toggle').classList.toggle('hidden', completedItems.length === 0);
-            
-            // Counts
             const overdueCount = pendingItems.filter(i => i.status === 'overdue').length;
             const weekPendingCount = pendingItems.filter(i => i.status === 'pending').length;
-            
-            // Update labels to reflect new logic
             document.getElementById('label-pending').innerHTML = overdueCount > 0 ? `本週待辦 <span class="text-red-500 text-[10px] ml-1">(${overdueCount} 逾期)</span>` : '本週待辦';
             document.getElementById('count-pending').textContent = weekPendingCount + overdueCount;
             document.getElementById('count-completed').textContent = completedItems.length;
-            
-            // Progress based on (Completed) / (Completed + This Week Pending). Ignoring Overdue in denominator? 
-            // Usually progress is for "This Week's Goal".
             const totalThisWeek = weekPendingCount + completedItems.length; 
             const percentage = totalThisWeek === 0 ? 0 : Math.round((completedItems.length / totalThisWeek) * 100); 
             document.getElementById('dashboard-progress-text').textContent = `${percentage}%`; 
@@ -946,15 +896,12 @@
             const type = document.getElementById('report-type').value; 
             const dateContainer = document.getElementById('date-range-container'); 
             const ktOptionsContainer = document.getElementById('kt-report-options'); 
-            
             dateContainer.classList.add('hidden');
             dateContainer.classList.remove('contents'); 
             ktOptionsContainer.classList.add('hidden');
-            
             if (type === 'kt_weekly') { 
                 ktOptionsContainer.classList.remove('hidden'); 
             } else if (type === 'overdue') {
-                // Overdue doesn't need date range, implies "As of Now"
             } else { 
                 dateContainer.classList.remove('hidden'); 
                 dateContainer.classList.add('contents'); 
@@ -1027,20 +974,15 @@
             container.classList.remove('hidden'); 
             document.getElementById('report-actions').classList.remove('hidden');
 
-            // --- 逾期報表 (Overdue Report) - Week Logic ---
             if (type === 'overdue') {
                 title.textContent = "逾期未執行報表 (週管理)";
                 const now = new Date();
                 subtitle.textContent = `統計時間: ${now.toLocaleString()}`;
-                
-                // 定義本週開始時間，凡是小於此時間的 "Next Date" 才算逾期
                 const { start: thisWeekStart } = window.app.getThisWeekRange();
-                
                 let html = '';
                 const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; 
                 const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
 
-                // --- Part 1: Overdue Check (點檢逾期) ---
                 html += '<h3 class="text-xl font-bold text-slate-700 mt-4 mb-2 border-l-4 border-indigo-600 pl-2">📋 點檢逾期清單 (Check Overdue)</h3>';
                 html += '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left; margin-bottom: 20px;">'; 
                 html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行週次 (Missed Weeks)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
@@ -1051,7 +993,6 @@
                     if (eq.status !== '使用中') return;
                     
                     const missedDates = window.app.calculateOverdueDates(eq.nextCheckDate, eq.checkSchedule);
-                    // Filter: Only strictly before this week
                     const realOverdue = missedDates.filter(d => d < thisWeekStart);
 
                     if (realOverdue.length > 0) {
@@ -1059,7 +1000,6 @@
                         overdueCheckList.push({
                             name: eq.name,
                             category: eq.category || '未分類',
-                            // 轉換成週次字串
                             weeks: realOverdue.map(d => window.app.getWeekRangeString(d)).join('<br>'),
                             count: realOverdue.length,
                             owner: ownerName
@@ -1075,7 +1015,6 @@
                 }
                 html += '</tbody></table>';
 
-                // --- Part 2: Overdue Clean (清潔逾期) ---
                 html += '<h3 class="text-xl font-bold text-slate-700 mt-4 mb-2 border-l-4 border-orange-500 pl-2">🧹 清潔保養逾期清單 (Clean Overdue)</h3>';
                 html += '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; 
                 html += `<thead><tr><th style="${thStyle}">設備名稱</th><th style="${thStyle}">分類</th><th style="${thStyle}">未執行週次 (Missed Weeks)</th><th style="${thStyle}">負責人</th></tr></thead><tbody>`;
@@ -1112,7 +1051,6 @@
                 return;
             }
 
-            // --- Retroactive Analysis Report (效率分析) ---
             if (type === 'analysis_retroactive') {
                 title.textContent = "補登分析報表 (Efficiency Analysis)";
                 const dateStr = `${window.app.formatDate(start)} ~ ${window.app.formatDate(end)}`;
@@ -1125,10 +1063,9 @@
 
                 let combinedRecords = [];
                 
-                // Add Check Records
                 checkHistory.forEach(r => {
                     const selectedDate = r.checkTimestamp?.toDate();
-                    const createdDate = r.createdTimestamp?.toDate() || selectedDate; // Fallback if old data
+                    const createdDate = r.createdTimestamp?.toDate() || selectedDate; 
                     if (selectedDate >= start && selectedDate <= end) {
                         combinedRecords.push({
                             type: '點檢',
@@ -1140,9 +1077,7 @@
                     }
                 });
 
-                // Add Maintenance Records
                 maintenanceHistory.forEach(r => {
-                    // Maintenance usually defaults to "now" unless backfilled with new feature
                     const selectedDate = r.timestamp?.toDate(); 
                     const createdDate = r.createdTimestamp?.toDate() || selectedDate;
                     if (selectedDate >= start && selectedDate <= end) {
@@ -1164,8 +1099,6 @@
                     combinedRecords.forEach(r => {
                         const selStr = window.app.formatDate(r.selectedDate);
                         const actStr = r.createdDate.toLocaleString();
-                        
-                        // Calculate Diff (ignoring hours for "Same Day" logic)
                         const selMidnight = new Date(r.selectedDate); selMidnight.setHours(0,0,0,0);
                         const actMidnight = new Date(r.createdDate); actMidnight.setHours(0,0,0,0);
                         
@@ -1198,9 +1131,7 @@
                 return;
             }
             
-            // --- 廣泰報表 (Kuang Tai Report) ---
             if (type === 'kt_weekly') {
-                 // ... (Keep existing complex logic) ...
                  title.textContent = "設備點檢表(週) - 預覽";
                 content.innerHTML = '<div class="text-center py-4">正在產生報表...</div>';
                 const filteredHistory = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; });
@@ -1232,45 +1163,76 @@
             } 
             
             else {
-                // Regular Checklist or Maintenance Report
                 let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px; text-align: left;">'; const thStyle = 'border: 1px solid #94a3b8; padding: 8px; background-color: #f1f5f9; font-weight: bold;'; const tdStyle = 'border: 1px solid #94a3b8; padding: 8px;';
-                if (type === 'checklist') { title.textContent = "設備點檢紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.checkTimestamp?.toDate().toLocaleString(); const abItems = r.items.filter(i => i.status === '異常'); const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`; }); } 
-                else if (type === 'maintenance') { title.textContent = "設備保養/維修紀錄表"; html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; let filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }); if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } filtered.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds); if(filtered.length === 0) html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`; filtered.forEach(r => { const date = r.timestamp?.toDate().toLocaleString(); const typeStr = r.type === 'cleaning' ? '清潔' : '更換'; html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`; }); }
-                else if (type === 'maintenance_with_images') {
-                    title.textContent = "清潔保養紀錄表 (含圖片)";
-                    html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle} width:120px;">照片</th><th style="${thStyle}">執行人</th><th style="${thStyle}">備註</th></tr></thead><tbody>`;
-                    
-                    let filtered = maintenanceHistory.filter(h => {
-                        const d = h.timestamp?.toDate();
-                        return d >= start && d <= end;
-                    });
-                    
-                    if (category !== 'ALL') {
-                        filtered = filtered.filter(h => {
-                            const eq = equipmentDatabase[h.deviceId];
-                            const eqCat = eq ? (eq.category || '未分類') : '未分類';
-                            return eqCat === category;
-                        });
+                if (type === 'checklist') { 
+                    title.textContent = "設備點檢紀錄表"; 
+                    html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">點檢人</th><th style="${thStyle}">結果</th><th style="${thStyle}">備註</th></tr></thead><tbody>`; 
+                    let filtered = checkHistory.filter(h => { const d = h.checkTimestamp?.toDate(); return d >= start && d <= end; }); 
+                    if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } 
+                    filtered.sort((a,b) => b.checkTimestamp.seconds - a.checkTimestamp.seconds); 
+                    if(filtered.length === 0) html += `<tr><td colspan="5" style="${tdStyle} text-align:center;">無資料</td></tr>`; 
+                    filtered.forEach(r => { 
+                        const date = r.checkTimestamp?.toDate().toLocaleString(); 
+                        const abItems = r.items.filter(i => i.status === '異常'); 
+                        const resultHtml = abItems.length > 0 ? `<span style="color:red; font-weight:bold;">異常 (${abItems.length})</span><br><span style="font-size:12px; color:#64748b;">${abItems.map(i=>i.text).join(', ')}</span>` : '<span style="color:green;">正常</span>'; 
+                        html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${resultHtml}</td><td style="${tdStyle}">${r.summaryNotes || ''}</td></tr>`; 
+                    }); 
+                } 
+                else if (type === 'maintenance' || type === 'maintenance_with_images') { 
+                    title.textContent = type === 'maintenance_with_images' ? "清潔保養紀錄表 (附圖)" : "清潔保養紀錄表"; 
+                    if(type === 'maintenance_with_images') {
+                         showToast("注意：若資料量過大，附圖報表可能導致瀏覽器卡頓，請盡量縮短查詢區間。", "info");
                     }
-                    
-                    filtered.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-                    
-                    if (filtered.length === 0) {
-                        html += `<tr><td colspan="6" style="${tdStyle} text-align:center;">無資料</td></tr>`;
-                    } else {
-                        filtered.forEach(r => {
-                            const date = r.timestamp?.toDate().toLocaleString();
-                            const typeStr = r.type === 'cleaning' ? '清潔' : '更換零件';
-                            const imgHtml = r.imageUrl 
-                                ? `<img src="${r.imageUrl}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; margin: 0 auto; display: block;">` 
-                                : `<span style="color: #cbd5e1; font-size: 12px;">無照片</span>`;
-
-                            html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle} text-align: center; padding: 4px;">${imgHtml}</td><td style="${tdStyle}">${r.userName}</td><td style="${tdStyle}">${r.notes || ''}</td></tr>`;
-                        });
-                    }
+                    html += `<thead><tr><th style="${thStyle}">日期</th><th style="${thStyle}">設備名稱</th><th style="${thStyle}">類型</th><th style="${thStyle}">項目</th><th style="${thStyle}">執行人</th>${type === 'maintenance_with_images' ? `<th style="${thStyle}">照片</th>` : ''}<th style="${thStyle}">備註</th></tr></thead><tbody>`; 
+                    let filtered = maintenanceHistory.filter(h => { const d = h.timestamp?.toDate(); return d >= start && d <= end; }); 
+                    if (category !== 'ALL') { filtered = filtered.filter(h => { const eq = equipmentDatabase[h.deviceId]; const eqCat = eq ? (eq.category || '未分類') : '未分類'; return eqCat === category; }); } 
+                    filtered.sort((a,b) => b.timestamp.seconds - a.timestamp.seconds); 
+                    const colCount = type === 'maintenance_with_images' ? 7 : 6;
+                    if(filtered.length === 0) html += `<tr><td colspan="${colCount}" style="${tdStyle} text-align:center;">無資料</td></tr>`; 
+                    filtered.forEach(r => { 
+                        const date = r.timestamp?.toDate().toLocaleString(); 
+                        const typeStr = r.type === 'cleaning' ? '清潔' : '更換'; 
+                        const imgHtml = type === 'maintenance_with_images' ? `<td style="${tdStyle} text-align:center;">${r.imageUrl ? `<img src="${r.imageUrl}" style="width:80px; height:80px; object-fit:cover; border-radius:4px; display:inline-block;">` : '<span style="color:#ccc; font-size:12px;">無</span>'}</td>` : '';
+                        html += `<tr><td style="${tdStyle}">${date}</td><td style="${tdStyle}">${r.deviceName}</td><td style="${tdStyle}">${typeStr}</td><td style="${tdStyle}">${r.componentName || '-'}</td><td style="${tdStyle}">${r.userName}</td>${imgHtml}<td style="${tdStyle}">${r.notes || ''}</td></tr>`; 
+                    }); 
                 }
                 html += '</tbody></table>'; content.innerHTML = html;
             }
+        };
+        
+        // --- Refactor: Unified Image Handler for Equipment Editor ---
+        // 為了支援兩個 Input (相機與上傳) 共用邏輯，我們建立一個命名函式
+        window.app.handleEditDeviceImage = function(input) {
+            if(!input.files[0]) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 500; 
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                    const imgPreview = document.getElementById('image-preview');
+                    imgPreview.src = dataUrl;
+                    imgPreview.dataset.imageDataUrl = dataUrl;
+                    console.log(`設備圖片壓縮後大小: ~${Math.round(dataUrl.length / 1024)} KB`);
+                };
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
         };
 
         window.app.logout = function() { window.app.showUserSwitchModal(); };
@@ -1293,30 +1255,20 @@
             const dateInput = document.getElementById('check-date-input'); 
             dateInput.value = today; 
             window.app.updateWeekDisplay(today);
-            
-            // --- Auto-Expand Calendar if Overdue ---
             const missedDates = window.app.calculateOverdueDates(eq.nextCheckDate, eq.checkSchedule);
             const { start: thisWeekStart } = window.app.getThisWeekRange();
             const realOverdue = missedDates.filter(d => d < thisWeekStart);
             const calendarContainer = document.getElementById('calendar-view-container');
-
             if (realOverdue.length > 0) {
-                // 自動展開月曆
                 calendarContainer.classList.remove('hidden');
-                
-                // 設定月曆月份為最近一個逾期項目的月份
                 const latestOverdue = realOverdue[realOverdue.length - 1];
                 const yyyy = latestOverdue.getFullYear();
                 const mm = String(latestOverdue.getMonth() + 1).padStart(2, '0');
                 document.getElementById('calendar-month-select').value = `${yyyy}-${mm}`;
-                
                 window.app.renderCalendarView();
-                // 可以選擇顯示一個溫和的提示，或完全不顯示
-                // showToast("已自動展開月曆供補登", "info");
             } else {
                 calendarContainer.classList.add('hidden');
             }
-
             const container = document.getElementById('checklist-items-container'); 
             container.innerHTML = ''; 
             if (eq.items) { eq.items.forEach(cat => { const group = document.createElement('div'); group.innerHTML = `<h3 class="font-bold text-lg mb-2 text-slate-600 border-b pb-1">${cat.category}</h3>`; cat.subItems.forEach(item => { group.innerHTML += `<div class="card p-4 mb-3 item-row" data-cat="${cat.category}" data-text="${item.text}"><div class="flex justify-between items-center"><span class="text-slate-800 font-medium">${item.text}</span><div class="space-x-1 flex-shrink-0"><button onclick="window.app.setStatus(this, 'normal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">正常</button><button onclick="window.app.setStatus(this, 'abnormal')" class="status-btn px-3 py-2 border rounded-md text-sm hover:bg-gray-100">異常</button></div></div><input type="text" class="abnormal-input hidden w-full mt-2 p-2 border rounded text-sm bg-red-50 text-red-700 placeholder-red-300" placeholder="請說明異常原因..."></div>`; }); container.appendChild(group); }); } 
@@ -1393,7 +1345,7 @@
             const categories = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'zh-TW'));
             let selectHtml = `<div class="flex items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm"><label class="mr-3 font-bold text-slate-700 flex items-center whitespace-nowrap"><svg class="w-4 h-4 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>分類切換:</label><select id="eq-category-select" onchange="window.app.filterEquipmentCategory(this.value)" class="form-select w-full p-2 border border-gray-300 rounded text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 bg-slate-50"><option value="ALL">📋 全部顯示 (${Object.keys(equipmentDatabase).length} 台)</option>`;
             categories.forEach(cat => { selectHtml += `<option value="${cat}">${cat} (${groups[cat].length})</option>`; }); selectHtml += `</select></div>`; tabsContainer.innerHTML = selectHtml; 
-            let listHtml = ''; categories.forEach((cat) => { listHtml += `<div id="cat-content-${cat}" class="eq-category-group space-y-3 mb-6"><h3 class="font-bold text-slate-500 text-sm border-b pb-1 mb-2 mt-4">${cat}</h3>`; groups[cat].forEach(eq => { const imgUrl = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; let statusClass = 'active'; if(eq.status==='維修中') statusClass='repair'; else if(eq.status==='未使用') statusClass='unused'; const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定'; listHtml += `<div class="card p-4 flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition-shadow"><img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md border flex-shrink-0 cursor-pointer" onclick="window.open('${imgUrl}')"><div class="flex-grow text-center sm:text-left w-full"><h3 class="font-bold text-lg text-slate-800 flex items-center justify-center sm:justify-start"><span class="status-dot ${statusClass}"></span>${eq.name}</h3><div class="text-sm text-slate-500 mt-1 space-y-1"><p>🆔 ID: <span class="font-mono text-slate-700">${eq.id}</span></p><p>📍 地點: ${eq.location || '未設定'}</p><p>👤 負責人: <span class="text-slate-700 font-medium">${ownerName}</span></p></div><div class="flex items-center gap-2 mt-2 text-xs text-gray-400 justify-center sm:justify-start flex-wrap"><span class="bg-slate-100 px-2 py-1 rounded">下次點檢: ${eq.nextCheckDate || '未設定'}</span><span class="bg-slate-100 px-2 py-1 rounded">下次清潔: ${eq.nextCleaningDate || '未設定'}</span></div></div><div class="flex flex-col gap-2 w-full sm:w-auto mt-4 sm:mt-0 min-w-[200px]"><button onclick="window.app.showQRCode('${eq.id}', '${eq.name}')" class="w-full bg-white border border-green-500 text-green-600 font-bold px-3 py-3 rounded hover:bg-green-50 transition-colors flex items-center justify-center text-base"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>顯示 QR Code</button><div class="flex gap-2 justify-between"><button onclick="window.app.showMaintenanceModal('${eq.id}')" class="flex-1 bg-orange-100 text-orange-600 border border-orange-200 text-sm font-bold px-2 py-2 rounded hover:bg-orange-200 transition-colors action-edit">保養</button><button onclick="window.app.showEditor('${eq.id}')" class="flex-1 bg-blue-100 text-blue-600 border border-blue-200 text-sm font-bold px-2 py-2 rounded hover:bg-blue-200 transition-colors action-edit">編輯</button><button onclick="window.app.deleteEquipment('${eq.id}')" class="flex-1 bg-red-100 text-red-600 border border-red-200 text-sm font-bold px-2 py-2 rounded hover:bg-red-200 transition-colors action-delete">刪除</button></div></div></div>`; }); listHtml += '</div>'; }); listContainer.innerHTML = listHtml;
+            let listHtml = ''; categories.forEach((cat) => { listHtml += `<div id="cat-content-${cat}" class="eq-category-group space-y-3 mb-6"><h3 class="font-bold text-slate-500 text-sm border-b pb-1 mb-2 mt-4">${cat}</h3>`; groups[cat].forEach(eq => { const imgUrl = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; let statusClass = 'active'; if(eq.status==='維修中') statusClass='repair'; else if(eq.status==='未使用') statusClass='unused'; const ownerName = eq.primaryOwnerId ? (userDatabase[eq.primaryOwnerId]?.name || '未知') : '未設定'; listHtml += `<div class="card p-4 flex flex-col sm:flex-row items-center gap-4 hover:shadow-md transition-shadow"><img src="${imgUrl}" class="w-24 h-24 object-cover rounded-md border flex-shrink-0 cursor-pointer" onclick="window.open('${imgUrl}')"><div class="flex-grow text-center sm:text-left w-full"><h3 class="font-bold text-lg text-slate-800 flex items-center justify-center sm:justify-start"><span class="status-dot ${statusClass}"></span>${eq.name}</h3><div class="text-sm text-slate-500 mt-1 space-y-1"><p>🆔 ID: <span class="font-mono text-slate-700">${eq.id}</span></p><p>📍 地點: ${eq.location || '未設定'}</p><p>👤 負責人: <span class="text-slate-700 font-medium">${ownerName}</span></p></div><div class="flex items-center gap-2 mt-2 text-xs text-gray-400 justify-center sm:justify-start flex-wrap"><span class="bg-slate-100 px-2 py-1 rounded">下次點檢: ${eq.nextCheckDate || '未設定'}</span><span class="bg-slate-100 px-2 py-1 rounded">下次清潔: ${eq.nextCleaningDate || '未設定'}</span></div></div><div class="flex flex-col gap-2 w-full sm:w-auto mt-4 sm:mt-0 min-w-[200px]"><button onclick="window.app.showQRCode('${eq.id}', '${eq.name}')" class="w-full bg-white border border-green-500 text-green-600 font-bold px-3 py-3 rounded hover:bg-green-50 transition-colors flex items-center justify-center text-base"><svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>顯示 QR Code</button><div class="flex gap-2 justify-between"><button onclick="window.app.showMaintenanceModal('${eq.id}')" class="flex-1 bg-orange-100 text-orange-600 border border-orange-200 text-sm font-bold px-2 py-2 rounded hover:bg-orange-200 transition-colors action-edit">保養</button><button onclick="window.app.showEditor('${eq.id}')" class="flex-1 bg-blue-100 text-blue-600 border border-blue-200 text-sm font-bold px-2 py-2 rounded hover:bg-blue-200 transition-colors action-edit">編輯</button><button onclick="window.app.deleteEquipment('${eq.id}')" class="flex-1 bg-red-100 text-red-600 border border-red-200 text-sm font-bold px-2 py-2 rounded hover:bg-red-200 transition-colors action-delete">刪除</button></div></div></div>`; }); listHtml += '</div>'; }); listContainer.innerHTML = listHtml;
         };
         window.app.filterEquipmentCategory = function(selectedCat) { const allGroups = document.querySelectorAll('.eq-category-group'); allGroups.forEach(group => { if (selectedCat === 'ALL') { group.classList.remove('hidden'); } else { if (group.id === `cat-content-${selectedCat}`) { group.classList.remove('hidden'); } else { group.classList.add('hidden'); } } }); };
         window.app.deleteEquipment = function(id) { window.app.confirmAction('確定刪除此設備？相關紀錄可能無法正確顯示。', async () => { try { await deleteDoc(getDocRef("equipment", id)); showToast("設備已刪除", "success"); } catch(e) { console.error(e); showToast("刪除失敗: " + e.message, "error"); } }); };
@@ -1411,26 +1363,53 @@
             document.getElementById('maintenance-notes').value = ''; 
             document.getElementById('maint-image-preview').src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; 
             document.getElementById('maint-image-preview').removeAttribute('data-image-data-url'); 
-            document.getElementById('maint-image-upload-camera').value = ''; 
-            document.getElementById('maint-image-upload-gallery').value = ''; 
+            document.getElementById('maint-image-upload').value = ''; 
+            document.getElementById('maint-camera-upload').value = ''; 
             const comps = eq.components || []; 
             if(comps.length > 0) comps.forEach(c => compSelect.add(new Option(c.name, c.name))); 
             else compSelect.add(new Option('無零件資料', '')); 
             window.app.toggleMaintType(); 
-            
-            // Set Today
             const today = window.app.formatDate(new Date());
             document.getElementById('maint-date-input').value = today;
-
-            // --- 移除了紅色逾期文字提醒 (Option A) ---
-            // 保養彈窗這裡暫時不實作自動展開月曆，因為沒有月曆元件
-
             document.getElementById('maintenance-modal').classList.remove('hidden'); 
         };
 
         window.app.toggleMaintType = function() { const type = document.getElementById('maintenance-type').value; const selector = document.getElementById('maintenance-component-selector'); if(type === 'replacement') selector.classList.remove('hidden'); else selector.classList.add('hidden'); };
         window.app.closeMaintenanceModal = function() { document.getElementById('maintenance-modal').classList.add('hidden'); };
-        window.app.handleMaintImageUpload = function(input) { if(!input.files[0]) return; const file = input.files[0]; const reader = new FileReader(); reader.onload = function(e) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const MAX_WIDTH = 800; const scaleSize = MAX_WIDTH / img.width; canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.7); const preview = document.getElementById('maint-image-preview'); preview.src = dataUrl; preview.dataset.imageDataUrl = dataUrl; }; img.src = e.target.result; }; reader.readAsDataURL(file); };
+        
+        // 修改: 加強保養圖片壓縮與處理 (合併相機與上傳)
+        window.app.handleMaintImageUpload = function(input) { 
+            if(!input.files[0]) return; 
+            const file = input.files[0]; 
+            const reader = new FileReader(); 
+            reader.onload = function(e) { 
+                const img = new Image(); 
+                img.onload = function() { 
+                    const canvas = document.createElement('canvas'); 
+                    const MAX_WIDTH = 500; 
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    
+                    canvas.width = width; 
+                    canvas.height = height; 
+                    const ctx = canvas.getContext('2d'); 
+                    ctx.drawImage(img, 0, 0, width, height); 
+                    
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5); 
+                    const preview = document.getElementById('maint-image-preview'); 
+                    preview.src = dataUrl; 
+                    preview.dataset.imageDataUrl = dataUrl; 
+                    console.log(`保養圖片壓縮後大小: ~${Math.round(dataUrl.length / 1024)} KB`);
+                }; 
+                img.src = e.target.result; 
+            }; 
+            reader.readAsDataURL(file); 
+        };
         
         window.app.logMaintenance = async function(btn) {
             if (loggedInUser.role === 'guest') return;
@@ -1442,6 +1421,17 @@
                 const now = new Date();
                 selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
 
+                // 處理圖片上傳
+                const imgPreview = document.getElementById('maint-image-preview');
+                let finalImageUrl = imgPreview.dataset.imageDataUrl || null;
+
+                if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
+                    btn.innerText = '上傳圖片中...';
+                    const randomId = Math.random().toString(36).substring(2, 8);
+                    const path = `images/maintenance/${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getTime()}_${randomId}.jpg`;
+                    finalImageUrl = await uploadImageToStorage(finalImageUrl, path);
+                }
+
                 const type = document.getElementById('maintenance-type').value;
                 const record = {
                     deviceId: currentMaintEqId,
@@ -1451,7 +1441,7 @@
                     type: type,
                     componentName: type === 'replacement' ? document.getElementById('maintenance-component-name').value : null,
                     notes: document.getElementById('maintenance-notes').value,
-                    imageUrl: document.getElementById('maint-image-preview').dataset.imageDataUrl || null,
+                    imageUrl: finalImageUrl,
                     timestamp: Timestamp.fromDate(selectedDate), 
                     createdTimestamp: serverTimestamp()
                 };
@@ -1468,7 +1458,7 @@
                             const cycle = parseInt(eq.cleaningCycleDays) || 30;
                             nextDate = new Date(selectedDate);
                             nextDate.setDate(nextDate.getDate() + cycle);
-                            nextDate = window.app.adjustForWeekend(nextDate); // 確保清潔日也跳過週末
+                            nextDate = window.app.adjustForWeekend(nextDate); 
                         }
                         if (nextDate) {
                             await updateDoc(getDocRef("equipment", currentMaintEqId), { nextCleaningDate: window.app.formatDate(nextDate) });
@@ -1492,14 +1482,104 @@
         window.app.addBackupUser = function() { const select = document.getElementById('edit-backup-adder-select'); const uid = select.value; if(!uid) return; if(!window.app.currentBackupList) window.app.currentBackupList = []; if(window.app.currentBackupList.includes(uid)) { showToast("此人員已在清單中", "error"); return; } const primary = document.getElementById('edit-primary-owner').value; if(primary === uid) { showToast("此人員已是主要負責人", "error"); return; } window.app.currentBackupList.push(uid); window.app.renderBackupList(); select.value = ""; };
         window.app.removeBackupUser = function(index) { if(!window.app.currentBackupList) return; window.app.currentBackupList.splice(index, 1); window.app.renderBackupList(); };
         window.app.moveBackupUser = function(index, direction) { if(!window.app.currentBackupList) return; const newIndex = index + direction; if(newIndex < 0 || newIndex >= window.app.currentBackupList.length) return; const temp = window.app.currentBackupList[index]; window.app.currentBackupList[index] = window.app.currentBackupList[newIndex]; window.app.currentBackupList[newIndex] = temp; window.app.renderBackupList(); };
-        window.app.showEditor = function(id = null) { document.getElementById('equipment-list-section').classList.add('hidden'); document.getElementById('equipment-editor-section').classList.remove('hidden'); document.getElementById('item-editor-container').innerHTML = ''; document.getElementById('component-editor-container').innerHTML = ''; const sel = document.getElementById('edit-device-category-select'); const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; cats.forEach(c => sel.add(new Option(c, c))); const primarySel = document.getElementById('edit-primary-owner'); const backupAdder = document.getElementById('edit-backup-adder-select'); primarySel.innerHTML = '<option value="">請選擇負責人...</option>'; backupAdder.innerHTML = '<option value="">選擇人員加入...</option>'; Object.values(userDatabase).forEach(u => { primarySel.add(new Option(u.name, u.id)); backupAdder.add(new Option(u.name, u.id)); }); const imgPreview = document.getElementById('image-preview'); document.getElementById('edit-device-image-camera').value = ''; document.getElementById('edit-device-image-gallery').value = ''; window.app.currentBackupList = []; if(id) { const eq = equipmentDatabase[id]; document.getElementById('edit-device-id').value = eq.id; document.getElementById('edit-device-name').value = eq.name; document.getElementById('edit-device-location').value = eq.location || ''; document.getElementById('edit-device-asset').value = eq.assetNumber || ''; document.getElementById('edit-device-status').value = eq.status || '使用中'; const checkSchedule = eq.checkSchedule || { mode: 'interval', interval: eq.checkCycleDays || 7, weekdays: [] }; document.querySelector(`input[name="checkMode"][value="${checkSchedule.mode}"]`).checked = true; document.getElementById('edit-check-interval').value = checkSchedule.interval || 7; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => { cb.checked = checkSchedule.weekdays ? checkSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('check'); const cleaningSchedule = eq.cleaningSchedule || { mode: 'interval', interval: eq.cleaningCycleDays || 30, weekdays: [] }; const savedCleanMode = cleaningSchedule.mode; if(savedCleanMode && document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`)) { document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`).checked = true; } else { document.querySelector(`input[name="cleanMode"][value="interval"]`).checked = true; } document.getElementById('edit-clean-interval').value = cleaningSchedule.interval || 30; document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => { cb.checked = cleaningSchedule.weekdays ? cleaningSchedule.weekdays.includes(parseInt(cb.value)) : false; }); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; if(eq.category) sel.value = eq.category; if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); if(eq.primaryOwnerId) primarySel.value = eq.primaryOwnerId; if(eq.backupOwnerIds && Array.isArray(eq.backupOwnerIds)) { window.app.currentBackupList = [...eq.backupOwnerIds]; } imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; } else { ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); document.querySelector('input[name="checkMode"][value="interval"]').checked = true; document.querySelector('input[name="cleanMode"][value="interval"]').checked = true; document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => cb.checked = false); document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => cb.checked = false); document.getElementById('edit-check-interval').value = 7; document.getElementById('edit-clean-interval').value = 30; window.app.toggleScheduleMode('check'); window.app.toggleScheduleMode('clean'); document.getElementById('edit-device-include-kt').checked = false; imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; imgPreview.dataset.imageDataUrl = ''; } window.app.renderBackupList(); window.app.toggleEditorSections(); };
+        window.app.showEditor = function(id = null) { 
+            document.getElementById('equipment-list-section').classList.add('hidden'); 
+            document.getElementById('equipment-editor-section').classList.remove('hidden'); 
+            document.getElementById('item-editor-container').innerHTML = ''; 
+            document.getElementById('component-editor-container').innerHTML = ''; 
+            const sel = document.getElementById('edit-device-category-select'); 
+            const cats = [...new Set(Object.values(equipmentDatabase).map(e => e.category || '未分類'))]; 
+            sel.innerHTML = '<option value="__new__">＋ 新增分類</option>'; 
+            cats.forEach(c => sel.add(new Option(c, c))); 
+            const primarySel = document.getElementById('edit-primary-owner'); 
+            const backupAdder = document.getElementById('edit-backup-adder-select'); 
+            primarySel.innerHTML = '<option value="">請選擇負責人...</option>'; 
+            backupAdder.innerHTML = '<option value="">選擇人員加入...</option>'; 
+            Object.values(userDatabase).forEach(u => { primarySel.add(new Option(u.name, u.id)); backupAdder.add(new Option(u.name, u.id)); }); 
+            const imgPreview = document.getElementById('image-preview'); 
+            document.getElementById('edit-device-image').value = ''; 
+            document.getElementById('edit-device-camera').value = ''; 
+            window.app.currentBackupList = []; 
+            
+            if(id) { 
+                const eq = equipmentDatabase[id]; 
+                document.getElementById('edit-device-id').value = eq.id; 
+                document.getElementById('edit-device-name').value = eq.name; 
+                document.getElementById('edit-device-location').value = eq.location || ''; 
+                document.getElementById('edit-device-asset').value = eq.assetNumber || ''; 
+                document.getElementById('edit-device-status').value = eq.status || '使用中'; 
+                const checkSchedule = eq.checkSchedule || { mode: 'interval', interval: eq.checkCycleDays || 7, weekdays: [] }; 
+                document.querySelector(`input[name="checkMode"][value="${checkSchedule.mode}"]`).checked = true; 
+                document.getElementById('edit-check-interval').value = checkSchedule.interval || 7; 
+                document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => { cb.checked = checkSchedule.weekdays ? checkSchedule.weekdays.includes(parseInt(cb.value)) : false; }); 
+                window.app.toggleScheduleMode('check'); 
+                const cleaningSchedule = eq.cleaningSchedule || { mode: 'interval', interval: eq.cleaningCycleDays || 30, weekdays: [] }; 
+                const savedCleanMode = cleaningSchedule.mode; 
+                if(savedCleanMode && document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`)) { document.querySelector(`input[name="cleanMode"][value="${savedCleanMode}"]`).checked = true; } else { document.querySelector(`input[name="cleanMode"][value="interval"]`).checked = true; } 
+                document.getElementById('edit-clean-interval').value = cleaningSchedule.interval || 30; 
+                document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => { cb.checked = cleaningSchedule.weekdays ? cleaningSchedule.weekdays.includes(parseInt(cb.value)) : false; }); 
+                window.app.toggleScheduleMode('clean'); 
+                document.getElementById('edit-device-include-kt').checked = eq.includeInKtReport || false; 
+                if(eq.category) sel.value = eq.category; 
+                if(eq.items) eq.items.forEach(i => window.app.addCategoryEditor(i, 'item-editor-container')); 
+                if(eq.components) eq.components.forEach(c => window.app.addComponentEditor(c)); 
+                if(eq.primaryOwnerId) primarySel.value = eq.primaryOwnerId; 
+                if(eq.backupOwnerIds && Array.isArray(eq.backupOwnerIds)) { window.app.currentBackupList = [...eq.backupOwnerIds]; } 
+                imgPreview.src = eq.imageUrl || 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; 
+                imgPreview.dataset.imageDataUrl = eq.imageUrl || ''; 
+            } else { 
+                ['edit-device-id', 'edit-device-name', 'edit-device-location', 'edit-device-asset'].forEach(k=> { const el = document.getElementById(k); if(el) el.value=''; }); 
+                document.querySelector('input[name="checkMode"][value="interval"]').checked = true; 
+                document.querySelector('input[name="cleanMode"][value="interval"]').checked = true; 
+                document.querySelectorAll('input[name="checkWeekday"]').forEach(cb => cb.checked = false); 
+                document.querySelectorAll('input[name="cleanWeekday"]').forEach(cb => cb.checked = false); 
+                document.getElementById('edit-check-interval').value = 7; 
+                document.getElementById('edit-clean-interval').value = 30; 
+                window.app.toggleScheduleMode('check'); 
+                window.app.toggleScheduleMode('clean'); 
+                document.getElementById('edit-device-include-kt').checked = false; 
+                imgPreview.src = 'https://placehold.co/100x100/e2e8f0/94a3b8?text=無圖片'; 
+                imgPreview.dataset.imageDataUrl = ''; 
+            } 
+            window.app.renderBackupList(); 
+            window.app.toggleEditorSections(); 
+            window.app.toggleCategoryInput();
+        };
+
+        window.app.generateEquipmentId = function() {
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0,10).replace(/-/g, '');
+            const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const id = `EQ-${dateStr}-${random}`;
+            document.getElementById('edit-device-id').value = id;
+        };
+
+        window.app.toggleCategoryInput = function() {
+            const val = document.getElementById('edit-device-category-select').value;
+            const input = document.getElementById('edit-device-category-new');
+            if(val === '__new__') {
+                input.classList.remove('hidden');
+            } else {
+                input.classList.add('hidden');
+            }
+        };
+
         window.app.showList = function() { document.getElementById('equipment-list-section').classList.remove('hidden'); document.getElementById('equipment-editor-section').classList.add('hidden'); window.app.renderEquipmentList(); };
-        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()) || new Date(); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()) || new Date(); const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: imgPreview.dataset.imageDataUrl || null, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: window.app.formatDate(nextCheckDate), nextCleaningDate: window.app.formatDate(nextCleaningDate) }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
+        window.app.saveEquipment = async function(btn) { const originalText = '儲存變更'; if (btn) { btn.disabled = true; btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...`; } try { const id = document.getElementById('edit-device-id').value; const name = document.getElementById('edit-device-name').value; const catSelect = document.getElementById('edit-device-category-select'); const cat = catSelect.value === '__new__' ? (document.getElementById('edit-device-category-new').value || '未分類') : catSelect.value; const items = []; document.querySelectorAll('#item-editor-container .editor-item').forEach(el => { const cName = el.querySelector('.cat-name').value; const subs = el.querySelector('.sub-items').value.split(',').map(s => ({ text: s.trim() })).filter(s => s.text); if(cName) items.push({ category: cName, subItems: subs }); }); const components = []; document.querySelectorAll('#component-editor-container .component-item').forEach(el => { const cName = el.querySelector('.comp-name').value; const cCycle = el.querySelector('.comp-cycle').value; if(cName) components.push({ name: cName, cycle: cCycle }); }); const primaryOwnerId = document.getElementById('edit-primary-owner').value; const backupOwnerIds = window.app.currentBackupList || []; const authorizedUsers = []; if(primaryOwnerId) authorizedUsers.push(primaryOwnerId); authorizedUsers.push(...backupOwnerIds); const imgPreview = document.getElementById('image-preview'); const includeInKtReport = document.getElementById('edit-device-include-kt').checked; const checkSchedule = { mode: document.querySelector('input[name="checkMode"]:checked').value, interval: parseInt(document.getElementById('edit-check-interval').value) || 7, weekdays: Array.from(document.querySelectorAll('input[name="checkWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const cleaningSchedule = { mode: document.querySelector('input[name="cleanMode"]:checked').value, interval: parseInt(document.getElementById('edit-clean-interval').value) || 30, weekdays: Array.from(document.querySelectorAll('input[name="cleanWeekday"]:checked')).map(cb => parseInt(cb.value)) }; const nextCheckDate = window.app.calculateNextScheduleDate(checkSchedule, new Date()); const nextCleaningDate = window.app.calculateNextScheduleDate(cleaningSchedule, new Date()); 
+        
+        // 處理圖片上傳 (設備圖片)
+        // Note: imgPreview is already declared above
+        let finalImageUrl = imgPreview.dataset.imageDataUrl || null;
+        if (finalImageUrl && finalImageUrl.startsWith('data:image')) {
+            btn.innerHTML = `...上傳圖片中...`;
+            finalImageUrl = await uploadImageToStorage(finalImageUrl, `images/equipment/${id}.jpg`);
+        }
+
+        const data = { name, category: cat, items, components, primaryOwnerId, backupOwnerIds, authorizedUsers, includeInKtReport, imageUrl: finalImageUrl, location: document.getElementById('edit-device-location').value, assetNumber: document.getElementById('edit-device-asset').value, status: document.getElementById('edit-device-status').value, checkCycleDays: checkSchedule.interval, checkSchedule, cleaningSchedule, nextCheckDate: nextCheckDate ? window.app.formatDate(nextCheckDate) : null, nextCleaningDate: nextCleaningDate ? window.app.formatDate(nextCleaningDate) : null }; await setDoc(getDocRef("equipment", id), data, { merge: true }); showToast('儲存成功', 'success'); window.app.showList(); } catch (error) { console.error("Save failed:", error); showToast("儲存失敗: " + error.message, "error"); } finally { if (btn) { btn.disabled = false; btn.innerHTML = originalText; } } };
         window.app.addCategoryEditor = function(data = null, containerId = 'item-editor-container') { const container = document.getElementById(containerId); const div = document.createElement('div'); div.className = 'editor-item border p-3 rounded bg-slate-50 mb-2'; div.innerHTML = `<div class="flex justify-between mb-2"><input type="text" class="cat-name p-1 border rounded w-1/2 font-bold" value="${data?.category || ''}" placeholder="分類名稱 (如: 外觀)"><button onclick="this.closest('.editor-item').remove()" class="text-red-500 text-xs">刪除</button></div><textarea class="sub-items w-full p-2 border rounded text-sm h-20" placeholder="項目 (用逗號分隔，如: 異音, 漏油)">${data?.subItems?.map(s => s.text).join(',') || ''}</textarea>`; container.appendChild(div); };
         window.app.addComponentEditor = function(data = null) { const container = document.getElementById('component-editor-container'); const div = document.createElement('div'); div.className = 'component-item border p-2 rounded bg-white mb-2 flex space-x-2 items-center'; div.innerHTML = `<input type="text" class="comp-name w-1/2 p-1 border rounded text-sm" value="${data?.name || ''}" placeholder="零件名稱"><input type="number" class="comp-cycle w-1/4 p-1 border rounded text-sm" value="${data?.cycle || ''}" placeholder="週期(天)"><button onclick="this.closest('.component-item').remove()" class="text-red-500 text-xs px-2">✕</button>`; container.appendChild(div); };
         window.app.showScanner = function() { const modal = document.getElementById('qr-scanner-modal'); const content = document.getElementById('qr-scanner-content'); modal.classList.remove('hidden'); modal.classList.add('flex'); content.classList.remove('hidden'); html5QrCode = new Html5Qrcode("qr-reader"); const config = { fps: 10, qrbox: { width: 250, height: 250 } }; html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => { if (decodedText.includes("?id=")) { const id = decodedText.split("?id=")[1]; window.app.hideScanner(); window.app.handleScanResult(id); } else { if (equipmentDatabase[decodedText]) { window.app.hideScanner(); window.app.handleScanResult(decodedText); } } }, (errorMessage) => { }).catch(err => { console.error(err); alert("無法啟動相機，請確認權限或使用 HTTPS 連線。"); window.app.hideScanner(); }); };
-        window.app.hideScanner = function() { if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); document.getElementById('qr-scanner-modal').classList.add('hidden'); document.getElementById('qr-scanner-modal').classList.remove('flex'); }).catch(err => console.error(err)); } else { document.getElementById('qr-scanner-modal').classList.add('hidden'); document.getElementById('qr-scanner-modal').classList.remove('flex'); } };
-        window.app.handleScanResult = function(id) { const eq = equipmentDatabase[id]; if (eq) { const modal = document.getElementById('scan-action-modal'); const content = document.getElementById('scan-action-content'); document.getElementById('scan-match-name').textContent = eq.name; const btnCheck = document.getElementById('btn-scan-checklist'); const btnMaint = document.getElementById('btn-scan-maintenance'); const btnPart = document.getElementById('btn-scan-part'); btnCheck.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('check'); startChecklist(id); }; btnMaint.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('clean'); window.app.showMaintenanceModal(id); }; btnPart.onclick = () => { modal.classList.add('hidden'); window.app.switchTaskMode('part'); window.app.handleManualReplaceOpen(id); }; modal.classList.remove('hidden'); content.classList.remove('hidden'); } else { showToast("找不到設備 ID: " + id, "error"); } };
+        
         window.app.renderTemplateList = function() { const container = document.getElementById('template-list-container'); container.innerHTML = ''; if(Object.keys(templateDatabase).length === 0) { container.innerHTML = '<p class="text-center text-gray-400">尚無範本</p>'; return; } Object.values(templateDatabase).forEach(t => { container.innerHTML += `<div class="card p-4 flex justify-between items-center"><span class="font-bold">${t.name}</span><div class="flex gap-2"><button onclick="window.app.showTemplateEditor('${t.id}')" class="text-blue-600 text-sm border px-2 py-1 rounded">編輯</button><button onclick="window.app.deleteTemplate('${t.id}')" class="text-red-600 text-sm border px-2 py-1 rounded">刪除</button></div></div>`; }); };
         window.app.showTemplateEditor = function(id = null) { document.getElementById('template-list-section').classList.add('hidden'); document.getElementById('template-editor-section').classList.remove('hidden'); document.getElementById('template-item-editor-container').innerHTML = ''; if(id) { const t = templateDatabase[id]; document.getElementById('edit-template-id').value = t.id; document.getElementById('edit-template-name').value = t.name; if(t.items) t.items.forEach(i => window.app.addCategoryEditor(i, 'template-item-editor-container')); } else { document.getElementById('edit-template-id').value = ''; document.getElementById('edit-template-name').value = ''; } };
         window.app.showTemplateList = function() { document.getElementById('template-list-section').classList.remove('hidden'); document.getElementById('template-editor-section').classList.add('hidden'); };
