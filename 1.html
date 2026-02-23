@@ -159,7 +159,7 @@
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">工作內容</label><input type="text" id="gt-content" list="gt-content-list" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required placeholder="請選擇或輸入工作內容"><datalist id="gt-content-list"></datalist></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">執行人員</label><select id="gt-assignee" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required></select></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">日期</label><input type="date" id="gt-date" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500" required></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">狀態</label><select id="gt-status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"><option value="尚未開始">尚未開始</option><option value="單日工作">單日工作</option><option value="階段性任務">階段性任務</option><option value="多日行程">多日行程</option><option value="進行中" selected>進行中</option><option value="已完成">已完成</option></select></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">狀態</label><select id="gt-status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"><option value="尚未開始">尚未開始</option><option value="單日工作">單日工作</option><option value="階段性任務">階段性任務</option><option value="進行中" selected>進行中</option><option value="已完成">已完成</option></select></div>
                 </div>
                 <div class="mt-6 flex justify-end space-x-3"><button type="button" id="btn-cancel-general-task" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">取消</button><button type="submit" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 shadow-md">儲存</button></div>
             </form>
@@ -282,7 +282,7 @@
             },
             projectCategories: ['碳鋼包藥開發', '碳鋼包藥改善', '設備', '測試'],
             projectStatusOptions: ['進行中', '已完成', '暫停'],
-            itemStatusOptions: ['單日工作', '預計工作', '已完成', '暫停', '追蹤中', '多日行程'],
+            itemStatusOptions: ['單日工作', '預計工作', '已完成', '暫停', '追蹤中'],
             routineTaskOptions: ['整理環境', '參加會議', '設備保養', '教育訓練', '支援生產', '行政庶務']
         };
         let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
@@ -295,7 +295,6 @@
                 case '單日工作': return 'bg-sky-100 text-sky-800 border-sky-200';
                 case '預計工作': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
                 case '階段性任務': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                case '多日行程': return 'bg-purple-100 text-purple-800 border-purple-200';
                 case '追蹤中': return 'bg-pink-100 text-pink-800 border-pink-200';
                 case '暫停': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
                 default: return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -392,7 +391,7 @@
         }
 
         const createStatusBadge = (status, taskId, itemIndex = null) => {
-            const options = itemIndex !== null ? (config.itemStatusOptions || ['單日工作', '預計工作', '已完成', '暫停', '追蹤中', '多日行程']) : (config.projectStatusOptions || ['進行中', '已完成', '暫停']);
+            const options = itemIndex !== null ? (config.itemStatusOptions || ['單日工作', '預計工作', '已完成', '暫停', '追蹤中']) : (config.projectStatusOptions || ['進行中', '已完成', '暫停']);
             return `<div class="relative status-badge-wrapper inline-block"><button class="px-3 py-1 text-xs font-bold rounded-full border cursor-pointer ${getStatusColor(status)} shadow-sm hover:opacity-80 transition-opacity whitespace-nowrap">${status}</button><div class="status-popover hidden absolute z-50 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-200 left-0"><ul class="py-1 text-sm" data-task-id="${taskId}" data-item-index="${itemIndex !== null ? itemIndex : ''}">${options.map(s => `<li><a href="#" class="block px-4 py-2 hover:bg-blue-50 text-gray-700 hover:text-blue-700" data-status="${s}">${s}</a></li>`).join('')}</ul></div></div>`;
         };
 
@@ -446,31 +445,12 @@
                          const mainP = item.assignedPersonnel?.filter(p => p.role === '主要').map(p => p.name).join(', ') || '-';
                          const asstP = item.assignedPersonnel?.filter(p => p.role === '協助').map(p => p.name).join(', ');
                          let dateRange = '';
-                         // Logic for displaying projected end date
-                         if (item.startDate) {
-                             if (item.projectedEndDate && item.status !== '已完成') {
-                                 dateRange = `${item.startDate} → ${item.projectedEndDate}`;
-                             } else if (item.endDate) {
-                                 dateRange = `${item.startDate}~${item.endDate}`;
-                             } else {
-                                 dateRange = `${item.startDate}~`;
-                             }
-                         }
+                         if (item.startDate) dateRange = item.endDate ? `${item.startDate}~${item.endDate}` : `${item.startDate}~`;
                          
                          let extraInfo = '';
                          if (item.status === '追蹤中' && item.startDate) {
                              const days = Math.floor((new Date() - new Date(item.startDate)) / (1000 * 60 * 60 * 24)) + 1;
                              extraInfo = `<span class="ml-2 text-pink-600 font-bold">(已追蹤 ${days} 天)</span>`;
-                         }
-                         
-                         // Check for overdue '單日工作'
-                         if (item.status === '單日工作' && item.startDate) {
-                              const start = new Date(item.startDate); start.setHours(0,0,0,0);
-                              const today = new Date(); today.setHours(0,0,0,0);
-                              if (today > start) {
-                                  const diffDays = Math.ceil((today - start) / (1000 * 60 * 60 * 24));
-                                  extraInfo = `<span class="ml-2 text-red-600 font-bold text-xs"><i class="fas fa-exclamation-triangle"></i> 逾期 ${diffDays} 天</span>`;
-                              }
                          }
 
                          const dateDisplay = dateRange ? `<span class="text-gray-400 mx-1">|</span> ${dateRange}` : ''; 
@@ -502,28 +482,11 @@
              } else if (item.status === '預計工作') {
                  borderClass = 'border-l-4 border-cyan-500';
                  tagClass = 'bg-cyan-600 text-white';
-             } else if (item.status === '多日行程') {
-                 borderClass = 'border-l-4 border-purple-500';
-                 tagClass = 'bg-purple-600 text-white';
-             }
-             
-             let extraInfo = '';
-             
-             // Overdue logic
-             if (item.status === '單日工作' && item.startDate) {
-                 const start = new Date(item.startDate); start.setHours(0,0,0,0);
-                 const today = new Date(); today.setHours(0,0,0,0);
-                 if (today > start) {
-                     const diffDays = Math.ceil((today - start) / (1000 * 60 * 60 * 24)); 
-                     extraInfo = `<span class="ml-1 text-[10px] text-red-600 font-bold"><i class="fas fa-exclamation-circle"></i> 逾期${diffDays}天</span>`;
-                     
-                     borderClass = 'border-l-4 border-red-500';
-                     tagClass = 'bg-red-500 text-white';
-                 }
              }
 
              if (isMatrixSpan) bgClass = 'bg-indigo-50 opacity-90';
              
+             let extraInfo = '';
              if (item.status === '追蹤中' && item.originalTask) {
                   const startD = item.originalTask.startDate ? new Date(item.originalTask.startDate) : new Date();
                   const days = Math.floor((new Date() - startD) / (1000 * 60 * 60 * 24)) + 1;
@@ -635,58 +598,52 @@
                     (item.assignedPersonnel || []).forEach(assignee => {
                         if (!weeklyData[assignee.name]) return; 
                         const itemStart = item.startDate ? new Date(item.startDate) : null;
-                        
-                        // Determine Item End Date (Use Projected End Date if available and status is not 'Completed')
-                        let itemEnd = null;
-                        if (item.status === '已完成') {
-                            itemEnd = item.endDate ? new Date(item.endDate) : null;
-                        } else {
-                            if (item.projectedEndDate) itemEnd = new Date(item.projectedEndDate);
-                            else if (item.endDate) itemEnd = new Date(item.endDate);
-                        }
-
+                        const itemEnd = item.endDate ? new Date(item.endDate) : null;
                         if(itemStart) itemStart.setHours(0,0,0,0);
                         if(itemEnd) itemEnd.setHours(0,0,0,0);
-                        const taskObj = { type: 'project', taskName: task.projectName, content: item.content, status: item.status, role: assignee.role, originalTask: task, startDate: item.startDate };
+                        const taskObj = { type: 'project', taskName: task.projectName, content: item.content, status: item.status, role: assignee.role, originalTask: task };
                         
-                        // Handling Multi-day scheduling logic
+                        let isContinuous = true;
+                        
                         if (item.status === '單日工作') {
+                            isContinuous = false;
                             if (itemStart) {
                                 const diffDays = Math.round((itemStart - weekStart) / (1000 * 60 * 60 * 24));
                                 if (diffDays >= 0 && diffDays <= 6) weeklyData[assignee.name].days[diffDays].push(taskObj);
                             } else { weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: '(未定日期)'}); }
                         } else if (item.status === '預計工作') {
-                             let dateDisp = itemStart ? item.startDate : '(未定)';
-                             weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: dateDisp});
-                        } else if (item.status === '追蹤中') {
-                             weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: itemStart ? item.startDate : ''});
-                        } else if (item.status === '階段性任務' || item.status === '多日行程' || (itemStart && itemEnd && itemStart.getTime() !== itemEnd.getTime())) {
-                            // Logic for spanning tasks
-                            let dateDisp = '';
-                            if(itemStart && itemEnd) {
-                                // Format based on project projected end date
-                                let endStr = item.projectedEndDate || item.endDate;
-                                dateDisp = `${item.startDate} ~ ${endStr}`;
-                            } else if(itemStart) {
-                                dateDisp = `${item.startDate}~`;
-                            }
-                            
+                            isContinuous = true;
+                            let dateDisp = itemStart ? item.startDate : '(未定)';
                             weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: dateDisp});
-                            
-                            if (itemStart && itemEnd) {
-                                // If dates overlap with this week, add to days array for Matrix/Daily view
-                                if (itemStart <= weekEnd && itemEnd >= weekStart) {
-                                    for (let i=0; i<7; i++) {
-                                        const currentDay = new Date(weekStart); currentDay.setDate(weekStart.getDate() + i);
-                                        if (currentDay >= itemStart && currentDay <= itemEnd) {
-                                            weeklyData[assignee.name].days[i].push({ ...taskObj, isMatrixSpan: true });
-                                        }
-                                    }
+                        } else if (item.status === '追蹤中') {
+                             isContinuous = true;
+                             weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: itemStart ? item.startDate : ''});
+                        } else if (item.status === '階段性任務') {
+                            isContinuous = true;
+                            let dateDisp = '';
+                            if(itemStart && itemEnd) dateDisp = `${item.startDate}~${item.endDate}`; else if(itemStart) dateDisp = `${item.startDate}~`;
+                            weeklyData[assignee.name].continuous.push({...taskObj, dateDisplay: dateDisp});
+                            if (itemStart && itemEnd && itemStart <= weekEnd && itemEnd >= weekStart) {
+                                for (let i=0; i<7; i++) {
+                                    const currentDay = new Date(weekStart); currentDay.setDate(weekStart.getDate() + i);
+                                    if (currentDay >= itemStart && currentDay <= itemEnd) weeklyData[assignee.name].days[i].push({ ...taskObj, isMatrixSpan: true }); 
                                 }
                             }
                         } else {
-                            // Fallback for other statuses or single dates not marked as single day work
-                             if (itemStart) {
+                            if (itemStart && itemEnd) {
+                                if (itemStart.getTime() === itemEnd.getTime()) {
+                                    const diffDays = Math.round((itemStart - weekStart) / (1000 * 60 * 60 * 24));
+                                    if (diffDays >= 0 && diffDays <= 6) weeklyData[assignee.name].days[diffDays].push(taskObj);
+                                } else {
+                                    if (itemStart <= weekEnd && itemEnd >= weekStart) {
+                                        weeklyData[assignee.name].continuous.push({ ...taskObj, dateDisplay: `${item.startDate}~${item.endDate}` });
+                                        for (let i=0; i<7; i++) {
+                                            const currentDay = new Date(weekStart); currentDay.setDate(weekStart.getDate() + i);
+                                            if (currentDay >= itemStart && currentDay <= itemEnd) weeklyData[assignee.name].days[i].push({ ...taskObj, isMatrixSpan: true }); 
+                                        }
+                                    }
+                                }
+                            } else if (itemStart) {
                                 const diffDays = Math.round((itemStart - weekStart) / (1000 * 60 * 60 * 24));
                                  if (diffDays >= 0 && diffDays <= 6) weeklyData[assignee.name].days[diffDays].push(taskObj);
                                  else if (itemStart < weekStart) weeklyData[assignee.name].continuous.push(taskObj);
@@ -700,7 +657,7 @@
                  if (!weeklyData[gt.assignee]) return;
                  const gtDate = new Date(gt.date); gtDate.setHours(0,0,0,0);
                  const diffDays = Math.round((gtDate - weekStart) / (1000 * 60 * 60 * 24));
-                 if (diffDays >= 0 && diffDays <= 6) { weeklyData[gt.assignee].days[diffDays].push({ type: 'general', id: gt.id, content: gt.content, status: gt.status, originalTask: gt, startDate: gt.date }); }
+                 if (diffDays >= 0 && diffDays <= 6) { weeklyData[gt.assignee].days[diffDays].push({ type: 'general', id: gt.id, content: gt.content, status: gt.status, originalTask: gt }); }
             });
             if (currentWeeklyViewMode === 'cards') renderWeeklyCards(targetPersonnel, weeklyData);
             else if (currentWeeklyViewMode === 'matrix') renderWeeklyMatrix(targetPersonnel, weeklyData, weekDays);
@@ -785,18 +742,11 @@
             const years = Array.from(new Set(allTasks.map(t => (t.startDate||'').split('-')[0]))).filter(Boolean).sort().reverse(); document.getElementById('report-year-filter').innerHTML = `<option value="all">所有年份</option>` + years.map(y => `<option value="${y}">${y}</option>`).join('');
             document.getElementById('report-category-filter').innerHTML = `<option value="all">所有類別</option>` + config.projectCategories.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('report-status-filter').innerHTML = `<option value="all">所有狀態</option>` + config.projectStatusOptions.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            // Populate Person Filter logic added here
-            const uniquePeople = new Set();
-            allTasks.forEach(t => t.contentItems?.forEach(i => i.assignedPersonnel?.forEach(p => uniquePeople.add(p.name))));
-            const sortedPeople = Array.from(uniquePeople).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-            document.getElementById('report-person-filter').innerHTML = `<option value="all">所有人員</option>` + sortedPeople.map(p => `<option value="${p}">${p}</option>`).join('');
-
             document.getElementById('report-modal').classList.remove('hidden'); renderReportTable();
         }
         function renderReportTable() {
              document.getElementById('report-date').innerText = `製表日期: ${new Date().toLocaleDateString()}`; const year = document.getElementById('report-year-filter').value; const category = document.getElementById('report-category-filter').value; const status = document.getElementById('report-status-filter').value; const person = document.getElementById('report-person-filter').value;
-             const filtered = allTasks.filter(task => (year === 'all' || (task.startDate && task.startDate.startsWith(year))) && (category === 'all' || task.projectCategory === category) && (status === 'all' || task.status === status) && (person === 'all' || !person || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person))));
+             const filtered = allTasks.filter(task => (year === 'all' || (task.startDate && task.startDate.startsWith(year))) && (category === 'all' || task.projectCategory === category) && (status === 'all' || task.status === status) && (person === 'all' || task.contentItems?.some(item => item.assignedPersonnel?.some(p => p.name === person))));
              document.getElementById('report-table-body').innerHTML = filtered.map(t => `<tr class="border-b"><td class="p-2 align-top font-bold">${t.projectName}</td><td class="p-2 align-top text-xs">${t.projectCategory}</td><td class="p-2 align-top text-xs">${t.status}</td><td class="p-2 align-top text-xs">${(t.contentItems||[]).map(i => `<div>• ${i.content} (${i.status}) - ${i.assignedPersonnel?.map(p=>p.name).join(' ')}</div>`).join('')}</td></tr>`).join('');
         }
         async function archiveTask(taskId) { const task = allTasks.find(t => t.id === taskId); if (!task) return; const taskData = { ...task }; delete taskData.id; try { await set(ref(db, `artifacts/${appId}/public/data/archived_tasks/${taskId}`), taskData); await remove(ref(db, `artifacts/${appId}/public/data/tasks/${taskId}`)); showToast('任務已封存'); } catch (e) { console.error(e); showToast('封存失敗', 'error'); } }
@@ -855,8 +805,6 @@
                 document.getElementById('remarks').value = task.remarks || '';
                 renderFormItems(task.contentItems || []);
             } else {
-                // 新增任務時，預設帶入當天日期
-                document.getElementById('startDate').value = new Date().toISOString().slice(0,10);
                 statSel.value = '進行中';
                 renderFormItems([{ content: '', status: '單日工作' }]);
             }
@@ -907,9 +855,8 @@
                         `).join('')}
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label class="text-xs text-gray-500">開始日期</label><input type="date" class="item-start w-full border-gray-300 rounded text-xs" value="${item.startDate || ''}"></div>
-                    <div><label class="text-xs text-gray-500">預計結束</label><input type="date" class="item-projected-end w-full border-gray-300 rounded text-xs" value="${item.projectedEndDate || ''}"></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs text-gray-500">開始</label><input type="date" class="item-start w-full border-gray-300 rounded text-xs" value="${item.startDate || ''}"></div>
                     <div><label class="text-xs text-gray-500">狀態</label><select class="item-status w-full border-gray-300 rounded text-xs">${config.itemStatusOptions.map(s => `<option value="${s}" ${s===defaultStatus?'selected':''}>${s}</option>`).join('')}</select></div>
                 </div>
             `;
@@ -940,7 +887,6 @@
             // Store data for restoration
             div.dataset.personnel = JSON.stringify(item.assignedPersonnel || []);
             div.dataset.endDate = item.endDate || '';
-            div.dataset.projectedEndDate = item.projectedEndDate || '';
             
             const personNames = (item.assignedPersonnel || []).map(p => p.name.split('-')[1] || p.name).join(', ');
             
@@ -1031,6 +977,14 @@
             document.getElementById('btn-close-report').onclick = () => toggleModal('report-modal', false);
             document.getElementById('btn-show-schedule').onclick = openScheduleModal;
             document.getElementById('btn-cancel-schedule').onclick = () => toggleModal('schedule-modal', false);
+            
+            // 新增這段：綁定儲存輪值設定的按鈕事件
+            document.getElementById('btn-save-schedule').onclick = () => {
+                set(ref(db, `artifacts/${appId}/public/data/recorder_schedule`), recorderSchedule);
+                toggleModal('schedule-modal', false);
+                showToast('輪值設定已儲存');
+            };
+
             document.getElementById('btn-show-archive').onclick = openArchiveModal;
             document.getElementById('btn-close-archive').onclick = () => toggleModal('archive-modal', false);
             
@@ -1188,7 +1142,6 @@
                     addContentItemToForm({
                         content: content,
                         startDate: dateText,
-                        projectedEndDate: row.dataset.projectedEndDate || '',
                         status: '單日工作', 
                         assignedPersonnel: assignedPersonnel
                     });
@@ -1245,7 +1198,6 @@
                     return {
                         content: row.querySelector('.item-content').value,
                         startDate: row.querySelector('.item-start').value,
-                        projectedEndDate: row.querySelector('.item-projected-end').value,
                         endDate: endDate,
                         status: status,
                         assignedPersonnel: Array.from(row.querySelectorAll('.person-pill')).map(p => ({ name: p.dataset.name, role: p.dataset.role }))
@@ -1257,7 +1209,6 @@
                         content: row.querySelector('.completed-content').textContent,
                         startDate: row.querySelector('.completed-date').textContent,
                         endDate: row.dataset.endDate || todayStr,
-                        projectedEndDate: row.dataset.projectedEndDate || '',
                         status: '已完成',
                         assignedPersonnel: JSON.parse(row.dataset.personnel || "[]")
                     };
