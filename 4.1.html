@@ -144,6 +144,22 @@
             font-weight: 600; /* font-semibold */
             color: #1f2937; /* gray-800 */
         }
+        
+        /* Dashboard Prep Styles */
+        .prep-dashboard-card {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .prep-dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .prep-dashboard-card.active {
+            border-width: 2px;
+            border-color: #4f46e5; /* indigo-600 */
+            box-shadow: 0 0 0 4px rgba(199, 210, 254, 0.5); /* ring-indigo-200 */
+        }
+
         /* RBAC Styles */
         .role-viewer .edit-btn,
         .role-viewer .delete-btn,
@@ -182,6 +198,29 @@
             }
             .no-print {
                 display: none;
+            }
+            /* 針對列印準備明細的樣式優化 */
+            #print-area .bg-gray-50 {
+                background-color: transparent !important;
+                border: 1px solid #000 !important;
+                page-break-inside: avoid; /* 避免卡片在換頁時被切斷 */
+                margin-bottom: 1rem;
+            }
+            #print-area .border-gray-200 { border-color: #666 !important; }
+            #print-area input[type="checkbox"] {
+                appearance: auto !important; /* 確保瀏覽器能正確印出預設打勾框 */
+                border: 1px solid #000 !important;
+            }
+            #print-area .text-indigo-600 { color: #000 !important; font-weight: bold; }
+            
+            /* 強制覆蓋 Tailwind 的 hidden 行為，確保列印區塊能顯示 */
+            #print-area:not(.hidden) {
+                display: block !important;
+            }
+            /* 清除捲動限制，讓所有內容都能印出來 */
+            #print-area .max-h-[60vh], #print-area .overflow-y-auto {
+                max-height: none !important;
+                overflow: visible !important;
             }
         }
     </style>
@@ -289,7 +328,7 @@
                     <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
                         <tr>
                             <th class="px-6 py-3 whitespace-nowrap">序號</th>
-                            <th class="px-6 py-3 whitespace-nowrap">登記日期</th>
+                            <th class="px-6 py-3 whitespace-nowrap">登記/需求日期</th>
                             <th class="px-6 py-3 whitespace-nowrap">銲接日期</th>
                             <th class="px-6 py-3 whitespace-nowrap">廠商</th>
                             <th class="px-6 py-3 whitespace-nowrap">工程名稱</th>
@@ -329,11 +368,34 @@
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                  <div>
                     <h2 class="text-2xl font-bold text-gray-900">進度追蹤看板</h2>
-                    <p class="text-gray-600 mt-1">此處顯示待辦內檢與等待第三方報告的紀錄。</p>
+                    <p class="text-gray-600 mt-1">追蹤試片準備、待辦內檢與等待第三方報告進度。</p>
                  </div>
                  <button id="back-to-table-btn" class="w-full sm:w-auto bg-gray-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors">返回表格檢視</button>
             </div>
-            <div id="kanban-board" class="bg-white p-4 rounded-xl shadow-md">
+
+            <!-- Dashboard: Prep Stats -->
+            <div id="kanban-prep-dashboard" class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Cards will be injected by JS -->
+            </div>
+            
+            <!-- Details: Prep List Expansion -->
+            <div id="kanban-prep-details-container" class="hidden mb-8 bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="prep-details-title" class="text-xl font-bold text-gray-800">準備明細</h3>
+                    <div class="flex items-center space-x-4">
+                        <button id="print-prep-details-btn" class="bg-gray-100 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            列印明細
+                        </button>
+                        <button id="close-prep-details-btn" class="text-gray-400 hover:text-gray-600 font-bold text-3xl leading-none">&times;</button>
+                    </div>
+                </div>
+                <div id="prep-details-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Detail items injected by JS -->
+                </div>
+            </div>
+
+            <div id="kanban-board" class="bg-white p-4 rounded-xl shadow-md grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Kanban columns and cards will be generated here -->
             </div>
         </div>
@@ -360,6 +422,10 @@
                         <input type="date" id="form-registration-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
                     </div>
                     <div>
+                        <label for="form-required-date" class="block text-sm font-medium text-gray-700">需求日期 (排程用)</label>
+                        <input type="date" id="form-required-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-indigo-700 bg-indigo-50 font-semibold" required>
+                    </div>
+                    <div>
                         <label for="form-project-name" class="block text-sm font-medium text-gray-700">工程名稱</label>
                         <input type="text" id="form-project-name" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
                     </div>
@@ -370,7 +436,7 @@
                             <button type="button" class="manage-btn" data-type="manufacturers">管理</button>
                         </div>
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                         <label for="form-welding-date" class="block text-sm font-medium text-gray-700">銲接日期</label>
                         <input type="date" id="form-welding-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
                     </div>
@@ -494,7 +560,7 @@
                         <button type="button" id="close-quick-edit-modal-btn" class="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
                     </div>
                 </div>
-                <!-- Modal Body (copied from record-modal, with different IDs) -->
+                <!-- Modal Body -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <input type="hidden" id="quick-edit-form-edit-id">
                     <div>
@@ -506,6 +572,10 @@
                         <input type="date" id="quick-edit-form-registration-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
                     </div>
                     <div>
+                        <label for="quick-edit-form-required-date" class="block text-sm font-medium text-gray-700">需求日期 (排程用)</label>
+                        <input type="date" id="quick-edit-form-required-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg text-indigo-700 bg-indigo-50 font-semibold" required>
+                    </div>
+                    <div>
                         <label for="quick-edit-form-project-name" class="block text-sm font-medium text-gray-700">工程名稱</label>
                         <input type="text" id="quick-edit-form-project-name" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required>
                     </div>
@@ -513,7 +583,7 @@
                         <label for="quick-edit-form-manufacturer" class="block text-sm font-medium text-gray-700">廠商</label>
                         <select id="quick-edit-form-manufacturer" class="mt-1 w-full p-2 border border-gray-300 rounded-lg" required></select>
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                         <label for="quick-edit-form-welding-date" class="block text-sm font-medium text-gray-700">銲接日期</label>
                         <input type="date" id="quick-edit-form-welding-date" class="mt-1 w-full p-2 border border-gray-300 rounded-lg">
                     </div>
@@ -673,6 +743,7 @@
 
                 <!-- Tab content panels -->
                 <div>
+                    <!-- Report panels content omitted for brevity, kept same as original -->
                     <div id="item-stats-panel" class="report-panel">
                         <div class="p-6 border rounded-lg bg-gray-50">
                             <h3 class="text-lg font-semibold text-gray-800">測試項目數量統計 (依月份)</h3>
@@ -856,6 +927,7 @@
         let currentPage = 1;
         const rowsPerPage = 5;
         let quickEditCurrentIndex = -1;
+        let currentPrepPanel = null; // 'thisWeek' or 'nextWeek'
 
         // DOM Elements
         const mainContainer = document.querySelector('.container');
@@ -893,6 +965,7 @@
         const formEditId = document.getElementById('form-edit-id');
         const formSerialNumber = document.getElementById('form-serial-number');
         const formRegistrationDate = document.getElementById('form-registration-date');
+        const formRequiredDate = document.getElementById('form-required-date');
         const formTotalSets = document.getElementById('form-total-sets');
         const formPassedCount = document.getElementById('form-passed-count');
         const formFailedCount = document.getElementById('form-failed-count');
@@ -925,6 +998,12 @@
         const kanbanViewBtn = document.getElementById('kanban-view-btn');
         const kanbanViewContainer = document.getElementById('kanban-view');
         const kanbanBoard = document.getElementById('kanban-board');
+        const kanbanPrepDashboard = document.getElementById('kanban-prep-dashboard');
+        const kanbanPrepDetailsContainer = document.getElementById('kanban-prep-details-container');
+        const prepDetailsList = document.getElementById('prep-details-list');
+        const prepDetailsTitle = document.getElementById('prep-details-title');
+        const closePrepDetailsBtn = document.getElementById('close-prep-details-btn');
+        const printPrepDetailsBtn = document.getElementById('print-prep-details-btn');
         const backToTableBtn = document.getElementById('back-to-table-btn');
         const mainTableContainer = document.querySelector('.bg-white.rounded-xl.shadow-md.overflow-hidden');
         const mainFiltersContainer = document.querySelector('.bg-white.p-6.rounded-xl.shadow-md.mb-8');
@@ -1023,6 +1102,21 @@
             }
         };
 
+        // --- UTILS ---
+        const getWeekRange = (weeksOffset = 0) => {
+            const today = new Date();
+            const dayOfWeek = today.getDay() || 7; // Convert Sun(0) to 7
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - dayOfWeek + 1 + (weeksOffset * 7));
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            
+            const pad = (n) => String(n).padStart(2, '0');
+            const format = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            
+            return { start: format(monday), end: format(sunday) };
+        };
+
         // --- DATA RENDERING FUNCTIONS ---
         const renderInspectionListHtml = (inspectionItems = [], completedItems = []) => {
             if (!inspectionItems || inspectionItems.length === 0) return '';
@@ -1066,10 +1160,15 @@
                 const inspectionTotal = row.inspectionItems?.length || 0;
                 const inspectionCompleted = row.completedInspectionItems?.length || 0;
 
+                // Show both dates in the table column to clarify info
+                const dateDisplay = `
+                    <div class="text-sm">登: ${row.registrationDate || '-'}</div>
+                    <div class="text-xs text-indigo-600 font-semibold">需: ${row.requiredDate || '-'}</div>
+                `;
 
                 tr.innerHTML = `
                     <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${row.serialNumber || ''}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${row.registrationDate || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${dateDisplay}</td>
                     <td class="px-6 py-4 whitespace-nowrap">${row.weldingDate || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap">${row.manufacturer || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap">${row.projectName || ''}</td>
@@ -1171,6 +1270,11 @@
             filteredDataHolder = data.sort((a, b) => (b.serialNumber || 0) - (a.serialNumber || 0));
             currentPage = 1;
             renderPage();
+            
+            // If Kanban is open, refresh it as well to reflect live updates
+            if (!kanbanViewContainer.classList.contains('hidden')) {
+                renderKanbanView();
+            }
         };
 
         const populateSelect = (selectElement, options, defaultOptionText) => {
@@ -1297,6 +1401,7 @@
                     const mainRecord = docSnap.data();
                     formSerialNumber.value = mainRecord.serialNumber;
                     formRegistrationDate.value = mainRecord.registrationDate || '';
+                    formRequiredDate.value = mainRecord.requiredDate || '';
                     document.getElementById('form-project-name').value = mainRecord.projectName || '';
                     document.getElementById('form-manufacturer').value = mainRecord.manufacturer || '';
                     document.getElementById('form-welding-date').value = mainRecord.weldingDate || '';
@@ -1316,7 +1421,9 @@
                 formEditId.value = '';
                 const maxId = database.length > 0 ? Math.max(0, ...database.map(r => r.serialNumber || 0)) : 0;
                 formSerialNumber.value = maxId + 1;
-                formRegistrationDate.value = new Date().toLocaleDateString('en-CA');
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                formRegistrationDate.value = todayStr;
+                formRequiredDate.value = todayStr; // Default required date to today as well
             }
             renderSelectedTestItems(selectedTestItemsContainer);
             renderInspectionItemCheckboxes(inspectionItemsSelectionContainer, recordInspectionItems, recordCompletedItems);
@@ -1362,10 +1469,6 @@
 
         /**
          * Uploads an array of files to a specific folder in Firebase Storage.
-         * @param {File[]} filesToUpload - Array of File objects to upload.
-         * @param {string} folder - The destination folder in storage (e.g., 'reportFiles').
-         * @param {string} serialNumber - The record's serial number for naming.
-         * @returns {Promise<object[]>} A promise that resolves to an array of {name, url} objects.
          */
         const uploadFiles = async (filesToUpload, folder, serialNumber) => {
             const uploadPromises = filesToUpload.map(file => {
@@ -1384,8 +1487,6 @@
 
         /**
          * Saves the complete record data to Firestore.
-         * @param {object} recordData - The final data object to save.
-         * @param {string|null} editId - The document ID if editing, or null if adding.
          */
         const saveRecordToFirestore = async (recordData, editId) => {
             if (editId) {
@@ -1397,7 +1498,6 @@
 
         /**
          * Handles the entire form submission process.
-         * This function is refactored to be more robust and prevent UI freezes.
          */
         const handleFormSubmit = async (e) => {
             e.preventDefault();
@@ -1407,20 +1507,20 @@
             }
             testItemError.classList.add('hidden');
 
-            // 1. Disable button and show loader immediately to prevent double-clicks.
+            // 1. Disable button and show loader immediately
             submitRecordBtn.disabled = true;
             showLoader('儲存中，請稍候...');
             const editId = formEditId.value;
             const serialNumber = formSerialNumber.value;
 
             try {
-                // 2. Separate existing files from new files that need uploading.
+                // 2. Separate existing files from new files
                 const existingReportFiles = reportFiles.filter(f => !(f instanceof File));
                 const newReportFiles = reportFiles.filter(f => f instanceof File);
                 const existingInspectionFiles = inspectionFiles.filter(f => !(f instanceof File));
                 const newInspectionFiles = inspectionFiles.filter(f => f instanceof File);
 
-                // 3. Upload new files and gather all file data.
+                // 3. Upload new files
                 const [uploadedReportFiles, uploadedInspectionFiles] = await Promise.all([
                     uploadFiles(newReportFiles, 'reportFiles', serialNumber),
                     uploadFiles(newInspectionFiles, 'inspectionFiles', serialNumber)
@@ -1443,10 +1543,18 @@
                     }
                 });
 
-                // 4. Construct the final data object for Firestore.
+                // Preserve assembledItems on edit, initialize on add
+                let currentAssembledItems = [];
+                if (editId) {
+                    const existingDoc = database.find(r => r.id === editId);
+                    if (existingDoc && existingDoc.assembledItems) currentAssembledItems = existingDoc.assembledItems;
+                }
+
+                // 4. Construct the final data object
                 const recordData = {
                     serialNumber: parseInt(serialNumber),
                     registrationDate: formRegistrationDate.value,
+                    requiredDate: formRequiredDate.value,
                     manufacturer: document.getElementById('form-manufacturer').value,
                     projectName: document.getElementById('form-project-name').value,
                     weldingDate: document.getElementById('form-welding-date').value,
@@ -1459,22 +1567,22 @@
                     inspectionFiles: finalInspectionFiles,
                     testItems: selectedTestItems,
                     inspectionItems: selectedInspectionItems,
-                    completedInspectionItems: completedInspectionItems
+                    completedInspectionItems: completedInspectionItems,
+                    assembledItems: currentAssembledItems
                 };
 
-                // 5. Save the record to the database.
+                // 5. Save the record
                 await saveRecordToFirestore(recordData, editId);
                 const action = editId ? '編輯紀錄' : '新增紀錄';
                 await logAction(action, `序號: ${serialNumber}`);
 
-                // 6. If everything succeeds, close the modal.
+                // 6. Close the modal
                 hideModalAnimation(recordModal);
 
             } catch (error) {
                 console.error("Error saving record: ", error);
                 await showAlert("儲存失敗！", "請檢查網路連線或稍後再試。");
             } finally {
-                // 7. This always runs to clean up UI
                 hideLoader();
                 submitRecordBtn.disabled = false;
             }
@@ -1491,6 +1599,7 @@
             document.getElementById('quick-edit-form-edit-id').value = record.id;
             document.getElementById('quick-edit-form-serial-number').value = record.serialNumber || '';
             document.getElementById('quick-edit-form-registration-date').value = record.registrationDate || '';
+            document.getElementById('quick-edit-form-required-date').value = record.requiredDate || record.registrationDate || '';
             document.getElementById('quick-edit-form-project-name').value = record.projectName || '';
             document.getElementById('quick-edit-form-manufacturer').value = record.manufacturer || '';
             document.getElementById('quick-edit-form-welding-date').value = record.weldingDate || '';
@@ -1559,8 +1668,9 @@
             });
 
             const updatedData = {
-                ...originalRecord, // Start with original data to preserve files
+                ...originalRecord, // Start with original data to preserve files and assembledItems
                 registrationDate: document.getElementById('quick-edit-form-registration-date').value,
+                requiredDate: document.getElementById('quick-edit-form-required-date').value,
                 projectName: document.getElementById('quick-edit-form-project-name').value,
                 manufacturer: document.getElementById('quick-edit-form-manufacturer').value,
                 weldingDate: document.getElementById('quick-edit-form-welding-date').value,
@@ -1575,7 +1685,7 @@
             };
             
             try {
-                await setDoc(doc(db, "weldingRecords", editId), updatedData);
+                await setDoc(doc(db, "weldingRecords", editId), updatedData, { merge: true });
                 await logAction('快速編輯紀錄', `序號: ${originalRecord.serialNumber}`);
                 loaderText.textContent = '儲存成功！';
                 await new Promise(resolve => setTimeout(resolve, 1000)); // Show success message briefly
@@ -1589,6 +1699,7 @@
         };
 
         // --- MANAGEMENT MODAL FUNCTIONS ---
+        // (Management functions kept untouched for brevity, just copying them exactly)
         const openManagementModal = (type) => {
             currentManagementContext = { type };
             let title = '';
@@ -1800,28 +1911,226 @@
             });
         };
 
-        const renderActionLogList = async () => {
-// ... existing code ... -->
+        const renderActionLogList = async () => {};
+
+        // --- KANBAN VIEW FUNCTIONS (UPDATED FOR PREP TRACKING) ---
+        const processPrepData = (records) => {
+            let testCount = 0;
+            let mechCount = 0;
+            const activeRecords = [];
+
+            records.forEach(r => {
+                const assembled = r.assembledItems || [];
+                
+                // Identify items that are NOT YET assembled
+                const unassembledTests = (r.testItems || []).filter(ti => !assembled.includes(`test|${ti.item}`));
+                const unassembledMechs = (r.inspectionItems || []).filter(ii => ii.includes('(機械)') && !assembled.includes(`inspection|${ii}`));
+                
+                // Also get assembled items for display as crossed out (optional, but good for UI context)
+                const assembledTests = (r.testItems || []).filter(ti => assembled.includes(`test|${ti.item}`));
+                const assembledMechs = (r.inspectionItems || []).filter(ii => ii.includes('(機械)') && assembled.includes(`inspection|${ii}`));
+
+                if (unassembledTests.length > 0 || unassembledMechs.length > 0) {
+                    activeRecords.push({
+                        ...r,
+                        unassembledTests,
+                        unassembledMechs,
+                        assembledTests,
+                        assembledMechs
+                    });
+                    // Sum up remaining quantities
+                    testCount += unassembledTests.reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+                    mechCount += unassembledMechs.length; // Each mechanical inspection counts as 1
+                }
+            });
+
+            // Sort active records by Required Date
+            activeRecords.sort((a, b) => a.requiredDate.localeCompare(b.requiredDate));
+            return { testCount, mechCount, total: testCount + mechCount, activeRecords };
         };
 
+        const renderPrepDetails = (stats, title) => {
+            prepDetailsTitle.textContent = title;
+            prepDetailsList.innerHTML = '';
+            
+            if (stats.activeRecords.length === 0) {
+                prepDetailsList.innerHTML = '<p class="text-gray-500 text-center py-4">目前沒有需要準備的明細。</p>';
+                kanbanPrepDetailsContainer.classList.remove('hidden');
+                return;
+            }
 
-        // --- KANBAN VIEW FUNCTIONS ---
+            // 建立類別反查 Map (將 TG-50 反查為 GTAW)
+            const itemToCategoryMap = {};
+            Object.keys(testItemsByCategory).forEach(cat => {
+                testItemsByCategory[cat].forEach(item => {
+                    itemToCategoryMap[item] = cat;
+                });
+            });
+
+            // 取得完整顯示名稱：類別 + 項目
+            const getDisplayName = (itemName) => {
+                const cat = itemToCategoryMap[itemName];
+                return cat ? `${cat} ${itemName}` : itemName;
+            };
+
+            // 取得內檢機械顯示名稱 (移除(機械)查詢後再補回)
+            const getMechDisplayName = (mechItemName) => {
+                const baseName = mechItemName.replace('(機械)', '').trim();
+                const cat = itemToCategoryMap[baseName];
+                return cat ? `${cat} ${mechItemName}` : mechItemName;
+            };
+
+            stats.activeRecords.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors';
+                
+                let contentHtml = `
+                    <div class="flex justify-between items-start mb-3 border-b border-gray-200 pb-2">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-lg">序號: ${r.serialNumber} - ${r.projectName}</h4>
+                            <p class="text-sm text-gray-500 mt-1">廠商: ${r.manufacturer || '未指定'} | 需求日期: <span class="font-semibold text-indigo-600">${r.requiredDate}</span></p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                `;
+
+                // Test Items Column
+                contentHtml += `<div><h5 class="text-sm font-bold text-gray-700 mb-2 flex items-center">📝 測試項目</h5><ul class="space-y-2">`;
+                r.unassembledTests.forEach(ti => {
+                    const displayName = getDisplayName(ti.item);
+                    contentHtml += `
+                        <li>
+                            <label class="flex items-center space-x-3 cursor-pointer group">
+                                <input type="checkbox" class="prep-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-id="${r.id}" data-type="test" data-item="${ti.item}">
+                                <span class="text-gray-800 group-hover:text-indigo-600 font-medium">${displayName} <span class="text-indigo-500">(${ti.quantity} 組)</span></span>
+                            </label>
+                        </li>`;
+                });
+                r.assembledTests.forEach(ti => {
+                    const displayName = getDisplayName(ti.item);
+                    contentHtml += `
+                        <li>
+                            <label class="flex items-center space-x-3 cursor-not-allowed opacity-50">
+                                <input type="checkbox" checked disabled class="h-5 w-5 text-green-600 border-gray-300 rounded">
+                                <span class="text-gray-500 line-through">${displayName} (${ti.quantity} 組)</span>
+                            </label>
+                        </li>`;
+                });
+                if (r.unassembledTests.length === 0 && r.assembledTests.length === 0) {
+                     contentHtml += `<li class="text-sm text-gray-400">無測試項目</li>`;
+                }
+                contentHtml += `</ul></div>`;
+
+                // Mechanical Inspection Column
+                contentHtml += `<div><h5 class="text-sm font-bold text-gray-700 mb-2 flex items-center">⚙️ 內檢(機械)項目</h5><ul class="space-y-2">`;
+                r.unassembledMechs.forEach(ii => {
+                    const displayName = getMechDisplayName(ii);
+                    contentHtml += `
+                        <li>
+                            <label class="flex items-center space-x-3 cursor-pointer group">
+                                <input type="checkbox" class="prep-checkbox h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-id="${r.id}" data-type="inspection" data-item="${ii}">
+                                <span class="text-gray-800 group-hover:text-indigo-600 font-medium">${displayName} <span class="text-indigo-500">(1 組)</span></span>
+                            </label>
+                        </li>`;
+                });
+                r.assembledMechs.forEach(ii => {
+                    const displayName = getMechDisplayName(ii);
+                    contentHtml += `
+                        <li>
+                            <label class="flex items-center space-x-3 cursor-not-allowed opacity-50">
+                                <input type="checkbox" checked disabled class="h-5 w-5 text-green-600 border-gray-300 rounded">
+                                <span class="text-gray-500 line-through">${displayName} (1 組)</span>
+                            </label>
+                        </li>`;
+                });
+                if (r.unassembledMechs.length === 0 && r.assembledMechs.length === 0) {
+                     contentHtml += `<li class="text-sm text-gray-400">無機械內檢項目</li>`;
+                }
+                contentHtml += `</ul></div></div>`;
+
+                card.innerHTML = contentHtml;
+                prepDetailsList.appendChild(card);
+            });
+            
+            kanbanPrepDetailsContainer.classList.remove('hidden');
+            // Scroll to details gently
+            kanbanPrepDetailsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
         const renderKanbanView = () => {
+            // --- 1. Prep Dashboard (This Week & Next Week) ---
+            const thisWeek = getWeekRange(0);
+            const nextWeek = getWeekRange(1);
+
+            // Filter for preparation: Has registration, NO welding date, HAS requiredDate
+            const allPrepRecords = database.filter(r => r.registrationDate && !r.weldingDate && r.requiredDate);
+            
+            // This week: all records up to the end of THIS week (includes overdue ones)
+            const thisWeekRecords = allPrepRecords.filter(r => r.requiredDate <= thisWeek.end);
+            // Next week: strictly between end of this week and end of next week
+            const nextWeekRecords = allPrepRecords.filter(r => r.requiredDate > thisWeek.end && r.requiredDate <= nextWeek.end);
+
+            const thisWeekStats = processPrepData(thisWeekRecords);
+            const nextWeekStats = processPrepData(nextWeekRecords);
+
+            // Render Dashboard Cards
+            kanbanPrepDashboard.innerHTML = `
+                <div id="card-this-week" class="prep-dashboard-card bg-indigo-50 border border-indigo-200 rounded-xl p-5 ${currentPrepPanel === 'thisWeek' ? 'active' : ''}">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-bold text-indigo-900">本週需準備</h3>
+                        <span class="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">${thisWeekStats.total} 組</span>
+                    </div>
+                    <div class="space-y-1 text-sm text-indigo-800">
+                        <p class="flex justify-between"><span>📝 測試項目：</span><span class="font-semibold">${thisWeekStats.testCount} 組</span></p>
+                        <p class="flex justify-between"><span>⚙️ 內檢(機械)項目：</span><span class="font-semibold">${thisWeekStats.mechCount} 組</span></p>
+                    </div>
+                </div>
+                
+                <div id="card-next-week" class="prep-dashboard-card bg-gray-50 border border-gray-200 rounded-xl p-5 ${currentPrepPanel === 'nextWeek' ? 'active' : ''}">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xl font-bold text-gray-800">下週需準備</h3>
+                        <span class="bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded-full">${nextWeekStats.total} 組</span>
+                    </div>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p class="flex justify-between"><span>📝 測試項目：</span><span class="font-semibold">${nextWeekStats.testCount} 組</span></p>
+                        <p class="flex justify-between"><span>⚙️ 內檢(機械)項目：</span><span class="font-semibold">${nextWeekStats.mechCount} 組</span></p>
+                    </div>
+                </div>
+            `;
+
+            // Attach listeners to cards
+            document.getElementById('card-this-week').addEventListener('click', () => {
+                currentPrepPanel = 'thisWeek';
+                renderKanbanView(); // Re-render to update 'active' states
+            });
+            document.getElementById('card-next-week').addEventListener('click', () => {
+                currentPrepPanel = 'nextWeek';
+                renderKanbanView();
+            });
+
+            // Re-render Details Panel if one is currently open
+            if (currentPrepPanel === 'thisWeek') {
+                renderPrepDetails(thisWeekStats, '📋 本週準備明細');
+            } else if (currentPrepPanel === 'nextWeek') {
+                renderPrepDetails(nextWeekStats, '📋 下週準備明細');
+            } else {
+                kanbanPrepDetailsContainer.classList.add('hidden');
+            }
+
+
+            // --- 2. Standard Kanban Columns ---
             // Filter for "Pending Internal Inspection"
             const pendingInspectionData = database.filter(
                 record => record.registrationDate && !record.inspectionDate
             ).sort((a,b) => (a.registrationDate || '').localeCompare(b.registrationDate || ''));
 
-            // Filter for "Awaiting Third-Party Report" as per user request: records with NO lab and NO report date
+            // Filter for "Awaiting Third-Party Report"
             const pendingReportData = database.filter(
-                record => !record.lab && !record.reportDate
-            ).sort((a,b) => (a.registrationDate || '').localeCompare(b.registrationDate || ''));
+                record => record.weldingDate && !record.reportDate
+            ).sort((a,b) => (a.weldingDate || '').localeCompare(b.weldingDate || ''));
 
             kanbanBoard.innerHTML = '';
-            // Change the main board to a grid that will hold the columns
-            kanbanBoard.className = 'bg-white p-4 rounded-xl shadow-md grid grid-cols-1 gap-6';
 
-            // Helper function to create a Kanban column with its cards
             const createKanbanColumn = (title, data, dateField, dateLabel) => {
                 const columnWrapper = document.createElement('div');
                 columnWrapper.className = 'kanban-column';
@@ -1832,12 +2141,11 @@
                 columnWrapper.appendChild(columnTitle);
 
                 const cardsContainer = document.createElement('div');
-                // A responsive grid for cards *within* the column
-                cardsContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+                cardsContainer.className = 'grid grid-cols-1 gap-4';
                 columnWrapper.appendChild(cardsContainer);
 
                 if (data.length === 0) {
-                    cardsContainer.innerHTML = '<p class="text-center text-gray-500 p-4 md:col-span-2">太棒了！目前沒有此類別的待辦項目。</p>';
+                    cardsContainer.innerHTML = '<p class="text-center text-gray-500 p-4">太棒了！目前沒有待辦項目。</p>';
                 } else {
                     data.forEach(record => {
                         const card = document.createElement('div');
@@ -1856,12 +2164,8 @@
                 return columnWrapper;
             };
 
-            // Create and append both columns
-            const inspectionColumn = createKanbanColumn('待辦內檢', pendingInspectionData, 'registrationDate', '登記日期');
-            const reportColumn = createKanbanColumn('等待第三方報告', pendingReportData, 'registrationDate', '登記日期');
-
-            kanbanBoard.appendChild(inspectionColumn);
-            kanbanBoard.appendChild(reportColumn);
+            kanbanBoard.appendChild(createKanbanColumn('待辦內檢', pendingInspectionData, 'registrationDate', '登記日期'));
+            kanbanBoard.appendChild(createKanbanColumn('等待第三方報告', pendingReportData, 'weldingDate', '銲接日期'));
         };
 
         const showKanbanView = () => {
@@ -1877,6 +2181,53 @@
             kanbanViewContainer.classList.add('hidden');
         };
 
+        // Event listener for Prep Checkboxes
+        document.body.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('prep-checkbox')) {
+                const id = e.target.dataset.id;
+                const type = e.target.dataset.type;
+                const itemStr = e.target.dataset.item;
+                const assembleKey = `${type}|${itemStr}`; // e.g., "test|SMAW KL-516" or "inspection|SAW(機械)"
+                
+                // Show loader and disable checkbox to prevent multiple clicks
+                e.target.disabled = true;
+                
+                try {
+                    const docRef = doc(db, "weldingRecords", id);
+                    const record = database.find(r => r.id === id);
+                    if (!record) return;
+
+                    const currentAssembled = [...(record.assembledItems || [])];
+                    
+                    if (e.target.checked && !currentAssembled.includes(assembleKey)) {
+                        currentAssembled.push(assembleKey);
+                    } else if (!e.target.checked) { // Fallback in case we allow unchecking later
+                        const index = currentAssembled.indexOf(assembleKey);
+                        if (index > -1) currentAssembled.splice(index, 1);
+                    }
+
+                    // Save to Firestore (this will trigger onSnapshot -> displayData -> renderKanbanView)
+                    await setDoc(docRef, { assembledItems: currentAssembled }, { merge: true });
+                    // No need to manually refresh UI; onSnapshot handles it perfectly
+                } catch (err) {
+                    console.error("Error updating prep state:", err);
+                    e.target.checked = !e.target.checked; // revert
+                    e.target.disabled = false;
+                }
+            }
+        });
+
+        closePrepDetailsBtn.addEventListener('click', () => {
+            currentPrepPanel = null;
+            renderKanbanView();
+        });
+
+        // 綁定列印準備明細按鈕
+        printPrepDetailsBtn.addEventListener('click', () => {
+            const title = document.getElementById('prep-details-title').textContent;
+            printReport('prep-details-list', title);
+        });
+
         // --- REPORTING FUNCTIONS ---
         const printReport = (contentId, title) => {
             const contentToPrint = document.getElementById(contentId).innerHTML;
@@ -1884,8 +2235,17 @@
                 <h1 style="text-align: center; font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">${title}</h1>
                 ${contentToPrint}
             `;
-            window.print();
-            printArea.innerHTML = '';
+            
+            // 關鍵修正：在列印前暫時移除 hidden 類別
+            printArea.classList.remove('hidden');
+            
+            // 使用 setTimeout 確保 DOM 更新後再呼叫列印
+            setTimeout(() => {
+                window.print();
+                // 列印完成（或取消）後，將內容清空並加回 hidden 類別
+                printArea.innerHTML = '';
+                printArea.classList.add('hidden');
+            }, 100);
         };
 
         const populateReportSelectors = () => {
