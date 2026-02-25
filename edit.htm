@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>內檢追蹤系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隱藏捲軸但保留滾動功能 (美化 UI) */
+        .hide-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Toast 動畫 */
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-leave { animation: fadeOut 0.3s ease-in forwards; }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 min-h-screen">
+
+    <!-- 載入畫面 -->
+    <div id="loading-screen" class="fixed inset-0 flex flex-col items-center justify-center bg-gray-50 z-50">
+        <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-gray-600 font-medium" id="loading-text">正在進行系統認證與讀取規範...</p>
+    </div>
+
+    <!-- 自訂提示框 (Toast) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- 自訂確認對話框 (Modal) -->
+    <div id="confirm-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">確認操作</h3>
+            <p id="confirm-message" class="text-gray-600 mb-6">您確定要執行此操作嗎？</p>
+            <div class="flex justify-end space-x-3">
+                <button id="btn-cancel-confirm" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-semibold transition">取消</button>
+                <button id="btn-ok-confirm" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主應用程式 -->
+    <div id="app-content" class="p-4 hidden max-w-7xl mx-auto">
+        <header class="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between rounded-xl bg-white p-6 shadow-sm border-b-4 border-indigo-500 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">內檢追蹤系統</h1>
+                <p class="text-sm text-gray-500 mt-1">智慧同步 3.1 規範表，全自動數據判定</p>
+            </div>
+            <div class="flex space-x-2 w-full md:w-auto">
+                <button id="tab-tracking" class="flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-indigo-600 text-white">任務追蹤看板</button>
+                <button id="tab-add" class="flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-gray-100 text-gray-600 hover:bg-gray-200">＋ 建立任務群組</button>
+            </div>
+        </header>
+
+        <!-- 視圖 1：任務追蹤看板 -->
+        <div id="view-tracking" class="space-y-8">
+            <div id="tracking-container">
+                <!-- 由 JS 動態產生表格 -->
+            </div>
+        </div>
+
+        <!-- 視圖 2：建立/編輯新任務群組 -->
+        <div id="view-add" class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
+            <h2 id="form-title" class="text-xl font-bold mb-6 text-gray-800 border-b pb-4">建立任務群組</h2>
+            <form id="add-form" class="space-y-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 左側：多選 3.1 試片 -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">1. 選取 3.1 試片筆數 (實體來源 / 判定基準)</label>
+                        <div id="list-31" class="hide-scrollbar max-h-72 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                            <!-- 3.1 列表將渲染於此 -->
+                            <p class="text-gray-400 text-xs text-center py-4">載入數據中...</p>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-400">已選 <span id="count-31">0</span> 塊試片</p>
+                    </div>
+
+                    <!-- 右側：多選 4.1 需求 -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">2. 對應 4.1 流程管理序號 (交付目標 / 僅作參考)</label>
+                        <div id="list-41" class="hide-scrollbar max-h-72 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                            <!-- 4.1 列表將渲染於此 -->
+                            <p class="text-gray-400 text-xs text-center py-4">載入數據中...</p>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-400">已選 <span id="count-41">0</span> 個需求</p>
+                    </div>
+                </div>
+
+                <hr class="border-gray-200" />
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            3. 數據適用區間 
+                            <span class="text-xs font-normal text-gray-500 ml-2">(由銲接日期推算)</span>
+                        </label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select id="select-validity" class="w-full sm:w-1/3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                <option value="custom">自訂/手動</option>
+                                <option value="1w">有效 1 週</option>
+                                <option value="1m">有效 1 個月</option>
+                                <option value="3m">有效 3 個月</option>
+                                <option value="6m" selected>有效半年</option>
+                                <option value="1y">有效 1 年</option>
+                            </select>
+                            <input type="text" id="input-week" class="w-full sm:w-2/3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="例如：2026-02-15到2026-08-15">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">4. 群組備註</label>
+                        <input type="text" id="input-remark" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="例如：提早安排加工...">
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-6 border-t">
+                    <button type="button" id="btn-cancel" class="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200 transition">取消返回</button>
+                    <button type="submit" id="btn-submit" disabled class="flex-[2] px-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md">儲存任務群組</button>
+                </div>
+            </form>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-400 text-xs pb-8">
+            © 2024 內檢追蹤系統 | 雲端規範連線模式 (HTML 版)
+        </footer>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, addDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // === 1. Firebase 配置 ===
+        const config41 = {
+            apiKey: "AIzaSyAeVNUxcvNg4skIFxgFD9hyvJ8KSjNDauQ",
+            authDomain: "rd20250803.firebaseapp.com",
+            projectId: "rd20250803",
+            storageBucket: "rd20250803.firebasestorage.app",
+            messagingSenderId: "258541470825",
+            appId: "1:258541470825:web:ab1b94810c0f2405db8ef8"
+        };
+        const config31 = {
+            apiKey: "AIzaSyDGguuoIfRMNKJG2UvJ_QI7y-_6cNfS9D0",
+            authDomain: "weldingdata-20250902.firebaseapp.com",
+            projectId: "weldingdata-20250902",
+            storageBucket: "weldingdata-20250902.firebasestorage.app",
+            messagingSenderId: "63887490861",
+            appId: "1:63887490861:web:ce1fed7d7c99ce78c8dda4"
+        };
+
+        const app41 = initializeApp(config41, 'app41');
+        const auth41 = getAuth(app41);
+        const db41 = getFirestore(app41);
+
+        const app31 = initializeApp(config31, 'app31');
+        const auth31 = getAuth(app31);
+        const db31 = getFirestore(app31);
+
+        // === 2. 狀態管理 (State) ===
+        const state = {
+            activeTab: 'tracking',
+            editingId: null,
+            trackingData: [],
+            source41: [],
+            source31: [],
+            specs31: [], // 存放從 3.1 資料庫下載的「規範」大腦
+            selected31Ids: [],
+            selected41Ids: []
+        };
+
+        // DOM 元素快取
+        const DOM = {
+            loadingScreen: document.getElementById('loading-screen'),
+            loadingText: document.getElementById('loading-text'),
+            appContent: document.getElementById('app-content'),
+            tabTracking: document.getElementById('tab-tracking'),
+            tabAdd: document.getElementById('tab-add'),
+            viewTracking: document.getElementById('view-tracking'),
+            viewAdd: document.getElementById('view-add'),
+            trackingContainer: document.getElementById('tracking-container'),
+            list31: document.getElementById('list-31'),
+            list41: document.getElementById('list-41'),
+            count31: document.getElementById('count-31'),
+            count41: document.getElementById('count-41'),
+            selectValidity: document.getElementById('select-validity'),
+            inputWeek: document.getElementById('input-week'),
+            inputRemark: document.getElementById('input-remark'),
+            btnSubmit: document.getElementById('btn-submit'),
+            btnCancel: document.getElementById('btn-cancel'),
+            formTitle: document.getElementById('form-title'),
+            toastContainer: document.getElementById('toast-container'),
+            confirmModal: document.getElementById('confirm-modal'),
+            confirmMessage: document.getElementById('confirm-message'),
+            btnOkConfirm: document.getElementById('btn-ok-confirm'),
+            btnCancelConfirm: document.getElementById('btn-cancel-confirm')
+        };
+
+        // === 3. 核心大腦：規範判定與解析 ===
+        
+        // 安全解析 JSON，避免因為格式錯誤造成崩潰
+        function safeJsonParse(str, fallback) {
+            if (!str) return fallback;
+            try { return JSON.parse(str) || fallback; } 
+            catch(e) { return fallback; }
+        }
+
+        // 全自動判定狀態的核心大腦 (動態連線 3.1 規範表，改為單筆判定)
+        function evaluateSingleTestStatus(tid) {
+            if (!tid) {
+                return { text: '⏳ 待處理', class: 'bg-gray-100 text-gray-600 border-gray-200' };
+            }
+
+            const record = state.source31.find(s => String(s.筆數) === String(tid));
+            if (!record) return { text: '⏳ 待處理', class: 'bg-gray-100 text-gray-600 border-gray-200' };
+
+            // 從紀錄中抓取「適用規範」，然後去雲端下來的字典(state.specs31)裡對答案
+            const specName = record['適用規範'];
+            const spec = state.specs31.find(s => s['規範名稱'] === specName) || {};
+
+            // 解析 3.1 的字串陣列資料
+            const mechDataArr = safeJsonParse(record['機械性質'], []);
+            const impactDataArr = safeJsonParse(record['衝擊測試'], []);
+            const mechData = mechDataArr.length > 0 ? mechDataArr[0] : {};
+            const impactData = impactDataArr.length > 0 ? impactDataArr[0] : {};
+
+            // 判斷有沒有填數字
+            const hasTS = mechData['抗拉強度'] !== undefined && mechData['抗拉強度'] !== '';
+            const hasImpact = impactData['平均值'] !== undefined && impactData['平均值'] !== '';
+            
+            // 判斷是否勾選了不做測試
+            const mechDoNotTest = mechData.doNotTest === true;
+            const impactDoNotTest = impactData.doNotTest === true;
+
+            let missingItems = new Set();
+            let failedItems = new Set();
+
+            // --- A. 檢查「拉伸」---
+            if (!mechDoNotTest) {
+                if (!hasTS) {
+                    missingItems.add('拉伸');
+                } else {
+                    const TS_Value = Number(mechData['抗拉強度']);
+                    const YS_Value = Number(mechData['降伏強度']);
+                    const EL_Value = Number(mechData['延伸率']);
+
+                    const minTS = spec['抗拉強度_最低'] !== undefined && spec['抗拉強度_最低'] !== '' ? Number(spec['抗拉強度_最低']) : null;
+                    const maxTS = spec['抗拉強度_最高'] !== undefined && spec['抗拉強度_最高'] !== '' ? Number(spec['抗拉強度_最高']) : null;
+                    const minYS = spec['降伏強度_最低'] !== undefined && spec['降伏強度_最低'] !== '' ? Number(spec['降伏強度_最低']) : null;
+                    const minEL = spec['延伸率_下限'] !== undefined && spec['延伸率_下限'] !== '' ? Number(spec['延伸率_下限']) : null;
+
+                    let mechFailed = false;
+                    if (minTS !== null && !isNaN(TS_Value) && TS_Value < minTS) mechFailed = true;
+                    if (maxTS !== null && !isNaN(TS_Value) && TS_Value > maxTS) mechFailed = true;
+                    if (minYS !== null && !isNaN(YS_Value) && YS_Value < minYS) mechFailed = true;
+                    if (minEL !== null && !isNaN(EL_Value) && EL_Value < minEL) mechFailed = true;
+
+                    if (mechFailed) failedItems.add('拉伸');
+                }
+            }
+
+            // --- B. 檢查「衝擊」---
+            const requireImpact = spec['衝擊要求數據'] !== undefined && String(spec['衝擊要求數據']).trim() !== '';
+
+            if (requireImpact && !impactDoNotTest) {
+                if (!hasImpact) {
+                    missingItems.add('衝擊');
+                } else {
+                    const Impact_Value = Number(impactData['平均值']);
+                    const minImpact = Number(spec['衝擊要求數據']);
+                    if (!isNaN(Impact_Value) && Impact_Value < minImpact) {
+                        failedItems.add('衝擊'); 
+                    }
+                }
+            }
+
+            // --- 總結狀態 ---
+            if (!hasTS && !hasImpact && !mechDoNotTest && !impactDoNotTest) {
+                return { text: '⏳ 待處理', class: 'bg-gray-100 text-gray-600 border-gray-200' };
+            }
+            if (missingItems.size > 0) {
+                const missingStr = Array.from(missingItems).join('、');
+                return { text: `⚙️ 待${missingStr}`, class: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+            }
+            if (failedItems.size > 0) {
+                const failedStr = Array.from(failedItems).join('及');
+                return { text: `❌ ${failedStr}異常`, class: 'bg-red-100 text-red-700 border-red-300' };
+            }
+            return { text: '✅ 數據合格', class: 'bg-green-100 text-green-700 border-green-300' };
+        }
+
+        // === 4. 工具函數 ===
+        
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            const colors = type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white';
+            toast.className = `px-4 py-3 rounded-lg shadow-lg ${colors} text-sm font-semibold toast-enter`;
+            toast.innerText = message;
+            DOM.toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        let confirmAction = null;
+        function showConfirm(message, actionCallback) {
+            DOM.confirmMessage.innerText = message;
+            DOM.confirmModal.classList.remove('hidden');
+            setTimeout(() => DOM.confirmModal.classList.remove('opacity-0'), 10);
+            DOM.confirmModal.querySelector('.bg-white').classList.remove('scale-95');
+            confirmAction = actionCallback;
+        }
+        function hideConfirm() {
+            DOM.confirmModal.classList.add('opacity-0');
+            DOM.confirmModal.querySelector('.bg-white').classList.add('scale-95');
+            setTimeout(() => {
+                DOM.confirmModal.classList.add('hidden');
+                confirmAction = null;
+            }, 300);
+        }
+        DOM.btnCancelConfirm.addEventListener('click', hideConfirm);
+        DOM.btnOkConfirm.addEventListener('click', () => {
+            if (confirmAction) confirmAction();
+            hideConfirm();
+        });
+
+        function calculateValidityRange(baseDateStr, period) {
+            if (!baseDateStr || period === 'custom') return "";
+            const start = new Date(baseDateStr.replace(/\//g, '-'));
+            if (isNaN(start.getTime())) return "";
+
+            const end = new Date(start);
+            if (period === '1w') end.setDate(end.getDate() + 7);
+            if (period === '1m') end.setMonth(end.getMonth() + 1);
+            if (period === '3m') end.setMonth(end.getMonth() + 3);
+            if (period === '6m') end.setMonth(end.getMonth() + 6);
+            if (period === '1y') end.setFullYear(end.getFullYear() + 1);
+
+            const formatDate = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dd}`;
+            };
+            
+            return `${formatDate(start)}到${formatDate(end)}`;
+        }
+
+        function parseInspectionItems(opt) {
+            if (Array.isArray(opt.inspectionItems) && opt.inspectionItems.length > 0) return opt.inspectionItems.join(', ');
+            if (typeof opt.inspectionItems === 'string' && opt.inspectionItems) return opt.inspectionItems;
+            if (typeof opt.inspectionItems === 'object' && opt.inspectionItems !== null && !Array.isArray(opt.inspectionItems)) {
+                return Object.keys(opt.inspectionItems).filter(k => opt.inspectionItems[k]).join(', ');
+            }
+            if (opt.testItems) {
+                if (Array.isArray(opt.testItems)) {
+                    if (opt.testItems.length > 0 && typeof opt.testItems[0] === 'object') {
+                        return opt.testItems.map(ti => ti.item).join(', ');
+                    }
+                    return opt.testItems.join(', ');
+                }
+                return opt.testItems;
+            }
+            return '未指定';
+        }
+
+        // === 5. UI 渲染邏輯 ===
+
+        function resetForm() {
+            state.editingId = null;
+            state.selected31Ids = [];
+            state.selected41Ids = [];
+            DOM.selectValidity.value = '6m'; 
+            DOM.inputRemark.value = '';
+            DOM.inputWeek.value = '';
+            DOM.formTitle.innerText = "建立任務群組";
+            DOM.btnSubmit.innerText = "儲存任務群組";
+            DOM.tabAdd.innerText = "＋ 建立任務群組";
+        }
+
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            if (tabName === 'tracking') {
+                DOM.tabTracking.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-indigo-600 text-white";
+                DOM.tabAdd.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-gray-100 text-gray-600 hover:bg-gray-200";
+                DOM.viewTracking.classList.remove('hidden');
+                DOM.viewAdd.classList.add('hidden');
+                resetForm(); 
+                renderTrackingBoard();
+            } else {
+                DOM.tabAdd.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-green-600 text-white";
+                DOM.tabTracking.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-gray-100 text-gray-600 hover:bg-gray-200";
+                DOM.viewAdd.classList.remove('hidden');
+                DOM.viewTracking.classList.add('hidden');
+                renderSourceLists();
+            }
+        }
+
+        function renderTrackingBoard() {
+            if (state.trackingData.length === 0) {
+                DOM.trackingContainer.innerHTML = `
+                    <div class="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-200">
+                        <p class="text-gray-400">目前尚無追蹤紀錄，請點擊「建立任務群組」。</p>
+                    </div>`;
+                return;
+            }
+
+            const groups = {};
+            state.trackingData.forEach(item => {
+                const week = item.targetWeek || "未分類區間";
+                if (!groups[week]) groups[week] = [];
+                groups[week].push(item);
+            });
+            const sortedWeeks = Object.keys(groups).sort().reverse();
+
+            let html = '';
+            sortedWeeks.forEach(week => {
+                const items = groups[week];
+                html += `
+                <section class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+                    <div class="bg-indigo-50 px-6 py-3 border-b border-indigo-100 flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-indigo-900">📅 數據適用區間：${week}</h2>
+                        <span class="text-xs bg-indigo-200 text-indigo-700 px-2 py-1 rounded-full font-bold">${items.length} 批任務</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-6 py-3 text-left">3.1 試片 (判定基準) 與 即時狀態</th>
+                                    <th class="px-6 py-3 text-left">4.1 交付需求 (僅供參考)</th>
+                                    <th class="px-6 py-3 text-left">備註</th>
+                                    <th class="px-6 py-3 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                `;
+                
+                items.forEach(item => {
+                    // 把試片標籤跟各自獨立的狀態綁在一起顯示
+                    const t31HTML = `<div class="flex flex-col gap-2">` + (item.techIds_31 || []).map(tid => {
+                        const match = state.source31.find(s => String(s.筆數) === String(tid));
+                        const name = match && match.品名 ? match.品名 : '未知品名';
+                        const statusObj = evaluateSingleTestStatus(tid);
+                        
+                        return `
+                        <div class="flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-800 text-sm font-bold px-2 py-1 rounded shadow-sm inline-block">
+                                #${tid} <span class="text-xs font-normal opacity-75">(${name})</span>
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-bold shadow-sm border whitespace-nowrap ${statusObj.class}">
+                                ${statusObj.text}
+                            </span>
+                        </div>`;
+                    }).join('') + `</div>`;
+
+                    const t41HTML = `<div class="flex flex-col gap-1.5">` + (item.reqIds_41 || []).map(rid => {
+                        const match = state.source41.find(s => String(s.serialNumber) === String(rid));
+                        const mfg = match && match.manufacturer ? match.manufacturer : '未知廠商';
+                        const wDate = match && match.weldingDate ? match.weldingDate : '未填寫日期';
+                        return `<div class="bg-gray-100 text-gray-700 text-xs px-2 py-1.5 rounded border border-gray-200">
+                            <span class="font-bold text-sm text-gray-800">#${rid}</span> <span class="text-gray-600 font-medium">(${mfg})</span>
+                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                <span class="text-gray-500">銲接: ${wDate}</span>
+                            </div>
+                        </div>`;
+                    }).join('') + `</div>`;
+
+                    html += `
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 max-w-sm">${t31HTML}</td>
+                            <td class="px-6 py-4 max-w-xs">${t41HTML}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">${item.remark || '-'}</td>
+                            <td class="px-6 py-4 text-right whitespace-nowrap">
+                                <button data-action="edit-entry" data-id="${item.id}" class="text-blue-500 hover:text-blue-700 transition mr-3" title="編輯此任務">
+                                    <svg class="h-5 w-5 pointer-events-none inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </button>
+                                <button data-action="delete-entry" data-id="${item.id}" class="text-red-400 hover:text-red-600 transition" title="刪除此任務">
+                                    <svg class="h-5 w-5 pointer-events-none inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div></section>`;
+            });
+            DOM.trackingContainer.innerHTML = html;
+        }
+
+        function renderSourceLists() {
+            if (state.activeTab !== 'add') return;
+
+            // 計算已經被使用的 3.1 和 4.1 項目 (排除正在編輯的任務，避免自己鎖死自己)
+            const used31Ids = new Set();
+            const used41Ids = new Set();
+            state.trackingData.forEach(task => {
+                if (task.id !== state.editingId) {
+                    (task.techIds_31 || []).forEach(id => used31Ids.add(String(id)));
+                    (task.reqIds_41 || []).forEach(id => used41Ids.add(String(id)));
+                }
+            });
+
+            if (state.source31.length === 0) {
+                DOM.list31.innerHTML = `<p class="text-gray-400 text-xs text-center py-4">尚無可用的試片資料</p>`;
+            } else {
+                DOM.list31.innerHTML = state.source31.map(opt => {
+                    const val = String(opt.筆數 || '');
+                    const isUsed = used31Ids.has(val);
+                    const isChecked = state.selected31Ids.includes(val);
+                    const specName = opt.適用規範 ? `[${opt.適用規範}]` : '';
+                    
+                    const opacityClass = isUsed ? 'opacity-60 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-gray-100';
+                    const usedTag = isUsed ? `<span class="ml-2 text-xs text-red-500 font-bold px-1.5 py-0.5 bg-red-50 border border-red-100 rounded">已使用</span>` : '';
+                    const disabledAttr = isUsed ? 'disabled' : '';
+
+                    return `
+                    <label class="flex items-center space-x-2 p-1.5 rounded ${opacityClass}">
+                        <input type="checkbox" value="${val}" class="cb-31 h-4 w-4 text-blue-600 rounded ${isUsed ? 'cursor-not-allowed' : ''}" ${isChecked ? 'checked' : ''} ${disabledAttr}>
+                        <span class="text-sm">
+                            <span class="font-bold text-blue-800">#${opt.筆數 || '無號碼'}</span> - ${opt.品名 || '無品名'} <span class="text-xs text-blue-500">${specName}</span>
+                            <span class="text-gray-500 ml-1">(${opt.銲接日期 || "無日期"})</span>
+                            ${usedTag}
+                        </span>
+                    </label>
+                    `;
+                }).join('');
+            }
+
+            if (state.source41.length === 0) {
+                DOM.list41.innerHTML = `<p class="text-gray-400 text-xs text-center py-4">尚無可用的需求資料</p>`;
+            } else {
+                DOM.list41.innerHTML = state.source41.map(opt => {
+                    const val = String(opt.serialNumber || '');
+                    const isUsed = used41Ids.has(val);
+                    const isChecked = state.selected41Ids.includes(val);
+                    const itemsText = parseInspectionItems(opt);
+                    const mfg = opt.manufacturer || '未知廠商';
+                    const wDate = opt.weldingDate || '未填寫日期';
+
+                    const opacityClass = isUsed ? 'opacity-60 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:bg-gray-50';
+                    const usedTag = isUsed ? `<span class="ml-2 text-xs text-red-500 font-bold px-1.5 py-0.5 bg-red-50 border border-red-100 rounded inline-block">已使用</span>` : '';
+                    const disabledAttr = isUsed ? 'disabled' : '';
+
+                    return `
+                    <label class="flex items-start space-x-2 p-1.5 rounded border-b border-gray-100 last:border-0 ${opacityClass}">
+                        <input type="checkbox" value="${val}" class="cb-41 h-4 w-4 text-indigo-600 rounded mt-1 ${isUsed ? 'cursor-not-allowed' : ''}" ${isChecked ? 'checked' : ''} ${disabledAttr}>
+                        <div class="flex flex-col text-sm w-full">
+                            <div class="flex justify-between items-start w-full">
+                                <span>
+                                    <span class="font-bold text-gray-800">#${opt.serialNumber || '無號碼'}</span>
+                                    <span class="text-gray-600 font-medium ml-1">(${mfg})</span> - ${opt.projectName || '無工程名稱'}
+                                </span>
+                                ${usedTag}
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mt-1">
+                                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">銲接: ${wDate}</span>
+                                <span class="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded w-fit">
+                                    [ 需作: ${itemsText} ]
+                                </span>
+                            </div>
+                        </div>
+                    </label>
+                    `;
+                }).join('');
+            }
+            updateFormStatus();
+        }
+
+        function updateFormStatus() {
+            DOM.count31.innerText = state.selected31Ids.length;
+            DOM.count41.innerText = state.selected41Ids.length;
+
+            if (DOM.selectValidity.value !== 'custom' && state.selected31Ids.length > 0) {
+                const firstTarget = state.source31.find(d => String(d.筆數) === String(state.selected31Ids[0]));
+                if (firstTarget && firstTarget.銲接日期) {
+                    DOM.inputWeek.value = calculateValidityRange(firstTarget.銲接日期, DOM.selectValidity.value);
+                }
+            } else if (state.selected31Ids.length === 0 && !state.editingId) {
+                DOM.inputWeek.value = '';
+            }
+
+            DOM.btnSubmit.disabled = state.selected31Ids.length === 0 || state.selected41Ids.length === 0;
+        }
+
+        // === 6. 事件監聽設定 ===
+
+        DOM.tabTracking.addEventListener('click', () => switchTab('tracking'));
+        DOM.tabAdd.addEventListener('click', () => {
+            resetForm(); 
+            switchTab('add');
+        });
+        
+        DOM.btnCancel.addEventListener('click', () => switchTab('tracking'));
+        DOM.selectValidity.addEventListener('change', updateFormStatus);
+        DOM.inputWeek.addEventListener('input', () => { DOM.selectValidity.value = 'custom'; });
+
+        DOM.list31.addEventListener('change', (e) => {
+            if (e.target.classList.contains('cb-31')) {
+                const val = e.target.value;
+                if (e.target.checked) state.selected31Ids.push(val);
+                else state.selected31Ids = state.selected31Ids.filter(id => id !== val);
+                updateFormStatus();
+            }
+        });
+        
+        DOM.list41.addEventListener('change', (e) => {
+            if (e.target.classList.contains('cb-41')) {
+                const val = e.target.value;
+                if (e.target.checked) state.selected41Ids.push(val);
+                else state.selected41Ids = state.selected41Ids.filter(id => id !== val);
+                updateFormStatus();
+            }
+        });
+
+        document.getElementById('add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (state.selected31Ids.length === 0 || state.selected41Ids.length === 0) return;
+            DOM.btnSubmit.disabled = true;
+            DOM.btnSubmit.innerText = "處理中...";
+
+            try {
+                if (state.editingId) {
+                    const updateData = {
+                        techIds_31: state.selected31Ids,
+                        reqIds_41: state.selected41Ids,
+                        targetWeek: DOM.inputWeek.value,
+                        remark: DOM.inputRemark.value,
+                        updatedAt: new Date().toISOString()
+                    };
+                    await updateDoc(doc(db41, 'mechanicalTracking', state.editingId), updateData);
+                    showToast("任務群組更新成功！", "success");
+                } else {
+                    const newEntry = {
+                        techIds_31: state.selected31Ids,
+                        reqIds_41: state.selected41Ids,
+                        targetWeek: DOM.inputWeek.value,
+                        remark: DOM.inputRemark.value,
+                        updatedAt: new Date().toISOString()
+                    };
+                    await addDoc(collection(db41, 'mechanicalTracking'), newEntry);
+                    showToast("新任務群組建立成功！", "success");
+                }
+                switchTab('tracking');
+            } catch (err) {
+                showToast("儲存失敗: " + err.message, "error");
+                DOM.btnSubmit.disabled = false;
+                DOM.btnSubmit.innerText = state.editingId ? "更新任務群組" : "儲存任務群組";
+            }
+        });
+
+        DOM.trackingContainer.addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('[data-action="edit-entry"]');
+            if (editBtn) {
+                const id = editBtn.getAttribute('data-id');
+                const item = state.trackingData.find(d => d.id === id);
+                if (item) {
+                    state.editingId = id;
+                    state.selected31Ids = [...(item.techIds_31 || [])];
+                    state.selected41Ids = [...(item.reqIds_41 || [])];
+                    
+                    DOM.selectValidity.value = 'custom'; 
+                    DOM.inputWeek.value = item.targetWeek || '';
+                    DOM.inputRemark.value = item.remark || '';
+                    
+                    DOM.formTitle.innerText = "編輯任務群組";
+                    DOM.btnSubmit.innerText = "更新任務群組";
+                    DOM.tabAdd.innerText = "✍️ 編輯中";
+                    
+                    state.activeTab = 'add';
+                    DOM.tabAdd.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-blue-600 text-white";
+                    DOM.tabTracking.className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-semibold transition bg-gray-100 text-gray-600 hover:bg-gray-200";
+                    DOM.viewAdd.classList.remove('hidden');
+                    DOM.viewTracking.classList.add('hidden');
+                    renderSourceLists();
+                }
+                return;
+            }
+
+            const delBtn = e.target.closest('[data-action="delete-entry"]');
+            if (delBtn) {
+                const id = delBtn.getAttribute('data-id');
+                showConfirm("確定要永久移除此任務群組嗎？", async () => {
+                    try {
+                        await deleteDoc(doc(db41, 'mechanicalTracking', id));
+                        showToast("移除成功！", "success");
+                    } catch(err) {
+                        showToast("移除失敗", "error");
+                    }
+                });
+            }
+        });
+
+        // === 7. 初始化與資料綁定 ===
+        
+        async function initApp() {
+            try {
+                await Promise.all([
+                    signInAnonymously(auth41),
+                    signInAnonymously(auth31)
+                ]);
+                
+                DOM.loadingScreen.classList.add('hidden');
+                DOM.appContent.classList.remove('hidden');
+
+                // 綁定 4.1 追蹤資料
+                onSnapshot(collection(db41, 'mechanicalTracking'), (snap) => {
+                    state.trackingData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    if (state.activeTab === 'tracking') renderTrackingBoard();
+                    if (state.activeTab === 'add') updateFormStatus(); 
+                }, (err) => showToast("追蹤資料讀取錯誤", "error"));
+
+                // 綁定 4.1 需求清單
+                const q41 = query(collection(db41, 'weldingRecords'));
+                onSnapshot(q41, (snap) => {
+                    state.source41 = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (Number(b.serialNumber)||0) - (Number(a.serialNumber)||0));
+                    if (state.activeTab === 'tracking') renderTrackingBoard();
+                    if (state.activeTab === 'add') renderSourceLists();
+                }, (err) => showToast("4.1 資料讀取錯誤", "error"));
+
+                // 綁定 3.1 試片資料 (有變動時自動重繪看板，觸發狀態更新)
+                const q31 = query(collection(db31, '資料'));
+                onSnapshot(q31, (snap) => {
+                    state.source31 = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (Number(b.筆數)||0) - (Number(a.筆數)||0));
+                    if (state.activeTab === 'tracking') renderTrackingBoard(); 
+                    if (state.activeTab === 'add') renderSourceLists();
+                }, (err) => showToast("3.1 資料讀取錯誤", "error"));
+
+                // 核心關鍵！綁定 3.1 的「規範」表，做為判斷大腦
+                const qSpecs = query(collection(db31, '規範'));
+                onSnapshot(qSpecs, (snap) => {
+                    state.specs31 = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    // 規範有改動時，也立即重繪看板重新判定
+                    if (state.activeTab === 'tracking') renderTrackingBoard();
+                }, (err) => showToast("3.1 規範表讀取錯誤", "error"));
+
+            } catch (err) {
+                console.error(err);
+                DOM.loadingText.innerHTML = "登入失敗，請確認 Firebase 安全規則設定<br/>(需允許匿名讀取)";
+                DOM.loadingText.classList.add('text-red-600');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
