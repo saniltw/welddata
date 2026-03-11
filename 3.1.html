@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>銲接資料管理系統 (連續編輯版)</title>
+    <title>銲接資料管理系統 (捲軸優化與封存版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,8 +21,8 @@
             --shadow-color: rgba(74, 144, 226, 0.15);
             --danger-color: #EF4444;
             --danger-hover: #DC2626;
-            --archived-bg: #f3f4f6;
-            --archived-text: #9ca3af;
+            --warning-color: #F59E0B;
+            --warning-hover: #D97706;
         }
 
         body {
@@ -40,8 +40,8 @@
         .main-card { background-color: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 12px var(--shadow-color); border: 1px solid var(--border-color); }
         .tab-button { padding: 12px 18px; font-weight: 500; color: var(--text-light); border-bottom: 3px solid transparent; transition: all 0.3s ease; }
         .tab-button.active { border-color: var(--primary-color); color: var(--primary-color); }
-        .btn { padding: 8px 16px; border-radius: 6px; font-weight: 600; text-align: center; transition: all 0.2s ease-in-out; border: none; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-size: 0.9rem; }
-        .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 24px; border-radius: 8px; font-weight: 700; text-align: center; transition: all 0.2s ease-in-out; border: none; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .btn:disabled { background-color: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-primary:hover:not(:disabled) { background-color: var(--primary-hover); }
@@ -51,31 +51,27 @@
         .btn-green:hover:not(:disabled) { background-color: #059669; }
         .btn-danger { background-color: var(--danger-color); color: white; }
         .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); }
-        .btn-warning { background-color: #F59E0B; color: white; }
-        .btn-warning:hover:not(:disabled) { background-color: #D97706; }
         
         .action-link { font-weight: 500; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; transition: color 0.2s; }
         .edit-btn { color: var(--primary-color); }
         .edit-btn:hover { color: var(--primary-hover); }
         .delete-btn { color: var(--danger-color); }
         .delete-btn:hover { color: var(--danger-hover); }
+        .archive-btn { color: var(--warning-color); }
+        .archive-btn:hover { color: var(--warning-hover); }
+        .restore-btn { color: #10B981; }
+        .restore-btn:hover { color: #059669; }
+        .view-btn { color: #3b82f6; }
+        .view-btn:hover { color: #2563eb; }
         
-        /* Sticky Logic */
-        #dataTable th, #settingsContentDisplay th { position: sticky; top: 0; background-color: #F9FAFB; z-index: 30; }
+        #dataTable th, #settingsContentDisplay th, #archiveTable th { position: sticky; top: 0; background-color: #F9FAFB; z-index: 30; }
         .sticky-col { position: sticky; left: 0; z-index: 20; background-color: #FFFFFF; }
         .sticky-col-2 { position: sticky; left: 50px; z-index: 20; background-color: #FFFFFF; border-right: 2px solid #e2e8f0; }
-        #dataTable thead .sticky-col, #settingsContentDisplay thead .sticky-col, #settingsContentDisplay thead .sticky-col-2 { z-index: 40; background-color: #F9FAFB; }
         
-        /* Hover & Archived Rows */
-        #dataTable tbody tr:hover, #settingsTableBody tr:hover { background-color: #dbeafe; }
-        #dataTable tbody tr:hover .sticky-col, #settingsTableBody tr:hover .sticky-col,
-        #dataTable tbody tr:hover .sticky-col-2, #settingsTableBody tr:hover .sticky-col-2 { background-color: #dbeafe; }
+        #dataTable thead .sticky-col, #settingsContentDisplay thead .sticky-col, #settingsContentDisplay thead .sticky-col-2, #archiveTable thead .sticky-col { z-index: 40; background-color: #F9FAFB; }
         
-        /* Archived Row Style */
-        tr.archived-row { background-color: var(--archived-bg); color: var(--archived-text); }
-        tr.archived-row .sticky-col, tr.archived-row .sticky-col-2 { background-color: var(--archived-bg); }
-        tr.archived-row:hover { background-color: #e5e7eb; }
-        tr.archived-row:hover .sticky-col, tr.archived-row:hover .sticky-col-2 { background-color: #e5e7eb; }
+        #dataTable tbody tr:hover, #settingsTableBody tr:hover, #archiveTableBody tr:hover { background-color: #dbeafe; }
+        #dataTable tbody tr:hover .sticky-col, #settingsTableBody tr:hover .sticky-col, #dataTable tbody tr:hover .sticky-col-2, #settingsTableBody tr:hover .sticky-col-2, #archiveTableBody tr:hover .sticky-col { background-color: #dbeafe; }
         
         .sticky-col-divider { border-right: 2px solid #e2e8f0; }
         
@@ -85,9 +81,7 @@
         .modal-content-2xl { max-width: 48rem; }
         .modal-content-7xl { max-width: 80rem; }
         
-        .validation-tooltip { position: absolute; bottom: 0.1rem; left: 0; font-size: 0.7rem; color: #dc2626; white-space: nowrap; }
         .input-container { position: relative; padding-bottom: 1.5rem; }
-        input.invalid-field { border-color: #EF4444; box-shadow: 0 0 0 1px #EF4444; }
 
         #loading-overlay { position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; }
         .spinner { width: 56px; height: 56px; border: 7px solid var(--primary-color); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
@@ -101,55 +95,35 @@
         
         .sortable-header { cursor: pointer; user-select: none; }
         .sortable-header:hover { background-color: #F0F2F5; }
-        .sort-indicator { display: inline-block; width: 1em; text-align: right; color: var(--primary-color); font-size: 0.9em; vertical-align: middle; }
 
         .table-scroll-container { max-height: calc(100vh - 350px); min-height: 300px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 0.5rem; position: relative; }
-        
-        /* 極簡化卡片樣式 (Compact Stat Card) */
-        .stat-card { 
-            background-color: #fff; 
-            border-radius: 8px; 
-            padding: 0.5rem 0.75rem; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-            border: 1px solid #e2e8f0; 
-            text-align: center; 
-            height: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-        }
-        .stat-card .stat-title { font-size: 0.75rem; color: #6b7280; font-weight: 500; margin-bottom: 2px; }
-        .stat-card .stat-value { font-size: 1.25rem; font-weight: 700; color: #1f2937; line-height: 1.2; }
-        .stat-card .stat-value .sub { font-size: 0.85rem; font-weight: 600; color: #9ca3af; }
 
-        /* Report Styles */
+        .stat-card { background-color: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid var(--border-color); text-align: center; }
+        .stat-card .stat-title { font-size: 0.875rem; color: var(--text-light); font-weight: 500; }
+        .stat-card .stat-value { font-size: 2.25rem; font-weight: 700; color: var(--text-dark); margin-top: 0.5rem; }
+        .stat-card .stat-value .sub { font-size: 1.5rem; font-weight: 600; color: var(--text-light); }
+
         .report-page { background: white; padding: 40px; margin: 0 auto 30px auto; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; max-width: 210mm; min-height: 297mm; position: relative; font-family: 'Times New Roman', '微軟正黑體', serif; color: #000; }
         .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
         .report-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; }
         .report-subtitle { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
         .report-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; }
-        
-        /* Modified Report Table Widths (15% 20% 25% 40%) */
         .report-table th, .report-table td { border: 1px solid #000; padding: 6px; text-align: left; }
-        .report-table th { background-color: #f3f4f6; font-weight: bold; text-align: center; }
-        
-        /* Column Specific Widths */
-        .report-table tr > *:nth-child(1) { width: 15%; }
-        .report-table tr > *:nth-child(2) { width: 20%; }
-        .report-table tr > *:nth-child(3) { width: 25%; }
-        .report-table tr > *:nth-child(4) { width: 40%; }
-
+        .report-table th { background-color: #f3f4f6; font-weight: bold; text-align: center; width: 15%; }
+        .report-table td { width: 35%; }
         .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
         .data-table th, .data-table td { border: 1px solid #000; padding: 4px; text-align: center; }
         .data-table th { background-color: #e5e7eb; font-weight: bold; }
         .data-table td { padding: 8px 4px; }
         .section-title { font-size: 14px; font-weight: bold; margin: 10px 0 5px 0; border-left: 4px solid #4A90E2; padding-left: 8px; }
-        .stats-tab-button.active { border-color: var(--primary-color); color: var(--primary-color); }
-        .debug-console { background-color: #1a1a1a; color: #00ff00; font-family: monospace; padding: 1rem; border-radius: 0.5rem; height: 300px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4; }
+
+        .debug-console { background-color: #1a1a1a; color: #00ff00; font-family: monospace; padding: 1rem; border-radius: 0.5rem; height: 300px; overflow-y: auto; font-size: 0.85rem; line-height: 1.4; word-break: break-all; }
         .debug-log-item { margin-bottom: 0.25rem; border-bottom: 1px solid #333; padding-bottom: 0.25rem; }
         .debug-log-item.error { color: #ff4444; }
         .debug-log-item.skip { color: #888; }
         .debug-log-item.success { color: #00ff00; font-weight: bold; }
+        .debug-log-link { color: #3b82f6; text-decoration: underline; cursor: pointer; }
+
         .drag-handle { cursor: move; color: #9ca3af; }
         .drag-handle:hover { color: #4A90E2; }
         .spec-section-card { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.5rem; height: 100%; }
@@ -158,7 +132,6 @@
         .chem-item { text-align: center; }
         .chem-label { font-weight: 500; font-size: 0.85rem; margin-bottom: 0.25rem; color: #4b5563; }
         .chem-input { text-align: center; font-size: 0.85rem; padding: 0.25rem; width: 100%; border: 1px solid #d1d5db; border-radius: 0.25rem; }
-        .chem-input::placeholder { color: #9ca3af; font-size: 0.75rem; }
 
         @media print {
             body { background: white; padding: 0; margin: 0; }
@@ -178,26 +151,27 @@
     </div>
     <div id="toast-container"></div>
 
-    <div class="container mx-auto p-4">
-        <header class="mb-4 text-center">
-            <h1 class="text-3xl font-bold text-gray-800">銲接資料管理系統</h1>
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">銲接資料管理系統</h1>
+            <p class="text-gray-500 mt-2 text-lg">WeldData Management System</p>
         </header>
 
-        <div class="mb-4 flex justify-center">
-            <nav class="bg-white rounded-xl shadow-sm p-1 inline-flex" aria-label="Tabs">
+        <div class="mb-6 flex justify-center">
+            <nav class="bg-white rounded-xl shadow-sm p-1 inline-flex overflow-x-auto whitespace-nowrap" aria-label="Tabs">
                 <button id="main-tab" class="tab-button active">資料查詢</button>
                 <button id="stats-report-tab" class="tab-button">統計報表</button>
+                <button id="archive-tab" class="tab-button text-amber-600">歷史查詢</button>
                 <button id="settings-tab" class="tab-button">系統設定</button>
-                <button id="maintenance-tab" class="tab-button">資料庫維護</button>
             </nav>
         </div>
         
         <main>
+            <!-- 主作業分頁 -->
             <div id="main-page">
-                <!-- 儀表板區域 -->
-                <div id="dashboard-container" class="grid grid-cols-3 gap-3 mb-4 max-w-4xl mx-auto">
+                <div id="dashboard-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div class="stat-card">
-                        <div class="stat-title">未完成 / 本頁</div>
+                        <div class="stat-title">未完成 / 畫面顯示筆數</div>
                         <div id="stat-unfinished-total" class="stat-value">
                             <span id="stat-unfinished-count">0</span>
                             <span class="sub">/</span>
@@ -206,64 +180,41 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-title">拉力未完成</div>
-                        <div id="stat-tensile-unfinished" class="stat-value text-red-500">0</div>
+                        <div id="stat-tensile-unfinished" class="stat-value">0</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-title">衝擊未完成</div>
-                        <div id="stat-impact-unfinished" class="stat-value text-red-500">0</div>
+                        <div id="stat-impact-unfinished" class="stat-value">0</div>
                     </div>
                 </div>
 
-                <div class="main-card p-4">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <!-- NEW: Archive Toggle -->
-                            <div class="relative flex-grow flex items-center gap-2">
-                                <div class="relative flex-grow">
-                                    <!-- Modified Search Input for Global Search -->
-                                    <input type="text" id="searchInput" placeholder="輸入關鍵字 (自動搜尋全部)..." class="w-full pl-9 pr-8 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
-                                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer" id="searchIconBtn" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    <!-- Optional: Help tooltip or visual cue for Enter key -->
-                                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">↵</span>
-                                </div>
-                                <label class="flex items-center space-x-1 text-sm text-gray-600 bg-gray-100 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-200">
-                                    <input type="checkbox" id="showArchivedToggle" class="form-checkbox h-4 w-4 text-blue-600">
-                                    <span class="text-xs">含封存</span>
-                                </label>
+                <div class="main-card p-6">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-4 gap-4">
+                        <div class="flex items-center gap-2 w-full xl:w-auto">
+                            <div class="relative flex-grow">
+                                <input type="text" id="searchInput" placeholder="搜尋當前畫面清單..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             </div>
-                            
-                            <button id="refreshDataBtn" class="btn btn-secondary py-1.5 px-3" title="回到第一頁 (重新整理)">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            <button id="refreshDataBtn" class="btn btn-secondary p-2.5 flex-shrink-0" title="回到第一頁 (重新整理)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                             </button>
-                            <button id="displaySettingsBtn" class="btn btn-secondary py-1.5 px-3" title="顯示設定">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-                            </button>
-                            <button id="toggleExtraColumnsBtn" class="btn btn-secondary py-1.5 px-3" title="顯示額外欄位">
-                                <svg id="icon-show-more" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                                <svg id="icon-show-less" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                            <button id="toggleExtraColumnsBtn" class="btn btn-secondary p-2.5 flex-shrink-0" title="顯示額外欄位">
+                                <svg id="icon-show-more" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                                <svg id="icon-show-less" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                             </button>
                         </div>
-                        <div class="flex space-x-2 w-full md:w-auto">
-                            <!-- NEW: Archive Batch Button -->
-                            <button id="batchArchiveBtn" class="btn btn-warning w-full hidden items-center justify-center py-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                封存/復原
+                        <div class="grid grid-cols-2 lg:flex lg:flex-row gap-2 w-full xl:w-auto flex-wrap justify-end">
+                            <button id="importDataBtn" class="btn btn-secondary w-full lg:w-auto flex items-center justify-center text-sm px-4 py-2">
+                                資料匯入
                             </button>
-                            <button id="generateReportBtn" class="btn btn-secondary w-full flex items-center justify-center py-1.5" disabled>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-                                報表
+                            <button id="quickEditBtn" class="btn btn-green w-full lg:w-auto flex items-center justify-center text-sm px-4 py-2" title="請先勾選一筆資料">
+                                快速編輯
                             </button>
-                            <button id="importDataBtn" class="btn btn-secondary w-full flex items-center justify-center py-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                匯入
+                            <button id="generateReportBtn" class="btn btn-secondary w-full lg:w-auto flex items-center justify-center text-sm px-4 py-2" disabled>
+                                產生報表
                             </button>
-                            <button id="quickEditBtn" class="btn btn-green w-full flex items-center justify-center py-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1"><path d="m18 5-3-3-6 6 3 3Z"/><path d="m6 8 3 3-6 6-3-3Z"/><path d="m2 22 3-3"/><path d="m8 2 3 3"/></svg>
-                                編輯
-                            </button>
-                            <button id="addDataBtn" class="btn btn-primary w-full flex items-center justify-center py-1.5">
-                                <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                新增
+                            <button id="addDataBtn" class="btn btn-primary col-span-2 lg:col-span-1 w-full lg:w-auto flex items-center justify-center text-sm px-4 py-2">
+                                新增資料
                             </button>
                         </div>
                     </div>
@@ -275,21 +226,66 @@
                         </table>
                     </div>
                     
-                    <div id="pagination-container" class="flex justify-between items-center mt-4 px-2 py-1">
-                        <span id="pageInfo" class="text-sm text-gray-600">讀取中...</span>
-                        <div class="inline-flex items-center -space-x-px">
-                            <button id="prevPageBtn" class="flex items-center btn btn-secondary rounded-r-none py-1.5 px-3 text-sm" disabled>
-                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>上一頁
-                            </button>
-                            <button id="nextPageBtn" class="flex items-center btn btn-secondary rounded-l-none py-1.5 px-3 text-sm">
-                                下一頁<svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
-                            </button>
+                    <div id="pagination-container" class="flex flex-col md:flex-row justify-between items-center mt-4 px-4 py-3 gap-4 bg-gray-50 rounded-lg border">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center">
+                                <span class="text-sm font-medium text-gray-700 mr-2">每頁顯示：</span>
+                                <select id="pageSizeSelect" class="border border-gray-300 rounded-md p-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    <option value="20" selected>20 筆</option>
+                                    <option value="50">50 筆</option>
+                                    <option value="100">100 筆</option>
+                                    <option value="all">全部顯示 (啟用全域搜尋)</option>
+                                </select>
+                            </div>
+                            <span id="pageInfo" class="text-sm text-gray-600 md:border-l md:pl-3 border-gray-300">讀取中...</span>
+                        </div>
+                        <div class="inline-flex items-center -space-x-px shadow-sm">
+                            <button id="prevPageBtn" class="flex items-center btn btn-secondary rounded-r-none py-1.5 px-3 text-sm" disabled>上一頁 (較新)</button>
+                            <button id="nextPageBtn" class="flex items-center btn btn-secondary rounded-l-none py-1.5 px-3 text-sm">下一頁 (較舊)</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Stats Report Page -->
+            <!-- 歷史查詢分頁 (Archive Page) -->
+            <div id="archive-page" class="hidden">
+                <div class="main-card p-6">
+                    <h2 class="text-2xl font-bold text-gray-700 mb-2">歷史資料查詢</h2>
+                    <p class="text-gray-500 text-sm mb-6">從已封存的歷史紀錄中篩選與還原資料。為了效能，請輸入條件後點擊查詢。</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
+                        <div><label class="block text-sm font-medium mb-1">開始日期</label><input type="date" id="arcStartDate" class="w-full p-2 border rounded text-sm"></div>
+                        <div><label class="block text-sm font-medium mb-1">結束日期</label><input type="date" id="arcEndDate" class="w-full p-2 border rounded text-sm"></div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">指定搜尋欄位</label>
+                            <select id="arcField" class="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                <option value="all">任何欄位 (全域搜尋)</option>
+                                <option value="筆數">筆數</option>
+                                <option value="品名">品名</option>
+                                <option value="適用規範">適用規範</option>
+                                <option value="配方">配方/批號</option>
+                                <option value="線徑">線徑</option>
+                                <option value="銲接人員">銲接人員</option>
+                                <option value="鋼板材質">鋼板材質</option>
+                                <option value="氣體">氣體</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-sm font-medium mb-1">關鍵字</label><input type="text" id="arcKeyword" placeholder="請輸入關鍵字..." class="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"></div>
+                        <div class="flex items-end"><button id="searchArchiveBtn" class="btn btn-warning w-full bg-amber-500 text-white hover:bg-amber-600">查詢歷史紀錄</button></div>
+                    </div>
+                    
+                    <div class="table-scroll-container">
+                        <table id="archiveTable" class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50"><tr id="archiveTableHead"></tr></thead>
+                            <tbody id="archiveTableBody" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="100%" class="text-center py-12 text-gray-500">請設定條件並點擊上方按鈕查詢。</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 統計報表分頁 -->
             <div id="stats-report-page" class="hidden">
                 <div class="main-card p-6">
                     <h2 class="text-2xl font-bold text-gray-700 mb-6">統計報表</h2>
@@ -304,106 +300,38 @@
                 </div>
             </div>
 
-            <!-- Settings Page (Cleaned) -->
+            <!-- 系統設定分頁 -->
             <div id="settings-page" class="hidden">
-                 <div class="main-card p-6 space-y-8">
-                    <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-2xl font-bold text-gray-700">系統設定項目</h2>
+                 <div class="main-card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-700">系統設定項目</h2>
+                        <div class="flex gap-2">
+                            <button id="batchArchiveBtn" class="btn bg-amber-500 text-white hover:bg-amber-600 text-sm flex items-center shadow-lg transform hover:scale-105 transition-transform">批次封存</button>
+                            <button id="fixSortingBtn" class="btn btn-green text-sm flex items-center shadow-lg transform hover:scale-105 transition-transform">系統初始化 / 修復診斷</button>
                         </div>
-                        
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">請選擇設定項目：</label>
-                            <select id="settingsSelect" class="block w-full md:w-1/3 py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-base">
-                                <option value="" disabled selected>-- 請選擇 --</option>
-                            </select>
-                        </div>
-                        
-                        <div id="settings-content-display" class="mt-4">
-                            <p class="text-gray-500 text-center py-8">請從上方選單選擇一個項目以進行編輯。</p>
-                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">請選擇設定項目：</label>
+                        <select id="settingsSelect" class="block w-full md:w-1/3 py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-base">
+                            <option value="" disabled selected>-- 請選擇 --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="settings-content-display" class="mt-4">
+                        <p class="text-gray-500 text-center py-8">請從上方選單選擇一個項目以進行編輯。</p>
                     </div>
                  </div>
-            </div>
-
-            <!-- NEW: Maintenance Page -->
-            <div id="maintenance-page" class="hidden">
-                <div class="main-card p-6 space-y-8">
-                    <h2 class="text-2xl font-bold text-gray-700 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        資料庫維護與封存工具
-                    </h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Tool 1: Fix Sorting -->
-                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
-                            <h3 class="font-bold text-gray-800 text-lg mb-2 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path></svg>
-                                1. 資料排序修復
-                            </h3>
-                            <p class="text-sm text-gray-600 mb-4">若您發現資料列表的順序異常（例如 10 排在 2 前面），請執行此功能進行修復。</p>
-                            <button id="fixSortingBtn" class="btn btn-green w-full flex items-center justify-center">
-                                開啟修復診斷視窗
-                            </button>
-                        </div>
-
-                        <!-- Tool 2: Init Archive Field -->
-                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
-                            <h3 class="font-bold text-gray-800 text-lg mb-2 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                                2. 初始化封存欄位 (修復舊資料)
-                            </h3>
-                            <p class="text-sm text-gray-600 mb-4">如果您的舊資料無法被搜尋或篩選，請執行此功能。這會將所有缺少封存標記的資料設定為「未封存」。</p>
-                            <button id="initArchiveFieldBtn" class="btn btn-primary w-full">開始修復 (初始化)</button>
-                        </div>
-
-                        <!-- Tool 3: Date Range Archive -->
-                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 md:col-span-2 hover:shadow-md transition-shadow">
-                            <h3 class="font-bold text-gray-800 text-lg mb-2 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-                                3. 依日期區間封存資料
-                            </h3>
-                            <p class="text-sm text-gray-600 mb-4">將指定日期範圍內的資料標記為「已封存」，封存後的資料預設不會顯示在查詢列表。</p>
-                            <div class="flex flex-col sm:flex-row gap-4 items-end mb-4">
-                                <div class="w-full sm:flex-1">
-                                    <label class="block text-xs text-gray-500 font-bold mb-1">起始日期</label>
-                                    <input type="date" id="archiveStartDate" class="w-full border rounded-lg p-2 bg-white">
-                                </div>
-                                <div class="w-full sm:flex-1">
-                                    <label class="block text-xs text-gray-500 font-bold mb-1">結束日期</label>
-                                    <input type="date" id="archiveEndDate" class="w-full border rounded-lg p-2 bg-white">
-                                </div>
-                                <button id="runDateArchiveBtn" class="btn btn-warning w-full sm:w-auto py-2 px-6">執行封存</button>
-                            </div>
-                            <!-- Deep Scan Checkbox -->
-                            <div class="flex items-start bg-yellow-50 p-2 rounded text-xs text-yellow-800 border border-yellow-200">
-                                <input type="checkbox" id="archiveDeepScanCheckbox" class="mt-0.5 mr-2">
-                                <label for="archiveDeepScanCheckbox">
-                                    <strong>開啟深度掃描 (解決日期格式問題)</strong><br>
-                                    若標準封存無法找到資料，請勾選此項目。系統將忽略格式差異 (如 2024/05/01 或 113.5.1) 強制比對，但速度較慢。
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
 
     <!-- Modals -->
+    <!-- Form Modal -->
     <div id="formModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
         <div id="modalDialog" class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-7xl">
             <div class="flex justify-between items-center pb-4 border-b">
-                <div class="flex items-center gap-4">
-                    <h3 id="modalTitle" class="text-2xl font-bold"></h3>
-                    <!-- NEW: Nav Buttons Container in Header with Info Display -->
-                    <div id="modalNavButtons" class="hidden flex items-center space-x-2">
-                        <button id="modalPrevBtn" class="btn btn-secondary py-1 px-3 text-sm">&lt; 上一筆</button>
-                        <!-- Added Info Span -->
-                        <span id="modalNavInfo" class="text-sm font-bold text-blue-800 bg-blue-50 px-3 py-1 rounded border border-blue-100 min-w-[150px] text-center truncate max-w-[300px]"></span>
-                        <button id="modalNextBtn" class="btn btn-secondary py-1 px-3 text-sm">下一筆 &gt;</button>
-                    </div>
-                </div>
+                <h3 id="modalTitle" class="text-2xl font-bold"></h3>
                 <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
             </div>
             <div class="mt-5"><form id="modalForm" class="space-y-4 max-h-[75vh] overflow-y-auto p-2"></form></div>
@@ -414,32 +342,52 @@
         </div>
     </div>
     
+    <!-- Batch Archive Modal -->
+    <div id="batchArchiveModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-sm">
+            <div class="flex justify-between items-center pb-4 border-b">
+                <h3 class="text-xl font-bold text-amber-600">批次封存資料</h3>
+                <button id="closeBatchArchiveBtn" class="text-gray-400 hover:text-gray-600"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <div class="mt-4">
+                <p class="text-sm text-gray-600 mb-4">請選擇一個截止日期，系統會將此日期（含）之前的所有「尚未封存的資料」全數轉為封存狀態。</p>
+                <label class="block text-sm font-medium text-gray-700 mb-2">結束日期</label>
+                <input type="date" id="batchArchiveDate" class="w-full p-2 border border-gray-300 rounded-lg">
+            </div>
+            <div class="flex justify-end pt-5 space-x-3 border-t mt-5">
+                <button id="cancelBatchArchiveBtn" class="btn btn-secondary">取消</button>
+                <button id="confirmBatchArchiveBtn" class="btn w-full bg-amber-500 text-white hover:bg-amber-600">確定封存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug / Fix Modal -->
     <div id="debugModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 overflow-y-auto h-full w-full z-[100] flex items-center justify-center">
         <div class="relative mx-auto p-6 border border-gray-700 w-full max-w-4xl shadow-2xl rounded-xl bg-black text-white">
             <div class="flex justify-between items-center pb-4 border-b border-gray-700">
-                <h3 class="text-xl font-bold text-green-400">資料排序修復診斷器</h3>
+                <h3 class="text-xl font-bold text-green-400">系統初始化與診斷器</h3>
                 <button id="closeDebugModalBtn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             <div class="mt-4">
-                <p class="text-sm text-gray-400 mb-2">正在檢查所有資料的「筆數」欄位格式。</p>
+                <p class="text-sm text-gray-400 mb-2">此工具將掃描全庫資料，執行「筆數格式修正」與「預設為未封存(isArchived=false)」的資料補全。</p>
                 <div id="debugConsole" class="debug-console"></div>
             </div>
             <div class="flex justify-end pt-5 space-x-3 border-t border-gray-700 mt-5">
-                <button id="startFixBtn" class="btn btn-green">開始執行修復</button>
+                <button id="startFixBtn" class="btn btn-green">開始執行全庫掃描與修復</button>
                 <button id="closeDebugBtn" class="btn btn-secondary bg-gray-700 text-white border-none">關閉</button>
             </div>
         </div>
     </div>
     
-    <!-- NEW: Generalized Confirm Modal (Replaces old confirmModal) -->
-    <div id="confirmModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-[200] flex items-center justify-center">
+    <!-- Confirm / Action Modal -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
         <div class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-xs">
              <div class="text-center">
-                <div id="confirmIconBg" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                    <svg id="confirmIcon" class="h-6 w-6 text-red-600" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100" id="confirmIcon">
+                    <svg class="h-6 w-6 text-red-600" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 </div>
-                <h3 id="confirmTitle" class="text-lg leading-6 font-bold text-gray-900">確定要刪除嗎？</h3>
-                <div class="mt-2 px-2 py-3"><p id="confirmMessage" class="text-sm text-gray-500">此操作將直接從 Firebase 中刪除此筆資料，且無法復原。</p></div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-5" id="confirmTitle">確定要執行嗎？</h3>
+                <div class="mt-2 px-7 py-3"><p class="text-sm text-gray-500" id="confirmDesc">此操作將直接從 Firebase 中變更資料。</p></div>
                 <div class="flex justify-center space-x-4 mt-4">
                     <button id="confirmCancelBtn" class="btn btn-secondary">取消</button>
                     <button id="confirmActionBtn" class="btn btn-danger">確定</button>
@@ -448,33 +396,30 @@
         </div>
     </div>
 
+    <!-- Report Modal (Also used for Archive View) -->
     <div id="reportModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-70 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-10">
         <div id="reportModalDialog" class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-7xl">
             <div class="flex justify-between items-end pb-4 border-b mb-4">
                 <div class="flex items-end gap-6">
                     <div>
                         <h3 class="text-2xl font-bold">檢驗報告預覽</h3>
-                        <p class="text-sm text-gray-500 mt-1">請選擇人員後開啟列印。</p>
+                        <p class="text-sm text-gray-500 mt-1">請確認下方資料後開啟列印。</p>
                     </div>
                     <div class="flex items-center gap-4">
                         <div><label class="text-sm font-medium text-gray-700">報告人員</label><select id="reportingPersonSelect" class="block w-40 p-2 border border-gray-300 rounded-lg text-sm"></select></div>
                         <div><label class="text-sm font-medium text-gray-700">審核人員</label><select id="auditingPersonSelect" class="block w-40 p-2 border border-gray-300 rounded-lg text-sm"></select></div>
-                        <!-- NEW: Chem Toggle -->
-                        <div class="flex items-center gap-2 pt-5">
-                            <input type="checkbox" id="showChemCheckbox" checked class="form-checkbox h-4 w-4 text-blue-600 cursor-pointer">
-                            <label for="showChemCheckbox" class="text-sm text-gray-700 cursor-pointer">顯示化學成分</label>
-                        </div>
                     </div>
                 </div>
                 <div class="flex-shrink-0">
                     <button id="nativePrintReportBtn" class="btn btn-primary">開啟列印報表</button>
-                    <button id="closeReportModalBtn" class="btn btn-secondary ml-2">返回編輯</button>
+                    <button id="closeReportModalBtn" class="btn btn-secondary ml-2">返回</button>
                 </div>
             </div>
             <div id="reportContent" class="bg-gray-100 p-4 max-h-[75vh] overflow-y-auto"></div>
         </div>
     </div>
     
+    <!-- Import Modal -->
     <div id="importModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
         <div class="relative mx-auto p-6 border w-full shadow-lg rounded-xl bg-white modal-content-2xl">
             <div class="flex justify-between items-center pb-4 border-b">
@@ -491,10 +436,10 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Modular) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, initializeFirestore, collection, doc, getDocs, getDoc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, limit, startAfter, where, endBefore, limitToLast } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, initializeFirestore, collection, doc, getDocs, getDoc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, limit, startAfter, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -511,23 +456,28 @@
         const db = initializeFirestore(app, { experimentalForceLongPolling: true });
         const auth = getAuth(app);
 
-        window.fb = { db, auth, collection, doc, getDocs, getDoc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, limit, startAfter, where, endBefore, limitToLast, signInAnonymously };
+        // Expose to window
+        window.fb = { db, auth, collection, doc, getDocs, getDoc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, limit, startAfter, where, signInAnonymously };
     </script>
 
     <!-- Main Logic Script -->
     <script>
         const CONFIG = {
             COLLECTIONS: { DATA: '資料', SPECS: '規範', STAFF: '人員', PLATE: '鋼板', GAS: '氣體', CLASS: '銲材分類', PROD_SPEC: '品名對規範', PART_TYPE: '件別' },
-            PAGE_SIZE: 50,
+            PAGE_SIZE: 20,
             DEFAULT_HEADERS: { 
                 '人員': ['姓名'], '鋼板': ['材質'], '氣體': ['名稱'], '銲材分類': ['銲材分類'], 
                 '品名對規範': ['品名', '預設適用規範', '預設銲材分類'], '件別': ['件別名稱'],
                 '規範': [
-                    '規範名稱', '抗拉強度_最低', '抗拉強度_最高', '降伏強度_最低', '降伏強度_最高', '延伸率_下限',
-                    '衝擊溫度需求', '衝擊溫度單位', '衝擊要求數據', 'C_最低', 'C_最高', 'Si_最低', 'Si_最高', 'Mn_最低', 'Mn_最高',
-                    'P_最低', 'P_最高', 'S_最低', 'S_最高', 'Cr_最低', 'Cr_最高', 'Ni_最低', 'Ni_最高', 'Mo_最低', 'Mo_最高', 
-                    'Al_最低', 'Al_最高', 'Cu_最低', 'Cu_最高', 'Co_最低', 'Co_最高', 'Ti_最低', 'Ti_最高', 'Nb_最低', 'Nb_最高', 
-                    'V_最低', 'V_最高', 'W_最低', 'W_最高', 'B_最低', 'B_最高', 'Sn_最低', 'Sn_最高', 'Zr_最低', 'Zr_最高',
+                    '規範名稱',
+                    '抗拉強度_最低', '抗拉強度_最高', '降伏強度_最低', '降伏強度_最高', '延伸率_下限',
+                    '衝擊溫度需求', '衝擊溫度單位', '衝擊要求數據',
+                    'C_最低', 'C_最高', 'Si_最低', 'Si_最高', 'Mn_最低', 'Mn_最高',
+                    'P_最低', 'P_最高', 'S_最低', 'S_最高', 'Cr_最低', 'Cr_最高',
+                    'Ni_最低', 'Ni_最高', 'Mo_最低', 'Mo_最高', 'Al_最低', 'Al_最高',
+                    'Cu_最低', 'Cu_最高', 'Co_最低', 'Co_最高', 'Ti_最低', 'Ti_最高',
+                    'Nb_最低', 'Nb_最高', 'V_最低', 'V_最高', 'W_最低', 'W_最高',
+                    'B_最低', 'B_最高', 'Sn_最低', 'Sn_最高', 'Zr_最低', 'Zr_最高',
                     'Fe_最低', 'Fe_最高', 'O_最低', 'O_最高', 'N_最低', 'N_最高'
                 ]
             },
@@ -547,7 +497,11 @@
                 if(!consoleEl) return;
                 const item = document.createElement('div');
                 item.className = `debug-log-item ${type}`;
-                item.textContent = `> ${msg}`;
+                if (msg.includes('http')) {
+                    item.innerHTML = `> ${msg.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="debug-log-link">$1</a>')}`;
+                } else {
+                    item.textContent = `> ${msg}`;
+                }
                 consoleEl.appendChild(item);
                 consoleEl.scrollTop = consoleEl.scrollHeight;
             }
@@ -557,7 +511,9 @@
             constructor() {
                 this.cache = {}; 
                 this.mainData = []; 
+                this.pageSize = 20; 
                 this.pagination = { lastDocsStack: [], currentLastDoc: null, hasMore: true, pageIndex: 0 };
+                this.currentArchiveResults = []; // 新增：儲存當下歷史搜尋結果，供「檢視」呼叫
             }
             async init() {
                 try {
@@ -577,123 +533,138 @@
                     Utils.showToast("連線發生錯誤，請檢查網路或稍後再試。" + e.message, 'error');
                 }
             }
-
-            async fetchMainDataPage(direction = 'first', includeArchived = false) {
+            
+            async fetchMainDataPage(direction = 'first') {
                 Utils.showLoading('讀取資料中...');
                 try {
-                    const { db, collection, query, orderBy, limit, startAfter, getDocs } = window.fb;
+                    const { db, collection, query, orderBy, limit, startAfter, where, getDocs } = window.fb;
                     const colRef = collection(db, CONFIG.COLLECTIONS.DATA);
-                    let q;
-                    
-                    if (direction === 'first') {
-                        q = query(colRef, orderBy('筆數', 'desc'), limit(CONFIG.PAGE_SIZE));
-                        this.pagination.lastDocsStack = [];
-                        this.pagination.pageIndex = 1;
-                    } else if (direction === 'next' && this.pagination.currentLastDoc) {
-                        this.pagination.lastDocsStack.push(this.pagination.currentLastDoc); 
-                        q = query(colRef, orderBy('筆數', 'desc'), startAfter(this.pagination.currentLastDoc), limit(CONFIG.PAGE_SIZE));
-                        this.pagination.pageIndex++;
-                    } else if (direction === 'prev') {
-                         q = query(colRef, orderBy('筆數', 'desc'), limit(CONFIG.PAGE_SIZE));
-                         this.pagination.lastDocsStack = [];
-                         this.pagination.pageIndex = 1;
-                         Utils.showToast('已回到第一頁');
-                    }
+                    let qArgs = [colRef, where('isArchived', '==', false), orderBy('筆數', 'desc')];
+                    let useFallback = false;
 
-                    const snapshot = await getDocs(q);
-                    if (!snapshot.empty) {
-                        this.mainData = snapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
-                        this.pagination.currentLastDoc = snapshot.docs[snapshot.docs.length - 1];
-                        this.pagination.hasMore = snapshot.docs.length === CONFIG.PAGE_SIZE;
-                    } else {
-                        if (direction === 'next') { Utils.showToast('沒有更多資料了', 'info'); this.pagination.hasMore = false; return; }
-                        this.mainData = [];
+                    try {
+                        if (direction === 'first') {
+                            this.pagination.lastDocsStack = [];
+                            this.pagination.pageIndex = 1;
+                        } else if (direction === 'next' && this.pagination.currentLastDoc) {
+                            this.pagination.lastDocsStack.push(this.pagination.currentLastDoc); 
+                            qArgs.push(startAfter(this.pagination.currentLastDoc));
+                            this.pagination.pageIndex++;
+                        } else if (direction === 'prev') {
+                             this.pagination.lastDocsStack = [];
+                             this.pagination.pageIndex = 1; 
+                        }
+
+                        if (this.pageSize !== 'all') {
+                            qArgs.push(limit(Number(this.pageSize)));
+                        }
+
+                        const q = query(...qArgs);
+                        const snapshot = await getDocs(q);
+                        this.processSnapshot(snapshot, direction);
+
+                    } catch (indexError) {
+                        if (indexError.message && indexError.message.includes('indexes?create_composite=')) {
+                            useFallback = true;
+                            
+                            let fbArgs = [colRef, orderBy('筆數', 'desc')];
+                            if (direction === 'first') {
+                                this.pagination.lastDocsStack = [];
+                                this.pagination.pageIndex = 1;
+                            } else if (direction === 'next' && this.pagination.currentLastDoc) {
+                                this.pagination.lastDocsStack.push(this.pagination.currentLastDoc); 
+                                fbArgs.push(startAfter(this.pagination.currentLastDoc));
+                                this.pagination.pageIndex++;
+                            } else if (direction === 'prev') {
+                                 this.pagination.lastDocsStack = [];
+                                 this.pagination.pageIndex = 1;
+                            }
+                            
+                            if (this.pageSize !== 'all') {
+                                fbArgs.push(limit(Number(this.pageSize)));
+                            }
+                            
+                            const fallbackSnap = await getDocs(query(...fbArgs));
+                            if (!fallbackSnap.empty) {
+                                this.mainData = fallbackSnap.docs.map(d => ({ ...d.data(), _docId: d.id })).filter(d => d.isArchived !== true);
+                                this.pagination.currentLastDoc = fallbackSnap.docs[fallbackSnap.docs.length - 1];
+                                this.pagination.hasMore = this.pageSize === 'all' ? false : fallbackSnap.docs.length === Number(this.pageSize);
+                            } else {
+                                if (direction === 'next') { Utils.showToast('沒有更多資料了', 'info'); this.pagination.hasMore = false; return; }
+                                this.mainData = [];
+                                this.pagination.hasMore = false;
+                            }
+                            document.dispatchEvent(new CustomEvent('main-data-updated'));
+                        } else {
+                            throw indexError; 
+                        }
                     }
-                    document.dispatchEvent(new CustomEvent('main-data-updated', { detail: { includeArchived } }));
                 } catch (e) { console.error(e); Utils.showToast('讀取資料失敗: ' + e.message, 'error'); } finally { Utils.hideLoading(); }
             }
 
-            // NEW: Global Search Function with Multi-Term Support
-            async searchGlobal(term) {
-                if (!term || term.trim() === '') {
-                    // Empty search -> revert to first page
-                    await this.fetchMainDataPage('first');
-                    return;
+            processSnapshot(snapshot, direction) {
+                if (!snapshot.empty) {
+                    this.mainData = snapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
+                    this.pagination.currentLastDoc = snapshot.docs[snapshot.docs.length - 1];
+                    this.pagination.hasMore = this.pageSize === 'all' ? false : snapshot.docs.length === Number(this.pageSize);
+                } else {
+                    if (direction === 'next') { Utils.showToast('沒有更多資料了', 'info'); this.pagination.hasMore = false; return; }
+                    this.mainData = [];
+                    this.pagination.hasMore = false;
                 }
-                
-                Utils.showLoading('全域搜尋中...');
-                const { db, collection, query, where, getDocs, orderBy, limit } = window.fb;
-                const colRef = collection(db, CONFIG.COLLECTIONS.DATA);
-                
-                // Split terms by whitespace to support multi-search
-                const terms = term.trim().split(/\s+/).filter(t => t);
-                
-                let results = [];
-                let seenIds = new Set();
-                
+                document.dispatchEvent(new CustomEvent('main-data-updated'));
+            }
+
+            async fetchArchivedData() {
+                Utils.showLoading('載入歷史資料中...');
                 try {
-                    // Iterate over each term and aggregate results
-                    for (const t of terms) {
-                        // 1. Search by ID (if numeric)
-                        if (!isNaN(t)) {
-                            const numVal = Number(t);
-                            const qId = query(colRef, where('筆數', '==', numVal));
-                            const snapshotId = await getDocs(qId);
-                            snapshotId.forEach(d => {
-                                 if(!seenIds.has(d.id)) {
-                                     results.push({...d.data(), _docId: d.id});
-                                     seenIds.add(d.id);
-                                 }
-                            });
-                        }
-                        
-                        // 2. Search by Product Name (Prefix Match)
-                        // Note: Increased limit to 2000 to avoid cutting off results
-                        const qProd = query(colRef, 
-                            where('品名', '>=', t), 
-                            where('品名', '<=', t + '\uf8ff'),
-                            limit(2000) 
-                        );
-                        const snapshotProd = await getDocs(qProd);
-                        snapshotProd.forEach(d => {
-                            if(!seenIds.has(d.id)) {
-                                 results.push({...d.data(), _docId: d.id});
-                                 seenIds.add(d.id);
-                            }
-                        });
-                        
-                        // 3. Search by Person Name (Exact Match)
-                        const qPerson = query(colRef, where('銲接人員', '==', t), limit(2000));
-                         const snapshotPerson = await getDocs(qPerson);
-                        snapshotPerson.forEach(d => {
-                            if(!seenIds.has(d.id)) {
-                                 results.push({...d.data(), _docId: d.id});
-                                 seenIds.add(d.id);
-                            }
-                        });
-                    }
-
-                    // Update UI Data
-                    this.mainData = results.sort((a,b) => (b['筆數']||0) - (a['筆數']||0)); // Sort by ID desc
-                    this.pagination.hasMore = false; // Disable next page as this is a custom result set
-                    this.pagination.pageIndex = 1; // Reset page index for display
-                    this.pagination.lastDocsStack = []; // Clear pagination stack
-                    
-                    // Dispatch with flag to indicate this is a global search result
-                    document.dispatchEvent(new CustomEvent('main-data-updated', { 
-                        detail: { 
-                            includeArchived: true,
-                            isGlobalSearch: true 
-                        } 
-                    })); 
-                    // Utils.showToast(`搜尋完成，共找到 ${results.length} 筆資料`);
-
-                } catch(e) {
+                    const { db, collection, query, where, getDocs } = window.fb;
+                    const colRef = collection(db, CONFIG.COLLECTIONS.DATA);
+                    const q = query(colRef, where('isArchived', '==', true));
+                    const snapshot = await getDocs(q);
+                    let data = snapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
+                    return data.sort((a,b) => (b['筆數'] || 0) - (a['筆數'] || 0));
+                } catch (e) {
                     console.error(e);
-                    Utils.showToast('搜尋發生錯誤: ' + e.message, 'error');
+                    if (e.message.includes('indexes?create_composite=')) {
+                        Utils.showToast('缺少索引無法完整查詢歷史記錄，請開啟修復診斷器建立索引。', 'error');
+                    } else {
+                        Utils.showToast('讀取歷史資料失敗: ' + e.message, 'error');
+                    }
+                    return [];
                 } finally {
                     Utils.hideLoading();
                 }
+            }
+
+            async batchArchive(endDate) {
+                const { db, collection, query, where, getDocs, writeBatch } = window.fb;
+                const q = query(collection(db, CONFIG.COLLECTIONS.DATA), where('isArchived', '==', false));
+                const snapshot = await getDocs(q);
+                
+                let batch = writeBatch(db);
+                let count = 0;
+                
+                for(const doc of snapshot.docs) {
+                    const data = doc.data();
+                    if(data['銲接日期'] && data['銲接日期'] <= endDate) {
+                        batch.update(doc.ref, { isArchived: true });
+                        count++;
+                        if(count % 450 === 0) {
+                            await batch.commit();
+                            batch = writeBatch(db);
+                        }
+                    }
+                }
+                
+                if(count === 0) {
+                    Utils.showToast('沒有找到符合條件的未封存資料', 'info');
+                    return;
+                }
+                
+                if(count % 450 !== 0) await batch.commit();
+                Utils.showToast(`批次作業完成！成功封存 ${count} 筆舊資料。`);
+                await this.fetchMainDataPage('first');
             }
 
             async deleteItem(collectionName, docId) {
@@ -703,159 +674,15 @@
                     document.dispatchEvent(new CustomEvent('main-data-updated'));
                 }
             }
-
-            async getNextId() {
-                try {
-                    const { db, collection, query, orderBy, limit, getDocs } = window.fb;
-                    const q = query(collection(db, CONFIG.COLLECTIONS.DATA), orderBy('筆數', 'desc'), limit(1));
-                    const snapshot = await getDocs(q);
-                    if (snapshot.empty) return 250001;
-                    const lastId = snapshot.docs[0].data()['筆數'];
-                    return typeof lastId === 'number' ? lastId + 1 : 250001;
-                } catch (e) {
-                    console.error("Auto ID Error", e);
-                    return '';
+            
+            async updateArchiveStatus(docId, isArchived) {
+                await window.fb.updateDoc(window.fb.doc(window.fb.db, CONFIG.COLLECTIONS.DATA, docId), { isArchived: isArchived });
+                await this.fetchMainDataPage('first');
+                if(document.getElementById('archive-page').classList.contains('hidden') === false) {
+                    document.getElementById('searchArchiveBtn').click();
                 }
             }
 
-            async batchArchive(ids, isArchived) {
-                const batch = window.fb.writeBatch(window.fb.db);
-                ids.forEach(id => {
-                    const ref = window.fb.doc(window.fb.db, CONFIG.COLLECTIONS.DATA, id);
-                    batch.update(ref, { isArchived: isArchived });
-                });
-                await batch.commit();
-                this.mainData.forEach(d => {
-                    if (ids.includes(d._docId)) d.isArchived = isArchived;
-                });
-                return ids.length;
-            }
-
-            async archiveByDateRange(startDate, endDate) {
-                const { db, collection, query, where, getDocs, writeBatch } = window.fb;
-                
-                // 定義一個內部函式來執行特定格式的封存
-                const runArchiveBatch = async (s, e) => {
-                    const q = query(collection(db, CONFIG.COLLECTIONS.DATA), 
-                        where('銲接日期', '>=', s), 
-                        where('銲接日期', '<=', e)
-                    );
-                    const snapshot = await getDocs(q);
-                    if (snapshot.empty) return 0;
-
-                    let batch = writeBatch(db);
-                    let opCount = 0;
-                    let localCount = 0;
-
-                    for (const d of snapshot.docs) {
-                        // 如果已經是封存狀態，則跳過 (避免重複計算)
-                        if (d.data().isArchived === true) continue;
-
-                        batch.update(d.ref, { isArchived: true });
-                        localCount++;
-                        opCount++;
-                        if (opCount >= 450) {
-                            await batch.commit();
-                            batch = writeBatch(db);
-                            opCount = 0;
-                        }
-                    }
-                    if (opCount > 0) await batch.commit();
-                    return localCount;
-                };
-
-                // 1. 先嘗試標準橫線格式 (YYYY-MM-DD)
-                let totalCount = await runArchiveBatch(startDate, endDate);
-                console.log(`橫線格式 (${startDate} ~ ${endDate}) 封存筆數: ${totalCount}`);
-
-                // 2. 如果橫線格式沒有結果，或是為了保險起見，嘗試斜線格式 (YYYY/MM/DD)
-                // 許多舊資料或匯入資料可能使用斜線
-                const startSlash = startDate.replace(/-/g, '/');
-                const endSlash = endDate.replace(/-/g, '/');
-                
-                const slashCount = await runArchiveBatch(startSlash, endSlash);
-                console.log(`斜線格式 (${startSlash} ~ ${endSlash}) 封存筆數: ${slashCount}`);
-                
-                return totalCount + slashCount;
-            }
-            
-            // NEW: Deep Scan Archive Implementation
-            async archiveByDateRangeDeepScan(startDate, endDate) {
-                const start = new Date(startDate).getTime();
-                const end = new Date(endDate).getTime();
-                
-                // Fetch ALL data (snapshot) - this is heavy but necessary for deep scan
-                const q = window.fb.query(window.fb.collection(window.fb.db, CONFIG.COLLECTIONS.DATA));
-                const snapshot = await window.fb.getDocs(q);
-                
-                let batch = window.fb.writeBatch(window.fb.db);
-                let count = 0;
-                let batchCount = 0;
-
-                for (const d of snapshot.docs) {
-                    if (d.data().isArchived) continue;
-                    
-                    const dateStr = d.data()['銲接日期'];
-                    if (!dateStr) continue;
-                    
-                    // Flexible parsing: Replace / and . with - to standardize
-                    const normalized = String(dateStr).replace(/\//g, '-').replace(/\./g, '-');
-                    const dTime = new Date(normalized).getTime();
-                    
-                    if (!isNaN(dTime) && dTime >= start && dTime <= end) {
-                        batch.update(d.ref, { isArchived: true });
-                        count++;
-                        batchCount++;
-                        if (batchCount >= 450) {
-                            await batch.commit();
-                            batch = window.fb.writeBatch(window.fb.db);
-                            batchCount = 0;
-                        }
-                    }
-                }
-                if (batchCount > 0) await batch.commit();
-                return count;
-            }
-
-            // NEW: Fetch data for statistics report
-            async getStatsData(startDate, endDate) {
-                const { db, collection, query, where, getDocs, orderBy } = window.fb;
-                // Note: Compound query with range filter on same field is valid
-                const q = query(collection(db, CONFIG.COLLECTIONS.DATA), 
-                    where('銲接日期', '>=', startDate), 
-                    where('銲接日期', '<=', endDate)
-                );
-                const snapshot = await getDocs(q);
-                return snapshot.docs.map(d => ({ ...d.data(), _docId: d.id }));
-            }
-
-            async initializeArchiveField() {
-                Utils.showLoading('初始化資料中...請勿關閉視窗');
-                try {
-                    const { db, collection, getDocs, writeBatch } = window.fb;
-                    const snapshot = await getDocs(collection(db, CONFIG.COLLECTIONS.DATA));
-                    let batch = writeBatch(db);
-                    let count = 0;
-                    let updated = 0;
-                    
-                    for (const d of snapshot.docs) {
-                        const data = d.data();
-                        if (data.isArchived === undefined) {
-                            batch.update(d.ref, { isArchived: false });
-                            updated++;
-                            count++;
-                            if (count >= 450) {
-                                await batch.commit();
-                                batch = writeBatch(db);
-                                count = 0;
-                            }
-                        }
-                    }
-                    if (count > 0) await batch.commit();
-                    return updated;
-                } catch(e) { throw e; } finally { Utils.hideLoading(); }
-            }
-            
             async fixSorting() {
                 const debugModal = document.getElementById('debugModal');
                 const consoleEl = document.getElementById('debugConsole');
@@ -865,51 +692,55 @@
                     const q = window.fb.query(window.fb.collection(window.fb.db, CONFIG.COLLECTIONS.DATA));
                     const snapshot = await window.fb.getDocs(q);
                     Utils.logDebug(`讀取完成！共掃描到 ${snapshot.docs.length} 筆資料。`, 'success');
-                    Utils.logDebug("開始分析資料型別...", 'normal');
+                    Utils.logDebug("開始分析資料型別與補全預設欄位...", 'normal');
+                    
                     const batch = window.fb.writeBatch(window.fb.db);
                     let updateCount = 0;
-                    let skipCount = 0;
                     let batchCount = 0;
                     let currentBatch = window.fb.writeBatch(window.fb.db);
                     
                     for (const d of snapshot.docs) {
-                        const rawVal = d.data()['筆數'];
+                        let updates = {};
+                        const data = d.data();
+                        const rawVal = data['筆數'];
                         const docId = d.id;
+
                         if (typeof rawVal === 'string') {
                             const numVal = Number(rawVal);
                             if (!isNaN(numVal) && rawVal.trim() !== "") {
-                                Utils.logDebug(`[${docId}] 發現字串 "${rawVal}" -> 轉為數字 ${numVal}`, 'success');
-                                currentBatch.update(d.ref, { '筆數': numVal });
-                                updateCount++;
-                                batchCount++;
-                            } else {
-                                Utils.logDebug(`[${docId}] 跳過: 值 "${rawVal}" 無法轉為數字`, 'error');
+                                updates['筆數'] = numVal;
+                                Utils.logDebug(`[${docId}] 轉為數字 ${numVal}`, 'success');
                             }
-                        } else if (typeof rawVal === 'number') {
-                             skipCount++;
-                        } else {
-                             Utils.logDebug(`[${docId}] 未知類型: ${typeof rawVal}`, 'error');
                         }
+                        
+                        if (data.isArchived === undefined) {
+                            updates.isArchived = false;
+                        }
+
+                        if (Object.keys(updates).length > 0) {
+                            currentBatch.update(d.ref, updates);
+                            updateCount++;
+                            batchCount++;
+                        }
+                        
                         if(batchCount >= 450) {
-                            Utils.logDebug("--- 提交批次更新 (450筆) ---", 'normal');
+                            Utils.logDebug(`--- 提交批次更新 (已處理 ${updateCount} 筆) ---`, 'normal');
                             await currentBatch.commit();
                             currentBatch = window.fb.writeBatch(window.fb.db);
                             batchCount = 0;
                         }
                     }
                     if(batchCount > 0) {
-                        Utils.logDebug(`--- 提交最後批次 (${batchCount}筆) ---`, 'normal');
+                        Utils.logDebug(`--- 提交最後批次 ---`, 'normal');
                         await currentBatch.commit();
                     }
                     Utils.logDebug("========================================", 'normal');
-                    Utils.logDebug(`診斷結束。`, 'success');
-                    Utils.logDebug(`已更新 (轉為數字): ${updateCount}筆`, 'success');
-                    Utils.logDebug(`已跳過 (原為數字): ${skipCount}筆`, 'skip');
+                    Utils.logDebug(`診斷結束。總計更新/補全 ${updateCount} 筆資料。`, 'success');
                     if(updateCount > 0) {
-                        Utils.showToast(`成功修復 ${updateCount} 筆資料！`);
+                        Utils.showToast(`成功修復/補全 ${updateCount} 筆資料！`);
                         this.fetchMainDataPage('first');
                     } else {
-                        Utils.logDebug("提示: 沒有資料需要更新，表示資料庫中所有「筆數」已經都是數字格式。", 'normal');
+                        Utils.logDebug("提示: 沒有資料需要更新，資料庫狀態極佳。", 'normal');
                         Utils.showToast('所有資料格式正確，無需修復。');
                     }
                 } catch (e) {
@@ -922,278 +753,176 @@
         class UIManager {
             constructor(dataManager) {
                 this.dm = dataManager;
-                // NEW: visibleData to track what's currently shown for navigation
-                this.state = { visibleColumns: JSON.parse(localStorage.getItem(CONFIG.VISIBLE_COLUMNS_KEY) || '[]'), showExtra: false, searchTerm: '', selectedRowIds: [], showArchived: false, isCustomSearchResult: false, visibleData: [] };
+                this.state = { visibleColumns: JSON.parse(localStorage.getItem(CONFIG.VISIBLE_COLUMNS_KEY) || '[]'), showExtra: false, searchTerm: '', selectedRowIds: [] };
                 if (this.state.visibleColumns.length === 0) this.state.visibleColumns = CONFIG.CANONICAL_COLUMN_ORDER.filter(c => !['銲接人員', '拉力棒加工人員', '衝擊片加工人員', '銲接模式', '鋼板材質', '電流', '電壓'].includes(c));
                 this.bindEvents();
             }
 
-            // NEW: Generalized Confirm Dialog Function
-            showConfirm(title, message, callback, type = 'danger') {
-                const modal = document.getElementById('confirmModal');
-                const titleEl = document.getElementById('confirmTitle');
-                const msgEl = document.getElementById('confirmMessage');
-                const btn = document.getElementById('confirmActionBtn');
-                const iconBg = document.getElementById('confirmIconBg');
-                const icon = document.getElementById('confirmIcon');
-
-                titleEl.textContent = title;
-                msgEl.innerHTML = message; // Use innerHTML to allow simple formatting
-                
-                // Reset styling
-                btn.className = 'btn';
-                iconBg.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4';
-                
-                // FIX: Use setAttribute for SVG class modification
-                icon.setAttribute('class', 'h-6 w-6'); 
-
-                // Apply styling based on type
-                if (type === 'danger') {
-                    btn.classList.add('btn-danger');
-                    iconBg.classList.add('bg-red-100');
-                    icon.classList.add('text-red-600');
-                } else if (type === 'warning') {
-                    btn.classList.add('btn-warning');
-                    iconBg.classList.add('bg-yellow-100');
-                    icon.classList.add('text-yellow-600');
-                } else {
-                    btn.classList.add('btn-primary');
-                    iconBg.classList.add('bg-blue-100');
-                    icon.classList.add('text-blue-600');
-                }
-
-                // Remove old listeners to prevent stacking
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-
-                newBtn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
-                    callback();
-                });
-                
-                const cancelBtn = document.getElementById('confirmCancelBtn');
-                const newCancelBtn = cancelBtn.cloneNode(true);
-                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-                newCancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
-
-                modal.classList.remove('hidden');
-            }
-
             bindEvents() {
-                document.addEventListener('main-data-updated', (e) => { 
-                    if(e.detail && e.detail.includeArchived !== undefined) this.state.showArchived = e.detail.includeArchived;
-                    // Check if this update comes from a global search
-                    if(e.detail && e.detail.isGlobalSearch) {
-                        this.state.isCustomSearchResult = true;
-                    }
-                    this.renderTable(); 
-                    this.renderDashboards(); 
-                });
+                document.addEventListener('main-data-updated', () => { this.renderTable(); this.renderDashboards(); });
+                document.getElementById('nextPageBtn').addEventListener('click', () => this.dm.fetchMainDataPage('next'));
+                document.getElementById('prevPageBtn').addEventListener('click', () => this.dm.fetchMainDataPage('prev'));
+                document.getElementById('refreshDataBtn').addEventListener('click', () => this.dm.fetchMainDataPage('first'));
                 
-                document.getElementById('showArchivedToggle').addEventListener('change', (e) => {
-                    this.state.showArchived = e.target.checked;
-                    this.renderTable();
-                });
-
-                document.getElementById('nextPageBtn').addEventListener('click', () => { 
-                    this.state.selectedRowIds = []; 
-                    this.updateBatchButtons();
-                    this.state.isCustomSearchResult = false; // Reset search mode on page change
-                    this.dm.fetchMainDataPage('next', this.state.showArchived); 
-                });
-                document.getElementById('prevPageBtn').addEventListener('click', () => { 
-                    this.state.selectedRowIds = []; 
-                    this.updateBatchButtons();
-                    this.state.isCustomSearchResult = false; // Reset search mode on page change
-                    this.dm.fetchMainDataPage('prev', this.state.showArchived); 
-                });
-                document.getElementById('refreshDataBtn').addEventListener('click', () => {
-                    this.state.selectedRowIds = [];
-                    this.updateBatchButtons();
-                    document.getElementById('searchInput').value = ''; // Clear search
-                    this.state.searchTerm = '';
-                    this.state.isCustomSearchResult = false; // Reset search mode
-                    this.dm.fetchMainDataPage('first', this.state.showArchived);
-                });
-
-                // Modified Search Event Listener
-                const searchInput = document.getElementById('searchInput');
-                const searchIconBtn = document.getElementById('searchIconBtn');
-                let debounceTimer;
-
-                // Combined Local Filter + Debounced Global Search
-                searchInput.addEventListener('input', (e) => { 
-                    const val = e.target.value; // Keep original case for display/logic if needed, but search uses lower
-                    this.state.searchTerm = val.toLowerCase(); 
+                // 動態搜尋事件
+                document.getElementById('searchInput').addEventListener('input', (e) => { this.state.searchTerm = e.target.value.toLowerCase(); this.renderTable(); });
+                
+                // 下拉選單：自訂顯示筆數
+                document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    this.dm.pageSize = val === 'all' ? 'all' : Number(val);
                     
-                    // 1. Local filter immediately for responsiveness
-                    // If user is typing, we assume they are refining or starting new search.
-                    // We temporarily treat it as local filter until debounce fires.
-                    this.state.isCustomSearchResult = false; 
-                    this.renderTable(); 
-
-                    // 2. Debounce Global Search
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(() => {
-                        this.dm.searchGlobal(val);
-                    }, 800); // 800ms delay
-                });
-
-                // Global Search on Enter (Immediate)
-                searchInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        clearTimeout(debounceTimer); // Cancel pending debounce
-                        this.dm.searchGlobal(searchInput.value);
+                    const searchInput = document.getElementById('searchInput');
+                    if (val === 'all') {
+                        searchInput.placeholder = "全域搜尋 (輸入關鍵字即時尋找所有未封存紀錄)...";
+                    } else {
+                        searchInput.placeholder = "搜尋當前畫面清單...";
                     }
+                    
+                    this.dm.fetchMainDataPage('first');
                 });
 
-                // Global Search on Icon Click
-                searchIconBtn.addEventListener('click', () => {
-                     this.dm.searchGlobal(searchInput.value);
-                });
-                
+                // Tabs Navigation
                 document.querySelectorAll('.tab-button').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
                         const targetId = e.target.id.replace('-tab', '-page');
-                        document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden')); document.getElementById(targetId).classList.remove('hidden');
+                        document.querySelectorAll('main > div').forEach(div => div.classList.add('hidden')); 
+                        const page = document.getElementById(targetId);
+                        if (page) page.classList.remove('hidden');
                         if (targetId === 'settings-page') this.renderSettingsMenu();
                     });
                 });
+
+                // Modal Closers
                 document.getElementById('closeModalBtn').addEventListener('click', () => this.closeModal('formModal'));
                 document.getElementById('cancelModalBtn').addEventListener('click', () => this.closeModal('formModal'));
                 
-                // NEW: Modal Nav Button Listeners
-                document.getElementById('modalPrevBtn').addEventListener('click', () => this.navigateModal('prev'));
-                document.getElementById('modalNextBtn').addEventListener('click', () => this.navigateModal('next'));
+                // Form interactions
+                document.getElementById('addDataBtn').addEventListener('click', () => this.openFormModal(CONFIG.COLLECTIONS.DATA));
+                document.getElementById('saveModalBtn').addEventListener('click', (e) => this.handleSave(e.target.dataset.tableName));
                 
-                document.getElementById('addDataBtn').addEventListener('click', async () => {
-                    Utils.showLoading('取得最新編號...');
-                    const nextId = await this.dm.getNextId();
-                    Utils.hideLoading();
-                    this.openFormModal(CONFIG.COLLECTIONS.DATA, null, nextId);
-                });
-                
-                // NEW: Quick Edit Button Logic
+                // Quick Edit Logic
                 document.getElementById('quickEditBtn').addEventListener('click', () => {
-                    const selectedIds = this.state.selectedRowIds;
-                    if (selectedIds.length === 0) {
-                        Utils.showToast('請先勾選一筆欲編輯的資料', 'warning');
-                    } else if (selectedIds.length > 1) {
-                        Utils.showToast('編輯功能一次只能處理一筆資料，請勿多選', 'warning');
+                    if (this.state.selectedRowIds.length === 1) {
+                        this.openFormModal(CONFIG.COLLECTIONS.DATA, this.state.selectedRowIds[0]);
                     } else {
-                        // Open modal with the single selected ID
-                        this.openFormModal(CONFIG.COLLECTIONS.DATA, selectedIds[0]);
+                        Utils.showToast('請勾選「一筆」資料進行快速編輯', 'error');
                     }
                 });
 
-                document.getElementById('saveModalBtn').addEventListener('click', (e) => this.handleSave(e.target.dataset.tableName));
-                
-                document.getElementById('batchArchiveBtn').addEventListener('click', () => this.handleBatchArchiveToggle());
-                
+                // Batch Archive logic
+                document.getElementById('batchArchiveBtn').addEventListener('click', () => {
+                    document.getElementById('batchArchiveModal').classList.remove('hidden');
+                });
+                document.getElementById('closeBatchArchiveBtn').addEventListener('click', () => {
+                    this.closeModal('batchArchiveModal');
+                });
+                document.getElementById('cancelBatchArchiveBtn').addEventListener('click', () => {
+                    this.closeModal('batchArchiveModal');
+                });
+                document.getElementById('confirmBatchArchiveBtn').addEventListener('click', async () => {
+                    const date = document.getElementById('batchArchiveDate').value;
+                    if(!date) return Utils.showToast('請選擇截止日期', 'error');
+                    Utils.showLoading('批次封存中...');
+                    try {
+                        await this.dm.batchArchive(date);
+                        this.closeModal('batchArchiveModal');
+                    } catch(e) {
+                        Utils.showToast('封存失敗: ' + e.message, 'error');
+                    } finally {
+                        Utils.hideLoading();
+                    }
+                });
+
+                // Main Table Click Handlers
                 document.getElementById('dataTableBody').addEventListener('click', (e) => {
                     const btn = e.target.closest('button');
                     const checkbox = e.target.closest('.row-checkbox');
-                    if (btn) { if (btn.classList.contains('delete-btn')) this.confirmDelete(btn.dataset.id, btn.dataset.table); else if (btn.classList.contains('edit-btn')) this.openFormModal(btn.dataset.table, btn.dataset.id); }
+                    if (btn) { 
+                        if (btn.classList.contains('delete-btn')) this.confirmAction('delete', btn.dataset.id, btn.dataset.table); 
+                        else if (btn.classList.contains('archive-btn')) this.confirmAction('archive', btn.dataset.id, btn.dataset.table);
+                        else if (btn.classList.contains('edit-btn')) this.openFormModal(btn.dataset.table, btn.dataset.id); 
+                    }
                     if (checkbox) {
                         const id = checkbox.dataset.id;
                         if(checkbox.checked) { if(!this.state.selectedRowIds.includes(id)) this.state.selectedRowIds.push(id); }
                         else { this.state.selectedRowIds = this.state.selectedRowIds.filter(rid => rid !== id); }
-                        this.updateBatchButtons();
+                        document.getElementById('generateReportBtn').disabled = this.state.selectedRowIds.length === 0;
                     }
                 });
-                
-                document.getElementById('settingsSelect').addEventListener('change', (e) => this.renderSettingsTable(e.target.value));
-                document.getElementById('toggleExtraColumnsBtn').addEventListener('click', () => { this.state.showExtra = !this.state.showExtra; document.getElementById('icon-show-more').classList.toggle('hidden'); document.getElementById('icon-show-less').classList.toggle('hidden'); this.renderTable(); });
+
+                // Archive Page Handlers
+                document.getElementById('searchArchiveBtn').addEventListener('click', async () => {
+                    const rawData = await this.dm.fetchArchivedData();
+                    const startDate = document.getElementById('arcStartDate').value;
+                    const endDate = document.getElementById('arcEndDate').value;
+                    const field = document.getElementById('arcField').value;
+                    const keyword = document.getElementById('arcKeyword').value.toLowerCase();
+
+                    const filtered = rawData.filter(item => {
+                        if (startDate && item['銲接日期'] < startDate) return false;
+                        if (endDate && item['銲接日期'] > endDate) return false;
+                        
+                        if (keyword) {
+                            if (field === 'all') {
+                                const match = Object.values(item).some(val => String(val).toLowerCase().includes(keyword));
+                                if (!match) return false;
+                            } else {
+                                const val = item[field];
+                                if (!val || !String(val).toLowerCase().includes(keyword)) return false;
+                            }
+                        }
+                        return true;
+                    });
+                    
+                    // 儲存結果供後續檢視使用
+                    this.dm.currentArchiveResults = filtered;
+                    this.renderArchiveTable(filtered);
+                });
+
+                document.getElementById('archiveTableBody').addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    if (btn) { 
+                        if (btn.classList.contains('delete-btn')) this.confirmAction('delete', btn.dataset.id, CONFIG.COLLECTIONS.DATA); 
+                        else if (btn.classList.contains('restore-btn')) this.confirmAction('restore', btn.dataset.id, CONFIG.COLLECTIONS.DATA);
+                        else if (btn.classList.contains('view-btn')) this.openArchiveView(btn.dataset.id); 
+                    }
+                });
+
+                // Settings & Tools
+                const settingsSelect = document.getElementById('settingsSelect');
+                if (settingsSelect) { settingsSelect.addEventListener('change', (e) => { this.renderSettingsTable(e.target.value); }); }
+                document.getElementById('toggleExtraColumnsBtn').addEventListener('click', () => {
+                    this.state.showExtra = !this.state.showExtra;
+                    document.getElementById('icon-show-more').classList.toggle('hidden'); document.getElementById('icon-show-less').classList.toggle('hidden');
+                    this.renderTable();
+                });
                 
                 document.getElementById('modalForm').addEventListener('click', e => {
                     if (e.target.classList.contains('add-set-btn')) {
                         const type = e.target.dataset.type;
                         const container = document.getElementById(`${type}-sets-container`);
-                        let html = type === 'mechanical' ? this.createMechanicalSetHTML() : (type === 'impact' ? this.createImpactSetHTML() : this.createChemicalSetHTML());
+                        let html = '';
+                        if (type === 'mechanical') html = this.createMechanicalSetHTML();
+                        else if (type === 'impact') html = this.createImpactSetHTML();
+                        else if (type === 'chemical') html = this.createChemicalSetHTML();
                         container.insertAdjacentHTML('beforeend', html);
                     }
                 });
 
-                document.getElementById('generateStatsReportBtn').addEventListener('click', () => this.handleStatsReport());
-
                 document.getElementById('generateReportBtn').addEventListener('click', () => this.openReportModal());
                 document.getElementById('closeReportModalBtn').addEventListener('click', () => this.closeModal('reportModal'));
-                document.getElementById('nativePrintReportBtn').addEventListener('click', () => this.printReport());
+                document.getElementById('nativePrintReportBtn').addEventListener('click', () => this.printReport()); 
                 document.getElementById('importDataBtn').addEventListener('click', () => document.getElementById('importModal').classList.remove('hidden'));
                 document.getElementById('closeImportModalBtn').addEventListener('click', () => this.closeModal('importModal'));
-                
-                // NEW: Report Chem Toggle Listener
-                document.getElementById('showChemCheckbox').addEventListener('change', (e) => {
-                    const selected = this.dm.mainData.filter(d => this.state.selectedRowIds.includes(d._docId));
-                    if(selected.length > 0) {
-                        this.updateReportContent(selected, e.target.checked);
-                    }
-                });
-                
-                // FIXED: Replace native confirm with Custom Modal for Date Archive
-                document.getElementById('runDateArchiveBtn').addEventListener('click', async () => {
-                    const start = document.getElementById('archiveStartDate').value;
-                    const end = document.getElementById('archiveEndDate').value;
-                    const useDeepScan = document.getElementById('archiveDeepScanCheckbox').checked;
-                    
-                    if(!start || !end) return Utils.showToast('請選擇完整的日期範圍', 'error');
-                    
-                    const method = useDeepScan ? '深度掃描 (忽略格式)' : '標準比對';
-                    const msg = `確定要封存 <strong>${start}</strong> 到 <strong>${end}</strong> 的所有資料嗎？<br><br>方式: ${method}<br>注意：封存後的資料在預設列表中會被隱藏。`;
-
-                    this.showConfirm('確認封存區間資料', msg, async () => {
-                        try {
-                            Utils.showLoading(`正在執行${method}封存...`);
-                            let count = 0;
-                            if (useDeepScan) {
-                                count = await this.dm.archiveByDateRangeDeepScan(start, end);
-                            } else {
-                                count = await this.dm.archiveByDateRange(start, end);
-                            }
-                            
-                            if (count > 0) {
-                                Utils.showToast(`成功封存 ${count} 筆資料`, 'success');
-                                this.dm.fetchMainDataPage('first');
-                            } else {
-                                if (!useDeepScan) {
-                                    // Chained confirmation for Deep Scan retry
-                                    this.showConfirm(
-                                        '查無資料', 
-                                        '標準比對找不到資料。是否要開啟「深度掃描」再試一次？<br>(這可能發生在資料日期格式不一致的情況)', 
-                                        () => {
-                                            document.getElementById('archiveDeepScanCheckbox').checked = true;
-                                            document.getElementById('runDateArchiveBtn').click();
-                                        }, 'primary'
-                                    );
-                                } else {
-                                    Utils.showToast('該日期區間內沒有需要封存的資料', 'warning');
-                                }
-                            }
-                        } catch(e) { 
-                            console.error(e);
-                            Utils.showToast('執行錯誤: ' + e.message, 'error'); 
-                        } finally { 
-                            Utils.hideLoading(); 
-                        }
-                    }, 'warning');
-                });
-                
-                // FIXED: Replace native confirm with Custom Modal for Init Archive
-                document.getElementById('initArchiveFieldBtn').addEventListener('click', async () => {
-                    this.showConfirm('資料庫修復', '這將掃描所有資料並標記未設定封存狀態的項目。<br>執行可能需要一點時間。是否繼續？', async () => {
-                        try {
-                            const count = await this.dm.initializeArchiveField();
-                            Utils.showToast(`修復完成，已更新 ${count} 筆資料`);
-                        } catch(e) { Utils.showToast('修復失敗: ' + e.message, 'error'); }
-                    }, 'primary');
-                });
                 
                 document.getElementById('fixSortingBtn').addEventListener('click', () => { document.getElementById('debugModal').classList.remove('hidden'); });
                 document.getElementById('closeDebugModalBtn').addEventListener('click', () => document.getElementById('debugModal').classList.add('hidden'));
                 document.getElementById('closeDebugBtn').addEventListener('click', () => document.getElementById('debugModal').classList.add('hidden'));
                 document.getElementById('startFixBtn').addEventListener('click', () => this.dm.fixSorting());
                 
+                // 匯入邏輯
                 document.getElementById('startImportBtn').addEventListener('click', async () => {
                      const val = document.getElementById('importDataTextarea').value;
                      if(!val) return;
@@ -1201,51 +930,21 @@
                      try {
                          const raw = JSON.parse(val);
                          let list = Array.isArray(raw) ? raw : [raw];
-                         
-                         // 處理嵌套結構 (groupId + data)
                          if(list.length>0 && list[0].groupId && list[0].data) {
-                             list = list.map(i => {
-                                 const flatData = { '筆數':String(i.groupId), ...i.data };
-                                 // 自動修正欄位名稱: 衝擊試驗 -> 衝擊測試
-                                 if (flatData['衝擊試驗'] && !flatData['衝擊測試']) {
-                                     flatData['衝擊測試'] = flatData['衝擊試驗'];
-                                     delete flatData['衝擊試驗']; // 刪除舊名稱避免混淆
-                                 }
-                                 return flatData;
-                             });
+                             list = list.map(i => ({ '筆數':String(i.groupId), ...i.data }));
                          }
-
                          const { db, setDoc, doc, writeBatch } = window.fb;
                          let batch = writeBatch(db);
                          let count = 0;
-                         
                          for(const item of list) {
                              if(item['筆數']) {
                                  const docId = String(item['筆數']);
-                                 
-                                 // 如果 JSON 最外層也是用「衝擊試驗」，也進行修正
-                                 if (item['衝擊試驗'] && !item['衝擊測試']) {
-                                     item['衝擊測試'] = item['衝擊試驗'];
-                                 }
-
                                  const saveData = { ...item, '筆數': Number(item['筆數']) };
-                                 
-                                 // 確保複雜欄位轉為 JSON 字串存儲
                                  if(saveData['機械性質'] && typeof saveData['機械性質'] === 'object') saveData['機械性質'] = JSON.stringify([saveData['機械性質']]);
                                  if(saveData['化學成分'] && typeof saveData['化學成分'] === 'object') saveData['化學成分'] = JSON.stringify(saveData['化學成分']);
+                                 if(saveData['衝擊測試'] && Array.isArray(saveData['衝擊測試'])) saveData['衝擊測試'] = JSON.stringify(saveData['衝擊測試']);
                                  
-                                 // 修正衝擊測試的處理邏輯
-                                 if(saveData['衝擊測試']) {
-                                     if(Array.isArray(saveData['衝擊測試'])) {
-                                         saveData['衝擊測試'] = JSON.stringify(saveData['衝擊測試']);
-                                     } else if (typeof saveData['衝擊測試'] === 'object') {
-                                         // 如果是單一物件，包成陣列再存
-                                         saveData['衝擊測試'] = JSON.stringify([saveData['衝擊測試']]);
-                                     }
-                                 }
-
-                                 // 移除匯入時不必要的舊欄位名稱，保持資料庫乾淨
-                                 delete saveData['衝擊試驗'];
+                                 if(saveData.isArchived === undefined) saveData.isArchived = false;
 
                                  batch.set(doc(db, CONFIG.COLLECTIONS.DATA, docId), saveData, {merge:true});
                                  count++;
@@ -1257,59 +956,11 @@
                          this.closeModal('importModal');
                          this.dm.fetchMainDataPage('first');
                      } catch(e) {
-                         console.error(e);
                          Utils.showToast('匯入失敗: '+e.message, 'error');
                      } finally {
                          Utils.hideLoading();
                      }
                 });
-            }
-
-            updateBatchButtons() {
-                const hasSelection = this.state.selectedRowIds.length > 0;
-                document.getElementById('generateReportBtn').disabled = !hasSelection;
-                const batchBtn = document.getElementById('batchArchiveBtn');
-                if(hasSelection) {
-                    batchBtn.classList.remove('hidden');
-                    batchBtn.classList.add('flex');
-                } else {
-                    batchBtn.classList.add('hidden');
-                    batchBtn.classList.remove('flex');
-                }
-            }
-
-            async handleBatchArchiveToggle() {
-                const selectedVisibleDocs = this.dm.mainData.filter(d => this.state.selectedRowIds.includes(d._docId));
-                let action = true; // Default to Archive
-                
-                if (selectedVisibleDocs.length > 0) {
-                    const hasUnarchived = selectedVisibleDocs.some(d => !d.isArchived);
-                    action = hasUnarchived;
-                }
-                
-                const actionText = action ? '封存' : '復原';
-                
-                // FIXED: Use Custom Confirm Modal
-                this.showConfirm(
-                    `確認${actionText}`,
-                    `確定要 <strong>${actionText}</strong> 選取的 ${this.state.selectedRowIds.length} 筆資料嗎？`,
-                    async () => {
-                        Utils.showLoading('處理中...');
-                        try {
-                            await this.dm.batchArchive(this.state.selectedRowIds, action);
-                            Utils.showToast(`成功${actionText}資料`, 'success');
-                            this.state.selectedRowIds = [];
-                            this.updateBatchButtons();
-                            this.renderTable(); 
-                        } catch(e) { 
-                            console.error(e);
-                            Utils.showToast('操作失敗: ' + e.message, 'error'); 
-                        } finally { 
-                            Utils.hideLoading(); 
-                        }
-                    },
-                    'warning'
-                );
             }
 
             renderDashboards() {
@@ -1330,32 +981,14 @@
             renderTable() {
                 const tbody = document.getElementById('dataTableBody'); const thead = document.getElementById('dataTableHead'); tbody.innerHTML = ''; thead.innerHTML = '';
                 
-                // Adjusted Page Info Display
-                if (this.state.isCustomSearchResult) {
-                    document.getElementById('pageInfo').textContent = `搜尋結果 (共 ${this.dm.mainData.length} 筆)`;
-                } else {
-                    document.getElementById('pageInfo').textContent = `第 ${this.dm.pagination.pageIndex} 頁 (本頁 ${this.dm.mainData.length} 筆)`;
-                }
-                
-                document.getElementById('prevPageBtn').disabled = this.dm.pagination.pageIndex <= 1; document.getElementById('nextPageBtn').disabled = !this.dm.pagination.hasMore;
+                const isAll = this.dm.pageSize === 'all';
+                document.getElementById('pageInfo').textContent = isAll ? `全域搜尋啟用中 (共 ${this.dm.mainData.length} 筆)` : `第 ${this.dm.pagination.pageIndex} 頁 (本頁 ${this.dm.mainData.length} 筆)`;
+                document.getElementById('prevPageBtn').disabled = isAll || this.dm.pagination.pageIndex <= 1; 
+                document.getElementById('nextPageBtn').disabled = isAll || !this.dm.pagination.hasMore;
 
                 let data = this.dm.mainData;
-                
-                if (!this.state.showArchived) {
-                    data = data.filter(item => !item.isArchived);
-                }
-
-                // IMPORTANT: If this is a global search result, DO NOT apply strict substring filter
-                // because the user might have searched for "250001 250002" which is not a substring of any single record.
-                // We assume the server returned exactly what the user wanted.
-                if (!this.state.isCustomSearchResult && this.state.searchTerm) {
-                    data = data.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(this.state.searchTerm)));
-                }
-
-                // NEW: Store visible data for navigation
-                this.state.visibleData = data;
-
-                if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="100%" class="text-center py-8 text-gray-500">無資料 (或是已全部被隱藏)</td></tr>`; return; }
+                if (this.state.searchTerm) data = data.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(this.state.searchTerm)));
+                if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="100%" class="text-center py-8 text-gray-500">無資料，或全數資料已被封存。</td></tr>`; return; }
 
                 const extraColumns = ['銲接人員', '拉力棒加工人員', '衝擊片加工人員', '銲接模式', '鋼板材質', '電流', '電壓'];
                 const headers = this.state.showExtra ? CONFIG.CANONICAL_COLUMN_ORDER : CONFIG.CANONICAL_COLUMN_ORDER.filter(col => !extraColumns.includes(col));
@@ -1370,26 +1003,58 @@
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
-                    if (row.isArchived) tr.classList.add('archived-row');
-                    
                     let rowHtml = `<td class="px-4 py-4 sticky-col"><input type="checkbox" class="row-checkbox" data-id="${row._docId}" ${this.state.selectedRowIds.includes(row._docId)?'checked':''}></td>`;
                     
                     const m = Utils.safeJsonParse(row['機械性質'], []); const i = Utils.safeJsonParse(row['衝擊測試'], []); const c = Utils.safeJsonParse(row['化學成分'], {});
-                    const hasM = m.length > 0 && (m[0].doNotTest || m[0]['抗拉強度']); const hasI = i.length > 0 && (i[0].doNotTest || i[0]['平均值']); const hasC = Object.keys(c).length > 0;
+                    const hasM = m.length > 0 && (m[0].doNotTest || m[0]['抗拉強度']); const hasI = i.length > 0 && (i[0].doNotTest || i[0]['平均值']); const hasC = c.doNotTest || Object.keys(c).length > 0;
                     let lightColor = 'bg-red-500'; if (hasM && hasI && hasC) lightColor = 'bg-blue-500'; else if (hasM && hasI) lightColor = 'bg-purple-500'; else if (hasM) lightColor = 'bg-yellow-500';
                     const indicator = `<span class="inline-block w-3 h-3 ${lightColor} rounded-full mr-2 flex-shrink-0"></span>`;
 
                     headers.forEach(header => {
                         let content = Utils.escapeHtml(row[header]);
                         let tdClass = "px-6 py-4 text-sm text-gray-700 whitespace-nowrap";
-                        if (header === '筆數') { 
-                            content = `<div class="flex items-center">${indicator}${content}</div>`; tdClass += " sticky-col sticky-col-divider"; 
-                            if(row.isArchived) content += `<span class="ml-2 text-xs bg-gray-200 text-gray-600 px-1 rounded">封存</span>`;
-                        }
-                        else if (['機械性質', '衝擊測試', '硬度測試', '化學成分'].includes(header)) content = this.formatComplexField(header, row[header], row['適用規範']);
+                        if (header === '筆數') { content = `<div class="flex items-center">${indicator}${content}</div>`; tdClass += " sticky-col sticky-col-divider"; }
+                        else if (['機械性質', '衝擊測試', '硬度測試', '化學成分'].includes(header)) content = this.formatComplexField(header, row[header], row['適用規範']); 
                         rowHtml += `<td class="${tdClass}" data-label="${header}">${content}</td>`;
                     });
-                    rowHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium" data-label="操作"><button class="action-link edit-btn mr-3" data-id="${row._docId}" data-table="${CONFIG.COLLECTIONS.DATA}">編輯</button><button class="action-link delete-btn" data-id="${row._docId}" data-table="${CONFIG.COLLECTIONS.DATA}">刪除</button></td>`;
+                    rowHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium" data-label="操作">
+                        <button class="action-link edit-btn mr-3" data-id="${row._docId}" data-table="${CONFIG.COLLECTIONS.DATA}">編輯</button>
+                        <button class="action-link archive-btn mr-3" data-id="${row._docId}" data-table="${CONFIG.COLLECTIONS.DATA}">封存</button>
+                        <button class="action-link delete-btn" data-id="${row._docId}" data-table="${CONFIG.COLLECTIONS.DATA}">刪除</button>
+                    </td>`;
+                    tr.innerHTML = rowHtml; tbody.appendChild(tr);
+                });
+            }
+
+            renderArchiveTable(data) {
+                const tbody = document.getElementById('archiveTableBody'); const thead = document.getElementById('archiveTableHead'); tbody.innerHTML = ''; thead.innerHTML = '';
+                if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="100%" class="text-center py-8 text-gray-500">查無符合條件的歷史資料</td></tr>`; return; }
+
+                const headers = CONFIG.CANONICAL_COLUMN_ORDER.filter(col => !['銲接人員', '拉力棒加工人員', '衝擊片加工人員', '銲接模式', '鋼板材質', '電流', '電壓'].includes(col));
+
+                let headHtml = ``;
+                headers.forEach(h => {
+                     const stickyClass = (h === '筆數') ? 'sticky-col sticky-col-divider' : '';
+                     headHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sortable-header ${stickyClass}">${h}</th>`;
+                });
+                headHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>`;
+                thead.innerHTML = headHtml;
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    let rowHtml = ``;
+                    headers.forEach(header => {
+                        let content = Utils.escapeHtml(row[header]);
+                        let tdClass = "px-6 py-4 text-sm text-gray-700 whitespace-nowrap";
+                        if (header === '筆數') { tdClass += " sticky-col sticky-col-divider"; }
+                        else if (['機械性質', '衝擊測試', '硬度測試', '化學成分'].includes(header)) content = this.formatComplexField(header, row[header], row['適用規範']); 
+                        rowHtml += `<td class="${tdClass}" data-label="${header}">${content}</td>`;
+                    });
+                    rowHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm font-medium" data-label="操作">
+                        <button class="action-link view-btn mr-3" data-id="${row._docId}">檢視</button>
+                        <button class="action-link restore-btn mr-3" data-id="${row._docId}">還原</button>
+                        <button class="action-link delete-btn" data-id="${row._docId}">刪除</button>
+                    </td>`;
                     tr.innerHTML = rowHtml; tbody.appendChild(tr);
                 });
             }
@@ -1399,24 +1064,50 @@
                 const specs = this.dm.cache[CONFIG.COLLECTIONS.SPECS] || [];
                 const spec = specs.find(s => s.規範名稱 === specName);
                 if (!spec) return { isValid: true, message: '無此規範' };
+
                 const num = parseFloat(value);
                 if (isNaN(num)) return { isValid: true };
-                const min = spec[`${field}_最低`] || spec[`${field}_下限`] || spec[`${field}要求數據`];
+
+                const min = spec[`${field}_最低`] || spec[`${field}_下限`] || spec[`${field}要求數據`]; 
                 const max = spec[`${field}_最高`];
+
                 if (min !== undefined && min !== '' && num < parseFloat(min)) return { isValid: false, message: `低於下限 ${min}` };
                 if (max !== undefined && max !== '' && num > parseFloat(max)) return { isValid: false, message: `高於上限 ${max}` };
+                
                 if (field === '衝擊') {
                      const req = spec['衝擊要求數據'];
                      if (req && num < parseFloat(req)) return { isValid: false, message: `低於要求 ${req}` };
                 }
                 return { isValid: true };
             }
-            formatComplexField(type, jsonStr, specName) { 
+
+            formatComplexField(type, jsonStr, specName) {
                 const data = Utils.safeJsonParse(jsonStr); if (!data) return '-';
-                const fmtVal = (field, val) => { const res = this.validateValue(specName, field, val); return res.isValid ? val : `<span class="font-bold text-red-600 underline decoration-red-500 decoration-2" title="${res.message}">${val}</span>`; };
-                if (type === '機械性質') { if (Array.isArray(data) && data.length > 0) { const m = data[0]; if (m.doNotTest) return '不做測試'; return `TS:${fmtVal('抗拉強度', m['抗拉強度'])||'-'} / YS:${fmtVal('降伏強度', m['降伏強度'])||'-'} / EL:${fmtVal('延伸率', m['延伸率'])||'-'}`; } } 
-                else if (type === '衝擊測試') { if (Array.isArray(data) && data.length > 0) { const i = data[0]; if (i.doNotTest) return '不做測試'; return `${i['測試溫度']||''}${i['單位']||''} Avg:${fmtVal('衝擊', i['平均值'])||'-'}`; } } 
-                else if (type === '化學成分') { if (data && typeof data === 'object') { const summary = ['C', 'Si', 'Mn'].map(k => data[k] ? `${k}:${fmtVal(k, data[k])}` : '').filter(v=>v).join(', '); return summary + (Object.keys(data).length > 3 ? '...' : ''); } }
+                
+                const fmtVal = (field, val) => {
+                    const res = this.validateValue(specName, field, val);
+                    return res.isValid ? val : `<span class="font-bold text-red-600 underline decoration-red-500 decoration-2" title="${res.message}">${val}</span>`;
+                };
+
+                if (type === '機械性質') {
+                    if (Array.isArray(data) && data.length > 0) { 
+                        const m = data[0]; 
+                        if (m.doNotTest) return '不做測試'; 
+                        return `TS:${fmtVal('抗拉強度', m['抗拉強度'])||'-'} / YS:${fmtVal('降伏強度', m['降伏強度'])||'-'} / EL:${fmtVal('延伸率', m['延伸率'])||'-'}`; 
+                    }
+                } else if (type === '衝擊測試') {
+                    if (Array.isArray(data) && data.length > 0) { 
+                        const i = data[0]; 
+                        if (i.doNotTest) return '不做測試'; 
+                        return `${i['測試溫度']||''}${i['單位']||''} Avg:${fmtVal('衝擊', i['平均值'])||'-'}`; 
+                    }
+                } else if (type === '化學成分') {
+                    if (data && typeof data === 'object') { 
+                        if (data.doNotTest) return '不做測試';
+                        const summary = ['C', 'Si', 'Mn'].map(k => data[k] ? `${k}:${fmtVal(k, data[k])}` : '').filter(v=>v).join(', '); 
+                        return summary + (Object.keys(data).length > 3 ? '...' : ''); 
+                    }
+                }
                 return '-';
             }
 
@@ -1424,184 +1115,126 @@
                 const select = document.getElementById('settingsSelect');
                 if (!select) return;
                 select.innerHTML = '<option value="" disabled selected>-- 請選擇 --</option>';
-                Object.values(CONFIG.COLLECTIONS).forEach(name => { if (name === CONFIG.COLLECTIONS.DATA) return; const opt = document.createElement('option'); opt.value = name; opt.textContent = name; select.appendChild(opt); });
+                Object.values(CONFIG.COLLECTIONS).forEach(name => { 
+                    if (name === CONFIG.COLLECTIONS.DATA) return;
+                    const opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+                    select.appendChild(opt);
+                });
             }
-            
+
             renderSettingsTable(tableName) {
                 const display = document.getElementById('settings-content-display'); const data = this.dm.cache[tableName] || [];
                 let headers = CONFIG.DEFAULT_HEADERS[tableName];
                 if (!headers && data.length > 0) { headers = Object.keys(data[0]).filter(k => k !== '_docId' && k !== 'sortOrder'); }
                 if (!headers) headers = ['名稱'];
+
                 let html = `<div class="mb-4"><button class="btn btn-primary btn-sm" onclick="app.ui.openFormModal('${tableName}')">新增 ${tableName}</button></div>`;
                 html += `<div class="table-scroll-container"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>`;
-                html += `<th class="text-center px-0 py-3 sticky-col" style="width: 50px; min-width: 50px; max-width: 50px; left: 0;"></th>`; 
-                headers.forEach((h, index) => {
-                    let thClass = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap";
-                    let style = "";
-                    if (tableName === CONFIG.COLLECTIONS.SPECS && index === 0) { thClass += " sticky-col-2 font-bold"; style = "min-width: 200px; left: 50px;"; }
-                    html += `<th class="${thClass}" style="${style}">${h}</th>`;
-                });
+                html += `<th class="w-10 sticky-col"></th>`; 
+                headers.forEach(h => html += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">${h}</th>`);
                 html += `<th class="px-6 py-3 text-left whitespace-nowrap">操作</th></tr></thead><tbody id="settingsTableBody" class="bg-white divide-y divide-gray-200">`;
+                
                 data.forEach(row => { 
                     html += `<tr data-id="${row._docId}">`;
-                    html += `<td class="px-0 py-4 whitespace-nowrap drag-handle text-center sticky-col" style="width: 50px; min-width: 50px; max-width: 50px; left: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></td>`;
+                    html += `<td class="px-6 py-4 whitespace-nowrap drag-handle text-center sticky-col"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></td>`;
                     headers.forEach((h, index) => {
                         let tdClass = "px-6 py-4 text-sm text-gray-700 whitespace-nowrap";
                         let style = "";
-                        if (tableName === CONFIG.COLLECTIONS.SPECS && index === 0) { tdClass += " sticky-col-2 font-bold"; style = "min-width: 200px; left: 50px;"; } else if (tableName === CONFIG.COLLECTIONS.SPECS) { style = "min-width: 80px; text-align:center;"; }
+                        if (tableName === CONFIG.COLLECTIONS.SPECS && index === 0) { tdClass += " sticky-col-2 font-bold"; style = "min-width: 200px;"; } 
+                        else if (tableName === CONFIG.COLLECTIONS.SPECS) { style = "min-width: 80px; text-align:center;"; }
                         html += `<td class="${tdClass}" style="${style}">${Utils.escapeHtml(row[h])}</td>`;
                     }); 
-                    html += `<td class="px-6 py-4 text-sm whitespace-nowrap"><button class="text-blue-600 hover:text-blue-900 mr-2" onclick="app.ui.openFormModal('${tableName}', '${row._docId}')">編輯</button><button class="text-red-600 hover:text-red-900" onclick="app.ui.confirmDelete('${row._docId}', '${tableName}')">刪除</button></td></tr>`; 
+                    html += `<td class="px-6 py-4 text-sm whitespace-nowrap"><button class="text-blue-600 hover:text-blue-900 mr-2" onclick="app.ui.openFormModal('${tableName}', '${row._docId}')">編輯</button><button class="text-red-600 hover:text-red-900" onclick="app.ui.confirmAction('delete', '${row._docId}', '${tableName}')">刪除</button></td></tr>`; 
                 });
                 html += `</tbody></table></div>`; display.innerHTML = html;
+
                 const tbody = document.getElementById('settingsTableBody');
-                if(tbody) { new Sortable(tbody, { animation: 150, handle: '.drag-handle', onEnd: async (evt) => { Utils.showLoading('更新排序中...'); const rows = Array.from(tbody.querySelectorAll('tr')); const batch = window.fb.writeBatch(window.fb.db); rows.forEach((row, index) => { const id = row.dataset.id; const ref = window.fb.doc(window.fb.db, tableName, id); batch.update(ref, { sortOrder: index }); }); await batch.commit(); Utils.hideLoading(); } }); }
-            }
-            
-            // NEW: Modal Navigation Method
-            async navigateModal(direction) {
-                const currentId = document.getElementById('saveModalBtn').dataset.docId;
-                if (!currentId) return;
-
-                const list = this.state.visibleData;
-                const idx = list.findIndex(d => d._docId === currentId);
-                if (idx === -1) return;
-
-                const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
-                if (nextIdx < 0 || nextIdx >= list.length) return; // Boundary check
-
-                const nextId = list[nextIdx]._docId;
-
-                // Option B: Auto Save and Move Next
-                Utils.showLoading('儲存並切換中...');
-                try {
-                    // Force save current record first (don't close modal)
-                    await this.handleSave(CONFIG.COLLECTIONS.DATA, false); 
-                    
-                    // Re-open modal with next ID (simulates navigation)
-                    this.openFormModal(CONFIG.COLLECTIONS.DATA, nextId);
-                } catch(e) {
-                    console.error("Navigation Save Error", e);
-                    // Error is handled in handleSave (Toast shown), user stays on current page
-                } finally {
-                    Utils.hideLoading();
-                }
-            }
-
-            openFormModal(tableName, docId = null, prefillId = null) {
-                const modal = document.getElementById('formModal'); const form = document.getElementById('modalForm'); const title = document.getElementById('modalTitle'); const saveBtn = document.getElementById('saveModalBtn');
-                const navButtons = document.getElementById('modalNavButtons');
-                const prevBtn = document.getElementById('modalPrevBtn');
-                const nextBtn = document.getElementById('modalNextBtn');
-                const navInfo = document.getElementById('modalNavInfo'); // NEW: Display element
-
-                title.textContent = `${docId ? '編輯' : '新增'} ${tableName}`; saveBtn.dataset.tableName = tableName; saveBtn.dataset.docId = docId || '';
-                
-                // NEW: Handle Nav Buttons Visibility and Info Display
-                if (tableName === CONFIG.COLLECTIONS.DATA && docId) {
-                    const list = this.state.visibleData;
-                    const idx = list.findIndex(d => d._docId === docId);
-                    if (idx !== -1) {
-                        navButtons.classList.remove('hidden');
-                        prevBtn.disabled = idx === 0;
-                        nextBtn.disabled = idx === list.length - 1;
-                        
-                        // NEW: Update Info Text
-                        const currentData = list[idx];
-                        if (navInfo) {
-                            navInfo.textContent = `#${currentData['筆數']} ${currentData['品名'] || ''}`;
+                if(tbody) {
+                    new Sortable(tbody, {
+                        animation: 150, handle: '.drag-handle',
+                        onEnd: async (evt) => {
+                            Utils.showLoading('更新排序中...');
+                            const rows = Array.from(tbody.querySelectorAll('tr'));
+                            const batch = window.fb.writeBatch(window.fb.db);
+                            rows.forEach((row, index) => { const ref = window.fb.doc(window.fb.db, tableName, row.dataset.id); batch.update(ref, { sortOrder: index }); });
+                            await batch.commit(); Utils.hideLoading();
                         }
-                    } else {
-                        navButtons.classList.add('hidden');
-                    }
-                } else {
-                    navButtons.classList.add('hidden');
+                    });
                 }
+            }
 
+            openFormModal(tableName, docId = null) {
+                const modal = document.getElementById('formModal'); const form = document.getElementById('modalForm'); const title = document.getElementById('modalTitle'); const saveBtn = document.getElementById('saveModalBtn');
+                title.textContent = `${docId ? '編輯' : '新增'} ${tableName}`; saveBtn.dataset.tableName = tableName; saveBtn.dataset.docId = docId || '';
                 let data = {};
                 if (docId) {
                     if (tableName === CONFIG.COLLECTIONS.DATA) data = this.dm.mainData.find(d => d._docId === docId) || {};
                     else data = (this.dm.cache[tableName] || []).find(d => d._docId === docId) || {};
                 }
-                if (!docId && prefillId) { data['筆數'] = prefillId; }
                 
-                // --- Form Generation Logic ---
-                if (tableName === CONFIG.COLLECTIONS.SPECS) { 
-                    document.getElementById('modalDialog').classList.add('modal-content-7xl'); 
-                    form.innerHTML = this.generateSpecFormHtml(data); 
+                if (tableName === CONFIG.COLLECTIONS.SPECS) {
+                    document.getElementById('modalDialog').classList.add('modal-content-7xl');
+                    form.innerHTML = this.generateSpecFormHtml(data);
                 }
-                else if (tableName === CONFIG.COLLECTIONS.DATA) { 
-                    document.getElementById('modalDialog').classList.add('modal-content-7xl'); 
-                    form.innerHTML = this.generateMainDataFormHtml(data); 
+                else if (tableName === CONFIG.COLLECTIONS.DATA) {
+                    document.getElementById('modalDialog').classList.add('modal-content-7xl');
+                    form.innerHTML = this.generateMainDataFormHtml(data);
                     this.populateTestData(data, form);
-                    
-                    // NEW: Product Auto-fill Logic for Datalist Input
-                    // Changed from select to input listener to support datalist and free text
-                    const prodInput = form.querySelector('input[name="品名"]');
-                    if (prodInput) {
-                        prodInput.addEventListener('input', (e) => { // Listen to input event for datalist
-                            const selectedProd = e.target.value;
-                            const mapping = this.dm.cache[CONFIG.COLLECTIONS.PROD_SPEC] || [];
-                            const match = mapping.find(m => m['品名'] === selectedProd);
-                            if (match) {
-                                const specField = form.querySelector('select[name="適用規範"]');
-                                const modeField = form.querySelector('select[name="銲接模式"]');
-                                if (specField && match['預設適用規範']) specField.value = match['預設適用規範'];
-                                if (modeField && match['預設銲材分類']) modeField.value = match['預設銲材分類'];
-                            }
-                        });
-                    }
-                } 
-                else if (tableName === CONFIG.COLLECTIONS.PROD_SPEC) {
-                    // NEW: Custom form for Product-Spec mapping
+                } else {
                     document.getElementById('modalDialog').classList.remove('modal-content-7xl');
-                    document.getElementById('modalDialog').classList.add('modal-content-md');
-                    form.innerHTML = this.generateProdSpecFormHtml(data);
-                }
-                else { 
-                    document.getElementById('modalDialog').classList.remove('modal-content-7xl'); 
-                    const headers = CONFIG.DEFAULT_HEADERS[tableName] || (data ? Object.keys(data).filter(k => k!=='_docId') : ['名稱']); 
-                    form.innerHTML = headers.map(h => `<div><label class="block text-sm font-medium text-gray-700">${h}</label><input type="text" name="${h}" value="${data[h]||''}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></div>`).join(''); 
+                    const headers = CONFIG.DEFAULT_HEADERS[tableName] || (data ? Object.keys(data).filter(k => k!=='_docId') : ['名稱']);
+                    form.innerHTML = headers.map(h => `<div><label class="block text-sm font-medium text-gray-700">${h}</label><input type="text" name="${h}" value="${data[h]||''}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></div>`).join('');
                 }
                 modal.classList.remove('hidden');
             }
             
-            // NEW: Generate custom form for Product-Spec mapping
-            generateProdSpecFormHtml(data) {
-                const specs = (this.dm.cache['規範'] || []).map(s => s.規範名稱);
-                const classes = (this.dm.cache['銲材分類'] || []).map(c => c.銲材分類);
-                
+            generateSpecFormHtml(data) {
+                const v = (k) => data[k] || '';
                 return `
-                    <div class="space-y-4">
-                        ${this.createFormField('品名', data['品名'], 'text', { label: '品名' })}
-                        ${this.createFormField('預設適用規範', data['預設適用規範'], 'text', { label: '預設適用規範', isSelect: true, selectOptions: specs })}
-                        ${this.createFormField('預設銲材分類', data['預設銲材分類'], 'text', { label: '預設銲材分類', isSelect: true, selectOptions: classes })}
+                <div class="space-y-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">規範名稱</label>
+                        <input type="text" name="規範名稱" value="${v('規範名稱')}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm">
                     </div>
-                `;
-            }
-            
-            generateSpecFormHtml(data) { 
-                const v = (k) => data[k] || ''; return `<div class="space-y-4"><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">規範名稱</label><input type="text" name="規範名稱" value="${v('規範名稱')}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm"></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full"><div class="flex flex-col gap-6"><div class="spec-section-card"><h4 class="spec-section-title">強度要求</h4><div class="grid grid-cols-3 gap-4 items-center mb-3 text-xs text-gray-500 font-medium text-center"><div>項目</div><div>上限</div><div>下限</div></div><div class="grid grid-cols-3 gap-4 items-center mb-3"><label class="text-sm font-medium text-gray-700">抗拉強度 (Mpa)</label><input type="text" name="抗拉強度_最高" value="${v('抗拉強度_最高')}" placeholder="Max" class="chem-input"><input type="text" name="抗拉強度_最低" value="${v('抗拉強度_最低')}" placeholder="Min" class="chem-input"></div><div class="grid grid-cols-3 gap-4 items-center mb-3"><label class="text-sm font-medium text-gray-700">降伏強度 (Mpa)</label><input type="text" name="降伏強度_最高" value="${v('降伏強度_最高')}" placeholder="Max" class="chem-input"><input type="text" name="降伏強度_最低" value="${v('降伏強度_最低')}" placeholder="Min" class="chem-input"></div><div class="grid grid-cols-3 gap-4 items-center"><label class="text-sm font-medium text-gray-700">延伸率 (%)</label><div></div><input type="text" name="延伸率_下限" value="${v('延伸率_下限')}" placeholder="Min" class="chem-input"></div></div><div class="spec-section-card"><h4 class="spec-section-title">衝擊要求</h4><div class="grid grid-cols-3 gap-4"><div><label class="block text-xs font-medium text-gray-500 mb-1">溫度數值</label><input type="text" name="衝擊溫度需求" value="${v('衝擊溫度需求')}" class="chem-input" placeholder="-30"></div><div><label class="block text-xs font-medium text-gray-500 mb-1">溫度單位</label><input type="text" name="衝擊溫度單位" value="${v('衝擊溫度單位')}" class="chem-input" placeholder="°C"></div><div><label class="block text-xs font-medium text-gray-500 mb-1">要求數值</label><input type="text" name="衝擊要求數據" value="${v('衝擊要求數據')}" class="chem-input" placeholder="27"></div></div></div></div><div class="spec-section-card"><h4 class="spec-section-title">成份要求</h4><div class="chem-grid">${CONFIG.CHEM_ORDER.map(el => `<div class="chem-item"><div class="chem-label">${el}</div><input type="text" name="${el}_最高" value="${v(`${el}_最高`)}" placeholder="上限" class="chem-input mb-1"><input type="text" name="${el}_最低" value="${v(`${el}_最低`)}" placeholder="下限" class="chem-input"></div>`).join('')}</div></div></div></div>`;
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                        <div class="flex flex-col gap-6">
+                            <!-- Strength Section -->
+                            <div class="spec-section-card">
+                                <h4 class="spec-section-title">強度要求</h4>
+                                <div class="grid grid-cols-3 gap-4 items-center mb-3 text-xs text-gray-500 font-medium text-center"><div>項目</div><div>上限</div><div>下限</div></div>
+                                <div class="grid grid-cols-3 gap-4 items-center mb-3"><label class="text-sm font-medium text-gray-700">抗拉強度 (Mpa)</label><input type="text" name="抗拉強度_最高" value="${v('抗拉強度_最高')}" class="chem-input"><input type="text" name="抗拉強度_最低" value="${v('抗拉強度_最低')}" class="chem-input"></div>
+                                <div class="grid grid-cols-3 gap-4 items-center mb-3"><label class="text-sm font-medium text-gray-700">降伏強度 (Mpa)</label><input type="text" name="降伏強度_最高" value="${v('降伏強度_最高')}" class="chem-input"><input type="text" name="降伏強度_最低" value="${v('降伏強度_最低')}" class="chem-input"></div>
+                                <div class="grid grid-cols-3 gap-4 items-center"><label class="text-sm font-medium text-gray-700">延伸率 (%)</label><div></div><input type="text" name="延伸率_下限" value="${v('延伸率_下限')}" class="chem-input"></div>
+                            </div>
+                            <!-- Impact Section -->
+                            <div class="spec-section-card">
+                                <h4 class="spec-section-title">衝擊要求</h4>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div><label class="block text-xs font-medium text-gray-500 mb-1">溫度數值</label><input type="text" name="衝擊溫度需求" value="${v('衝擊溫度需求')}" class="chem-input"></div>
+                                    <div><label class="block text-xs font-medium text-gray-500 mb-1">溫度單位</label><input type="text" name="衝擊溫度單位" value="${v('衝擊溫度單位')}" class="chem-input"></div>
+                                    <div><label class="block text-xs font-medium text-gray-500 mb-1">要求數值</label><input type="text" name="衝擊要求數據" value="${v('衝擊要求數據')}" class="chem-input"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Chemical Section -->
+                        <div class="spec-section-card">
+                            <h4 class="spec-section-title">成份要求</h4>
+                            <div class="chem-grid">
+                                ${CONFIG.CHEM_ORDER.map(el => `<div class="chem-item"><div class="chem-label">${el}</div><input type="text" name="${el}_最高" value="${v(`${el}_最高`)}" placeholder="上限" class="chem-input mb-1"><input type="text" name="${el}_最低" value="${v(`${el}_最低`)}" placeholder="下限" class="chem-input"></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
             }
 
             createFormField(name, value, type='text', options={}) {
-                const { label=name, isSelect=false, selectOptions=[], noLabel=false, isDatalist=false } = options; // Added isDatalist
+                const { label=name, isSelect=false, selectOptions=[], noLabel=false } = options;
                 let html = ``;
                 if(!noLabel) html += `<label class="block text-sm font-medium text-gray-700 mb-1">${label}</label>`;
-                
-                if(isSelect) { 
-                    html += `<select name="${name}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm"><option value="">請選擇</option>${selectOptions.map(o=>`<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('')}</select>`; 
-                } else if (isDatalist) {
-                    // NEW: Datalist Logic for hybrid input/select
-                    const listId = `${name}-list-${Math.random().toString(36).substr(2, 9)}`;
-                    html += `
-                        <input type="${type}" name="${name}" value="${value||''}" list="${listId}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm" autocomplete="off" placeholder="請輸入或選擇...">
-                        <datalist id="${listId}">
-                            ${selectOptions.map(o => `<option value="${o}"></option>`).join('')}
-                        </datalist>
-                    `;
-                } else { 
-                    html += `<input type="${type}" name="${name}" value="${value||''}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm">`; 
+                if(isSelect) {
+                    html += `<select name="${name}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm"><option value="">請選擇</option>${selectOptions.map(o=>`<option value="${o}" ${o==value?'selected':''}>${o}</option>`).join('')}</select>`;
+                } else {
+                    html += `<input type="${type}" name="${name}" value="${value||''}" class="block w-full py-2 px-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:text-sm">`;
                 }
                 return `<div class="input-container">${html}</div>`;
             }
@@ -1609,42 +1242,26 @@
             generateMainDataFormHtml(item) {
                 let html = `<h4 class="col-span-full text-lg font-semibold text-gray-800 border-b pb-2 mb-2">基本資料</h4><div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4">`;
                 const fields = ["筆數", "銲接日期", "品名", "線徑", "適用規範", "配方", "RUD卡", "備註", "銲接人員", "銲接模式", "氣體", "鋼板材質", "電流", "電壓", "件別", "拉力棒加工人員", "衝擊片加工人員"];
-                
-                // Changed '品名' logic: Removed from standard selects, handled separately
-                const selects = { 
-                    '銲接人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
-                    '拉力棒加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
-                    '衝擊片加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), 
-                    // '品名': (this.dm.cache['品名對規範']||[]).map(p=>p.品名), // REMOVED from here
-                    '適用規範': (this.dm.cache['規範']||[]).map(p=>p.規範名稱), 
-                    '銲接模式': (this.dm.cache['銲材分類']||[]).map(p=>p.銲材分類), 
-                    '氣體': (this.dm.cache['氣體']||[]).map(p=>p.名稱), 
-                    '鋼板材質': (this.dm.cache['鋼板']||[]).map(p=>p.材質), 
-                    '件別': (this.dm.cache['件別']||[]).map(p=>p.件別名稱) 
+                const selects = {
+                    '銲接人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), '拉力棒加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名), '衝擊片加工人員': (this.dm.cache['人員']||[]).map(p=>p.姓名),
+                    '品名': (this.dm.cache['品名對規範']||[]).map(p=>p.品名), '適用規範': (this.dm.cache['規範']||[]).map(p=>p.規範名稱), '銲接模式': (this.dm.cache['銲材分類']||[]).map(p=>p.銲材分類),
+                    '氣體': (this.dm.cache['氣體']||[]).map(p=>p.名稱), '鋼板材質': (this.dm.cache['鋼板']||[]).map(p=>p.材質), '件別': (this.dm.cache['件別']||[]).map(p=>p.件別名稱)
                 };
-
-                // Get options for Product Name separately
-                const productOptions = (this.dm.cache['品名對規範']||[]).map(p=>p.品名);
-
                 fields.forEach(f => {
                     const colSpan = (f === '適用規範' || f === '備註') ? 'md:col-span-2' : 'col-span-1';
                     let inputType = f === '銲接日期' ? 'date' : (f === '筆數' ? 'number' : 'text');
-                    
-                    let fieldOptions = { isSelect: !!selects[f], selectOptions: selects[f] || [] };
-                    
-                    // Special handling for '品名' to use datalist
-                    if (f === '品名') {
-                        fieldOptions = { isDatalist: true, selectOptions: productOptions };
-                    }
-
-                    html += `<div class="${colSpan}">${this.createFormField(f, item[f], inputType, fieldOptions)}</div>`;
+                    html += `<div class="${colSpan}">${this.createFormField(f, item[f], inputType, { isSelect: !!selects[f], selectOptions: selects[f] || [] })}</div>`;
                 });
-                html += `</div><h4 class="col-span-full text-lg font-semibold text-gray-800 border-b pb-2 mt-6 mb-2">測試結果</h4><div id="test-results-container" class="space-y-4">${this.createTestSetContainerHTML('mechanical', '拉力實測')}${this.createTestSetContainerHTML('impact', '衝擊實測')}${this.createTestSetContainerHTML('chemical', '成份實測')}</div>`;
+                html += `</div><h4 class="col-span-full text-lg font-semibold text-gray-800 border-b pb-2 mt-6 mb-2">測試結果</h4><div id="test-results-container" class="space-y-4">
+                    ${this.createTestSetContainerHTML('mechanical', '拉力實測')}
+                    ${this.createTestSetContainerHTML('impact', '衝擊實測')}
+                    ${this.createTestSetContainerHTML('chemical', '成份實測')}
+                </div>`;
                 return html;
             }
 
             createTestSetContainerHTML(type, title) {
-                const checkboxHtml = (type === 'mechanical' || type === 'impact') ? `<label class="flex items-center text-sm cursor-pointer"><input type="checkbox" name="${type}_doNotTest" class="do-not-test-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">不做測試</label>` : '';
+                const checkboxHtml = ['mechanical', 'impact', 'chemical'].includes(type) ? `<label class="flex items-center text-sm cursor-pointer"><input type="checkbox" name="${type}_doNotTest" class="do-not-test-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2">不做測試</label>` : '';
                 return `<div class="p-3 border rounded-lg"><div class="flex justify-between items-center mb-2"><h5 class="font-semibold">${title}</h5><div class="flex items-center space-x-4">${checkboxHtml}<button type="button" class="add-set-btn text-sm btn btn-secondary py-1 px-3" data-type="${type}">＋ 新增一組</button></div></div><div id="${type}-sets-container" class="space-y-3"></div></div>`;
             }
 
@@ -1653,29 +1270,46 @@
             createChemicalSetHTML(data={}) { return `<div class="test-set grid grid-cols-4 md:grid-cols-8 gap-x-4 gap-y-2 p-2 border-t">${CONFIG.CHEM_ORDER.map(el => this.createFormField(`化學_${el}`, data[el]||'', 'text', {label:el})).join('')}</div>`; }
 
             populateTestData(item, form) {
-                const pop = (type, arr, func) => { const container = form.querySelector(`#${type}-sets-container`); container.innerHTML = ''; const chk = form.querySelector(`[name="${type}_doNotTest"]`); if(chk) chk.checked = arr[0]?.doNotTest; if(arr.length>0) arr.forEach(d=>container.insertAdjacentHTML('beforeend', func.call(this, d))); else container.insertAdjacentHTML('beforeend', func.call(this, {})); };
-                pop('mechanical', Utils.safeJsonParse(item['機械性質'], []), this.createMechanicalSetHTML); pop('impact', Utils.safeJsonParse(item['衝擊測試'], []), this.createImpactSetHTML); pop('chemical', [Utils.safeJsonParse(item['化學成分'], {})], this.createChemicalSetHTML);
+                const pop = (type, arr, func) => {
+                    const container = form.querySelector(`#${type}-sets-container`); container.innerHTML = '';
+                    const chk = form.querySelector(`[name="${type}_doNotTest"]`); 
+                    if(chk) {
+                        if(type === 'chemical' && arr.length > 0) chk.checked = arr[0]?.doNotTest;
+                        else if(arr.length > 0) chk.checked = arr[0]?.doNotTest;
+                    }
+                    if(arr.length>0) arr.forEach(d=>container.insertAdjacentHTML('beforeend', func.call(this, d))); else container.insertAdjacentHTML('beforeend', func.call(this, {}));
+                };
+                pop('mechanical', Utils.safeJsonParse(item['機械性質'], []), this.createMechanicalSetHTML);
+                pop('impact', Utils.safeJsonParse(item['衝擊測試'], []), this.createImpactSetHTML);
+                pop('chemical', [Utils.safeJsonParse(item['化學成分'], {})], this.createChemicalSetHTML);
             }
 
             getFormDataFromModal() {
                 const form = document.getElementById('modalForm'); const fd = new FormData(form); const entry = {};
-                for(let [k,v] of fd.entries()) { if(!k.startsWith('衝擊_') && !k.startsWith('化學_') && !k.endsWith('_doNotTest') && !['抗拉強度','降伏強度','延伸率'].includes(k)) { entry[k] = (k === '筆數') ? Number(v) : v; } }
+                for(let [k,v] of fd.entries()) {
+                    if(!k.startsWith('衝擊_') && !k.startsWith('化學_') && !k.endsWith('_doNotTest') && !['抗拉強度','降伏強度','延伸率'].includes(k)) {
+                        entry[k] = (k === '筆數') ? Number(v) : v;
+                    }
+                }
+                
                 const mTest = form.querySelector('[name="mechanical_doNotTest"]')?.checked;
                 entry['機械性質'] = JSON.stringify(Array.from(form.querySelectorAll('#mechanical-sets-container .test-set')).map(s => ({ '抗拉強度':s.querySelector('[name="抗拉強度"]').value, '降伏強度':s.querySelector('[name="降伏強度"]').value, '延伸率':s.querySelector('[name="延伸率"]').value, 'doNotTest': mTest })));
+                
                 const iTest = form.querySelector('[name="impact_doNotTest"]')?.checked;
                 entry['衝擊測試'] = JSON.stringify(Array.from(form.querySelectorAll('#impact-sets-container .test-set')).map(s => ({ '測試溫度':s.querySelector('[name="衝擊_溫度"]').value, '單位':s.querySelector('[name="衝擊_單位"]').value, '實測值':[1,2,3,4,5].map(i=>s.querySelector(`[name="衝擊_數值_${i}"]`).value).filter(v=>v), '平均值':s.querySelector('[name="衝擊_平均"]').value, 'doNotTest': iTest })));
-                entry['化學成分'] = JSON.stringify(Array.from(form.querySelectorAll('#chemical-sets-container .test-set')).map(s => { const d={}; CONFIG.CHEM_ORDER.forEach(el=>{ const v=s.querySelector(`[name="化學_${el}"]`).value; if(v)d[el]=v; }); return d; })[0]||{});
+                
+                const cTest = form.querySelector('[name="chemical_doNotTest"]')?.checked;
+                entry['化學成分'] = JSON.stringify(Array.from(form.querySelectorAll('#chemical-sets-container .test-set')).map(s => { const d={ doNotTest: cTest }; CONFIG.CHEM_ORDER.forEach(el=>{ const v=s.querySelector(`[name="化學_${el}"]`).value; if(v)d[el]=v; }); return d; })[0]||{ doNotTest: cTest });
                 return entry;
             }
 
-            // MODIFIED: Added shouldClose parameter
-            async handleSave(tableName, shouldClose = true) {
-                if(shouldClose) Utils.showLoading('儲存中...'); // If not closing (navigating), custom loader text is used
-                
+            async handleSave(tableName) {
+                Utils.showLoading('儲存中...');
                 const saveBtn = document.getElementById('saveModalBtn');
                 let newData = {};
                 if(tableName === CONFIG.COLLECTIONS.DATA) newData = this.getFormDataFromModal();
                 else { const fd = new FormData(document.getElementById('modalForm')); fd.forEach((v,k)=>newData[k]=v); }
+                
                 try {
                     const { db, collection, addDoc, doc, updateDoc, setDoc } = window.fb;
                     if(saveBtn.dataset.docId) {
@@ -1684,85 +1318,93 @@
                             const idx = this.dm.mainData.findIndex(d=>d._docId===saveBtn.dataset.docId);
                             if(idx!==-1) this.dm.mainData[idx] = { ...this.dm.mainData[idx], ...newData };
                             this.renderTable();
-                        } else if(tableName === CONFIG.COLLECTIONS.PROD_SPEC) {
-                             // Update local cache manually to reflect changes immediately in dropdowns
-                             const idx = (this.dm.cache[tableName] || []).findIndex(d => d._docId === saveBtn.dataset.docId);
-                             if(idx !== -1) {
-                                  this.dm.cache[tableName][idx] = { ...this.dm.cache[tableName][idx], ...newData };
-                             }
-                             this.renderSettingsTable(tableName);
                         }
                     } else {
                         if(tableName === CONFIG.COLLECTIONS.DATA && newData['筆數']) {
                              const docId = String(newData['筆數']);
-                             newData.isArchived = false;
+                             newData.isArchived = false; // 新增時確保未封存
                              await setDoc(doc(db, tableName, docId), newData, {merge:true});
                              this.dm.fetchMainDataPage('first');
-                        } else {
-                            await addDoc(collection(db, tableName), newData);
-                            // Refresh cache for settings
-                            if(tableName !== CONFIG.COLLECTIONS.DATA) {
-                                // Although onSnapshot handles it, manual update for immediate UI feedback is ok, 
-                                // but onSnapshot is better. We rely on onSnapshot here.
-                            }
-                        }
+                        } else await addDoc(collection(db, tableName), newData);
                     }
-                    if(shouldClose) {
-                        this.closeModal('formModal'); 
-                        Utils.showToast('儲存成功');
-                    }
-                } catch(e) { 
-                    Utils.showToast('儲存失敗:'+e.message, 'error'); 
-                    throw e; // Rethrow so navigation stops
-                } finally { 
-                    if(shouldClose) Utils.hideLoading(); 
-                }
+                    this.closeModal('formModal'); Utils.showToast('儲存成功');
+                } catch(e) { Utils.showToast('儲存失敗:'+e.message, 'error'); } finally { Utils.hideLoading(); }
             }
             
             closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-            confirmDelete(docId, tableName) {
-                // FIXED: Use generalized confirm modal
-                this.showConfirm('確定要刪除嗎？', '此操作將直接從 Firebase 中刪除此筆資料，且無法復原。', async () => {
-                    Utils.showLoading('刪除中...'); 
+            
+            confirmAction(actionType, docId, tableName) {
+                const modal = document.getElementById('confirmModal'); 
+                const title = document.getElementById('confirmTitle');
+                const desc = document.getElementById('confirmDesc');
+                const btn = document.getElementById('confirmActionBtn');
+                const icon = document.getElementById('confirmIcon');
+
+                if (actionType === 'delete') {
+                    title.textContent = '確定要刪除嗎？'; desc.textContent = '此操作將直接從 Firebase 中刪除此筆資料，且無法復原。';
+                    btn.className = 'btn btn-danger'; btn.textContent = '確定刪除'; icon.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100';
+                } else if (actionType === 'archive') {
+                    title.textContent = '確定要封存此紀錄？'; desc.textContent = '封存後資料將從主作業畫面隱藏，您隨時可以在「歷史查詢」中將其找回。';
+                    btn.className = 'btn w-full bg-amber-500 text-white hover:bg-amber-600'; btn.textContent = '確定封存'; icon.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100';
+                } else if (actionType === 'restore') {
+                    title.textContent = '確定要還原此紀錄？'; desc.textContent = '資料將恢復並顯示於主作業畫面中。';
+                    btn.className = 'btn btn-green'; btn.textContent = '還原資料'; icon.className = 'mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100';
+                }
+
+                modal.classList.remove('hidden');
+                const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', async () => {
+                    Utils.showLoading('處理中...'); 
                     try { 
-                        await this.dm.deleteItem(tableName, docId); 
-                        Utils.showToast('刪除成功'); 
+                        if (actionType === 'delete') await this.dm.deleteItem(tableName, docId);
+                        else if (actionType === 'archive') await this.dm.updateArchiveStatus(docId, true);
+                        else if (actionType === 'restore') await this.dm.updateArchiveStatus(docId, false);
+                        
+                        Utils.showToast('操作成功'); modal.classList.add('hidden'); 
                         if(tableName !== CONFIG.COLLECTIONS.DATA) this.renderSettingsTable(tableName); 
-                    } catch(e) { 
-                        Utils.showToast('刪除失敗', 'error'); 
-                    } finally { 
-                        Utils.hideLoading(); 
-                    }
-                }, 'danger');
+                    } 
+                    catch(e) { Utils.showToast('操作失敗', 'error'); } 
+                    finally { Utils.hideLoading(); }
+                });
+                document.getElementById('confirmCancelBtn').onclick = () => modal.classList.add('hidden');
             }
 
-            // ADDED: Missing method restored!
             openReportModal() {
                 const selected = this.dm.mainData.filter(d => this.state.selectedRowIds.includes(d._docId));
-                if(selected.length===0 && this.state.selectedRowIds.length > 0) { 
-                     Utils.showToast("注意：跨頁選擇的資料可能無法預覽，請在同一頁操作。", "error"); 
-                     return; 
+                if(selected.length===0 && this.state.selectedRowIds.length > 0) {
+                     Utils.showToast("注意：跨頁選擇的資料可能無法預覽，請在同一頁操作。", "error");
+                     return;
                 }
                 if(selected.length===0) return;
+                
+                const rSelect = document.getElementById('reportingPersonSelect'); const aSelect = document.getElementById('auditingPersonSelect');
+                const opts = `<option value="">-- 請選擇 --</option>` + (this.dm.cache['人員']||[]).map(p=>`<option>${p.姓名}</option>`).join('');
+                rSelect.innerHTML = opts; aSelect.innerHTML = opts;
+                this.updateReportContent(selected);
+                document.getElementById('reportModal').classList.remove('hidden');
+            }
+
+            // 新增：開啟歷史資料檢視 (共用 Report Modal)
+            openArchiveView(docId) {
+                const item = this.dm.currentArchiveResults.find(d => d._docId === docId);
+                if(!item) return;
                 
                 const rSelect = document.getElementById('reportingPersonSelect'); 
                 const aSelect = document.getElementById('auditingPersonSelect');
                 const opts = `<option value="">-- 請選擇 --</option>` + (this.dm.cache['人員']||[]).map(p=>`<option>${p.姓名}</option>`).join('');
                 rSelect.innerHTML = opts; aSelect.innerHTML = opts;
-                this.updateReportContent(selected, true); // Default to showing chem
+                
+                // 餵入單筆資料產生預覽
+                this.updateReportContent([item]);
                 document.getElementById('reportModal').classList.remove('hidden');
             }
-
-            // FIXED: Full updateReportContent logic restored to fix syntax error
-            updateReportContent(selected, showChem = true) {
+            
+            updateReportContent(selected) {
                  const getVal = (obj, key) => obj && obj[key] ? obj[key] : '-';
                  const specs = this.dm.cache[CONFIG.COLLECTIONS.SPECS] || [];
                  
                  document.getElementById('reportContent').innerHTML = selected.map(item => {
-                    // NEW: Retrieve all mechanical records (not just [0])
-                    const mechList = Utils.safeJsonParse(item['機械性質'], []);
-                    if(mechList.length === 0) mechList.push({}); // Ensure at least one placeholder
-
+                    const mech = Utils.safeJsonParse(item['機械性質'], [{}])[0];
                     const chem = Utils.safeJsonParse(item['化學成分'], {});
                     const impact = Utils.safeJsonParse(item['衝擊測試'], [{}])[0];
                     const impactVals = impact.實測值 || [];
@@ -1775,6 +1417,7 @@
                         let min, max;
                         if (isImpact) { min = spec['衝擊要求數據']; } 
                         else { min = spec[`${field}_最低`] || spec[`${field}_下限`] || spec[`${field}要求數據`]; max = spec[`${field}_最高`]; }
+                        
                         if (min !== undefined && min !== '' && (max === undefined || max === '')) return `≧ ${min}`;
                         if ((min === undefined || min === '') && max !== undefined && max !== '') return `≦ ${max}`;
                         if (min !== undefined && min !== '' && max !== undefined && max !== '') return `${min} ~ ${max}`;
@@ -1788,27 +1431,19 @@
                         return val;
                     };
 
-                    let chemSection = '';
-                    if (showChem) {
-                        let chemHeaders = ''; let chemSpecs = ''; let chemActuals = '';
-                        const mainElements = ['C', 'Si', 'Mn', 'P', 'S', 'Cr', 'Ni', 'Mo', 'Cu'];
+                    let chemHeaders = ''; let chemSpecs = ''; let chemActuals = '';
+                    const mainElements = ['C', 'Si', 'Mn', 'P', 'S', 'Cr', 'Ni', 'Mo', 'Cu'];
+                    
+                    if (chem.doNotTest) {
+                        mainElements.forEach(el => { chemHeaders += `<th>${el}</th>`; chemSpecs += `<td>${getSpecText(el)}</td>`; });
+                        chemActuals = `<td colspan="9" style="text-align:center; font-weight:bold; color:#777; background-color:#fafafa;">不做測試</td>`;
+                    } else {
                         mainElements.forEach(el => {
                             chemHeaders += `<th>${el}</th>`;
                             chemSpecs += `<td>${getSpecText(el)}</td>`;
                             chemActuals += `<td>${fmtRepVal(el, chem[el])}</td>`;
                         });
-                        chemSection = `
-                        <div class="section-title">化學成分 (Chemical Composition)</div>
-                        <table class="data-table"><thead><tr><th width="12%">項目 Item</th>${chemHeaders}</tr></thead><tbody><tr><th>規範 Spec</th>${chemSpecs}</tr><tr><th>實測 Actual</th>${chemActuals}</tr></tbody></table>
-                        `;
                     }
-
-                    // NEW: Generate rows for mechanical properties (multiple)
-                    let mechRowsHtml = `<tr><th>規範 Spec</th><td>${getSpecText('抗拉強度')}</td><td>${getSpecText('降伏強度')}</td><td>${getSpecText('延伸率')}</td></tr>`;
-                    mechList.forEach((m, idx) => {
-                         const label = mechList.length > 1 ? `實測 Actual ${idx+1}` : `實測 Actual`;
-                         mechRowsHtml += `<tr><th>${label}</th><td>${fmtRepVal('抗拉強度', m['抗拉強度'])}</td><td>${fmtRepVal('降伏強度', m['降伏強度'])}</td><td>${fmtRepVal('延伸率', m['延伸率'])}</td></tr>`;
-                    });
 
                     return `
                     <div class="report-page">
@@ -1816,32 +1451,54 @@
                             <div class="report-title">研發部 銲接材料測試報告</div>
                             <div class="report-subtitle">R&D DEPT. MATERIAL TEST REPORT</div>
                         </div>
+                        
                         <div class="section-title">基本資料 (Basic Information)</div>
                         <table class="report-table">
                             <tr><th>筆數 No.</th><td>${getVal(item, '筆數')}</td><th>日期 Date</th><td>${getVal(item, '銲接日期')}</td></tr>
                             <tr><th>品名 Product</th><td>${getVal(item, '品名')}</td><th>規範 Spec</th><td>${getVal(item, '適用規範')}</td></tr>
-                            <tr><th>線徑 Size</th><td>${getVal(item, '線徑')}</td><th>配方 Recipe</th><td>${getVal(item, '配方')}</td></tr>
-                            <tr><th>鋼板 Plate</th><td>${getVal(item, '鋼板材質')}</td><th>RUD Card / Lot No.</th><td>${getVal(item, 'RUD卡')}</td></tr>
+                            <tr><th>線徑 Size</th><td>${getVal(item, '線徑')}</td><th>配方/批號 Lot</th><td>${getVal(item, '配方')}</td></tr>
+                            <tr><th>鋼板 Plate</th><td>${getVal(item, '鋼板材質')}</td><th>氣體 Gas</th><td>${getVal(item, '氣體')}</td></tr>
                             <tr><th>電流 Current</th><td>${getVal(item, '電流')}</td><th>電壓 Voltage</th><td>${getVal(item, '電壓')}</td></tr>
-                            <tr><th>氣體 Gas</th><td>${getVal(item, '氣體')}</td><th>備註 Memo</th><td>${getVal(item, '備註')}</td></tr>
+                            <tr><th>備註 Remarks</th><td colspan="3">${getVal(item, '備註')}</td></tr>
                         </table>
+
                         <div class="section-title">機械性質 (Mechanical Properties)</div>
                         <table class="data-table">
                             <thead><tr><th width="12%">項目 Item</th><th>抗拉強度 TS (Mpa)</th><th>降伏強度 YS (Mpa)</th><th>延伸率 EL (%)</th></tr></thead>
                             <tbody>
-                                ${mechRowsHtml}
+                                <tr><th>規範 Spec</th><td>${getSpecText('抗拉強度')}</td><td>${getSpecText('降伏強度')}</td><td>${getSpecText('延伸率')}</td></tr>
+                                <tr><th>實測 Actual</th>
+                                    ${mech.doNotTest 
+                                        ? `<td colspan="3" style="text-align:center; font-weight:bold; color:#777; background-color:#fafafa;">不做測試</td>` 
+                                        : `<td>${fmtRepVal('抗拉強度', mech['抗拉強度'])}</td><td>${fmtRepVal('降伏強度', mech['降伏強度'])}</td><td>${fmtRepVal('延伸率', mech['延伸率'])}</td>`
+                                    }
+                                </tr>
                             </tbody>
                         </table>
-                        ${chemSection}
+
+                        <div class="section-title">化學成分 (Chemical Composition)</div>
+                        <table class="data-table">
+                            <thead><tr><th width="12%">項目 Item</th>${chemHeaders}</tr></thead>
+                            <tbody><tr><th>規範 Spec</th>${chemSpecs}</tr><tr><th>實測 Actual</th>${chemActuals}</tr></tbody>
+                        </table>
+
                         <div class="section-title">衝擊測試 (Impact Test)</div>
-                        <table class="report-table" style="margin-bottom:5px"><tr><th>測試溫度 Temp</th><td>${getVal(impact, '測試溫度')}</td><th>單位 Unit</th><td>${getVal(impact, '單位')}</td></tr></table>
+                        <table class="report-table" style="margin-bottom:5px">
+                            <tr><th>測試溫度 Temp</th><td>${getVal(impact, '測試溫度')}</td><th>單位 Unit</th><td>${getVal(impact, '單位')}</td></tr>
+                        </table>
                         <table class="data-table">
                             <thead><tr><th width="12%">項目 Item</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>平均 Avg</th></tr></thead>
                             <tbody>
                                 <tr><th>規範 Spec</th><td colspan="5" style="background-color:#fafafa; color:#aaa;">-</td><td>${getSpecText('衝擊', true)}</td></tr>
-                                <tr><th>實測 Actual</th><td>${impactVals[0] || '-'}</td><td>${impactVals[1] || '-'}</td><td>${impactVals[2] || '-'}</td><td>${impactVals[3] || '-'}</td><td>${impactVals[4] || '-'}</td><td>${fmtRepVal('衝擊', impact['平均值'], true)}</td></tr>
+                                <tr><th>實測 Actual</th>
+                                    ${impact.doNotTest 
+                                        ? `<td colspan="6" style="text-align:center; font-weight:bold; color:#777; background-color:#fafafa;">不做測試</td>` 
+                                        : `<td>${impactVals[0] || '-'}</td><td>${impactVals[1] || '-'}</td><td>${impactVals[2] || '-'}</td><td>${impactVals[3] || '-'}</td><td>${impactVals[4] || '-'}</td><td>${fmtRepVal('衝擊', impact['平均值'], true)}</td>`
+                                    }
+                                </tr>
                             </tbody>
                         </table>
+
                         <div class="mt-12 grid grid-cols-2 gap-8 text-center pt-8">
                             <div class="border-t border-black pt-2"><p class="font-bold">報告人員 (Reported By)</p><p class="text-lg mt-2 reporting-person-signature text-blue-600 font-script"></p></div>
                             <div class="border-t border-black pt-2"><p class="font-bold">審核人員 (Audited By)</p><p class="text-lg mt-2 auditing-person-signature text-blue-600 font-script"></p></div>
@@ -1855,138 +1512,39 @@
                 const rPerson = document.getElementById('reportingPersonSelect').value;
                 const aPerson = document.getElementById('auditingPersonSelect').value;
                 if(!content) return;
-                
-                // FIXED: Pop-up Blocker Protection
+
                 const printWindow = window.open('', '_blank');
-                if(!printWindow) {
-                    alert("瀏覽器已阻擋彈跳視窗，請允許彈跳視窗以開啟列印報表。");
-                    return;
-                }
-                
-                printWindow.document.write(`<html><head><title>銲接材料測試報告 - 列印</title><style>body { font-family: 'Times New Roman', serif; margin: 0; padding: 20px; background: #eee; } .report-page { background: white; padding: 40px; margin: 0 auto 20px auto; border: 1px solid #ccc; width: 210mm; min-height: 297mm; box-sizing: border-box; } .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; } .report-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; } .report-subtitle { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; } .report-table, .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; } .report-table th, .report-table td { border: 1px solid #000; padding: 6px; text-align: left; } .report-table th { background-color: #f3f4f6; font-weight: bold; text-align: center; } .report-table tr > *:nth-child(1) { width: 15%; } .report-table tr > *:nth-child(2) { width: 20%; } .report-table tr > *:nth-child(3) { width: 25%; } .report-table tr > *:nth-child(4) { width: 40%; } .data-table th, .data-table td { border: 1px solid #000; padding: 4px; text-align: center; } .data-table th { background-color: #e5e7eb; font-weight: bold; } .section-title { font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; border-left: 4px solid #000; padding-left: 8px; } .mt-12 { margin-top: 3rem; } .grid { display: grid; } .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gap-8 { gap: 2rem; } .text-center { text-align: center; } .border-t { border-top-width: 1px; } .border-black { border-color: #000; } .pt-2 { padding-top: 0.5rem; } .font-bold { font-weight: 700; } @media print { body { background: white; padding: 0; margin: 0; } .report-page { border: none; margin: 0; width: 100%; box-shadow: none; page-break-after: always; } .no-print { display: none; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } } </style></head><body>${content}<script>const rSigs = document.querySelectorAll('.reporting-person-signature'); rSigs.forEach(el => el.textContent = "${rPerson}"); const aSigs = document.querySelectorAll('.auditing-person-signature'); aSigs.forEach(el => el.textContent = "${aPerson}"); window.onload = function() { window.print(); }<\/script></body></html>`);
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>銲接材料測試報告 - 列印</title>
+                            <style>
+                                body { font-family: 'Times New Roman', serif; margin: 0; padding: 20px; background: #eee; }
+                                .report-page { background: white; padding: 40px; margin: 0 auto 20px auto; border: 1px solid #ccc; width: 210mm; min-height: 297mm; box-sizing: border-box; }
+                                .report-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                                .report-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; }
+                                .report-subtitle { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+                                .report-table, .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; }
+                                th, td { border: 1px solid #000; padding: 6px; text-align: center; }
+                                .report-table th { background-color: #f3f4f6; text-align: left; width: 15%; }
+                                .report-table td { text-align: left; }
+                                .data-table th { background-color: #e5e7eb; font-weight: bold; }
+                                .section-title { font-size: 14px; font-weight: bold; margin: 15px 0 5px 0; border-left: 4px solid #000; padding-left: 8px; }
+                                .mt-12 { margin-top: 3rem; } .grid { display: grid; } .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gap-8 { gap: 2rem; } .text-center { text-align: center; } .border-t { border-top-width: 1px; } .border-black { border-color: #000; } .pt-2 { padding-top: 0.5rem; } .font-bold { font-weight: 700; }
+                                @media print { body { background: white; padding: 0; margin: 0; } .report-page { border: none; margin: 0; width: 100%; box-shadow: none; page-break-after: always; } .no-print { display: none; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                            </style>
+                        </head>
+                        <body>
+                            ${content}
+                            <script>
+                                const rSigs = document.querySelectorAll('.reporting-person-signature'); rSigs.forEach(el => el.textContent = "${rPerson}");
+                                const aSigs = document.querySelectorAll('.auditing-person-signature'); aSigs.forEach(el => el.textContent = "${aPerson}");
+                                window.onload = function() { window.print(); }
+                            <\/script>
+                        </body>
+                    </html>
+                `);
                 printWindow.document.close();
-            }
-
-            // NEW: Handle Statistics Report Generation
-            async handleStatsReport() {
-                const start = document.getElementById('statsStartDate').value;
-                const end = document.getElementById('statsEndDate').value;
-                if(!start || !end) return Utils.showToast('請選擇完整的日期範圍', 'error');
-                
-                Utils.showLoading('統計數據中...');
-                try {
-                    const data = await this.dm.getStatsData(start, end);
-                    this.renderStatsReport(data, start, end);
-                } catch(e) {
-                    console.error(e);
-                    Utils.showToast('統計失敗: ' + e.message, 'error');
-                } finally {
-                    Utils.hideLoading();
-                }
-            }
-
-            // NEW: Render Statistics Report
-            renderStatsReport(data, start, end) {
-                const container = document.getElementById('statsReportDisplayArea');
-                if(data.length === 0) {
-                    container.innerHTML = `<p class="text-center py-12 text-gray-500">該日期區間 (${start} ~ ${end}) 查無資料。</p>`;
-                    return;
-                }
-                
-                // Aggregations
-                const total = data.length;
-                const byPerson = {};
-                const byProduct = {};
-                const byTensilePerson = {}; // New
-                const byImpactPerson = {}; // New
-
-                data.forEach(d => {
-                    const p = d['銲接人員'] || '未標示';
-                    byPerson[p] = (byPerson[p] || 0) + 1;
-                    
-                    const prod = d['品名'] || '未標示';
-                    byProduct[prod] = (byProduct[prod] || 0) + 1;
-
-                    // New aggregations
-                    const tp = d['拉力棒加工人員'] || '未標示';
-                    byTensilePerson[tp] = (byTensilePerson[tp] || 0) + 1;
-
-                    const ip = d['衝擊片加工人員'] || '未標示';
-                    byImpactPerson[ip] = (byImpactPerson[ip] || 0) + 1;
-                });
-
-                // Helper to generate table rows
-                const generateRows = (obj) => {
-                    return Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([name, count]) => `
-                        <tr>
-                            <td class="p-2">${name}</td>
-                            <td class="p-2 text-right font-medium">${count}</td>
-                            <td class="p-2 text-right text-gray-500">${((count/total)*100).toFixed(1)}%</td>
-                        </tr>
-                    `).join('');
-                };
-
-                // Update HTML structure to grid 2x2 for person stats if possible, or stacked
-                let html = `
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center">
-                            <h3 class="text-sm font-semibold text-blue-600 mb-1">期間總筆數</h3>
-                            <p class="text-3xl font-bold text-gray-800">${total}</p>
-                            <p class="text-xs text-gray-500 mt-1">${start} ~ ${end}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div class="bg-white p-4 rounded-lg border shadow-sm">
-                            <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">銲接人員統計</h3>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-gray-600 font-medium"><tr><th class="p-2">姓名</th><th class="p-2 text-right">筆數</th><th class="p-2 text-right">佔比</th></tr></thead>
-                                    <tbody class="divide-y">
-                                        ${generateRows(byPerson)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg border shadow-sm">
-                            <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">產品統計</h3>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-gray-600 font-medium"><tr><th class="p-2">品名</th><th class="p-2 text-right">筆數</th><th class="p-2 text-right">佔比</th></tr></thead>
-                                    <tbody class="divide-y">
-                                        ${generateRows(byProduct)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white p-4 rounded-lg border shadow-sm">
-                            <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">拉力棒加工人員統計</h3>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-gray-600 font-medium"><tr><th class="p-2">姓名</th><th class="p-2 text-right">筆數</th><th class="p-2 text-right">佔比</th></tr></thead>
-                                    <tbody class="divide-y">
-                                        ${generateRows(byTensilePerson)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="bg-white p-4 rounded-lg border shadow-sm">
-                            <h3 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">衝擊片加工人員統計</h3>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-gray-600 font-medium"><tr><th class="p-2">姓名</th><th class="p-2 text-right">筆數</th><th class="p-2 text-right">佔比</th></tr></thead>
-                                    <tbody class="divide-y">
-                                        ${generateRows(byImpactPerson)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML = html;
             }
         }
 
