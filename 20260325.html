@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銲線與氣體消耗換算器 | 銲接大師專用版</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* 隱藏數字輸入框的上下箭頭 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased">
+
+    <div class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- 頁首標題 -->
+        <header class="mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                    <i data-lucide="flame" class="text-orange-500 w-8 h-8"></i>
+                    銲線與氣體消耗換算器
+                </h1>
+                <p class="text-slate-500 mt-2">基於電流與銲材熔化速率的快速估算系統</p>
+            </div>
+            <div class="mt-4 sm:mt-0 bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                銲接大師推薦算法
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+            
+            <!-- 左側：輸入區 -->
+            <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-xl font-bold mb-6 pb-2 border-b border-slate-100 flex items-center gap-2">
+                    <i data-lucide="settings-2" class="w-5 h-5 text-slate-400"></i>
+                    輸入參數
+                </h2>
+
+                <form id="calcForm" class="space-y-5">
+                    
+                    <!-- 銲接方式 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">銲接方式 (Process)</label>
+                        <select id="process" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-colors">
+                            <option value="gmaw">GMAW (實心銲線)</option>
+                            <option value="fcaw">FCAW (包藥銲線)</option>
+                        </select>
+                    </div>
+
+                    <!-- 銲線線徑 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">銲線線徑 (Wire Diameter)</label>
+                        <select id="diameter" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-colors">
+                            <option value="0.8">0.8 mm</option>
+                            <option value="1.0">1.0 mm</option>
+                            <option value="1.2" selected>1.2 mm</option>
+                            <option value="1.4">1.4 mm</option>
+                            <option value="1.6">1.6 mm</option>
+                        </select>
+                    </div>
+
+                    <!-- 銲接電流 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">銲接電流 (Welding Current)</label>
+                        <div class="relative">
+                            <input type="number" id="current" value="250" min="50" max="600" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-12 transition-colors" placeholder="例如: 250">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-medium">A</div>
+                        </div>
+                    </div>
+
+                    <!-- 消耗銲線重量 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">預估消耗銲線總重</label>
+                        <div class="relative">
+                            <input type="number" id="wireWeight" value="15" min="0.1" step="0.1" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-12 transition-colors" placeholder="例如: 15">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-medium">kg</div>
+                        </div>
+                    </div>
+
+                    <!-- 氣體種類 -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">保護氣體種類 (Shielding Gas)</label>
+                        <select id="gasType" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 transition-colors">
+                            <option value="co2">100% CO2 (1.84 kg/m³)</option>
+                            <option value="mix">80% Ar / 20% CO2 (1.70 kg/m³)</option>
+                            <option value="argon">100% Argon (1.66 kg/m³)</option>
+                        </select>
+                    </div>
+
+                    <!-- 氣體流量設定 (允許進階調整) -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1 flex justify-between">
+                            <span>氣體流量 (Gas Flow Rate)</span>
+                            <span class="text-xs text-slate-500 font-normal">可手動微調</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="gasFlow" value="15" min="5" max="50" step="1" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-16 transition-colors">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 font-medium">L/min</div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- 右側：計算結果與警告 -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- 警告訊息區 (預設隱藏) -->
+                <div id="warningAlert" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i data-lucide="triangle-alert" class="h-5 w-5 text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-medium" id="warningMessage">警告訊息</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 結果卡片 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 overflow-hidden relative">
+                    <!-- 背景裝飾 -->
+                    <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 blur-xl pointer-events-none"></div>
+
+                    <h2 class="text-xl font-bold mb-6 pb-2 border-b border-slate-100 flex items-center gap-2">
+                        <i data-lucide="calculator" class="w-5 h-5 text-slate-400"></i>
+                        估算結果
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- 熔化速率 -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-center">
+                            <span class="text-sm font-medium text-slate-500 mb-1">銲線熔化速率 (Melt Rate)</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="resMeltRate" class="text-3xl font-bold text-slate-900">0.00</span>
+                                <span class="text-slate-500 font-medium">kg/hr</span>
+                            </div>
+                            <span class="text-xs text-slate-400 mt-2">根據線徑與電流推算</span>
+                        </div>
+
+                        <!-- 銲接時間 -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-center">
+                            <span class="text-sm font-medium text-slate-500 mb-1">純銲接時間 (Arc-on Time)</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="resArcTime" class="text-3xl font-bold text-slate-900">0.0</span>
+                                <span class="text-slate-500 font-medium">小時</span>
+                            </div>
+                            <span class="text-xs text-slate-400 mt-2">扣除停機換線的起弧時間</span>
+                        </div>
+
+                        <!-- 氣體體積 -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-center">
+                            <span class="text-sm font-medium text-slate-500 mb-1">氣體消耗體積 (Volume)</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="resGasVol" class="text-3xl font-bold text-blue-600">0</span>
+                                <span class="text-slate-500 font-medium">公升 (L)</span>
+                            </div>
+                            <span class="text-xs text-slate-400 mt-2">理論流量總計</span>
+                        </div>
+
+                        <!-- 氣體重量 -->
+                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 flex flex-col justify-center shadow-inner">
+                            <span class="text-sm font-medium text-blue-700 mb-1">氣體淨重 (Gas Weight)</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="resGasWeight" class="text-4xl font-extrabold text-blue-700">0.00</span>
+                                <span class="text-blue-600 font-medium">kg</span>
+                            </div>
+                            <span class="text-xs text-blue-500 mt-2 flex items-center gap-1">
+                                <i data-lucide="info" class="w-3 h-3"></i> 不含鋼瓶重量
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 大師實務提醒 -->
+                <div class="bg-slate-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                    <i data-lucide="quote" class="absolute top-4 right-4 w-12 h-12 text-slate-700 opacity-50 pointer-events-none"></i>
+                    <h3 class="text-lg font-bold text-blue-300 mb-2 flex items-center gap-2">
+                        <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                        大師的實務提醒
+                    </h3>
+                    <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                        上述計算為「理論起弧狀態」下的純消耗。實務採購或成本估算時，強烈建議您加上 <strong class="text-yellow-400">15% ~ 20% 的安全容裕 (Safety Margin)</strong>。
+                    </p>
+                    <ul class="text-sm text-slate-400 list-disc list-inside space-y-1">
+                        <li>管路接頭微小洩漏損失</li>
+                        <li>戶外風大時銲接工調高流量</li>
+                        <li>起弧預吹 (Pre-flow) 與收弧後吹 (Post-flow) 消耗</li>
+                    </ul>
+                    
+                    <!-- 實務採購建議算式 -->
+                    <div class="mt-4 pt-4 border-t border-slate-700">
+                        <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">建議採購備料量：</span>
+                        <div class="mt-1 flex items-baseline gap-2 text-yellow-400">
+                            <span class="text-xl font-bold" id="resRealWeight">0.00</span> kg
+                            <span class="text-xs text-slate-400">(依 +20% 損耗估算)</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 運算邏輯腳本 -->
+    <script>
+        // 初始化 Icons
+        lucide.createIcons();
+
+        // 資料庫常數設定
+        const GAS_DENSITIES = {
+            'co2': 1.84,
+            'mix': 1.70,
+            'argon': 1.66
+        };
+
+        // 大師經驗值：電流與熔化速率對應表 (線性插值用)
+        // 結構: { '線徑': { minA: 最低電流, maxA: 最高電流, minMR: 最低熔化速率(kg/hr), maxMR: 最高熔化速率 } }
+        const MELT_RATE_DATA = {
+            'gmaw': {
+                '0.8': { minA: 60, maxA: 180, minMR: 1.0, maxMR: 3.2 },
+                '1.0': { minA: 100, maxA: 250, minMR: 1.5, maxMR: 4.5 },
+                '1.2': { minA: 150, maxA: 350, minMR: 2.5, maxMR: 6.5 }, // 250A≒4.5, 300A≒5.8
+                '1.4': { minA: 180, maxA: 400, minMR: 3.2, maxMR: 7.5 }, // 1.4mm 經驗參數
+                '1.6': { minA: 220, maxA: 450, minMR: 4.0, maxMR: 8.5 }
+            },
+            'fcaw': {
+                '0.8': { minA: 100, maxA: 160, minMR: 1.0, maxMR: 2.2 }, // 極少用，僅作參考
+                '1.0': { minA: 120, maxA: 220, minMR: 1.5, maxMR: 3.5 },
+                '1.2': { minA: 150, maxA: 320, minMR: 2.2, maxMR: 5.8 }, // 200A≒3.2, 250A≒4.2
+                '1.4': { minA: 170, maxA: 360, minMR: 2.8, maxMR: 6.6 }, // 1.4mm 經驗參數
+                '1.6': { minA: 200, maxA: 400, minMR: 3.5, maxMR: 7.5 }  // 300A≒5.5
+            }
+        };
+
+        // DOM 元素取得
+        const inputs = {
+            process: document.getElementById('process'),
+            diameter: document.getElementById('diameter'),
+            current: document.getElementById('current'),
+            wireWeight: document.getElementById('wireWeight'),
+            gasType: document.getElementById('gasType'),
+            gasFlow: document.getElementById('gasFlow')
+        };
+
+        const results = {
+            meltRate: document.getElementById('resMeltRate'),
+            arcTime: document.getElementById('resArcTime'),
+            gasVol: document.getElementById('resGasVol'),
+            gasWeight: document.getElementById('resGasWeight'),
+            realWeight: document.getElementById('resRealWeight')
+        };
+
+        const warningBox = document.getElementById('warningAlert');
+        const warningMsg = document.getElementById('warningMessage');
+
+        // 依據銲接法自動改變氣體流量預設值
+        inputs.process.addEventListener('change', (e) => {
+            if(e.target.value === 'gmaw') {
+                inputs.gasFlow.value = 15;
+            } else {
+                inputs.gasFlow.value = 20; // FCAW 通常需要較大流量
+            }
+            calculate();
+        });
+
+        // 監聽所有輸入變化
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('input', calculate);
+            input.addEventListener('change', calculate);
+        });
+
+        // 核心計算函數
+        function calculate() {
+            const process = inputs.process.value;
+            const dia = inputs.diameter.value;
+            const current = parseFloat(inputs.current.value) || 0;
+            const wireWt = parseFloat(inputs.wireWeight.value) || 0;
+            const gasType = inputs.gasType.value;
+            const gasFlow = parseFloat(inputs.gasFlow.value) || 0;
+
+            if(current <= 0 || wireWt <= 0 || gasFlow <= 0) {
+                resetResults();
+                return;
+            }
+
+            // 1. 計算熔化速率 (Melt Rate) 與 檢查合理性
+            const data = MELT_RATE_DATA[process][dia];
+            let meltRate = 0;
+            
+            warningBox.classList.add('hidden'); // 先隱藏警告
+
+            if (current < data.minA) {
+                // 電流低於建議範圍，給予警告並用比例推算極小值
+                showWarning(`注意：${current}A 對於 ${dia}mm 銲線而言電流過低，可能導致容易黏條或無法順利轉移。`);
+                meltRate = data.minMR * (current / data.minA);
+            } else if (current > data.maxA) {
+                // 電流高於建議範圍
+                showWarning(`注意：${current}A 已超出 ${dia}mm 銲線的一般作業極限，建議更換粗線。`);
+                // 超出範圍，用線性斜率繼續推算
+                const slope = (data.maxMR - data.minMR) / (data.maxA - data.minA);
+                meltRate = data.maxMR + (current - data.maxA) * slope;
+            } else {
+                // 正常範圍內，線性插值 (Linear Interpolation)
+                const ratio = (current - data.minA) / (data.maxA - data.minA);
+                meltRate = data.minMR + ratio * (data.maxMR - data.minMR);
+            }
+
+            meltRate = Math.max(0.1, meltRate); // 防止出現 0 或負數
+
+            // 2. 計算純銲接時間 (小時)
+            const arcTime = wireWt / meltRate;
+
+            // 3. 計算氣體體積 (L)
+            // 體積 = 時間(hr) * 60(min/hr) * 流量(L/min)
+            const gasVol = arcTime * 60 * gasFlow;
+
+            // 4. 計算氣體重量 (kg)
+            const density = GAS_DENSITIES[gasType];
+            const gasWeight = (gasVol / 1000) * density;
+
+            // 更新 UI 顯示
+            results.meltRate.textContent = meltRate.toFixed(2);
+            results.arcTime.textContent = arcTime.toFixed(2);
+            results.gasVol.textContent = Math.round(gasVol).toLocaleString();
+            results.gasWeight.textContent = gasWeight.toFixed(2);
+            
+            // 計算採購備料 (+20%)
+            results.realWeight.textContent = (gasWeight * 1.20).toFixed(2);
+        }
+
+        function showWarning(msg) {
+            warningMsg.textContent = msg;
+            warningBox.classList.remove('hidden');
+        }
+
+        function resetResults() {
+            results.meltRate.textContent = "0.00";
+            results.arcTime.textContent = "0.0";
+            results.gasVol.textContent = "0";
+            results.gasWeight.textContent = "0.00";
+            results.realWeight.textContent = "0.00";
+            warningBox.classList.add('hidden');
+        }
+
+        // 初始化第一次計算
+        calculate();
+
+    </script>
+</body>
+</html>
