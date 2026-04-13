@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>樣品庫存管理系統 v3.1.0 (智慧連動篩選版)</title>
+    <title>樣品庫存管理系統 v3.6.0 (免綁定標籤機制)</title>
     <script src="https://cdn-tailwindcss.vercel.app/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
@@ -119,10 +119,27 @@
                 <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
                 <button id="topActionScanBtn" class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"><i class="ph ph-arrows-left-right text-lg"></i><span class="hidden lg:inline font-medium text-sm">掃描異動</span></button>
                 <button id="topScanBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"><i class="ph ph-qr-code text-lg"></i><span class="hidden md:inline font-medium text-sm">搜尋</span></button>
+                <button id="topImportBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2" title="從 CSV 批次匯入"><i class="ph ph-file-csv text-lg"></i><span class="hidden xl:inline font-medium text-sm">匯入</span></button>
+                
+                <button id="topBatchAddBtn" class="bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2" title="表格批次手動建檔">
+                    <i class="ph ph-list-plus text-lg"></i><span class="hidden lg:inline font-medium text-sm">表格建檔</span>
+                </button>
+
                 <button id="topAddBtn" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 p-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"><i class="ph ph-plus text-lg"></i><span class="hidden md:inline font-medium text-sm">新增</span></button>
                 <button id="cartDrawerBtn" class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-2 border border-transparent hover:border-slate-200"><div class="relative"><i class="ph ph-tray text-xl"></i><span id="cart-badge" class="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white opacity-0 transition-opacity">0</span></div><span class="hidden md:inline font-bold text-sm">暫存區</span></button>
             </div>
         </header>
+
+        <!-- NEW: Top Mobile Nav Bar -->
+        <nav class="md:hidden bg-white border-b border-slate-200 flex justify-around items-center h-16 z-20 shrink-0 shadow-sm relative">
+            <button id="mobile-nav-inventory" class="flex flex-col items-center justify-center w-full h-full text-indigo-600"><i class="ph ph-squares-four text-xl"></i><span class="text-[10px] font-medium mt-1">庫存</span></button>
+            <button id="mobile-nav-rfid" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-purple-600"><i class="ph ph-wifi-high text-xl"></i><span class="text-[10px] font-medium mt-1">RFID</span></button>
+            <button id="mobile-nav-scan-qr" class="flex flex-col items-center justify-center w-full h-full relative -mt-6">
+                <div class="bg-indigo-600 rounded-full p-4 shadow-lg text-white transform hover:scale-105 transition border-4 border-slate-50"><i class="ph ph-qr-code text-2xl"></i></div>
+            </button>
+            <button id="mobile-nav-add" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-indigo-600"><i class="ph ph-plus-circle text-xl"></i><span class="text-[10px] font-medium mt-1">新增</span></button>
+            <button id="mobile-nav-settings" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-slate-600"><i class="ph ph-gear text-xl"></i><span class="text-[10px] font-medium mt-1">設定</span></button>
+        </nav>
 
         <!-- Mobile Search Panel with Dropdown -->
         <div id="mobileSearchPanel" class="hidden md:hidden bg-white p-4 border-b border-slate-200 absolute top-16 left-0 right-0 z-10 shadow-md flex gap-2">
@@ -138,11 +155,26 @@
             <input type="text" id="mobileSearchInput" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="搜尋...">
         </div>
 
-        <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6 no-scrollbar" id="main-scroll-area">
-            <div id="page-header-inventory" class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div><h2 class="text-2xl font-bold text-slate-800">庫存總覽</h2><p class="text-slate-500 text-sm mt-1">管理與追蹤您的所有樣品</p></div>
+        <main class="flex-1 overflow-y-auto bg-slate-50 p-2 md:p-6 no-scrollbar" id="main-scroll-area">
+            <div id="page-header-inventory" class="flex flex-col mb-4 md:mb-6 gap-4">
+                <div class="flex justify-between items-center w-full px-2 md:px-0">
+                    <div><h2 class="text-2xl font-bold text-slate-800">庫存總覽</h2><p class="text-slate-500 text-sm mt-1 hidden md:block">管理與追蹤您的所有樣品</p></div>
+                    <button id="mobile-filter-toggle" class="md:hidden px-3 py-2 bg-white text-indigo-600 rounded-lg flex items-center gap-2 text-sm font-bold border border-indigo-200 shadow-sm">
+                        <i class="ph ph-funnel text-lg"></i> 篩選
+                    </button>
+                </div>
                 <!-- Smart Linked Filters: 4 Dropdowns -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto">
+                <div id="inventory-filters-panel" class="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-2 w-full bg-slate-100 md:bg-transparent p-3 md:p-0 rounded-xl border border-slate-200 md:border-none mx-2 md:mx-0 w-[calc(100%-16px)] md:w-full">
+                    <select id="mobileSortSelect" class="md:hidden col-span-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-sm font-bold rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 shadow-sm">
+                        <option value="storageLocation_asc">排序: 位置 (A➔Z)</option>
+                        <option value="storageLocation_desc">排序: 位置 (Z➔A)</option>
+                        <option value="sampleName_asc">排序: 品名 (A➔Z)</option>
+                        <option value="sampleName_desc">排序: 品名 (Z➔A)</option>
+                        <option value="wireDiameter_asc">排序: 線徑 (小➔大)</option>
+                        <option value="wireDiameter_desc">排序: 線徑 (大➔小)</option>
+                        <option value="steelGrade_asc">排序: 鋼種 (A➔Z)</option>
+                        <option value="steelGrade_desc">排序: 鋼種 (Z➔A)</option>
+                    </select>
                     <select id="cabinetFilter" class="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 shadow-sm">
                         <option value="all">所有櫃位</option>
                     </select>
@@ -160,37 +192,294 @@
             <div id="loader" class="flex flex-col items-center justify-center py-20 text-slate-500"><i class="ph ph-spinner animate-spin text-4xl text-indigo-600 mb-3"></i><p>正在同步資料庫...</p></div>
 
             <!-- Inventory View -->
-            <div id="content-area-inventory" class="hidden pb-20"> 
-                <div id="view-list" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-600"><thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200"><tr><th class="w-10 px-4 py-4 text-center"><input type="checkbox" id="selectAllInventory" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"></th><th class="px-6 py-4">樣品名稱</th><th class="px-6 py-4 sortable-header group" id="th-location">位置 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600"></i></th><th class="px-6 py-4">線徑</th><th class="px-6 py-4 text-indigo-700 font-medium bg-indigo-50">鋼種</th><th class="px-6 py-4 hidden sm:table-cell">標準</th><th class="px-6 py-4 hidden md:table-cell">製造商</th><th class="px-6 py-4 hidden lg:table-cell">標籤狀態</th><th class="px-6 py-4 text-right">操作</th></tr></thead><tbody id="inventory-table-body" class="divide-y divide-slate-100"></tbody></table></div><div id="list-empty-state" class="hidden p-10 text-center text-slate-500"><i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i><p>沒有符合條件的樣品</p></div></div>
+            <div id="content-area-inventory" class="hidden"> 
+                <div id="view-list" class="bg-transparent md:bg-white rounded-xl md:shadow-sm border-none md:border border-slate-200 md:overflow-hidden"><div class="overflow-x-visible md:overflow-x-auto"><table class="w-full text-left text-sm text-slate-600 block md:table">
+                <thead class="bg-slate-50 text-slate-700 uppercase font-semibold border-b border-slate-200 hidden md:table-header-group"><tr>
+                <th class="w-10 px-4 py-4 text-center"><input type="checkbox" id="selectAllInventory" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"></th>
+                <th class="px-6 py-4 sortable-header group" id="th-sampleName">樣品名稱 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 sortable-header group" id="th-storageLocation">位置 <i class="ph ph-sort-ascending inline-block ml-1 text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 sortable-header group" id="th-wireDiameter">線徑 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 text-indigo-700 font-medium bg-indigo-50 sortable-header group" id="th-steelGrade">鋼種 <i class="ph ph-arrows-down-up inline-block ml-1 text-indigo-300 group-hover:text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 hidden sm:table-cell sortable-header group" id="th-applicableStandard">標準 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 hidden md:table-cell sortable-header group" id="th-manufacturer">製造商 <i class="ph ph-arrows-down-up inline-block ml-1 text-slate-400 group-hover:text-indigo-600 sort-icon"></i></th>
+                <th class="px-6 py-4 hidden lg:table-cell">標籤狀態</th>
+                <th class="px-6 py-4 text-right">操作</th>
+                </tr></thead><tbody id="inventory-table-body" class="block md:table-row-group divide-y divide-transparent md:divide-slate-100 space-y-3 md:space-y-0 px-2 md:px-0"></tbody></table></div><div id="list-empty-state" class="hidden p-10 text-center text-slate-500"><i class="ph ph-magnifying-glass text-4xl mb-2 text-slate-300"></i><p>沒有符合條件的樣品</p></div></div>
                 <div id="view-grid" class="hidden space-y-8"></div>
             </div>
 
             <!-- RFID View -->
-            <div id="content-area-rfid" class="hidden h-full flex flex-col pb-20">
-                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-wifi-high text-purple-600"></i> RFID 作業中心</h2><p class="text-slate-500 text-sm mt-1">請確保掃描槍已連接，點擊下方狀態卡以啟用掃描。</p></div><div class="bg-slate-200 p-1 rounded-lg flex text-sm font-medium"><button id="rfid-mode-search" class="px-4 py-1.5 rounded-md bg-white text-purple-700 shadow-sm transition-all" onclick="switchRfidMode('search')"><i class="ph ph-magnifying-glass"></i> 搜尋</button><button id="rfid-mode-bind" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('bind')"><i class="ph ph-link"></i> 綁定</button><button id="rfid-mode-stocktake" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('stocktake')"><i class="ph ph-clipboard-text"></i> 盤點</button></div></div>
-                <div id="rfid-status-card" class="bg-white rounded-xl p-6 border-2 border-slate-200 cursor-pointer hover:border-purple-300 transition mb-6 shadow-sm flex items-center gap-4 relative overflow-hidden group"><div id="rfid-status-icon-bg" class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform"><i class="ph ph-barcode text-3xl"></i></div><div class="flex-1"><h3 id="rfid-status-title" class="text-lg font-bold text-slate-700">掃描器未就緒</h3><p id="rfid-status-desc" class="text-slate-500 text-sm">點擊此區域以啟用 RFID 接收模式</p></div><div class="text-xs text-slate-400 font-mono bg-slate-50 px-2 py-1 rounded border">HID Mode</div></div>
+            <div id="content-area-rfid" class="hidden h-full flex flex-col">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-wifi-high text-purple-600"></i> RFID 作業中心</h2><p class="text-slate-500 text-sm mt-1">請確保掃描槍已連接，點擊下方狀態卡以切換接收模式。</p></div><div class="bg-slate-200 p-1 rounded-lg flex text-sm font-medium"><button id="rfid-mode-search" class="px-4 py-1.5 rounded-md bg-white text-purple-700 shadow-sm transition-all" onclick="switchRfidMode('search')"><i class="ph ph-magnifying-glass"></i> 搜尋</button><button id="rfid-mode-bind" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('bind')"><i class="ph ph-link"></i> 綁定</button><button id="rfid-mode-stocktake" class="px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all" onclick="switchRfidMode('stocktake')"><i class="ph ph-clipboard-text"></i> 盤點</button></div></div>
+                
+                <!-- Toggleable RFID Status Card -->
+                <div id="rfid-status-card" class="bg-white rounded-xl p-4 md:p-6 border-2 border-green-500 cursor-pointer shadow-md flex justify-between items-center relative overflow-hidden group transition-all mb-6">
+                    <div class="flex items-center gap-4">
+                        <div id="rfid-status-icon-bg" class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 transition-colors">
+                            <i class="ph ph-broadcast text-2xl md:text-3xl"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 id="rfid-status-title" class="text-base md:text-lg font-bold text-slate-700">掃描器已就緒</h3>
+                                <span id="rfid-status-badge" class="flex h-3 w-3 relative"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span></span>
+                            </div>
+                            <p id="rfid-status-desc" class="text-slate-500 text-xs md:text-sm mt-0.5">系統正在監聽，點擊可暫停</p>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex items-center flex-col gap-1">
+                         <!-- Toggle Switch UI -->
+                         <div id="rfid-toggle-switch" class="w-12 h-6 md:w-14 md:h-7 bg-green-500 rounded-full relative transition-colors shadow-inner flex items-center cursor-pointer">
+                             <div id="rfid-toggle-knob" class="w-4 h-4 md:w-5 md:h-5 bg-white rounded-full absolute left-1 shadow transform transition-transform translate-x-6 md:translate-x-7"></div>
+                         </div>
+                         <span class="text-[10px] text-slate-400 font-mono">HID Mode</span>
+                    </div>
+                </div>
+
                 <div id="rfid-view-search" class="flex-1 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50"><i class="ph ph-wifi-high text-6xl mb-4 opacity-20"></i><p class="text-lg font-medium">等待掃描...</p><p class="text-sm">直接掃描標籤以檢視樣品詳情</p></div>
-                <div id="rfid-view-bind" class="hidden flex-1 flex flex-col md:flex-row gap-6 h-full overflow-hidden"><div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden"><div class="p-4 border-b border-slate-100 bg-slate-50"><h3 class="font-bold text-slate-700 mb-2">1. 選擇未綁定樣品</h3><input type="text" id="bind-search-input" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" placeholder="搜尋名稱..."></div><div id="unbound-list" class="flex-1 overflow-y-auto p-2 space-y-2"></div></div><div class="flex-1 bg-purple-50 rounded-xl border border-purple-100 flex flex-col items-center justify-center p-6 text-center"><div id="bind-step-2-inactive" class="opacity-50"><div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 mx-auto shadow-sm"><i class="ph ph-arrow-left text-3xl text-purple-300"></i></div><h3 class="font-bold text-purple-900 text-lg">2. 等待選擇</h3><p class="text-purple-600 text-sm mt-1">請先從左側選擇一個樣品</p></div><div id="bind-step-2-active" class="hidden w-full"><div class="bg-white p-6 rounded-xl shadow-lg border-2 border-purple-200 mb-6 max-w-sm mx-auto rfid-focus-ring"><h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">正在綁定</h4><h2 id="bind-target-name" class="text-2xl font-bold text-purple-700 mb-2">樣品名稱</h2><p id="bind-target-loc" class="text-slate-500 font-mono text-sm bg-slate-100 py-1 px-2 rounded inline-block">位置資訊</p></div><div class="animate-pulse"><i class="ph ph-wifi-high text-5xl text-purple-500 mb-2"></i><p class="font-bold text-purple-800">請掃描新的 RFID 標籤</p><button onclick="resetBindSelection()" class="mt-4 text-sm text-slate-400 hover:text-slate-600 underline">取消選取</button></div></div></div></div>
+                
+                <!-- Expanded RFID Bind View -->
+                <div id="rfid-view-bind" class="hidden flex-1 flex flex-col md:flex-row gap-6 h-full overflow-hidden">
+                    <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden max-w-md">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50"><h3 class="font-bold text-slate-700 mb-2">1. 選擇未綁定樣品</h3><input type="text" id="bind-search-input" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" placeholder="搜尋名稱..."></div>
+                        <div id="unbound-list" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+                    </div>
+                    <div class="flex-1 lg:flex-[2] bg-purple-50 rounded-xl border border-purple-100 flex flex-col items-center justify-center p-4 md:p-6 text-center overflow-y-auto">
+                        <div id="bind-step-2-inactive" class="opacity-50 my-auto">
+                            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 mx-auto shadow-sm"><i class="ph ph-arrow-left text-3xl text-purple-300"></i></div>
+                            <h3 class="font-bold text-purple-900 text-lg">2. 等待選擇</h3>
+                            <p class="text-purple-600 text-sm mt-1">請先從左側選擇一個樣品</p>
+                        </div>
+                        <!-- Detailed Grid -->
+                        <div id="bind-step-2-active" class="hidden w-full max-w-2xl mx-auto flex-col h-full py-4">
+                            <div class="bg-white p-5 md:p-6 rounded-xl shadow-lg border-2 border-purple-200 mb-6 w-full text-left relative overflow-hidden flex flex-col shrink-0">
+                                <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-purple-500 uppercase tracking-wider mb-1">準備綁定目標</h4>
+                                        <h2 id="bind-target-name" class="text-xl md:text-2xl font-bold text-slate-800">樣品名稱</h2>
+                                    </div>
+                                    <div class="text-right shrink-0 ml-4">
+                                        <span class="text-xs text-slate-400 block mb-1">存放位置</span>
+                                        <span id="bind-target-loc" class="text-indigo-600 font-mono text-sm bg-indigo-50 py-1 px-2 rounded font-bold">位置資訊</span>
+                                    </div>
+                                </div>
+                                
+                                <h5 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="ph ph-info text-slate-400"></i> 完整樣品資訊</h5>
+                                <div id="bind-target-details" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100 flex-1 overflow-y-auto">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                            <div class="animate-pulse text-center shrink-0 mt-auto">
+                                <i class="ph ph-wifi-high text-5xl text-purple-500 mb-2"></i>
+                                <p class="font-bold text-purple-800 text-lg">請直接掃描實體 RFID 標籤</p>
+                                <button onclick="resetBindSelection()" class="mt-4 px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 font-medium shadow-sm transition">取消並重新選擇</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="rfid-view-stocktake" class="hidden flex-1 flex flex-col h-full overflow-hidden bg-white rounded-xl shadow-sm border border-slate-200"><div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap gap-4 items-end"><div class="flex-1"><label class="block text-xs font-bold text-slate-500 uppercase mb-1">目標櫃位</label><div class="flex gap-2"><select id="stocktake-cabinet" class="w-full md:w-40 px-3 py-2 border border-slate-300 rounded-lg text-sm"></select><select id="stocktake-shelf" disabled class="w-full md:w-40 px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-100"></select></div></div><div class="flex gap-2"><button onclick="startStocktake()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition flex items-center gap-2"><i class="ph ph-play"></i> 開始盤點</button><button onclick="resetStocktake()" class="bg-white text-slate-600 px-4 py-2 rounded-lg text-sm font-bold border border-slate-300 hover:bg-slate-50 transition">重置</button></div></div><div class="flex border-b border-slate-200 divide-x divide-slate-100 bg-white"><div class="flex-1 p-3 text-center"><div class="text-xs text-slate-500">應有數量</div><div id="st-count-expected" class="text-xl font-bold text-slate-800">0</div></div><div class="flex-1 p-3 text-center bg-green-50"><div class="text-xs text-green-600 font-bold">已掃描 (相符)</div><div id="st-count-scanned" class="text-xl font-bold text-green-700">0</div></div><div class="flex-1 p-3 text-center bg-red-50"><div class="text-xs text-red-600 font-bold">異常 (錯置/未知)</div><div id="st-count-error" class="text-xl font-bold text-red-700">0</div></div></div><div class="flex-1 overflow-y-auto p-0 bg-slate-50 relative"><div id="stocktake-list" class="divide-y divide-slate-200"><div class="p-8 text-center text-slate-400"><i class="ph ph-clipboard-text text-4xl mb-2 opacity-30"></i><p>請選擇櫃位並點擊「開始盤點」</p></div></div></div></div>
             </div>
         </main>
 
-        <div id="inventory-selection-bar" class="fixed bottom-16 md:bottom-0 left-0 md:left-64 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 flex justify-between items-center p-4 selection-bar-hidden transition-transform duration-300 ease-in-out"><div class="flex items-center gap-3"><div class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold">已選取 <span id="inventory-selected-count">0</span> 項</div><button id="inventory-clear-selection" class="text-sm text-slate-500 hover:text-slate-800 hover:underline">取消全選</button></div><div class="flex items-center gap-2"><select id="inventoryBatchLabelSize" class="bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2"><option value="40x40">40x40mm (方形)</option><option value="80x50">80x50mm (矩形)</option></select><button id="inventory-batch-download-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition"><i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">下載 QR</span></button></div></div>
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center h-16 z-30 pb-safe"><button id="mobile-nav-inventory" class="flex flex-col items-center justify-center w-full h-full text-indigo-600"><i class="ph ph-squares-four text-2xl"></i><span class="text-[10px] font-medium mt-1">庫存</span></button><button id="mobile-nav-rfid" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-purple-600"><i class="ph ph-wifi-high text-2xl"></i><span class="text-[10px] font-medium mt-1">RFID</span></button><button id="mobile-nav-add" class="flex flex-col items-center justify-center w-full h-full -mt-6"><div class="bg-indigo-600 rounded-full p-4 shadow-lg text-white transform hover:scale-105 transition"><i class="ph ph-plus text-2xl"></i></div></button><button id="mobile-nav-scan-action" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-fuchsia-600"><i class="ph ph-arrows-left-right text-2xl"></i><span class="text-[10px] font-medium mt-1">異動</span></button><button id="mobile-nav-settings" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-slate-600"><i class="ph ph-gear text-2xl"></i><span class="text-[10px] font-medium mt-1">設定</span></button></nav>
+        <div id="inventory-selection-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-40 flex justify-between items-center p-4 selection-bar-hidden transition-transform duration-300 ease-in-out">
+            <div class="flex items-center gap-3"><div class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold shrink-0">已選取 <span id="inventory-selected-count">0</span> 項</div><button id="inventory-clear-selection" class="text-sm text-slate-500 hover:text-slate-800 hover:underline shrink-0">取消</button></div>
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <button id="inventory-batch-move-btn" class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition relative z-10"><i class="ph ph-truck text-lg"></i> <span class="hidden sm:inline">批量移位</span></button>
+                <button id="inventory-batch-tag-btn" class="shrink-0 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition relative z-10"><i class="ph ph-tag text-lg"></i> <span class="hidden sm:inline">標籤設定</span></button>
+                <select id="inventoryBatchLabelSize" class="shrink-0 bg-slate-50 border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2 cursor-pointer relative z-10"><option value="40x40">40x40mm</option><option value="80x50">80x50mm</option></select>
+                <button id="inventory-batch-download-btn" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition relative z-10"><i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">QR</span></button>
+            </div>
+        </div>
     </div>
 
     <!-- Drawer, Modals... -->
     <div id="stagingDrawer" class="fixed inset-0 z-40 drawer-hidden flex justify-end"><div class="drawer-backdrop absolute inset-0 bg-slate-900/50 backdrop-blur-sm" id="drawerBackdrop"></div><div class="drawer-panel relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col"><div class="p-5 border-b border-slate-200 flex justify-between items-center bg-indigo-50"><div class="flex items-center gap-2"><i class="ph ph-tray text-indigo-600 text-xl"></i><h3 class="font-bold text-lg text-slate-800">暫存區 (Staging)</h3></div><button id="closeDrawerBtn" class="text-slate-500 hover:text-slate-800 p-1 rounded-full hover:bg-indigo-100 transition"><i class="ph ph-x text-xl"></i></button></div><div class="flex-1 overflow-y-auto p-4 bg-slate-50" id="staging-drawer-content"><div id="drawer-empty-state" class="flex flex-col items-center justify-center h-full text-slate-400"><div class="bg-slate-100 p-4 rounded-full mb-3"><i class="ph ph-tray text-4xl text-slate-300"></i></div><p>暫存區是空的</p><p class="text-xs mt-1 text-slate-400">從庫存中將樣品移入此處進行操作</p></div><div id="staging-list" class="space-y-3"></div></div><div id="drawer-footer" class="p-4 border-t border-slate-200 bg-white hidden"><div class="flex justify-between items-center mb-3"><span class="text-sm text-slate-500">已選取 <span id="staging-selected-count" class="font-bold text-slate-800">0</span> 項</span><button id="staging-select-all" class="text-xs text-indigo-600 font-medium hover:underline">全選</button></div><div class="grid grid-cols-2 gap-2 mb-2"><button id="batch-return-btn" class="flex flex-col items-center justify-center py-2 px-1 rounded-lg bg-emerald-100 text-emerald-700 font-semibold hover:bg-emerald-200 transition text-[10px] md:text-xs"><i class="ph ph-arrow-u-up-left text-lg mb-0.5"></i> 批次放回</button><button id="batch-archive-btn" class="flex flex-col items-center justify-center py-2 px-1 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition text-[10px] md:text-xs"><i class="ph ph-archive-box text-lg mb-0.5"></i> 批次歸檔</button></div><div class="flex gap-2"><select id="stagingBatchLabelSize" class="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2 flex-1"><option value="40x40">40x40mm (方形)</option><option value="80x50">80x50mm (矩形)</option></select><button id="batch-qr-btn" class="flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition text-xs border border-slate-200"><i class="ph ph-download-simple text-lg"></i> 批次 QR</button></div></div></div></div>
     
     <!-- All Modals (Hidden by default) -->
-    <div id="addSampleModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 modal-content modal-content-hidden flex flex-col max-h-[90vh]"><div class="flex justify-between items-center p-5 border-b border-slate-100"><h3 class="text-xl font-bold text-slate-800">新增樣品</h3><button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-2xl"></i></button></div><div class="p-6 overflow-y-auto"><form id="add-sample-form" class="space-y-5"><div class="grid grid-cols-1 md:grid-cols-2 gap-5"><div class="col-span-1 md:col-span-2"><label class="block text-sm font-medium text-slate-700 mb-1">樣品名稱 <span class="text-red-500">*</span></label><div class="flex gap-2"><input type="text" id="sampleName" required class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="輸入或掃描"><button type="button" id="scanInputQrBtn" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition"><i class="ph ph-qr-code text-xl"></i></button></div></div>
-    <div><label class="block text-sm font-medium text-slate-700 mb-1">線徑 <span class="text-red-500">*</span></label><input type="text" id="wireDiameter" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></div>
-    <!-- New Steel Grade Field -->
-    <div><label class="block text-sm font-medium text-slate-700 mb-1">鋼種</label><input type="text" id="steelGrade" list="steelGradeOptions" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="例如: SUS304"></div>
-    <div><label class="block text-sm font-medium text-slate-700 mb-1">適用標準</label><input type="text" id="applicableStandard" list="standardOptions" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></div></div><div class="p-4 bg-slate-50 rounded-lg border border-slate-100"><h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">存放位置</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><select id="storageCabinet" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"></select><select id="storageShelf" required disabled class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-100"></select></div></div><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm"><div><label class="block mb-1 text-slate-500">製造商</label><input type="text" id="manufacturer" list="manufacturerOptions" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div><div><label class="block mb-1 text-slate-500">配方代號</label><input type="text" id="formulaCode" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div><div><label class="block mb-1 text-slate-500">批號</label><input type="text" id="batchNo" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div><div><label class="block mb-1 text-slate-500">爐號</label><input type="text" id="furnaceNo" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div><div class="md:col-span-2"><label class="block mb-1 text-slate-500">製程明細</label><input type="text" id="processDetails" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div><div class="md:col-span-3"><label class="block mb-1 text-slate-500">備註</label><textarea id="notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg" rows="2"></textarea></div></div><div class="flex justify-end pt-2"><button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:bg-indigo-700 transition transform active:scale-95">確認存入</button></div></form></div></div></div>
+
+    <!-- NEW: Batch Tag Modal -->
+    <div id="batchTagModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph ph-tag text-blue-500 text-xl"></i> 批量標籤設定</h3>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <p class="text-slate-600 mb-4 text-sm bg-blue-50 p-3 rounded-lg border border-blue-100">將選取的 <span id="batchTagCount" class="font-bold text-blue-700 text-lg">0</span> 項樣品設定為：</p>
+            <div class="flex flex-col gap-3">
+                <button id="setSkipRfidBtn" class="px-4 py-3 bg-white border-2 border-blue-500 text-blue-700 rounded-lg hover:bg-blue-50 shadow-sm flex items-center justify-center gap-2 font-bold transition"><i class="ph ph-prohibit text-lg"></i> 設定為「免綁定」</button>
+                <button id="setRequireRfidBtn" class="px-4 py-3 bg-white border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 shadow-sm flex items-center justify-center gap-2 font-bold transition"><i class="ph ph-tag text-lg"></i> 恢復為「需綁定」</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Move Modal -->
+    <div id="batchMoveModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6 modal-content modal-content-hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2"><i class="ph ph-truck text-amber-500 text-xl"></i> 批量移位</h3>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <p class="text-slate-600 mb-4 text-sm bg-amber-50 p-3 rounded-lg border border-amber-100">將選取的 <span id="batchMoveCount" class="font-bold text-amber-700 text-lg">0</span> 項樣品移動至：</p>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">目標櫃位</label>
+                    <select id="batchMoveCabinet" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-indigo-500"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">目標層板 (選填)</label>
+                    <select id="batchMoveShelf" disabled class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-100 text-slate-500"></select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button class="close-modal-btn px-4 py-2 bg-slate-100 rounded-lg text-slate-600 hover:bg-slate-200 font-medium transition">取消</button>
+                <button id="confirmBatchMoveBtn" class="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 shadow-sm flex items-center gap-2 font-medium transition"><i class="ph ph-check"></i> 確認移動</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Batch Add Modal -->
+    <div id="batchAddModal" class="fixed inset-0 z-[55] flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl mx-4 h-[90vh] flex flex-col modal-content modal-content-hidden overflow-hidden">
+            <div class="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50 shrink-0">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-list-plus text-indigo-600 text-2xl"></i> 表格批次建檔</h3>
+                    <p class="text-xs text-slate-500 mt-1">適合小量批次新增。填完第一列後點擊右側「複製此列」即可快速帶入相同資訊。</p>
+                </div>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            
+            <div class="p-4 border-b border-slate-200 flex flex-wrap items-center gap-4 bg-white shrink-0">
+                <div class="flex items-center gap-2 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                    <i class="ph ph-map-pin text-indigo-600 text-lg"></i>
+                    <label class="text-sm font-bold text-indigo-900 whitespace-nowrap mr-1">共用存放位置:</label>
+                    <select id="batchStorageCabinet" class="w-32 md:w-40 px-3 py-1.5 border border-indigo-200 rounded-lg text-sm bg-white focus:ring-indigo-500 font-medium"></select>
+                    <select id="batchStorageShelf" disabled class="w-32 md:w-40 px-3 py-1.5 border border-indigo-200 rounded-lg text-sm bg-slate-100 text-slate-500"></select>
+                </div>
+                <p class="text-xs text-slate-500 hidden md:block">※ 此位置將自動套用於下方建立的所有樣品。</p>
+            </div>
+
+            <div class="flex-1 overflow-auto bg-slate-50 p-2 relative">
+                <table class="w-full text-sm text-left border-collapse min-w-[1200px]" id="batchAddTable">
+                    <thead class="bg-slate-200 text-slate-700 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="p-2 border-y border-slate-300 w-10 text-center font-semibold">#</th>
+                            <th class="p-2 border-y border-slate-300 w-48 font-semibold">品名 <span class="text-red-500">*</span></th>
+                            <th class="p-2 border-y border-slate-300 w-24 font-semibold">線徑 <span class="text-red-500">*</span></th>
+                            <th class="p-2 border-y border-slate-300 w-28 font-semibold">鋼種</th>
+                            <th class="p-2 border-y border-slate-300 w-28 font-semibold">標準</th>
+                            <th class="p-2 border-y border-slate-300 w-32 font-semibold">廠商</th>
+                            <th class="p-2 border-y border-slate-300 w-24 font-semibold">配方</th>
+                            <th class="p-2 border-y border-slate-300 w-24 font-semibold">批號</th>
+                            <th class="p-2 border-y border-slate-300 w-24 font-semibold">爐號</th>
+                            <th class="p-2 border-y border-slate-300 w-32 font-semibold">製程</th>
+                            <th class="p-2 border-y border-slate-300 min-w-[150px] font-semibold">備註</th>
+                            <th class="p-2 border-y border-slate-300 w-16 text-center font-semibold text-xs leading-tight text-blue-700">免<br>RFID</th>
+                            <th class="p-2 border-y border-slate-300 w-20 text-center font-semibold">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchAddTbody" class="bg-white divide-y divide-slate-100">
+                        <!-- Rows dynamically generated here -->
+                    </tbody>
+                </table>
+                <div class="mt-4 flex justify-center pb-4">
+                    <button id="addBatchRowBtn" class="bg-white border-2 border-dashed border-slate-300 text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 px-8 py-2.5 rounded-xl font-medium transition flex items-center gap-2 w-full max-w-md justify-center shadow-sm"><i class="ph ph-plus text-lg"></i> 新增空白列</button>
+                </div>
+            </div>
+
+            <div class="p-4 border-t bg-white flex justify-between items-center shrink-0">
+                <div class="text-sm text-slate-500">共 <span id="batchRowCount" class="font-bold text-indigo-600 text-lg mx-1">0</span> 筆準備寫入</div>
+                <div class="flex gap-3">
+                    <button class="close-modal-btn px-5 py-2.5 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition font-medium">取消</button>
+                    <button id="confirmBatchAddBtn" class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition font-medium flex items-center gap-2"><i class="ph ph-floppy-disk text-lg"></i> 確認全部存入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CSV Import Modal -->
+    <div id="importCsvModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 modal-content modal-content-hidden flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-file-csv text-emerald-600 text-xl"></i> 批次匯入樣品 (CSV)</h3>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div class="mb-4 text-sm text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <p class="mb-2 font-bold text-slate-700">匯入說明：</p>
+                <ol class="list-decimal pl-4 space-y-1 mb-3">
+                    <li>請先下載標準格式的 CSV 範例檔。</li>
+                    <li>使用 Excel 開啟並填寫資料 (位置將自動設為<span class="font-bold text-indigo-600">「待入庫」</span>)。</li>
+                    <li>「品名」與「線徑」為必填欄位。</li>
+                    <li>存檔後上傳該 CSV 檔案，系統會將資料載入<span class="font-bold text-indigo-600">「表格建檔」</span>畫面供您確認與微調。</li>
+                </ol>
+                <button id="downloadCsvTemplateBtn" class="text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100"><i class="ph ph-download-simple"></i> 下載 CSV 範例檔</button>
+            </div>
+            <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-emerald-500 transition cursor-pointer relative bg-white" id="csvDropZone">
+                <input type="file" id="csvFileInput" accept=".csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                <i class="ph ph-upload-simple text-4xl text-slate-400 mb-2"></i>
+                <p class="text-slate-600 font-medium">點擊選擇檔案，或將 CSV 拖曳至此</p>
+                <p class="text-xs text-indigo-600 mt-2 font-mono bg-indigo-50 py-1 px-2 rounded inline-block" id="csvFileName">尚未選擇檔案</p>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button class="close-modal-btn px-4 py-2 bg-slate-100 rounded-lg text-slate-600 font-medium hover:bg-slate-200">取消</button>
+                <button id="confirmImportBtn" class="px-6 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm" disabled>開始匯入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Sample Modal -->
+    <div id="addSampleModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 modal-content modal-content-hidden flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center p-5 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800">新增樣品</h3>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-2xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <form id="add-sample-form" class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="col-span-1 md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">樣品名稱 <span class="text-red-500">*</span></label>
+                            <div class="flex gap-2">
+                                <input type="text" id="sampleName" required class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="輸入或掃描">
+                                <button type="button" id="scanInputQrBtn" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition"><i class="ph ph-qr-code text-xl"></i></button>
+                            </div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">線徑 <span class="text-red-500">*</span></label><input type="text" id="wireDiameter" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">鋼種</label><input type="text" id="steelGrade" list="steelGradeOptions" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="例如: SUS304"></div>
+                        <div><label class="block text-sm font-medium text-slate-700 mb-1">適用標準</label><input type="text" id="applicableStandard" list="standardOptions" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"></div>
+                    </div>
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">存放位置 (選填)</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <select id="storageCabinet" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"></select>
+                            <select id="storageShelf" disabled class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-100"></select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        <div><label class="block mb-1 text-slate-500">製造商</label><input type="text" id="manufacturer" list="manufacturerOptions" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div>
+                        <div><label class="block mb-1 text-slate-500">配方代號</label><input type="text" id="formulaCode" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div>
+                        <div><label class="block mb-1 text-slate-500">批號</label><input type="text" id="batchNo" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div>
+                        <div><label class="block mb-1 text-slate-500">爐號</label><input type="text" id="furnaceNo" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div>
+                        <div class="md:col-span-2"><label class="block mb-1 text-slate-500">製程明細</label><input type="text" id="processDetails" class="w-full px-3 py-2 border border-slate-300 rounded-lg"></div>
+                        <div class="md:col-span-3"><label class="block mb-1 text-slate-500">備註</label><textarea id="notes" class="w-full px-3 py-2 border border-slate-300 rounded-lg" rows="2"></textarea></div>
+                        <!-- NEW: Skip RFID Option -->
+                        <div class="md:col-span-3 flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+                            <input type="checkbox" id="skipRfid" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+                            <label for="skipRfid" class="text-sm font-bold text-blue-600 cursor-pointer select-none">此樣品不需綁定 RFID (免標籤)</label>
+                        </div>
+                    </div>
+                    <!-- FOOTER -->
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button type="button" id="saveAndNextBtn" class="bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold px-4 py-2.5 rounded-lg shadow-sm hover:bg-indigo-100 transition transform active:scale-95" title="儲存並保留現有設定，接續建檔">儲存並建立下一筆</button>
+                        <button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg shadow-lg hover:bg-indigo-700 transition transform active:scale-95">確認存入</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <div id="qrScannerModal" class="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-4 modal-content modal-content-hidden flex flex-col relative overflow-hidden"><div class="flex justify-between items-center mb-4 shrink-0"><h3 id="qrScannerTitle" class="text-lg font-bold">掃描 QR Code</h3><button class="close-scanner-btn text-slate-500"><i class="ph ph-x text-xl"></i></button></div><div class="relative w-full aspect-square rounded-lg overflow-hidden bg-black"><div id="qr-reader" class="w-full h-full"></div><div class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center"><div class="w-2/3 h-2/3 border-2 border-white/40 rounded-xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"><div class="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-indigo-500 -mt-1 -ml-1 rounded-tl-sm"></div><div class="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-indigo-500 -mt-1 -mr-1 rounded-tr-sm"></div><div class="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-indigo-500 -mb-1 -ml-1 rounded-bl-sm"></div><div class="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-indigo-500 -mb-1 -mr-1 rounded-br-sm"></div><div class="scan-line"></div></div></div><div id="scanFeedbackOverlay" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/70 hidden"><i class="ph ph-check-circle text-6xl text-green-500 mb-2"></i><p id="scanFeedbackText" class="text-white font-bold text-xl text-center px-4"></p></div></div><div class="mt-4 flex flex-col gap-3 shrink-0"><div id="continuousModeControl" class="flex items-center justify-between bg-slate-100 p-3 rounded-lg"><div class="flex flex-col"><span class="text-sm font-bold text-slate-800">連續掃描模式</span><span class="text-xs text-slate-500">掃描後自動執行，不跳出確認視窗</span></div><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="continuousModeToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 transition-all duration-300 ease-in-out"/><label for="continuousModeToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label></div></div><div class="text-center text-sm text-slate-500"><p id="scanInstructionText">將 40x40mm 標籤置於框內</p><div id="scanModeIndicator" class="mt-2 inline-block px-3 py-1 bg-slate-100 rounded-full text-xs font-mono">模式: 一般搜尋</div></div></div></div></div>
     <div id="qrDisplayModal" class="fixed inset-0 z-[70] flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 modal-content modal-content-hidden flex flex-col items-center"><div class="w-full flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-slate-800">標籤預覽</h3><button class="close-modal-btn text-slate-400 hover:text-slate-600"><i class="ph ph-x text-2xl"></i></button></div><div class="w-full mb-4"><label class="block text-xs font-bold text-slate-500 uppercase mb-1">標籤規格</label><select id="qrLabelSize" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50"><option value="40x40">40x40mm (方形)</option><option value="80x50">80x50mm (矩形)</option></select></div><div id="qrDisplayArea" class="mb-4 p-2 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden w-full h-64"></div><div class="w-full"><a id="qrDownloadLink" class="flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition cursor-pointer w-full shadow-lg"><i class="ph ph-download-simple text-lg"></i> 下載圖片</a></div></div></div>
-    <div id="notification-toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 md:bottom-10 md:left-auto md:right-10 md:translate-x-0 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl z-[70] transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3"><i class="ph ph-info text-indigo-400 text-lg"></i><span id="notification-message" class="font-medium">Notification</span></div>
+    <div id="notification-toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 md:bottom-10 md:left-auto md:right-10 md:translate-x-0 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl z-[70] transition-all duration-300 opacity-0 translate-y-10 pointer-events-none flex items-center gap-3"><i class="ph ph-info text-indigo-400 text-lg"></i><span id="notification-message" class="font-medium">Notification</span></div>
     <div id="reportModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl mx-4 h-[80vh] flex flex-col modal-content modal-content-hidden"><div class="p-4 border-b flex justify-between items-center"><h3 class="font-bold text-lg text-slate-800">庫存報表</h3><button class="close-modal-btn text-slate-500 hover:text-slate-700 p-2 rounded-full hover:bg-slate-100 transition"><i class="ph ph-x text-xl"></i></button></div><div id="reportContent" class="flex-1 overflow-auto p-4"></div><div class="p-4 border-t bg-slate-50 flex justify-end gap-2"><button id="downloadCsvBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">CSV</button><button id="printReportBtn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition">列印報表</button></div></div></div>
     <div id="historyModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-xl w-full max-w-6xl mx-4 h-[80vh] flex flex-col modal-content modal-content-hidden"><div class="p-4 border-b flex justify-between"><h3 class="font-bold">歷史紀錄</h3><button class="close-modal-btn"><i class="ph ph-x text-xl"></i></button></div><div class="p-4 flex gap-2 border-b overflow-x-auto" id="history-tabs-container"><!-- tabs --></div><div id="history-content-container" class="flex-1 overflow-auto p-4"></div></div></div>
     <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl mx-4 h-[80vh] flex flex-col modal-content modal-content-hidden"><div class="p-4 border-b flex justify-between items-center"><h3 class="font-bold text-lg text-slate-800">系統設定</h3><button class="close-modal-btn text-slate-500 hover:text-slate-700"><i class="ph ph-x text-xl"></i></button></div><div class="flex-1 overflow-auto p-6 bg-slate-50"><div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6"><h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-users text-indigo-500"></i> 人員管理</h4><div class="flex gap-2 mb-4"><input type="text" id="newPersonName" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="輸入人員姓名"><button id="addPersonBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">新增人員</button></div><div id="personList" class="space-y-2 max-h-40 overflow-y-auto pr-2"></div></div><div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h4 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-lockers text-indigo-500"></i> 櫃位配置</h4><div class="flex gap-2 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-100"><input type="text" id="newCabinetName" class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="輸入新櫃子名稱 (例如: A櫃)"><button id="addCabinetBtn" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition font-medium">新增櫃子</button></div><div id="cabinetSettings" class="space-y-4"></div></div></div><div class="p-4 border-t bg-white flex justify-end gap-3"><button id="closeSettingsBtn" class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition font-medium">取消</button><button id="saveSettingsBtn" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition font-medium">儲存設定</button></div></div></div>
@@ -199,7 +488,13 @@
     <div id="sampleDetailModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 modal-content modal-content-hidden flex flex-col max-h-[90vh]"><div class="p-4 border-b flex justify-between"><h3 class="font-bold">詳細資訊</h3><button class="close-modal-btn"><i class="ph ph-x text-xl"></i></button></div><div id="sampleDetailContent" class="flex-1 overflow-auto p-6"></div><div id="sampleDetailFooter" class="p-4 border-t bg-slate-50 flex justify-end gap-2"></div></div></div>
     <div id="editSampleModal" class="fixed inset-0 z-[55] flex items-center justify-center modal-backdrop modal-hidden"><div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 modal-content modal-content-hidden flex flex-col max-h-[90vh]"><div class="p-4 border-b flex justify-between"><h3 class="font-bold">修改樣品</h3><button class="close-modal-btn"><i class="ph ph-x text-xl"></i></button></div><div class="flex-1 overflow-auto p-6"><form id="edit-sample-form" class="space-y-4"><input type="hidden" id="editSampleId"><input type="hidden" id="editSampleCollection"><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm">名稱</label><input type="text" id="editSampleName" class="w-full border rounded p-2"></div><div><label class="block text-sm">線徑</label><input type="text" id="editWireDiameter" class="w-full border rounded p-2"></div>
     <div><label class="block text-sm">鋼種</label><input type="text" id="editSteelGrade" list="steelGradeOptions" class="w-full border rounded p-2" placeholder="例如: SUS304"></div>
-    </div><div class="p-4 bg-amber-50 rounded-lg border border-amber-100"><label class="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">更改位置 (慎選)</label><div class="grid grid-cols-2 gap-3"><select id="editStorageCabinet" class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-white"></select><select id="editStorageShelf" disabled class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-slate-100"></select></div></div><div class="p-3 bg-slate-50 rounded text-sm grid grid-cols-2 gap-3"><input type="text" id="editApplicableStandard" list="standardOptions" placeholder="標準" class="border rounded p-2"><input type="text" id="editManufacturer" list="manufacturerOptions" placeholder="製造商" class="border rounded p-2"><input type="text" id="editFormulaCode" placeholder="配方" class="border rounded p-2"><input type="text" id="editProcessDetails" placeholder="製程" class="border rounded p-2"><input type="text" id="editFurnaceNo" placeholder="爐號" class="border rounded p-2"><input type="text" id="editBatchNo" placeholder="批號" class="border rounded p-2"><textarea id="editNotes" placeholder="備註" class="col-span-2 border rounded p-2" rows="2"></textarea></div><div class="flex justify-end pt-2"><button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded">儲存</button></div></form></div></div></div>
+    </div><div class="p-4 bg-amber-50 rounded-lg border border-amber-100"><label class="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">更改位置</label><div class="grid grid-cols-2 gap-3"><select id="editStorageCabinet" class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-white"></select><select id="editStorageShelf" disabled class="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm bg-slate-100"></select></div></div><div class="p-3 bg-slate-50 rounded text-sm grid grid-cols-2 gap-3"><input type="text" id="editApplicableStandard" list="standardOptions" placeholder="標準" class="border rounded p-2"><input type="text" id="editManufacturer" list="manufacturerOptions" placeholder="製造商" class="border rounded p-2"><input type="text" id="editFormulaCode" placeholder="配方" class="border rounded p-2"><input type="text" id="editProcessDetails" placeholder="製程" class="border rounded p-2"><input type="text" id="editFurnaceNo" placeholder="爐號" class="border rounded p-2"><input type="text" id="editBatchNo" placeholder="批號" class="border rounded p-2"><textarea id="editNotes" placeholder="備註" class="col-span-2 border rounded p-2" rows="2"></textarea>
+    <!-- NEW: Skip RFID Option (Edit) -->
+    <div class="col-span-2 flex items-center gap-2 mt-2 p-2 bg-slate-50 rounded border border-slate-200">
+        <input type="checkbox" id="editSkipRfid" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer">
+        <label for="editSkipRfid" class="text-sm font-bold text-blue-600 cursor-pointer select-none">此樣品不需綁定 RFID (免標籤)</label>
+    </div>
+    </div><div class="flex justify-end pt-2"><button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded">儲存</button></div></form></div></div></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -227,9 +522,11 @@
         let rfidMode = 'search'; 
         let bindTargetId = null;
         let isRfidFocused = false;
+        let isRfidListeningActive = true;
         let stocktakeState = { active: false, targetLocation: null, isCabinetMode: false, expectedItems: [], scannedItems: new Set(), intruders: [] };
         let sortState = { column: 'storageLocation', direction: 'asc' };
         let pendingConfirmCallback = null;
+        let batchRowCounter = 0;
 
         const dom = {
             contentInventory: document.getElementById('content-area-inventory'),
@@ -271,12 +568,15 @@
             action: document.getElementById('actionModal'),
             confirmation: document.getElementById('confirmationModal'),
             sampleDetail: document.getElementById('sampleDetailModal'),
-            editSample: document.getElementById('editSampleModal')
+            editSample: document.getElementById('editSampleModal'),
+            importCsv: document.getElementById('importCsvModal'),
+            batchAdd: document.getElementById('batchAddModal'),
+            batchMove: document.getElementById('batchMoveModal'),
+            batchTag: document.getElementById('batchTagModal') // NEW
         };
 
         // --- All Function Definitions (Hoisted) ---
 
-        // Utils
         function openModal(modal) {
             modal.classList.remove('modal-hidden');
             modal.classList.add('modal-visible');
@@ -293,7 +593,6 @@
                 }, 300);
              }
         }
-        // !!! CRITICAL FIX: Expose closeModal to window scope for inline HTML calls
         window.closeModal = closeModal;
 
         function openConfirmation(title, message, callback) {
@@ -312,8 +611,8 @@
             else if (type === 'error') iconEl.className = 'ph ph-x-circle text-red-400 text-lg';
             else if (type === 'bind') iconEl.className = 'ph ph-link text-purple-400 text-lg';
             else iconEl.className = 'ph ph-info text-indigo-400 text-lg';
-            toast.classList.remove('opacity-0', 'translate-y-10');
-            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-10'), 3000);
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            setTimeout(() => toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none'), 3000);
         }
 
         function playSound(type) {
@@ -367,7 +666,6 @@
             if(val) sel.value = val;
         }
 
-        // --- NEW: Update Form Datalists for Auto-complete ---
         function updateFormSuggestions() {
             const grades = new Set();
             const manufacturers = new Set();
@@ -395,27 +693,22 @@
             populate('standardOptions', standards);
         }
 
-        // --- NEW: Smart Linked Dropdown Logic ---
         function updateLinkedFilters() {
-            // Get current selections
             const selCab = document.getElementById('cabinetFilter').value;
             const selGrade = document.getElementById('steelGradeFilter').value;
             const selMfg = document.getElementById('manufacturerFilter').value;
             const selStd = document.getElementById('standardFilter').value;
 
-            // Helper to populate select
             const populateSelect = (id, options, currentSelection, defaultText) => {
                 const el = document.getElementById(id);
                 if (!el) return;
                 
-                // Keep the "All" option
                 let html = `<option value="all">${defaultText}</option>`;
                 options.sort().forEach(opt => {
                     html += `<option value="${opt}">${opt}</option>`;
                 });
                 el.innerHTML = html;
                 
-                // Restore selection if still valid, otherwise "all"
                 if (options.includes(currentSelection)) {
                     el.value = currentSelection;
                 } else {
@@ -423,8 +716,6 @@
                 }
             };
 
-            // Calculate valid options for each filter based on the *other* 3 active filters
-            // 1. Valid Cabinets (based on Grade, Mfg, Std)
             const validCabinets = new Set();
             sampleInventory.forEach(s => {
                 const matchGrade = selGrade === 'all' || s.steelGrade === selGrade;
@@ -432,20 +723,12 @@
                 const matchStd = selStd === 'all' || s.applicableStandard === selStd;
                 
                 if (matchGrade && matchMfg && matchStd && s.storageLocation) {
-                    const cab = s.storageLocation.split(' - ')[0]; // Extract "Cabinet" part
+                    const cab = s.storageLocation.split(' - ')[0]; 
                     if(cab) validCabinets.add(cab);
                 }
             });
-            // Merge with system config cabinets to ensure even empty ones might show if needed (optional, here we show what has data)
-            // Or better: Show all cabinets from config, but maybe we only want ones with data?
-            // "Linked" usually implies narrowing down. Let's show cabinets that actually have matching items.
-            // But we should also include cabinets from systemConfig just in case.
-            // For now, let's stick to systemConfig for the base list but maybe we don't filter the Cabinet list?
-            // Actually, if I select "SUS304", I only want to see Cabinets that have SUS304.
             populateSelect('cabinetFilter', Array.from(validCabinets), selCab, '所有櫃位');
 
-
-            // 2. Valid Grades (based on Cab, Mfg, Std)
             const validGrades = new Set();
             sampleInventory.forEach(s => {
                 const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
@@ -459,7 +742,6 @@
             });
             populateSelect('steelGradeFilter', Array.from(validGrades), selGrade, '所有鋼種');
 
-            // 3. Valid Manufacturers (based on Cab, Grade, Std)
             const validMfgs = new Set();
             sampleInventory.forEach(s => {
                 const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
@@ -473,7 +755,6 @@
             });
             populateSelect('manufacturerFilter', Array.from(validMfgs), selMfg, '所有廠商');
 
-            // 4. Valid Standards (based on Cab, Grade, Mfg)
             const validStds = new Set();
             sampleInventory.forEach(s => {
                 const cab = s.storageLocation ? s.storageLocation.split(' - ')[0] : '';
@@ -488,11 +769,100 @@
             populateSelect('standardFilter', Array.from(validStds), selStd, '所有標準');
         }
 
+        function handleCabinetChange(e, shelfSelId) {
+            const cab = e.target.value;
+            const shelfSel = document.getElementById(shelfSelId);
+            shelfSel.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
+            
+            if (cab && cab !== '待入庫' && systemConfig.storageLayout[cab]) {
+                shelfSel.disabled = false;
+                Object.keys(systemConfig.storageLayout[cab]).forEach(s => shelfSel.innerHTML += `<option value="${s}">${s}</option>`);
+            } else {
+                shelfSel.disabled = true;
+            }
+        }
+
         function updateAddFormSelects() {
             const sel = document.getElementById('storageCabinet');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">選擇櫃子</option>';
-            Object.keys(systemConfig.storageLayout || {}).forEach(k => sel.innerHTML += `<option value="${k}">${k}</option>`);
+            if (sel) {
+                sel.innerHTML = '<option value="待入庫" class="font-bold text-indigo-600">📥 待入庫 (尚未分配)</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(k => sel.innerHTML += `<option value="${k}">${k}</option>`);
+                
+                const shelfSel = document.getElementById('storageShelf');
+                shelfSel.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
+                shelfSel.disabled = true;
+            }
+            
+            const bSel = document.getElementById('batchStorageCabinet');
+            if (bSel) {
+                bSel.innerHTML = '<option value="待入庫" class="font-bold text-indigo-600">📥 待入庫 (尚未分配)</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(k => bSel.innerHTML += `<option value="${k}">${k}</option>`);
+                
+                const bShelfSel = document.getElementById('batchStorageShelf');
+                bShelfSel.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
+                bShelfSel.disabled = true;
+            }
+        }
+
+        function addBatchRow(data = {}) {
+            batchRowCounter++;
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-slate-100 hover:bg-indigo-50/50 transition-colors batch-row group';
+            tr.innerHTML = `
+                <td class="p-2 text-center text-xs text-slate-400 font-mono select-none">${batchRowCounter}</td>
+                <td class="p-1.5"><input type="text" name="sampleName" value="${data.sampleName || ''}" required class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="wireDiameter" value="${data.wireDiameter || ''}" required class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="steelGrade" list="steelGradeOptions" value="${data.steelGrade || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="applicableStandard" list="standardOptions" value="${data.applicableStandard || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="manufacturer" list="manufacturerOptions" value="${data.manufacturer || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="formulaCode" value="${data.formulaCode || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="batchNo" value="${data.batchNo || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="furnaceNo" value="${data.furnaceNo || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="processDetails" value="${data.processDetails || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5"><input type="text" name="notes" value="${data.notes || ''}" class="w-full px-2.5 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none text-sm"></td>
+                <td class="p-1.5 text-center"><input type="checkbox" name="skipRfid" ${data.skipRfid ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded border-slate-300 cursor-pointer"></td>
+                <td class="p-1.5 text-center">
+                    <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" class="copy-row-btn p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-md transition" title="往下複製此列資料"><i class="ph ph-copy text-lg"></i></button>
+                        <button type="button" class="del-row-btn p-1.5 text-red-500 hover:bg-red-100 rounded-md transition" title="刪除"><i class="ph ph-trash text-lg"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            tr.querySelector('.copy-row-btn').addEventListener('click', () => {
+                const rowData = getBatchRowData(tr);
+                addBatchRow(rowData);
+                updateBatchRowCount();
+            });
+            
+            tr.querySelector('.del-row-btn').addEventListener('click', () => {
+                tr.remove();
+                updateBatchRowCount();
+            });
+
+            document.getElementById('batchAddTbody').appendChild(tr);
+            updateBatchRowCount();
+        }
+
+        function getBatchRowData(tr) {
+            return {
+                sampleName: tr.querySelector('[name="sampleName"]').value,
+                wireDiameter: tr.querySelector('[name="wireDiameter"]').value,
+                steelGrade: tr.querySelector('[name="steelGrade"]').value,
+                applicableStandard: tr.querySelector('[name="applicableStandard"]').value,
+                manufacturer: tr.querySelector('[name="manufacturer"]').value,
+                formulaCode: tr.querySelector('[name="formulaCode"]').value,
+                batchNo: tr.querySelector('[name="batchNo"]').value,
+                furnaceNo: tr.querySelector('[name="furnaceNo"]').value,
+                processDetails: tr.querySelector('[name="processDetails"]').value,
+                notes: tr.querySelector('[name="notes"]').value,
+                skipRfid: tr.querySelector('[name="skipRfid"]').checked
+            };
+        }
+
+        function updateBatchRowCount() {
+            const count = document.querySelectorAll('.batch-row').length;
+            document.getElementById('batchRowCount').textContent = count;
         }
 
         function switchPage(page) {
@@ -508,12 +878,11 @@
             dom.mobileNavInv.className = `flex flex-col items-center justify-center w-full h-full ${page === 'inventory' ? mobileActive : mobileInactive}`;
             dom.mobileNavRfid.className = `flex flex-col items-center justify-center w-full h-full ${page === 'rfid' ? mobileActiveRfid : mobileInactive}`;
 
-            const qrButtons = [ document.getElementById('topActionScanBtn'), document.getElementById('topScanBtn'), document.getElementById('mobile-nav-scan-action') ];
+            const qrButtons = [ document.getElementById('topActionScanBtn'), document.getElementById('topScanBtn'), document.getElementById('topImportBtn'), document.getElementById('topBatchAddBtn'), document.getElementById('mobile-nav-scan-qr') ];
 
             if (page === 'inventory') {
                 dom.contentInventory.classList.remove('hidden');
                 dom.contentRfid.classList.add('hidden');
-                // dom.topSearchBar.classList.remove('hidden'); // Logic changed for flex
                 if(window.innerWidth >= 768) document.getElementById('top-search-bar').style.display = 'flex';
                 dom.viewToggle.classList.remove('hidden');
                 document.getElementById('page-header-inventory').classList.remove('hidden');
@@ -521,7 +890,6 @@
             } else {
                 dom.contentInventory.classList.add('hidden');
                 dom.contentRfid.classList.remove('hidden');
-                // dom.topSearchBar.classList.add('hidden');
                 document.getElementById('top-search-bar').style.display = 'none';
                 dom.viewToggle.classList.add('hidden');
                 document.getElementById('page-header-inventory').classList.add('hidden');
@@ -532,13 +900,9 @@
                 document.getElementById('rfidHiddenInput').focus();
             }
         }
-        // !!! CRITICAL FIX: Expose switchPage
         window.switchPage = switchPage;
 
         function getFilteredInventory() {
-            // Updated Search Logic with Multiple Filters
-            
-            // Determine active search input (Desktop or Mobile)
             let query = '';
             let field = 'sampleName';
             
@@ -555,7 +919,6 @@
                  field = desktopField.value;
             }
 
-            // Get all filter values
             const cabinet = document.getElementById('cabinetFilter') ? document.getElementById('cabinetFilter').value : 'all';
             const grade = document.getElementById('steelGradeFilter') ? document.getElementById('steelGradeFilter').value : 'all';
             const manufacturer = document.getElementById('manufacturerFilter') ? document.getElementById('manufacturerFilter').value : 'all';
@@ -566,10 +929,8 @@
                 if (!query) {
                     matchText = true;
                 } else if (field === 'all') {
-                    // Full text search
                     matchText = Object.values(s).join(' ').toLowerCase().includes(query) || (s.epc && s.epc.toLowerCase().includes(query));
                 } else {
-                    // Specific field search
                     const val = s[field] ? String(s[field]).toLowerCase() : '';
                     matchText = val.includes(query);
                 }
@@ -582,14 +943,35 @@
                 return matchText && matchCabinet && matchGrade && matchManufacturer && matchStandard;
             });
 
-            if (sortState.column === 'storageLocation') {
+            if (sortState.column) {
                 data.sort((a, b) => {
-                    const valA = a.storageLocation || '';
-                    const valB = b.storageLocation || '';
-                    return sortState.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    const valA = String(a[sortState.column] || '');
+                    const valB = String(b[sortState.column] || '');
+                    const cmp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'});
+                    return sortState.direction === 'asc' ? cmp : -cmp;
                 });
             }
             return data;
+        }
+
+        function updateSortUI() {
+            const columns = ['sampleName', 'storageLocation', 'wireDiameter', 'steelGrade', 'applicableStandard', 'manufacturer'];
+            columns.forEach(col => {
+                const th = document.getElementById(`th-${col}`);
+                if (!th) return;
+                const icon = th.querySelector('.sort-icon');
+                if (sortState.column === col) {
+                    icon.className = `ph ${sortState.direction === 'asc' ? 'ph-sort-ascending' : 'ph-sort-descending'} inline-block ml-1 text-indigo-600 sort-icon`;
+                } else {
+                    const defaultTextClass = col === 'steelGrade' ? 'text-indigo-300 group-hover:text-indigo-600' : 'text-slate-400 group-hover:text-indigo-600';
+                    icon.className = `ph ph-arrows-down-up inline-block ml-1 ${defaultTextClass} sort-icon`;
+                }
+            });
+            
+            const mobileSelect = document.getElementById('mobileSortSelect');
+            if (mobileSelect) {
+                mobileSelect.value = `${sortState.column}_${sortState.direction}`;
+            }
         }
 
         function updateSelectionBar() {
@@ -617,9 +999,47 @@
                 if(emptyState) emptyState.classList.add('hidden');
                 data.forEach(s => {
                     const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors group table-row-hover';
+                    tr.className = 'border border-slate-200 md:border-b md:border-x-0 md:border-t-0 md:border-slate-100 hover:bg-slate-50 transition-colors group block md:table-row bg-white rounded-xl md:rounded-none relative p-4 md:p-0 shadow-sm md:shadow-none table-row-hover';
+                    
                     const hasRfid = !!s.epc;
-                    tr.innerHTML = `<td class="px-4 py-4 text-center"><input type="checkbox" class="rounded text-indigo-600 w-4 h-4 cursor-pointer inventory-checkbox" data-id="${s.id}" ${selectedInventoryIds.has(s.id) ? 'checked' : ''}></td><td class="px-6 py-4 font-medium text-slate-900 group-hover:text-indigo-600 cursor-pointer nav-detail">${s.sampleName}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded bg-slate-100 text-xs font-mono text-slate-600 border border-slate-200">${s.storageLocation.replace('位置 ', '')}</span></td><td class="px-6 py-4 text-slate-500">${s.wireDiameter || '-'}</td><td class="px-6 py-4 text-indigo-700 font-medium bg-indigo-50">${s.steelGrade || '-'}</td><td class="px-6 py-4 hidden sm:table-cell text-slate-500">${s.applicableStandard || '-'}</td><td class="px-6 py-4 hidden md:table-cell text-slate-500">${s.manufacturer || '-'}</td><td class="px-6 py-4 hidden lg:table-cell">${hasRfid ? '<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100 text-xs font-bold"><i class="ph ph-wifi-high"></i> RFID</span>' : '<span class="inline-flex items-center gap-1 bg-slate-50 text-slate-400 px-2 py-1 rounded border border-slate-100 text-xs">無標籤</span>'}</td><td class="px-6 py-4 text-right"><button class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-full hover:bg-indigo-50 transition quick-stage-btn" title="移至暫存" data-id="${s.id}"><i class="ph ph-tray text-xl"></i></button></td>`;
+                    let tagLabel = '';
+                    if (hasRfid) {
+                        tagLabel = '<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 md:py-1 rounded border border-purple-100 text-xs font-bold"><i class="ph ph-wifi-high"></i> RFID</span>';
+                    } else if (s.skipRfid) {
+                        tagLabel = '<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-0.5 md:py-1 rounded border border-blue-100 text-xs font-bold"><i class="ph ph-prohibit"></i> 免綁定</span>';
+                    } else {
+                        tagLabel = '<span class="inline-flex items-center gap-1 bg-slate-50 text-slate-400 px-2 py-0.5 md:py-1 rounded border border-slate-100 text-xs">無標籤</span>';
+                    }
+
+                    const isPending = s.storageLocation === '待入庫';
+                    const locLabel = isPending 
+                        ? `<span class="px-2 py-0.5 md:py-1 rounded bg-amber-50 text-xs font-bold text-amber-600 border border-amber-200"><i class="ph ph-box-arrow-down mr-1"></i>待入庫</span>` 
+                        : `<span class="px-2 py-0.5 md:py-1 rounded bg-slate-100 text-xs font-mono text-slate-600 border border-slate-200">${s.storageLocation}</span>`;
+
+                    tr.innerHTML = `
+                        <td class="block md:table-cell absolute top-4 left-4 md:static md:w-10 px-0 md:px-4 py-0 md:py-4 text-center">
+                            <input type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500 w-5 h-5 md:w-4 md:h-4 cursor-pointer inventory-checkbox" data-id="${s.id}" ${selectedInventoryIds.has(s.id) ? 'checked' : ''}>
+                        </td>
+                        <td class="block md:table-cell ml-8 md:ml-0 px-0 md:px-6 py-1 md:py-4">
+                            <div class="font-bold text-lg md:text-sm text-slate-900 group-hover:text-indigo-600 cursor-pointer nav-detail">${s.sampleName}</div>
+                            <div class="md:hidden mt-2 flex items-center gap-1.5 flex-wrap">${locLabel} ${tagLabel}</div>
+                        </td>
+                        <td class="hidden md:table-cell px-6 py-4 sortable-header">${locLabel}</td>
+                        <td class="block md:table-cell ml-8 md:ml-0 px-0 md:px-6 py-1 md:py-4 text-slate-500">
+                            <div class="flex items-center gap-4 text-sm mt-1 md:mt-0">
+                                <div class="md:hidden"><span class="text-[10px] text-slate-400 block leading-none mb-1">線徑</span><span class="font-medium text-slate-700">${s.wireDiameter || '-'}</span></div>
+                                <div class="md:hidden"><span class="text-[10px] text-slate-400 block leading-none mb-1">鋼種</span><span class="text-indigo-700 font-bold">${s.steelGrade || '-'}</span></div>
+                                <div class="hidden md:block">${s.wireDiameter || '-'}</div>
+                            </div>
+                        </td>
+                        <td class="hidden md:table-cell px-6 py-4 text-indigo-700 font-medium bg-indigo-50/50">${s.steelGrade || '-'}</td>
+                        <td class="hidden sm:table-cell px-6 py-4 text-slate-500">${s.applicableStandard || '-'}</td>
+                        <td class="hidden md:table-cell px-6 py-4 text-slate-500">${s.manufacturer || '-'}</td>
+                        <td class="hidden lg:table-cell px-6 py-4">${tagLabel}</td>
+                        <td class="block md:table-cell absolute top-4 right-4 md:static px-0 md:px-6 py-0 md:py-4 text-right">
+                            <button class="text-slate-400 hover:text-indigo-600 p-2 md:p-1.5 rounded-full bg-slate-100 md:bg-transparent hover:bg-indigo-50 transition quick-stage-btn" title="移至暫存" data-id="${s.id}"><i class="ph ph-tray text-xl"></i></button>
+                        </td>
+                    `;
                     tr.querySelector('.nav-detail').addEventListener('click', () => showSampleDetails(s));
                     tr.querySelector('.quick-stage-btn').addEventListener('click', (e) => { e.stopPropagation(); openActionModal('stage', s); });
                     const cb = tr.querySelector('.inventory-checkbox');
@@ -648,16 +1068,35 @@
                 badge.style.opacity = '1'; badge.textContent = stagingSamples.length;
                 stagingSamples.forEach(s => {
                     const div = document.createElement('div');
-                    div.className = "p-3 rounded-lg border border-slate-200 bg-white hover:border-indigo-300 transition flex gap-3";
-                    div.innerHTML = `<div class="pt-1"><input type="checkbox" class="rounded text-indigo-600 w-4 h-4 cursor-pointer" data-id="${s.id}"></div><div class="flex-1 min-w-0"><h4 class="text-sm font-bold text-slate-800 truncate">${s.sampleName}</h4><p class="text-xs text-slate-500 truncate">原位: ${s.storageLocation}</p><div class="mt-1 flex gap-2"><button class="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded border border-emerald-100 hover:bg-emerald-100 action-return">放回</button><button class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 hover:bg-red-100 action-archive">歸檔</button></div></div>`;
+                    div.className = "p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 transition flex gap-3 shadow-sm";
+                    
+                    const details = [];
+                    if(s.wireDiameter) details.push(`<span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200">徑: ${s.wireDiameter}</span>`);
+                    if(s.steelGrade) details.push(`<span class="bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700 border border-indigo-100 font-medium">鋼: ${s.steelGrade}</span>`);
+                    if(s.batchNo) details.push(`<span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200">批: ${s.batchNo}</span>`);
+                    if(s.manufacturer) details.push(`<span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 border border-slate-200">廠: ${s.manufacturer}</span>`);
+                    
+                    div.innerHTML = `
+                        <div class="pt-1">
+                            <input type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer" data-id="${s.id}">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-slate-800 break-words leading-tight mb-1.5">${s.sampleName}</h4>
+                            <div class="text-[10px] mb-2 flex flex-wrap gap-1">
+                                ${details.join('')}
+                            </div>
+                            <p class="text-xs text-slate-500 mb-2 flex items-center gap-1"><i class="ph ph-map-pin"></i> 原位: <span class="font-medium text-slate-700">${s.storageLocation}</span></p>
+                            <div class="flex gap-2 mt-1">
+                                <button class="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 action-return transition flex items-center justify-center gap-1 shadow-sm flex-1"><i class="ph ph-arrow-u-up-left text-sm"></i> 放回</button>
+                                <button class="text-xs font-bold bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-100 action-archive transition flex items-center justify-center gap-1 shadow-sm flex-1"><i class="ph ph-archive-box text-sm"></i> 歸檔</button>
+                            </div>
+                        </div>`;
                     div.querySelector('.action-return').onclick = () => openActionModal('return', s);
                     div.querySelector('.action-archive').onclick = () => openActionModal('finalize', s);
                     list.appendChild(div);
                 });
-                // Reset select count when rendering
                 document.getElementById('staging-selected-count').textContent = '0';
                 
-                // Add listener to new checkboxes to update count
                 list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                     cb.addEventListener('change', () => {
                         const count = list.querySelectorAll('input[type="checkbox"]:checked').length;
@@ -700,7 +1139,7 @@
                  if(log.action.includes('放入')) colorClass = 'text-green-600';
                  else if(log.action.includes('移至暫存')) colorClass = 'text-amber-600';
                  else if(log.action.includes('歸檔')) colorClass = 'text-red-600';
-                 else if(log.action.includes('批次')) colorClass = 'text-indigo-600';
+                 else if(log.action.includes('批次') || log.action.includes('批量') || log.action.includes('標籤')) colorClass = 'text-indigo-600';
                  html += `<div class="bg-white border border-slate-100 p-3 rounded-lg flex justify-between items-center text-sm"><div><span class="font-bold ${colorClass} mr-2">${log.action}</span><span class="font-medium text-slate-800">${log.sampleName || '未知'}</span><div class="text-xs text-slate-400 mt-1">${log.details || ''}</div></div><div class="text-right text-xs text-slate-500"><div>${log.person}</div><div>${log.timestamp?.toDate().toLocaleString() || '-'}</div></div></div>`;
              });
              html += '</div>';
@@ -709,14 +1148,24 @@
 
         function renderReportPreview() {
             const content = document.getElementById('reportContent');
-            const data = sampleInventory.sort((a,b) => (a.storageLocation||'').localeCompare(b.storageLocation||''));
+            // 改為獲取「已篩選」的資料，而非全部庫存
+            const data = getFilteredInventory();
             if (data.length === 0) { content.innerHTML = '<p class="text-center text-slate-500 py-8">無資料</p>'; return; }
             
-            // Updated Report Headers (Added Steel Grade)
+            // 判斷目前是否有套用任何篩選條件
+            const isFiltered = (document.getElementById('globalSearchInput') && document.getElementById('globalSearchInput').value.trim() !== '') ||
+                               (document.getElementById('mobileSearchInput') && document.getElementById('mobileSearchInput').value.trim() !== '') ||
+                               (document.getElementById('cabinetFilter') && document.getElementById('cabinetFilter').value !== 'all') ||
+                               (document.getElementById('steelGradeFilter') && document.getElementById('steelGradeFilter').value !== 'all') ||
+                               (document.getElementById('manufacturerFilter') && document.getElementById('manufacturerFilter').value !== 'all') ||
+                               (document.getElementById('standardFilter') && document.getElementById('standardFilter').value !== 'all');
+            
+            const filterNotice = isFiltered ? '<span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs ml-2 font-medium border border-indigo-100">已套用篩選條件</span>' : '';
+
             let html = `
                 <div class="mb-4">
-                    <h2 class="text-xl font-bold">庫存清單</h2>
-                    <p class="text-sm text-slate-500">時間: ${new Date().toLocaleString()} | 共 ${data.length} 筆資料</p>
+                    <h2 class="text-xl font-bold flex items-center">庫存清單 ${filterNotice}</h2>
+                    <p class="text-sm text-slate-500 mt-1">時間: ${new Date().toLocaleString()} | 共 ${data.length} 筆資料</p>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left border-collapse min-w-[1000px]">
@@ -757,15 +1206,12 @@
             content.innerHTML = html;
         }
 
-        // New function for downloading CSV
         function downloadReportCsv() {
-            const data = sampleInventory.sort((a,b) => (a.storageLocation||'').localeCompare(b.storageLocation||''));
+            // CSV 下載也改為獲取「已篩選」的資料
+            const data = getFilteredInventory();
             if (data.length === 0) return showToast('無資料可下載', 'error');
 
-            // BOM for Excel compatibility with UTF-8
             let csvContent = "\uFEFF";
-            
-            // Header
             csvContent += "位置,名稱,線徑,鋼種,標準,製造商,配方代號,批號,爐號,製程明細,備註\n";
 
             data.forEach(s => {
@@ -781,7 +1227,7 @@
                     s.furnaceNo || '',
                     s.processDetails || '',
                     s.notes || ''
-                ].map(item => `"${(item || '').toString().replace(/"/g, '""')}"`); // Quote and escape quotes
+                ].map(item => `"${(item || '').toString().replace(/"/g, '""')}"`); 
                 csvContent += row.join(",") + "\n";
             });
 
@@ -795,7 +1241,6 @@
             document.body.removeChild(link);
         }
 
-        // New function for printing report
         function printReport() {
             const content = document.getElementById('reportContent').innerHTML;
             if (!content || content.includes('無資料')) return showToast('無內容可列印', 'error');
@@ -845,10 +1290,10 @@
             openModal(modal);
         }
 
-        // !!! CRITICAL FIX: Implement resetBindSelection and selectBindTarget logic
         function resetBindSelection() {
             bindTargetId = null;
             document.getElementById('bind-step-2-active').classList.add('hidden');
+            document.getElementById('bind-step-2-active').classList.remove('flex');
             document.getElementById('bind-step-2-inactive').classList.remove('hidden');
             renderRfidUnboundList();
         }
@@ -858,16 +1303,38 @@
             bindTargetId = sample.id;
             document.getElementById('bind-step-2-inactive').classList.add('hidden');
             document.getElementById('bind-step-2-active').classList.remove('hidden');
+            document.getElementById('bind-step-2-active').classList.add('flex');
+
             document.getElementById('bind-target-name').textContent = sample.sampleName;
             document.getElementById('bind-target-loc').textContent = sample.storageLocation;
+            
+            const detailsHtml = `
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">線徑</span><span class="font-medium text-slate-800">${sample.wireDiameter || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">鋼種</span><span class="font-medium text-slate-800">${sample.steelGrade || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">適用標準</span><span class="font-medium text-slate-800">${sample.applicableStandard || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">製造商</span><span class="font-medium text-slate-800">${sample.manufacturer || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">配方代號</span><span class="font-medium text-slate-800">${sample.formulaCode || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">批號</span><span class="font-medium text-slate-800">${sample.batchNo || '-'}</span></div>
+                <div class="p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">爐號</span><span class="font-medium text-slate-800">${sample.furnaceNo || '-'}</span></div>
+                <div class="col-span-2 md:col-span-3 p-2 bg-white rounded border border-slate-100"><span class="text-slate-400 text-xs block mb-1">製程明細</span><span class="font-medium text-slate-800 text-xs">${sample.processDetails || '-'}</span></div>
+                <div class="col-span-2 md:col-span-3 p-2 bg-yellow-50 rounded border border-yellow-100"><span class="text-yellow-600 text-xs font-bold block mb-1">備註</span><span class="font-medium text-slate-700 text-xs">${sample.notes || '-'}</span></div>
+            `;
+            document.getElementById('bind-target-details').innerHTML = detailsHtml;
+
             renderRfidUnboundList();
+            
+            if(!isRfidListeningActive) {
+                 const card = document.getElementById('rfid-status-card');
+                 if(card) card.click();
+            }
         }
 
         function renderRfidUnboundList() {
             const list = dom.unboundList;
             list.innerHTML = '';
             const term = dom.bindSearchInput.value.toLowerCase();
-            const unbound = sampleInventory.filter(s => !s.epc && s.sampleName.toLowerCase().includes(term));
+            // ONLY show items that don't have an EPC AND are NOT marked as skipRfid
+            const unbound = sampleInventory.filter(s => !s.epc && !s.skipRfid && s.sampleName.toLowerCase().includes(term));
             if (unbound.length === 0) { list.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm">無符合的未綁定樣品</div>'; return; }
             unbound.forEach(s => {
                 const isSelected = s.id === bindTargetId;
@@ -876,11 +1343,8 @@
                     ? "p-3 rounded-lg border-2 border-purple-500 bg-purple-50 cursor-pointer transition flex justify-between items-center group shadow-sm text-left"
                     : "p-3 rounded-lg border border-slate-100 bg-white hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition flex justify-between items-center group text-left";
                 
-                // Helper to join non-empty strings with separator
                 const joinParts = (parts) => parts.filter(p => p && p.trim() !== '').join(' | ');
-
                 const line2 = joinParts([s.wireDiameter ? `${s.wireDiameter}` : '', s.manufacturer]);
-                
                 const line3Parts = [];
                 if(s.batchNo) line3Parts.push(`批:${s.batchNo}`);
                 if(s.furnaceNo) line3Parts.push(`爐:${s.furnaceNo}`);
@@ -902,7 +1366,6 @@
             });
         }
 
-        // Function to unbind RFID
         window.unbindRfid = function(sampleId) {
             const sample = sampleInventory.find(s => s.id === sampleId);
             if (!sample) return;
@@ -917,7 +1380,6 @@
                     await logAction('解除綁定', getCurrentOperator(), sample.sampleName, `解除 EPC: ${sample.epc}`);
                     showToast('已解除綁定', 'success');
                     closeModal(modals.sampleDetail);
-                    // Optionally reopen to show updated state, but closing is safer
                 } catch(e) {
                     console.error(e);
                     showToast('解除綁定失敗', 'error');
@@ -929,19 +1391,26 @@
              const content = document.getElementById('sampleDetailContent');
              const hasRfid = !!sample.epc;
              
-             // Dynamic button: Bind or Unbind
-             let rfidButtonHtml;
+             let rfidButtonHtml = '';
+             let tagBadge = '';
+             let rfidEpcStatus = sample.epc || '尚未綁定';
+             let rfidEpcClass = hasRfid ? 'text-purple-600 font-bold' : 'text-slate-300';
+
              if (hasRfid) {
                  rfidButtonHtml = `<button onclick="unbindRfid('${sample.id}')" class="px-4 py-3 bg-red-50 text-red-700 rounded-lg border border-red-200 flex items-center gap-2 font-medium hover:bg-red-100"><i class="ph ph-link-break"></i> 解除綁定</button>`;
+                 tagBadge = '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 font-bold ml-2">RFID</span>';
+             } else if (sample.skipRfid) {
+                 tagBadge = '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-bold ml-2">免綁定</span>';
+                 rfidEpcStatus = '設定為免綁定';
+                 rfidEpcClass = 'text-blue-500 font-bold';
+                 // No bind button for skipped items
              } else {
                  rfidButtonHtml = `<button onclick="closeModal(document.getElementById('sampleDetailModal')); switchPage('rfid'); switchRfidMode('bind'); setTimeout(() => { document.getElementById('bind-search-input').value='${sample.sampleName}'; }, 100);" class="px-4 py-3 bg-purple-50 text-purple-700 rounded-lg border border-purple-200 flex items-center gap-2 font-medium hover:bg-purple-100"><i class="ph ph-link"></i> 綁定 RFID</button>`;
              }
              
-             // New Stage Button
              let stageButtonHtml = `<button onclick="closeModal(document.getElementById('sampleDetailModal')); setTimeout(() => openActionModal('stage', window.sampleInventory.find(s=>s.id==='${sample.id}')), 50);" class="px-4 py-3 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 flex items-center gap-2 font-medium hover:bg-amber-100"><i class="ph ph-tray"></i> 移入暫存</button>`;
 
-
-             content.innerHTML = `<div class="space-y-4"><div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-start"><div><h4 class="text-xl font-bold text-slate-800 flex items-center gap-2">${sample.sampleName} ${hasRfid ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">RFID</span>' : ''}</h4><p class="text-indigo-600 font-mono mt-1">${sample.storageLocation}</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">線徑</span><span class="font-medium">${sample.wireDiameter}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">鋼種</span><span class="font-medium">${sample.steelGrade || '-'}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">RFID EPC</span><span class="font-mono text-xs ${hasRfid ? 'text-purple-600 font-bold' : 'text-slate-300'}">${sample.epc || '尚未綁定'}</span></div><div class="p-3 border rounded-lg col-span-2 bg-yellow-50 border-yellow-100"><span class="block text-xs text-yellow-600 font-bold mb-1">備註</span><span class="text-slate-700">${sample.notes || '無備註'}</span></div></div>
+             content.innerHTML = `<div class="space-y-4"><div class="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-start"><div><h4 class="text-xl font-bold text-slate-800 flex items-center flex-wrap gap-y-1">${sample.sampleName} ${tagBadge}</h4><p class="text-indigo-600 font-mono mt-1">${sample.storageLocation}</p></div></div><div class="grid grid-cols-2 gap-4 text-sm"><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">線徑</span><span class="font-medium">${sample.wireDiameter}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">鋼種</span><span class="font-medium">${sample.steelGrade || '-'}</span></div><div class="p-3 border rounded-lg"><span class="block text-xs text-slate-400">RFID EPC</span><span class="font-mono text-xs ${rfidEpcClass}">${rfidEpcStatus}</span></div><div class="p-3 border rounded-lg col-span-2 bg-yellow-50 border-yellow-100"><span class="block text-xs text-yellow-600 font-bold mb-1">備註</span><span class="text-slate-700">${sample.notes || '無備註'}</span></div></div>
              
              <div class="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm grid grid-cols-2 gap-y-2 text-slate-600">
                 <div><span class="text-slate-400 text-xs block">配方代號</span>${sample.formulaCode || '-'}</div>
@@ -971,39 +1440,34 @@
             document.getElementById('editFurnaceNo').value = sample.furnaceNo || '';
             document.getElementById('editBatchNo').value = sample.batchNo || '';
             document.getElementById('editNotes').value = sample.notes || '';
+            document.getElementById('editSkipRfid').checked = sample.skipRfid || false;
 
-            // --- START FIX: Populate Location Dropdowns ---
             const cabSelect = document.getElementById('editStorageCabinet');
             const shelfSelect = document.getElementById('editStorageShelf');
             
-            // 1. Populate Cabinets
-            cabSelect.innerHTML = '<option value="">選擇櫃子</option>';
+            cabSelect.innerHTML = '<option value="待入庫" class="font-bold text-indigo-600">📥 待入庫 (尚未分配)</option>';
             Object.keys(systemConfig.storageLayout || {}).forEach(k => {
                 cabSelect.innerHTML += `<option value="${k}">${k}</option>`;
             });
 
-            // 2. Parse and Set Current Location
-            if (sample.storageLocation) {
+            if (sample.storageLocation && sample.storageLocation !== '待入庫') {
                 const parts = sample.storageLocation.split(' - ');
-                if (parts.length >= 1) {
-                    cabSelect.value = parts[0];
-                    // Trigger population of shelves based on current cabinet
-                    if (systemConfig.storageLayout[parts[0]]) {
-                        shelfSelect.innerHTML = '<option value="">選擇層數</option>';
-                        shelfSelect.disabled = false;
-                        Object.keys(systemConfig.storageLayout[parts[0]]).forEach(s => {
-                            shelfSelect.innerHTML += `<option value="${s}">${s}</option>`;
-                        });
-                        if (parts.length >= 2) {
-                            shelfSelect.value = parts[1];
-                        }
+                cabSelect.value = parts[0];
+                if (systemConfig.storageLayout[parts[0]]) {
+                    shelfSelect.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
+                    shelfSelect.disabled = false;
+                    Object.keys(systemConfig.storageLayout[parts[0]]).forEach(s => {
+                        shelfSelect.innerHTML += `<option value="${s}">${s}</option>`;
+                    });
+                    if (parts.length >= 2) {
+                        shelfSelect.value = parts[1];
                     }
                 }
             } else {
-                shelfSelect.innerHTML = '<option value="">選擇層數</option>';
+                cabSelect.value = '待入庫';
+                shelfSelect.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
                 shelfSelect.disabled = true;
             }
-            // --- END FIX ---
 
             openModal(modal);
         };
@@ -1012,6 +1476,7 @@
             rfidMode = mode;
             bindTargetId = null;
             document.getElementById('bind-step-2-active').classList.add('hidden');
+            document.getElementById('bind-step-2-active').classList.remove('flex');
             document.getElementById('bind-step-2-inactive').classList.remove('hidden');
             const btnInactive = "px-4 py-1.5 rounded-md text-slate-500 hover:text-purple-700 transition-all";
             const btnActive = "px-4 py-1.5 rounded-md bg-white text-purple-700 shadow-sm transition-all";
@@ -1024,7 +1489,8 @@
             if (mode === 'search') dom.rfidViewSearch.classList.remove('hidden');
             else if (mode === 'bind') { dom.rfidViewBind.classList.remove('hidden'); renderRfidUnboundList(); }
             else if (mode === 'stocktake') { dom.rfidViewStocktake.classList.remove('hidden'); initStocktakeUI(); }
-            document.getElementById('rfidHiddenInput').focus();
+            
+            if(isRfidListeningActive) document.getElementById('rfidHiddenInput').focus();
         };
 
         window.initStocktakeUI = () => {
@@ -1038,13 +1504,14 @@
         window.startStocktake = () => {
             const cab = dom.stCabinet.value;
             const shelf = dom.stShelf.value;
-            if (!cab || !shelf) return showToast('請先選擇櫃位與層板', 'error');
-            const isCabinetMode = shelf === 'all';
+            if (!cab) return showToast('請先選擇櫃位', 'error');
+            const isCabinetMode = shelf === 'all' || !shelf; 
             const locString = isCabinetMode ? `${cab}` : `${cab} - ${shelf}`;
             stocktakeState = { active: true, targetLocation: locString, isCabinetMode: isCabinetMode, expectedItems: sampleInventory.filter(s => s.storageLocation.startsWith(locString)), scannedItems: new Set(), intruders: [] };
             renderStocktakeResults();
             showToast(`開始盤點: ${isCabinetMode ? cab + " (全櫃)" : locString}`, 'success');
-            document.getElementById('rfidHiddenInput').focus();
+            
+            if(isRfidListeningActive) document.getElementById('rfidHiddenInput').focus();
         };
 
         window.resetStocktake = () => {
@@ -1092,7 +1559,6 @@
         }
 
         async function handleRfidScan(epc) {
-            // 1. STOCKTAKE MODE
             if (rfidMode === 'stocktake' && stocktakeState.active && currentPage === 'rfid') {
                 let item = sampleInventory.find(s => s.epc === epc || s.id === epc);
                 if (!item) { stocktakeState.intruders.push({ sampleName: `未知標籤 (${epc})`, storageLocation: '未知', epc: epc }); renderStocktakeResults(); playSound('error'); return; }
@@ -1106,7 +1572,6 @@
                 }
                 return;
             }
-            // 2. BIND MODE
             if (rfidMode === 'bind' && bindTargetId && currentPage === 'rfid') {
                 const targetSample = sampleInventory.find(s => s.id === bindTargetId);
                 if (!targetSample) return;
@@ -1119,7 +1584,6 @@
                 } catch (e) { showToast("綁定失敗", 'error'); }
                 return;
             }
-            // 3. SEARCH MODE
             let found = sampleInventory.find(s => s.epc === epc);
             if (!found) found = sampleInventory.find(s => s.id === epc);
             if (found) { playSound('success'); showToast(`已掃描: ${found.sampleName}`, 'success'); showSampleDetails(found); } 
@@ -1128,72 +1592,186 @@
 
         function setupRfidListeners() {
             const hiddenInput = document.getElementById('rfidHiddenInput');
-            const updateStatus = (focused) => {
-                isRfidFocused = focused;
-                if (focused) {
-                    dom.rfidStatusCard.className = "bg-white rounded-xl p-6 border-2 border-green-500 cursor-pointer shadow-md flex items-center gap-4 relative overflow-hidden group";
-                    dom.rfidStatusIconBg.className = "w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600";
-                    dom.rfidStatusTitle.textContent = "掃描器已就緒"; dom.rfidStatusDesc.textContent = "系統正在監聽 RFID 訊號...";
+            const card = document.getElementById('rfid-status-card');
+            const iconBg = document.getElementById('rfid-status-icon-bg');
+            const title = document.getElementById('rfid-status-title');
+            const desc = document.getElementById('rfid-status-desc');
+            const badge = document.getElementById('rfid-status-badge');
+            const toggleSwitch = document.getElementById('rfid-toggle-switch');
+            const toggleKnob = document.getElementById('rfid-toggle-knob');
+
+            const updateStatusUI = () => {
+                if (isRfidListeningActive) {
+                    if (isRfidFocused) {
+                        card.className = "bg-white rounded-xl p-4 md:p-6 border-2 border-green-500 cursor-pointer shadow-md flex justify-between items-center relative overflow-hidden group transition-all mb-6";
+                        iconBg.className = "w-12 h-12 md:w-16 md:h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 transition-colors";
+                        title.textContent = "掃描器已就緒";
+                        desc.textContent = "系統正在監聽，點擊可暫停";
+                        badge.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>';
+                        toggleSwitch.className = "w-12 h-6 md:w-14 md:h-7 bg-green-500 rounded-full relative transition-colors shadow-inner flex items-center cursor-pointer";
+                        toggleKnob.className = "w-4 h-4 md:w-5 md:h-5 bg-white rounded-full absolute left-1 shadow transform transition-transform translate-x-6 md:translate-x-7";
+                    } else {
+                        card.className = "bg-white rounded-xl p-4 md:p-6 border-2 border-amber-400 cursor-pointer shadow-md flex justify-between items-center relative overflow-hidden group transition-all mb-6 opacity-90";
+                        iconBg.className = "w-12 h-12 md:w-16 md:h-16 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 transition-colors";
+                        title.textContent = "等待輸入焦點";
+                        desc.textContent = "點擊任意處或此卡片恢復監聽";
+                        badge.innerHTML = '<span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>';
+                        toggleSwitch.className = "w-12 h-6 md:w-14 md:h-7 bg-green-500 rounded-full relative transition-colors shadow-inner flex items-center cursor-pointer";
+                        toggleKnob.className = "w-4 h-4 md:w-5 md:h-5 bg-white rounded-full absolute left-1 shadow transform transition-transform translate-x-6 md:translate-x-7";
+                    }
                 } else {
-                    dom.rfidStatusCard.className = "bg-slate-50 rounded-xl p-6 border-2 border-slate-200 cursor-pointer hover:border-purple-300 transition mb-6 shadow-sm flex items-center gap-4 relative overflow-hidden group opacity-70";
-                    dom.rfidStatusIconBg.className = "w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-400";
-                    dom.rfidStatusTitle.textContent = "掃描器未連線"; dom.rfidStatusDesc.textContent = "點擊此處以啟用掃描模式";
+                    card.className = "bg-slate-50 rounded-xl p-4 md:p-6 border-2 border-slate-300 cursor-pointer hover:border-slate-400 shadow-sm flex justify-between items-center relative overflow-hidden group transition-all mb-6 opacity-75";
+                    iconBg.className = "w-12 h-12 md:w-16 md:h-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 transition-colors";
+                    title.textContent = "已暫停接收";
+                    desc.textContent = "已釋放游標，點擊以重新啟用";
+                    badge.innerHTML = '<span class="relative inline-flex rounded-full h-3 w-3 bg-slate-400"></span>';
+                    toggleSwitch.className = "w-12 h-6 md:w-14 md:h-7 bg-slate-300 rounded-full relative transition-colors shadow-inner flex items-center cursor-pointer";
+                    toggleKnob.className = "w-4 h-4 md:w-5 md:h-5 bg-white rounded-full absolute left-1 shadow transform transition-transform translate-x-0";
                 }
             };
+
             const maintainFocus = () => {
                 if (currentPage !== 'rfid') return;
-                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement !== hiddenInput) {
-                    if(document.activeElement !== dom.bindSearchInput) updateStatus(false);
+                
+                if (!isRfidListeningActive) {
+                    isRfidFocused = false;
+                    updateStatusUI();
                     return;
                 }
-                hiddenInput.focus(); updateStatus(true);
+                
+                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement !== hiddenInput) {
+                    if(document.activeElement !== dom.bindSearchInput) {
+                        isRfidFocused = false;
+                        updateStatusUI();
+                    }
+                    return;
+                }
+                
+                hiddenInput.focus();
+                isRfidFocused = true;
+                updateStatusUI();
             };
-            document.addEventListener('click', (e) => { if (currentPage === 'rfid' && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) maintainFocus(); });
-            hiddenInput.addEventListener('blur', () => { if(currentPage === 'rfid') setTimeout(maintainFocus, 100); });
+
+            document.addEventListener('click', (e) => { 
+                if (currentPage === 'rfid' && !card.contains(e.target) && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
+                    maintainFocus(); 
+                }
+            });
+
+            hiddenInput.addEventListener('blur', () => { 
+                if(currentPage === 'rfid' && isRfidListeningActive) setTimeout(maintainFocus, 100); 
+            });
+
             hiddenInput.addEventListener('keydown', (e) => {
+                if (!isRfidListeningActive) return; 
                 if (e.key === 'Enter') { e.preventDefault(); const epc = hiddenInput.value.trim(); hiddenInput.value = ''; if (epc) handleRfidScan(epc); }
             });
-            dom.rfidStatusCard.addEventListener('click', () => { hiddenInput.focus(); updateStatus(true); });
-            dom.bindSearchInput.addEventListener('input', renderRfidUnboundList);
+
+            card.addEventListener('click', () => { 
+                isRfidListeningActive = !isRfidListeningActive;
+                if (isRfidListeningActive) {
+                    showToast('RFID 監聽已開啟', 'success');
+                    maintainFocus();
+                } else {
+                    showToast('RFID 監聽已暫停，您可以自由使用鍵盤', 'info');
+                    hiddenInput.blur();
+                    maintainFocus(); 
+                }
+            });
+            
+            maintainFocus();
         }
 
         async function stopScanner() { if (html5QrCode && isScannerRunning) { try { await html5QrCode.stop(); html5QrCode.clear(); isScannerRunning = false; } catch (err) {} } }
         
         window.startScanner = async function(mode) {
             if (isScannerRunning) await stopScanner();
-            window.scannerMode = mode; openModal(modals.qrScanner);
+            window.scannerMode = mode;
+            openModal(modals.qrScanner);
+
+            // 判斷是否被包在 iframe 中 (例如 Google Sites)
+            const isInIframe = window.self !== window.top;
+            const iframeWarning = document.getElementById('iframeWarning');
+            const cameraBlock = document.getElementById('cameraBlock');
+            const instructionBlock = document.getElementById('scanInstructionBlock');
+
+            document.getElementById('scanModeIndicator').textContent = `模式: ${mode === 'search' ? '一般搜尋' : '異動處理'}`;
+
+            if (isInIframe) {
+                // 若在沙盒環境中：顯示提示與彈出按鈕
+                iframeWarning.classList.remove('hidden');
+                iframeWarning.classList.add('flex');
+                cameraBlock.classList.add('hidden');
+                cameraBlock.classList.remove('flex');
+                instructionBlock.classList.add('hidden');
+
+                document.getElementById('openNewTabBtn').onclick = () => {
+                    // 精準跳轉至 GitHub Pages 獨立網址
+                    window.open('https://saniltw.github.io/welddata/7.html', '_blank');
+                };
+                return; // 不啟動相機
+            } else {
+                // 若在獨立視窗：顯示相機區塊
+                iframeWarning.classList.add('hidden');
+                iframeWarning.classList.remove('flex');
+                cameraBlock.classList.remove('hidden');
+                cameraBlock.classList.add('flex');
+                instructionBlock.classList.remove('hidden');
+            }
+
+            // 初始化相機 (並加入容錯機制)
             setTimeout(() => {
                 if (html5QrCode === null) html5QrCode = new Html5Qrcode("qr-reader");
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                html5QrCode.start({ facingMode: "environment" }, config, (txt) => {
+                
+                // 動態計算掃描框大小，避免超出手機螢幕
+                const boxSize = Math.min(250, window.innerWidth * 0.7);
+                const config = { fps: 10, qrbox: { width: boxSize, height: boxSize } };
+                
+                const onSuccess = (txt) => {
                      stopScanner().then(() => {
                          closeModal(modals.qrScanner);
-                         // NEW LOGIC: Check if scanned text is an ID first
                          const matchedSample = sampleInventory.find(s => s.id === txt);
                          
                          if (matchedSample) {
-                             // If ID matches, show details (RFID-like behavior)
                              showSampleDetails(matchedSample);
                              playSound('success');
                              showToast(`已掃描: ${matchedSample.sampleName}`, 'success');
                          } else {
-                             // If not an ID, treat as search text
-                             if (mode === 'search' || mode === 'action') {
+                             if (window.scannerMode === 'search' || window.scannerMode === 'action') {
                                  document.getElementById('globalSearchInput').value = txt;
                                  renderInventory();
                                  showToast(`已填入搜尋關鍵字: ${txt}`, 'info');
                              }
                          }
                      });
-                }).catch(console.error);
-            }, 300);
+                };
+
+                // 1. 先嘗試開啟後鏡頭 (environment)
+                html5QrCode.start({ facingMode: "environment" }, config, onSuccess)
+                .then(() => {
+                    isScannerRunning = true;
+                })
+                .catch(err => {
+                    console.warn("後鏡頭啟動失敗，嘗試開啟預設相機:", err);
+                    
+                    // 2. 若後鏡頭失敗，退而求其次嘗試開啟任意可用的相機
+                    html5QrCode.start({ video: true }, config, onSuccess)
+                    .then(() => {
+                        isScannerRunning = true;
+                    })
+                    .catch(fallbackErr => {
+                        console.error("相機啟動完全失敗:", fallbackErr);
+                        showToast('無法開啟相機！請確認已授予權限，且網址為 https://', 'error');
+                        closeModal(modals.qrScanner);
+                    });
+                });
+            }, 400); // 稍微增加等待時間，確保 Modal 完全展開
         }
         
         async function generateLabelImage(sample, format = '40x40') {
             return new Promise((resolve) => {
                 const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const qr = qrcode(0, 'M'); qr.addData(sample.id); qr.make(); const moduleCount = qr.getModuleCount();
                 if (format === '80x50') {
-                    // Create horizontal canvas first
                     const hCanvas = document.createElement('canvas');
                     const hCtx = hCanvas.getContext('2d');
                     const width = 960; 
@@ -1201,33 +1779,22 @@
                     hCanvas.width = width; 
                     hCanvas.height = height;
                     
-                    // Draw background
                     hCtx.fillStyle = '#ffffff'; 
                     hCtx.fillRect(0, 0, width, height);
 
-                    // 1. Top Row (Full Width Header) - Y Baseline ~ 80px
                     hCtx.font = 'bold 72px "Inter", "Noto Sans TC", sans-serif';
                     hCtx.fillStyle = '#000000';
-                    
-                    // Wire Diameter: Left Aligned
                     hCtx.textAlign = 'left';
                     hCtx.fillText(sample.wireDiameter, 30, 80);
-
-                    // Sample Name: Right Aligned
                     hCtx.textAlign = 'right';
                     hCtx.fillText(sample.sampleName, 930, 80);
 
-                    // --- Left Column (QR & ID) ---
-                    // Zone: X=0 to 320. Y=120 to 600.
                     const qrZoneWidth = 320;
                     const targetQrSize = 260;
                     const cellSize = Math.floor(targetQrSize / moduleCount);
                     const qrMarginX = (qrZoneWidth - cellSize * moduleCount) / 2;
-                    // Y Start: 120 (Below header)
-                    // Let's place QR code relatively high in this zone to leave space for ID below
                     const qrMarginY = 150; 
 
-                    // Draw QR
                     hCtx.fillStyle = '#000000'; 
                     for (let r = 0; r < moduleCount; r++) { 
                         for (let c = 0; c < moduleCount; c++) { 
@@ -1235,25 +1802,18 @@
                         } 
                     }
 
-                    // System ID below QR
                     hCtx.textAlign = 'center';
                     hCtx.font = 'bold 24px monospace';
                     hCtx.fillStyle = '#666666';
-                    // Center of left column is 160
                     hCtx.fillText(sample.id.substring(0, 8).toUpperCase(), 160, qrMarginY + cellSize * moduleCount + 40);
 
-
-                    // --- Right Column (Details) ---
-                    // Zone: X=340 to 960.
-                    const leftAlignX = 360; // Padding from left of this col
+                    const leftAlignX = 360;
                     hCtx.textAlign = 'left';
                     hCtx.fillStyle = '#000000';
 
-                    // 1. Standard (AWS...) - Font 34px
                     hCtx.font = '34px "Inter", "Noto Sans TC", sans-serif';
                     hCtx.fillText(sample.applicableStandard || '', leftAlignX, 150);
 
-                    // 2. List Items - Font 48px
                     hCtx.font = '48px "Inter", "Noto Sans TC", sans-serif';
                     let currentY = 220;
                     const lineHeight = 65;
@@ -1267,23 +1827,19 @@
                     hCtx.fillText(`批號: ${sample.batchNo || ''}`, leftAlignX, currentY);
                     currentY += lineHeight;
                     
-                    // Note logic: simple render
                     const noteText = sample.notes ? `備註: ${sample.notes}` : '備註:';
                     hCtx.fillText(noteText, leftAlignX, currentY);
 
-                    // 3. Manufacturer (Bottom Right) - Replaces original ID position
                     hCtx.textAlign = 'right';
                     hCtx.font = '24px "Inter", "Noto Sans TC", sans-serif';
                     hCtx.fillStyle = '#666666';
                     hCtx.fillText(sample.manufacturer || '', 930, 580);
 
-                    // Rotation Logic
                     const rCanvas = document.createElement('canvas');
-                    rCanvas.width = height; // 600
-                    rCanvas.height = width; // 960
+                    rCanvas.width = height;
+                    rCanvas.height = width;
                     const rCtx = rCanvas.getContext('2d');
                     
-                    // Rotate 90 degrees clockwise
                     rCtx.translate(height, 0);
                     rCtx.rotate(90 * Math.PI / 180);
                     rCtx.drawImage(hCanvas, 0, 0);
@@ -1320,7 +1876,22 @@
         }
         document.getElementById('qrLabelSize').addEventListener('change', (e) => updateQrPreview(e.target.value));
 
-        // --- Initializers ---
+        function parseCSVLine(text) {
+            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
+            for (l of text) {
+                if ('"' === l) {
+                    if (s && l === p) row[i] += l;
+                    s = !s;
+                } else if (',' === l && s) l = row[++i] = '';
+                else if ('\n' === l && s) {
+                    if ('\r' === p) row[i] = row[i].slice(0, -1);
+                    row = ret[++r] = [l = '']; i = 0;
+                } else row[i] += l;
+                p = l;
+            }
+            return ret;
+        }
+
         function safeAddListener(id, event, handler) { const el = document.getElementById(id); if (el) el.addEventListener(event, handler); }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1346,12 +1917,35 @@
             safeAddListener('view-list-btn', 'click', () => { currentViewMode = 'list'; document.getElementById('view-list').classList.remove('hidden'); document.getElementById('view-grid').classList.add('hidden'); renderInventory(); });
             safeAddListener('view-grid-btn', 'click', () => { currentViewMode = 'grid'; document.getElementById('view-grid').classList.remove('hidden'); document.getElementById('view-list').classList.add('hidden'); renderInventory(); });
 
-            const thLocation = document.getElementById('th-location');
-            if(thLocation) thLocation.addEventListener('click', () => { sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc'; renderInventory(); });
+            ['sampleName', 'storageLocation', 'wireDiameter', 'steelGrade', 'applicableStandard', 'manufacturer'].forEach(col => {
+                const th = document.getElementById(`th-${col}`);
+                if (th) {
+                    th.addEventListener('click', () => {
+                        if (sortState.column === col) {
+                            sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            sortState.column = col;
+                            sortState.direction = 'asc';
+                        }
+                        updateSortUI();
+                        renderInventory();
+                    });
+                }
+            });
+
+            const mobileSortSelect = document.getElementById('mobileSortSelect');
+            if (mobileSortSelect) {
+                mobileSortSelect.addEventListener('change', (e) => {
+                    const [col, dir] = e.target.value.split('_');
+                    sortState.column = col;
+                    sortState.direction = dir;
+                    updateSortUI();
+                    renderInventory();
+                });
+            }
 
             safeAddListener('nav-report', 'click', () => { renderReportPreview(); openModal(modals.report); });
             
-            // --- NEW: Report Button Listeners ---
             safeAddListener('downloadCsvBtn', 'click', downloadReportCsv);
             safeAddListener('printReportBtn', 'click', printReport);
 
@@ -1364,9 +1958,193 @@
             safeAddListener('mobile-nav-add', 'click', () => { document.getElementById('add-sample-form').reset(); updateAddFormSelects(); openModal(modals.addSample); });
 
             safeAddListener('topActionScanBtn', 'click', () => startScanner('action'));
-            safeAddListener('mobile-nav-scan-action', 'click', () => startScanner('action'));
+            safeAddListener('mobile-nav-scan-qr', 'click', () => startScanner('search'));
+            safeAddListener('mobile-filter-toggle', 'click', () => {
+                const panel = document.getElementById('inventory-filters-panel');
+                panel.classList.toggle('hidden');
+                panel.classList.toggle('grid');
+            });
             safeAddListener('topScanBtn', 'click', () => startScanner('search'));
             
+            // --- CSV IMPORT LISTENERS ---
+            safeAddListener('topImportBtn', 'click', () => {
+                document.getElementById('csvFileInput').value = '';
+                document.getElementById('csvFileName').textContent = '尚未選擇檔案';
+                document.getElementById('confirmImportBtn').disabled = true;
+                openModal(modals.importCsv);
+            });
+
+            safeAddListener('downloadCsvTemplateBtn', 'click', () => {
+                const csvContent = "\uFEFF品名,線徑,鋼種,標準,製造商,配方代號,批號,爐號,製程明細,備註\n測試樣品A,1.2mm,SUS304,AWS A5.9,測試廠商,F-01,B-100,Fur-01,拉絲,這是一筆範例資料\n測試樣品B,2.0mm,1018,,另一個廠商,,,,,";
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "批次匯入樣品範例檔.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            let currentCsvData = [];
+            safeAddListener('csvFileInput', 'change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                document.getElementById('csvFileName').textContent = file.name;
+                document.getElementById('confirmImportBtn').disabled = true;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const text = event.target.result;
+                    const rows = parseCSVLine(text);
+                    const validRows = rows.filter(r => r.join('').trim() !== '');
+                    
+                    if (validRows.length <= 1) {
+                        showToast('CSV 檔案為空或格式錯誤', 'error');
+                        return;
+                    }
+                    
+                    currentCsvData = validRows.slice(1);
+                    if (currentCsvData.length > 0) {
+                        document.getElementById('confirmImportBtn').disabled = false;
+                    }
+                };
+                reader.readAsText(file); 
+            });
+
+            safeAddListener('confirmImportBtn', 'click', async () => {
+                if (currentCsvData.length === 0) return;
+                
+                const btn = document.getElementById('confirmImportBtn');
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> 處理中...';
+                btn.disabled = true;
+
+                try {
+                    document.getElementById('batchAddTbody').innerHTML = '';
+                    batchRowCounter = 0;
+                    updateAddFormSelects();
+
+                    currentCsvData.forEach(row => {
+                        addBatchRow({
+                            sampleName: row[0]?.trim() || '',
+                            wireDiameter: row[1]?.trim() || '',
+                            steelGrade: row[2]?.trim() || '',
+                            applicableStandard: row[3]?.trim() || '',
+                            manufacturer: row[4]?.trim() || '',
+                            formulaCode: row[5]?.trim() || '',
+                            batchNo: row[6]?.trim() || '',
+                            furnaceNo: row[7]?.trim() || '',
+                            processDetails: row[8]?.trim() || '',
+                            notes: row[9]?.trim() || '',
+                            skipRfid: false
+                        });
+                    });
+
+                    closeModal(modals.importCsv);
+                    openModal(modals.batchAdd);
+                    showToast(`已載入 ${currentCsvData.length} 筆資料，請確認後存入`, 'success');
+                } catch (e) {
+                    console.error(e);
+                    showToast('匯入發生錯誤', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            });
+
+            // --- TABLE BATCH ADD LISTENERS ---
+            safeAddListener('topBatchAddBtn', 'click', () => {
+                document.getElementById('batchAddTbody').innerHTML = '';
+                batchRowCounter = 0;
+                updateAddFormSelects();
+                for(let i=0; i<3; i++) addBatchRow(); // Pre-populate 3 empty rows
+                openModal(modals.batchAdd);
+            });
+            
+            safeAddListener('addBatchRowBtn', 'click', () => {
+                addBatchRow();
+            });
+            
+            safeAddListener('confirmBatchAddBtn', 'click', async () => {
+                const rows = document.querySelectorAll('.batch-row');
+                if(rows.length === 0) return showToast('沒有資料可寫入', 'error');
+
+                let isValid = true;
+                rows.forEach(r => {
+                    const name = r.querySelector('[name="sampleName"]');
+                    const dia = r.querySelector('[name="wireDiameter"]');
+                    if(!name.value.trim() || !dia.value.trim()) {
+                        isValid = false;
+                        name.classList.add('border-red-500', 'bg-red-50');
+                        dia.classList.add('border-red-500', 'bg-red-50');
+                    } else {
+                        name.classList.remove('border-red-500', 'bg-red-50');
+                        dia.classList.remove('border-red-500', 'bg-red-50');
+                    }
+                });
+
+                if(!isValid) return showToast('請填寫所有必填欄位 (品名、線徑)', 'error');
+
+                const btn = document.getElementById('confirmBatchAddBtn');
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> 處理中...';
+                btn.disabled = true;
+
+                const operator = getCurrentOperator();
+                const timestamp = serverTimestamp();
+                const batch = writeBatch(db);
+                let count = 0;
+
+                const cab = document.getElementById('batchStorageCabinet').value;
+                const shelf = document.getElementById('batchStorageShelf').value;
+                let loc = cab;
+                if (!cab || cab === '待入庫') loc = '待入庫';
+                else if (shelf) loc = `${cab} - ${shelf}`;
+
+                rows.forEach(tr => {
+                    const data = getBatchRowData(tr);
+                    const newDocRef = doc(collection(db, 'sampleSystem/data/inventory'));
+                    batch.set(newDocRef, {
+                        ...data,
+                        storageLocation: loc,
+                        loggedBy: operator,
+                        loggedAt: timestamp
+                    });
+                    
+                    const historyRef = doc(collection(db, 'sampleSystem/data/history'));
+                    batch.set(historyRef, {
+                        action: '批次建檔',
+                        person: operator,
+                        sampleName: data.sampleName,
+                        details: `表格手動批次建立至 ${loc}`,
+                        timestamp: timestamp
+                    });
+                    count++;
+                });
+
+                try {
+                    await batch.commit();
+                    showToast(`成功批次建立 ${count} 筆樣品`, 'success');
+                    closeModal(modals.batchAdd);
+                } catch(e) {
+                    console.error(e);
+                    showToast('寫入失敗', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            });
+
+            const batchStorageCabinet = document.getElementById('batchStorageCabinet');
+            if (batchStorageCabinet) { 
+                batchStorageCabinet.addEventListener('change', (e) => handleCabinetChange(e, 'batchStorageShelf')); 
+            }
+            
+            const batchMoveCabinet = document.getElementById('batchMoveCabinet');
+            if (batchMoveCabinet) {
+                batchMoveCabinet.addEventListener('change', (e) => handleCabinetChange(e, 'batchMoveShelf'));
+            }
+
             safeAddListener('cartDrawerBtn', 'click', () => { document.getElementById('stagingDrawer').classList.remove('drawer-hidden'); document.getElementById('stagingDrawer').classList.add('drawer-visible'); });
             safeAddListener('closeDrawerBtn', 'click', () => { document.getElementById('stagingDrawer').classList.remove('drawer-visible'); document.getElementById('stagingDrawer').classList.add('drawer-hidden'); });
 
@@ -1378,11 +2156,9 @@
                 checkboxes.forEach(cb => cb.checked = !allChecked);
                 this.textContent = !allChecked ? '取消全選' : '全選';
                 
-                // Update count
                 document.getElementById('staging-selected-count').textContent = !allChecked ? checkboxes.length : 0;
             });
             
-            // Batch Return Listener
             document.getElementById('batch-return-btn').addEventListener('click', async () => {
                 const checks = document.querySelectorAll('#staging-list input[type="checkbox"]:checked');
                 if(checks.length === 0) return showToast('請先勾選項目', 'error');
@@ -1434,7 +2210,6 @@
                 }
             });
 
-            // Batch Archive Listener
             document.getElementById('batch-archive-btn').addEventListener('click', async () => {
                 const checks = document.querySelectorAll('#staging-list input[type="checkbox"]:checked');
                 if(checks.length === 0) return showToast('請先勾選項目', 'error');
@@ -1517,65 +2292,89 @@
             safeAddListener('closeSettingsBtn', 'click', () => closeModal(modals.settings));
 
             const storageCabinet = document.getElementById('storageCabinet');
-            if (storageCabinet) { storageCabinet.addEventListener('change', (e) => { const cab = e.target.value; const shelfSel = document.getElementById('storageShelf'); shelfSel.innerHTML = '<option value="">選擇層數</option>'; if(cab && systemConfig.storageLayout[cab]) { shelfSel.disabled = false; Object.keys(systemConfig.storageLayout[cab]).forEach(s => shelfSel.innerHTML += `<option value="${s}">${s}</option>`); } else shelfSel.disabled = true; }); }
+            if (storageCabinet) { storageCabinet.addEventListener('change', (e) => handleCabinetChange(e, 'storageShelf')); }
             
-            // --- START FIX: Add Event Listener for Edit Cabinet ---
             const editStorageCabinet = document.getElementById('editStorageCabinet');
-            if (editStorageCabinet) { 
-                editStorageCabinet.addEventListener('change', (e) => { 
-                    const cab = e.target.value; 
-                    const shelfSel = document.getElementById('editStorageShelf'); 
-                    shelfSel.innerHTML = '<option value="">選擇層數</option>'; 
-                    if(cab && systemConfig.storageLayout[cab]) { 
-                        shelfSel.disabled = false; 
-                        Object.keys(systemConfig.storageLayout[cab]).forEach(s => 
-                            shelfSel.innerHTML += `<option value="${s}">${s}</option>`
-                        ); 
+            if (editStorageCabinet) { editStorageCabinet.addEventListener('change', (e) => handleCabinetChange(e, 'editStorageShelf')); }
+
+            const handleAddSampleSubmit = async (isSaveAndNext) => {
+                const form = document.getElementById('add-sample-form');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                let loc = form.storageCabinet.value;
+                if (!loc || loc === '待入庫') {
+                    loc = '待入庫';
+                } else if (form.storageShelf.value) {
+                    loc = `${loc} - ${form.storageShelf.value}`;
+                }
+                
+                try {
+                    await addDoc(collection(db, 'sampleSystem/data/inventory'), { 
+                        sampleName: form.sampleName.value, 
+                        wireDiameter: form.wireDiameter.value, 
+                        steelGrade: form.steelGrade.value,
+                        applicableStandard: form.applicableStandard.value, 
+                        manufacturer: form.manufacturer.value, 
+                        formulaCode: form.formulaCode.value, 
+                        batchNo: form.batchNo.value, 
+                        furnaceNo: form.furnaceNo.value, 
+                        processDetails: form.processDetails.value, 
+                        notes: document.getElementById('notes').value, 
+                        storageLocation: loc, 
+                        skipRfid: document.getElementById('skipRfid').checked,
+                        loggedBy: getCurrentOperator(), 
+                        loggedAt: serverTimestamp() 
+                    });
+                    await logAction('放入', getCurrentOperator(), form.sampleName.value, loc); 
+                    showToast('新增成功', 'success'); 
+                    
+                    if (isSaveAndNext) {
+                        form.sampleName.value = '';
+                        form.batchNo.value = '';
+                        document.getElementById('notes').value = '';
+                        form.sampleName.focus();
                     } else {
-                        shelfSel.disabled = true; 
-                    } 
-                }); 
-            }
-            // --- END FIX ---
+                        closeModal(modals.addSample);
+                    }
+                } catch(err) { console.error(err); showToast('失敗', 'error'); }
+            };
 
             const addSampleForm = document.getElementById('add-sample-form');
             if (addSampleForm) {
-                addSampleForm.addEventListener('submit', async (e) => {
-                    e.preventDefault(); const form = e.target; const loc = `${form.storageCabinet.value} - ${form.storageShelf.value}`;
-                    try {
-                        await addDoc(collection(db, 'sampleSystem/data/inventory'), { 
-                            sampleName: form.sampleName.value, 
-                            wireDiameter: form.wireDiameter.value, 
-                            steelGrade: form.steelGrade.value, // New Field
-                            applicableStandard: form.applicableStandard.value, 
-                            manufacturer: form.manufacturer.value, 
-                            formulaCode: form.formulaCode.value, 
-                            batchNo: form.batchNo.value, 
-                            furnaceNo: form.furnaceNo.value, 
-                            processDetails: form.processDetails.value, 
-                            notes: document.getElementById('notes').value, 
-                            storageLocation: loc, 
-                            loggedBy: getCurrentOperator(), 
-                            loggedAt: serverTimestamp() 
-                        });
-                        await logAction('放入', getCurrentOperator(), form.sampleName.value, loc); showToast('新增成功', 'success'); closeModal(modals.addSample);
-                    } catch(err) { console.error(err); showToast('失敗', 'error'); }
+                addSampleForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    handleAddSampleSubmit(false);
                 });
+                
+                const saveAndNextBtn = document.getElementById('saveAndNextBtn');
+                if(saveAndNextBtn) {
+                    saveAndNextBtn.addEventListener('click', () => {
+                        handleAddSampleSubmit(true);
+                    });
+                }
             }
             
             const editSampleForm = document.getElementById('edit-sample-form');
             if (editSampleForm) {
                 editSampleForm.addEventListener('submit', async (e) => {
                     e.preventDefault(); const id = document.getElementById('editSampleId').value;
-                    // --- START FIX: Get new location ---
+                    
                     const cab = document.getElementById('editStorageCabinet').value;
                     const shelf = document.getElementById('editStorageShelf').value;
-                    const newLoc = (cab && shelf) ? `${cab} - ${shelf}` : null;
+                    let newLoc = cab;
+                    if (!cab || cab === '待入庫') {
+                        newLoc = '待入庫';
+                    } else if (shelf) {
+                        newLoc = `${cab} - ${shelf}`;
+                    }
                     
                     const newData = { 
                         sampleName: document.getElementById('editSampleName').value, 
                         wireDiameter: document.getElementById('editWireDiameter').value, 
-                        steelGrade: document.getElementById('editSteelGrade').value, // New Field
+                        steelGrade: document.getElementById('editSteelGrade').value, 
                         applicableStandard: document.getElementById('editApplicableStandard').value, 
                         manufacturer: document.getElementById('editManufacturer').value, 
                         formulaCode: document.getElementById('editFormulaCode').value, 
@@ -1583,13 +2382,13 @@
                         furnaceNo: document.getElementById('editFurnaceNo').value, 
                         batchNo: document.getElementById('editBatchNo').value, 
                         notes: document.getElementById('editNotes').value, 
+                        skipRfid: document.getElementById('editSkipRfid').checked,
                         lastModifiedBy: getCurrentOperator(), 
                         lastModifiedAt: serverTimestamp() 
                     };
                     if (newLoc) {
                         newData.storageLocation = newLoc;
                     }
-                    // --- END FIX ---
 
                     try { await updateDoc(doc(db, 'sampleSystem/data/inventory', id), newData); showToast('更新成功', 'success'); closeModal(modals.editSample); } catch(e) { showToast('更新失敗', 'error'); }
                 });
@@ -1608,7 +2407,6 @@
 
             dom.stCabinet.addEventListener('change', (e) => { const cab = e.target.value; dom.stShelf.innerHTML = '<option value="">選擇層板</option>'; if (cab && systemConfig.storageLayout[cab]) { dom.stShelf.disabled = false; dom.stShelf.innerHTML += '<option value="all" class="font-bold text-indigo-600">📦 整櫃盤點 (全部層架)</option>'; Object.keys(systemConfig.storageLayout[cab]).forEach(s => { dom.stShelf.innerHTML += `<option value="${s}">${s}</option>`; }); } else { dom.stShelf.disabled = true; } });
 
-            // --- Fix: Select All Logic ---
             document.getElementById('selectAllInventory').addEventListener('change', (e) => {
                 const visibleData = getFilteredInventory();
                 if (e.target.checked) {
@@ -1627,38 +2425,185 @@
                 updateSelectionBar();
             });
 
-            // --- Fix: Cabinet Filter Logic ---
             const cabinetFilter = document.getElementById('cabinetFilter');
             if (cabinetFilter) {
                 cabinetFilter.addEventListener('change', () => {
-                   // When cabinet changes, update the inventory view AND the other filters options
                    renderInventory(); 
-                   updateLinkedFilters(); // Ensure other filters reflect what's in this cabinet
+                   updateLinkedFilters(); 
                 });
             }
             
-            // --- NEW: Filter Listeners with Linked Logic ---
             ['steelGradeFilter', 'manufacturerFilter', 'standardFilter'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
                     el.addEventListener('change', () => {
                         renderInventory();
-                        updateLinkedFilters(); // Recalculate options based on new selection
+                        updateLinkedFilters();
                     });
                 }
             });
 
-            // --- Fix: Batch Download Logic (Enhanced for Single Item) ---
+            safeAddListener('inventory-batch-move-btn', 'click', () => {
+                if (selectedInventoryIds.size === 0) return showToast('請先勾選樣品', 'error');
+                
+                document.getElementById('batchMoveCount').textContent = selectedInventoryIds.size;
+                
+                const cabSel = document.getElementById('batchMoveCabinet');
+                cabSel.innerHTML = '<option value="待入庫" class="font-bold text-indigo-600">📥 待入庫 (尚未分配)</option>';
+                Object.keys(systemConfig.storageLayout || {}).forEach(k => cabSel.innerHTML += `<option value="${k}">${k}</option>`);
+                
+                const shelfSel = document.getElementById('batchMoveShelf');
+                shelfSel.innerHTML = '<option value="">--- 不指定層 (僅放櫃內) ---</option>';
+                shelfSel.disabled = true;
+
+                openModal(modals.batchMove);
+            });
+
+            safeAddListener('confirmBatchMoveBtn', 'click', async () => {
+                if (selectedInventoryIds.size === 0) return;
+                
+                const cab = document.getElementById('batchMoveCabinet').value;
+                const shelf = document.getElementById('batchMoveShelf').value;
+                let newLoc = cab;
+                if (!cab || cab === '待入庫') newLoc = '待入庫';
+                else if (shelf) newLoc = `${cab} - ${shelf}`;
+
+                const btn = document.getElementById('confirmBatchMoveBtn');
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> 處理中...';
+                btn.disabled = true;
+
+                const operator = getCurrentOperator();
+                const timestamp = serverTimestamp();
+                
+                try {
+                    const idsArray = Array.from(selectedInventoryIds);
+                    const CHUNK_SIZE = 200; 
+                    let count = 0;
+                    
+                    for (let i = 0; i < idsArray.length; i += CHUNK_SIZE) {
+                        const chunk = idsArray.slice(i, i + CHUNK_SIZE);
+                        const batch = writeBatch(db);
+                        
+                        chunk.forEach(id => {
+                            const sample = sampleInventory.find(s => s.id === id);
+                            if(sample) {
+                                const invRef = doc(db, 'sampleSystem/data/inventory', id);
+                                batch.update(invRef, {
+                                    storageLocation: newLoc,
+                                    lastModifiedBy: operator,
+                                    lastModifiedAt: timestamp
+                                });
+                                
+                                const historyRef = doc(collection(db, 'sampleSystem/data/history'));
+                                batch.set(historyRef, {
+                                    action: '批量移位',
+                                    person: operator,
+                                    sampleName: sample.sampleName,
+                                    details: `從 [${sample.storageLocation}] 移至 [${newLoc}]`,
+                                    timestamp: timestamp
+                                });
+                                count++;
+                            }
+                        });
+                        await batch.commit();
+                    }
+                    
+                    showToast(`成功移動 ${count} 筆樣品至 ${newLoc}`, 'success');
+                    closeModal(modals.batchMove);
+                    selectedInventoryIds.clear();
+                    document.getElementById('selectAllInventory').checked = false;
+                    renderInventory();
+                    updateSelectionBar();
+                } catch (e) {
+                    console.error(e);
+                    showToast('移動失敗', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            });
+
+            // --- BATCH TAG (SKIP RFID) LISTENERS ---
+            safeAddListener('inventory-batch-tag-btn', 'click', () => {
+                if (selectedInventoryIds.size === 0) return showToast('請先勾選樣品', 'error');
+                document.getElementById('batchTagCount').textContent = selectedInventoryIds.size;
+                openModal(modals.batchTag);
+            });
+
+            const updateBatchTag = async (skipStatus, actionName) => {
+                if (selectedInventoryIds.size === 0) return;
+                const btnId = skipStatus ? 'setSkipRfidBtn' : 'setRequireRfidBtn';
+                const btn = document.getElementById(btnId);
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="ph ph-spinner animate-spin text-lg"></i> 處理中...';
+                btn.disabled = true;
+
+                const operator = getCurrentOperator();
+                const timestamp = serverTimestamp();
+                
+                try {
+                    const idsArray = Array.from(selectedInventoryIds);
+                    const CHUNK_SIZE = 200; 
+                    let count = 0;
+                    
+                    for (let i = 0; i < idsArray.length; i += CHUNK_SIZE) {
+                        const chunk = idsArray.slice(i, i + CHUNK_SIZE);
+                        const batch = writeBatch(db);
+                        
+                        chunk.forEach(id => {
+                            const sample = sampleInventory.find(s => s.id === id);
+                            if(sample) {
+                                const invRef = doc(db, 'sampleSystem/data/inventory', id);
+                                batch.update(invRef, {
+                                    skipRfid: skipStatus,
+                                    lastModifiedBy: operator,
+                                    lastModifiedAt: timestamp
+                                });
+                                
+                                const historyRef = doc(collection(db, 'sampleSystem/data/history'));
+                                batch.set(historyRef, {
+                                    action: '標籤設定',
+                                    person: operator,
+                                    sampleName: sample.sampleName,
+                                    details: skipStatus ? '設定為免綁定' : '恢復為需綁定',
+                                    timestamp: timestamp
+                                });
+                                count++;
+                            }
+                        });
+                        await batch.commit();
+                    }
+                    
+                    showToast(`成功將 ${count} 筆樣品${actionName}`, 'success');
+                    closeModal(modals.batchTag);
+                    selectedInventoryIds.clear();
+                    document.getElementById('selectAllInventory').checked = false;
+                    renderInventory();
+                    updateSelectionBar();
+                    if (rfidMode === 'bind') renderRfidUnboundList();
+                } catch (e) {
+                    console.error(e);
+                    showToast('設定失敗', 'error');
+                } finally {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                }
+            };
+
+            safeAddListener('setSkipRfidBtn', 'click', () => updateBatchTag(true, '設定為「免綁定」'));
+            safeAddListener('setRequireRfidBtn', 'click', () => updateBatchTag(false, '恢復為「需綁定」'));
+
+
             document.getElementById('inventory-batch-download-btn').addEventListener('click', async () => {
                 if (selectedInventoryIds.size === 0) return;
                 
-                const size = document.getElementById('inventoryBatchLabelSize').value; // '40x40' or '80x50'
+                const size = document.getElementById('inventoryBatchLabelSize').value;
                 const btn = document.getElementById('inventory-batch-download-btn');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> 處理中...';
                 btn.disabled = true;
 
-                // Optimization: If only 1 item, download directly as PNG
                 if (selectedInventoryIds.size === 1) {
                     const id = Array.from(selectedInventoryIds)[0];
                     const sample = sampleInventory.find(s => s.id === id);
@@ -1683,7 +2628,6 @@
                     return;
                 }
 
-                // Batch Mode: Use ZIP
                 const zip = new JSZip();
                 const promises = [];
                 selectedInventoryIds.forEach(id => {
@@ -1691,7 +2635,6 @@
                     if (sample) {
                         promises.push(generateLabelImage(sample, size).then(dataUrl => {
                             const cleanName = sample.sampleName.replace(/[<>:"/\\|?*]/g, '_');
-                            // Remove data:image/png;base64, prefix
                             zip.file(`${cleanName}_${id.substring(0,4)}.png`, dataUrl.split(',')[1], {base64: true});
                         }));
                     }
@@ -1709,12 +2652,9 @@
                 showToast(`已下載 ${selectedInventoryIds.size} 個 QR Code (ZIP)`, 'success');
             });
             
-            // Add listener for batch-qr-btn in Staging Drawer (Robustness)
             const stagingBatchBtn = document.getElementById('batch-qr-btn');
             if (stagingBatchBtn) {
                 stagingBatchBtn.addEventListener('click', async () => {
-                    // Simple logic: grab all staging samples for now since we don't track selection strictly in drawer yet
-                    // OR implementing simple check
                     const selectedChecks = document.querySelectorAll('#staging-list input[type="checkbox"]:checked');
                     if (selectedChecks.length === 0) return showToast('請先勾選暫存區樣品', 'error');
 
@@ -1728,17 +2668,12 @@
                     const promises = [];
                     let singleSample = null;
 
-                    // Identify selected samples (Using index or simple logic if IDs were stored, here relying on sample list order if DOM matches)
-                    // Better approach: Iterate stagingSamples and match? 
-                    // Let's assume user wants all for now or check current simple implementation.
-                    // To be safe, let's just zip all STAGING samples for now as the checkboxes in drawer are visual in this snippet version
-                    // OR simply fix it to be robust:
                     const stagingListDivs = document.getElementById('staging-list').children;
                     let count = 0;
                     
                     for (let i = 0; i < stagingListDivs.length; i++) {
                         if (stagingListDivs[i].querySelector('input').checked) {
-                            const sample = stagingSamples[i]; // Assuming order matches
+                            const sample = stagingSamples[i];
                             if (sample) {
                                 count++;
                                 singleSample = sample;
@@ -1773,7 +2708,6 @@
                 });
             }
 
-
             onAuthStateChanged(auth, user => {
                 if (user) {
                     setupRfidListeners();
@@ -1781,10 +2715,6 @@
                         systemConfig = snap.exists() ? snap.data() : { storageLayout: {}, personnel: [] };
                         const cabFilter = document.getElementById('cabinetFilter');
                         if (cabFilter) { 
-                            // Initial population of cabinets from config
-                            // But LinkedFilters will override this to show only relevant cabinets if filtered
-                            // We can let LinkedFilters handle it, or pre-fill here.
-                            // Let's pre-fill here for initial state.
                             cabFilter.innerHTML = '<option value="all">所有櫃位</option>'; 
                             Object.keys(systemConfig.storageLayout || {}).forEach(k => cabFilter.innerHTML += `<option value="${k}">${k}</option>`); 
                         }
@@ -1793,12 +2723,13 @@
                     });
                     onSnapshot(query(collection(db, 'sampleSystem/data/inventory')), snap => {
                         sampleInventory = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                        window.sampleInventory = sampleInventory; // Sync to window for inline calls
+                        window.sampleInventory = sampleInventory; 
                         const loader = document.getElementById('loader'); if (loader) loader.classList.add('hidden');
                         if(currentPage === 'inventory') dom.contentInventory.classList.remove('hidden');
                         
-                        updateFormSuggestions(); // Update <datalist> for forms
-                        updateLinkedFilters();   // Update Top Filters based on current inventory & selection
+                        updateFormSuggestions(); 
+                        updateLinkedFilters();   
+                        updateSortUI();
                         renderInventory();
                         
                         if(currentPage === 'rfid' && rfidMode === 'bind') renderRfidUnboundList();
@@ -1810,7 +2741,6 @@
             const globalSearch = document.getElementById('globalSearchInput');
             if (globalSearch) globalSearch.addEventListener('input', renderInventory);
             
-            // New Event Listeners for Search Dropdowns
             const searchFieldSelect = document.getElementById('globalSearchField');
             if(searchFieldSelect) searchFieldSelect.addEventListener('change', renderInventory);
             
@@ -1821,13 +2751,11 @@
             if(mobileSearchInput) mobileSearchInput.addEventListener('input', renderInventory);
         });
 
-        // Expose functions and data for inline HTML handlers
         window.closeModal = closeModal;
         window.switchPage = switchPage;
         window.switchRfidMode = switchRfidMode; 
         window.openQrModal = openQrModal;
         window.resetBindSelection = resetBindSelection;
-        // window.sampleInventory is set inside onSnapshot
         window.openActionModal = openActionModal;
     </script>
 </body>
