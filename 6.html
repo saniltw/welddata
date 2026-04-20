@@ -413,21 +413,6 @@
         </div>
     </div>
 
-    <!-- QR Code 類型選擇 Modal -->
-    <div id="qr-action-selector-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[90] hidden">
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full" onclick="event.stopPropagation()">
-            <h2 class="text-2xl font-semibold mb-4 text-slate-800">選擇 QR Code 類型</h2>
-            <p class="mb-6 text-slate-600">為品項 <strong id="qr-selector-item-name" class="text-slate-800"></strong> 產生專屬功能的 QR Code。</p>
-            <div class="flex flex-col gap-3">
-                <button onclick="generateActionQRCode('in')" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">入庫專用 QR Code</button>
-                <button onclick="generateActionQRCode('out')" class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600">出庫專用 QR Code</button>
-                <button onclick="generateActionQRCode('adjustment')" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">庫存調整專用 QR Code</button>
-                <button onclick="generateActionQRCode(null)" class="w-full bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600">通用 QR Code (掃描後選擇)</button>
-            </div>
-            <button onclick="closeQrActionSelector()" class="w-full mt-4 bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300">取消</button>
-        </div>
-    </div>
-
     <!-- QR Code 產生 Modal -->
     <div id="qr-code-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100] hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-xs w-full text-center" onclick="event.stopPropagation()">
@@ -435,9 +420,10 @@
             <div id="qr-code-container" class="p-4 bg-white inline-block">
                 <!-- QR Code Canvas and Item Name will be generated here -->
             </div>
-            <div class="mt-6 flex flex-col sm:flex-row gap-3">
-                <button onclick="closeQRCodeModal()" class="w-full bg-slate-200 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300 transition-colors">關閉</button>
-                <button id="qr-download-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">下載</button>
+            <div class="mt-6 flex flex-col sm:flex-row gap-2">
+                <button onclick="closeQRCodeModal()" class="w-full bg-slate-200 font-semibold py-2 px-3 rounded-lg hover:bg-slate-300 transition-colors text-sm">關閉</button>
+                <button id="qr-download-40-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-700 text-sm whitespace-nowrap">下載 40x40</button>
+                <button id="qr-download-40x80-btn" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-700 text-sm whitespace-nowrap">下載 40x80</button>
             </div>
         </div>
     </div>
@@ -500,7 +486,6 @@
         let selectedReportCategory = null;
         let videoStream = null;
         let urlParamHandled = false; // Flag to handle URL parameter only once
-        let qrGenerationItemId = null; // To hold itemId for QR generation
         let editedItemImageData = null; // To hold new/resized image data for the editor
 
 
@@ -625,7 +610,6 @@
                     closeItemEditor();
                     closeTransactionModal();
                     closeQRCodeModal();
-                    closeQrActionSelector();
                     closeCategoryEditor();
                     closeQRScanner();
                     closeScanActionModal();
@@ -710,9 +694,13 @@
             }
             editMainBtn.disabled = false;
 
-            // 確保有選中的大類
+            // 確保有選中的大類，預設優先選擇 "碳鋼鋼板"
             if (!selectedMainCategory || !mainCategoriesStore.has(selectedMainCategory)) {
-                selectedMainCategory = mainCategories.length > 0 ? mainCategories[0].name : null;
+                if (mainCategoriesStore.has('碳鋼鋼板')) {
+                    selectedMainCategory = '碳鋼鋼板';
+                } else {
+                    selectedMainCategory = mainCategories.length > 0 ? mainCategories[0].name : null;
+                }
             }
             
             // 填充大類選單
@@ -770,10 +758,14 @@
             if (subCategories.length > 0) {
                 subCatContainer.classList.remove('hidden');
                 
-                // 確保有選中的小類
+                // 確保有選中的小類，預設優先選擇 "氣保銲相關"
                 const subCategoryNames = subCategories.map(s => s.name);
                 if (!selectedSubCategory || !subCategoryNames.includes(selectedSubCategory)) {
-                    selectedSubCategory = subCategoryNames[0];
+                    if (subCategoryNames.includes('氣保銲相關')) {
+                        selectedSubCategory = '氣保銲相關';
+                    } else {
+                        selectedSubCategory = subCategoryNames[0];
+                    }
                 }
 
                 // 填充小類選單
@@ -897,6 +889,7 @@
                     <td class="px-2 sm:px-4 py-2 hidden md:table-cell">${item.location || 'N/A'}</td>
                     <td class="px-2 sm:px-4 py-2 text-right">
                         <div class="flex justify-end items-center gap-1 flex-wrap">
+                            <button onclick="showQRCodeModal('${item.id}')" title="產生 QR Code" class="p-1.5 bg-purple-100 text-purple-800 rounded-md hover:bg-purple-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><rect x="14" y="14" width="3" height="3"/></svg></button>
                             <button onclick="showTransactionModal('${item.id}', 'in')" title="入庫" class="p-1.5 bg-green-100 text-green-800 rounded-md hover:bg-green-200"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg></button>
                             <button onclick="showTransactionModal('${item.id}', 'out')" title="出庫" class="p-1.5 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg></button>
                             <button onclick="showTransactionModal('${item.id}', 'adjustment')" title="調整" class="p-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 4a1 1 0 000 2h6a1 1 0 100-2H7zM7 9a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm5 3a1 1 0 100 2H8a1 1 0 100-2h4z" clip-rule="evenodd" /></svg></button>
@@ -1342,7 +1335,7 @@
                 subCatSelect.value = item.subCategory || '';
                 
                 qrBtn.classList.remove('hidden');
-                qrBtn.onclick = () => showQrActionSelector(itemId);
+                qrBtn.onclick = () => showQRCodeModal(itemId);
                 
             } else {
                 document.getElementById('item-editor-title').textContent = '新增品項';
@@ -2202,28 +2195,7 @@
             document.getElementById('scan-action-modal').classList.add('hidden');
         }
         
-        window.showQrActionSelector = function(itemId) {
-            const item = inventoryDatabase[itemId];
-            if (!item) return;
-            qrGenerationItemId = itemId;
-            document.getElementById('qr-selector-item-name').textContent = item.name;
-            document.getElementById('qr-action-selector-modal').classList.remove('hidden');
-        }
-        
-        window.closeQrActionSelector = function() {
-            document.getElementById('qr-action-selector-modal').classList.add('hidden');
-            qrGenerationItemId = null;
-        }
-
-        window.generateActionQRCode = function(action) {
-            if (qrGenerationItemId) {
-                const itemIdToGenerate = qrGenerationItemId; // 儲存品號
-                closeQrActionSelector(); // 這會清除全域變數
-                showQRCodeModal(itemIdToGenerate, action); // 使用儲存的品號
-            }
-        }
-
-        window.showQRCodeModal = function(itemId, action = null) {
+        window.showQRCodeModal = function(itemId) {
             const item = inventoryDatabase[itemId];
             if (!item) {
                 showToast('找不到品項', 'error');
@@ -2232,7 +2204,8 @@
 
             const modal = document.getElementById('qr-code-modal');
             const container = document.getElementById('qr-code-container');
-            const downloadBtn = document.getElementById('qr-download-btn');
+            const download40Btn = document.getElementById('qr-download-40-btn');
+            const download40x80Btn = document.getElementById('qr-download-40x80-btn');
             container.innerHTML = '';
 
             const canvas = document.createElement('canvas');
@@ -2243,10 +2216,7 @@
             itemNameEl.className = 'font-semibold text-slate-800 mt-2';
             container.appendChild(itemNameEl);
             
-            let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 更新後的網址
-            if (action) {
-                url += `&action=${action}`;
-            }
+            let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 產生通用 QR Code
 
             QRCode.toCanvas(canvas, url, { width: 200, margin: 2 }, function (error) {
                 if (error) {
@@ -2257,7 +2227,8 @@
                 }
             });
             
-            downloadBtn.onclick = () => downloadQRCode(itemId, action);
+            download40Btn.onclick = () => downloadQRCode(itemId, '40');
+            download40x80Btn.onclick = () => downloadQRCode(itemId, '40x80_rotated');
             modal.classList.remove('hidden');
         }
 
@@ -2265,46 +2236,84 @@
             document.getElementById('qr-code-modal').classList.add('hidden');
         }
 
-        async function downloadQRCode(itemId, action = null) {
+        async function downloadQRCode(itemId, format = '40') {
             const item = inventoryDatabase[itemId];
+            if (!item) return;
             
             try {
-                // Create a temporary canvas to generate the QR for download
                 const tempCanvas = document.createElement('canvas');
-                let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 更新後的網址
-                if (action) {
-                    url += `&action=${action}`;
-                }
-                
-                await QRCode.toCanvas(tempCanvas, url, { width: 256, margin: 2 });
-                
-                const itemName = item.name;
-                const PADDING = 20;
-                const FONT_SIZE = 16;
+                let url = `https://saniltw.github.io/welddata/6.html?itemId=${item.id}`; // 通用
                 
                 const combinedCanvas = document.createElement('canvas');
                 const ctx = combinedCanvas.getContext('2d');
+                
+                if (format === '40x80_rotated') {
+                    // 1. 建立虛擬的 800x400 橫式畫布 (符合人類閱讀直覺：左 QR，右文字)
+                    const virtualCanvas = document.createElement('canvas');
+                    virtualCanvas.width = 800;
+                    virtualCanvas.height = 400;
+                    const vCtx = virtualCanvas.getContext('2d');
+                    
+                    vCtx.fillStyle = 'white';
+                    vCtx.fillRect(0, 0, virtualCanvas.width, virtualCanvas.height);
+                    
+                    // 畫 QR Code (放左邊，尺寸減半並垂直置中)
+                    await QRCode.toCanvas(tempCanvas, url, { width: 200, margin: 1 });
+                    vCtx.drawImage(tempCanvas, 30, 100);
+                    
+                    // 畫文字 (放右邊)
+                    vCtx.fillStyle = 'black';
+                    vCtx.textAlign = 'left';
+                    vCtx.textBaseline = 'middle';
+                    
+                    // 寫入品號
+                    vCtx.font = '36px sans-serif';
+                    vCtx.fillText('品號: ' + item.id, 260, 110, 500); // 增加最大寬度限制至 500
+                    
+                    // 寫入品名
+                    vCtx.font = 'bold 56px sans-serif';
+                    vCtx.fillText(item.name, 260, 200, 500); // 增加最大寬度限制至 500
 
-                const qrWidth = tempCanvas.width;
-                const qrHeight = tempCanvas.height;
-                const textHeight = FONT_SIZE + 10;
-
-                combinedCanvas.width = qrWidth + PADDING * 2;
-                combinedCanvas.height = qrHeight + textHeight + PADDING * 2;
-
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
-                ctx.drawImage(tempCanvas, PADDING, PADDING);
-                ctx.fillStyle = 'black';
-                ctx.font = `bold ${FONT_SIZE}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.fillText(itemName, combinedCanvas.width / 2, qrHeight + PADDING + FONT_SIZE);
+                    // 寫入規格
+                    const specs = formatSpecifications(item);
+                    vCtx.font = '36px sans-serif';
+                    vCtx.fillText(specs !== 'N/A' ? specs : '規格: 無', 260, 290, 500);
+                    
+                    // 2. 建立最終要輸出的 400x800 直式畫布 (符合條碼機出紙方向)
+                    combinedCanvas.width = 400;
+                    combinedCanvas.height = 800;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+                    
+                    // 3. 將虛擬畫布順時針旋轉 90 度並畫到最終畫布上
+                    ctx.translate(400, 0);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.drawImage(virtualCanvas, 0, 0);
+                    
+                } else {
+                    // 40x40 標籤 (比例 1:1, 解析度設為 400x400)
+                    combinedCanvas.width = 400;
+                    combinedCanvas.height = 400;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+                    
+                    // 畫 QR Code (置中偏上)
+                    await QRCode.toCanvas(tempCanvas, url, { width: 320, margin: 1 });
+                    ctx.drawImage(tempCanvas, 40, 10);
+                    
+                    // 畫文字 (下方置中)
+                    ctx.fillStyle = 'black';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = 'bold 28px sans-serif';
+                    ctx.fillText(item.name, 200, 360);
+                }
                 
                 const dataUrl = combinedCanvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.href = dataUrl;
-                const actionText = action ? `_${action.toUpperCase()}` : '_通用';
-                link.download = `QR_${item.id}_${item.name}${actionText}.png`;
+                const fileNamePrefix = format === '40x80_rotated' ? '40x80' : '40x40';
+                link.download = `QR_${fileNamePrefix}_${item.id}.png`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
