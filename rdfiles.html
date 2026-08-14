@@ -1,0 +1,4293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>技術檔案資料庫 - 中控管理系統</title>
+  
+  <!-- 引入 Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- 引入 Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* ================= 設計系統與變數 ================= */
+    :root {
+      --font-primary: 'Outfit', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      
+      /* 色彩定義 */
+      --color-primary: #0284c7;        /* 科技電弧藍 */
+      --color-primary-hover: #0369a1;
+      --color-primary-light: #f0f9ff;
+      --color-primary-border: #bae6fd;
+      
+      --color-warning: #ea580c;        /* 工安警示橘 */
+      --color-warning-hover: #c2410c;
+      --color-warning-light: #fff7ed;
+      --color-warning-border: #ffedd5;
+
+      --color-danger: #ef4444;         /* 危險紅 */
+      --color-danger-hover: #dc2626;
+      --color-danger-light: #fef2f2;
+      --color-danger-border: #fee2e2;
+
+      --color-success: #10b981;        /* 成功綠 */
+      --color-success-light: #ecfdf5;
+      --color-success-border: #a7f3d0;
+
+      --color-dark: #0f172a;           /* 深 slate 色 */
+      --color-muted: #64748b;          /* 灰色 */
+      --color-border: #e2e8f0;         /* 框線灰 */
+      --color-bg: #f8fafc;             /* 背景金屬灰 */
+      --color-surface: #ffffff;        /* 面板純白 */
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ================= 基礎樣式 ================= */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-primary);
+      background-color: var(--color-bg);
+      color: var(--color-dark);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        linear-gradient(rgba(203, 213, 225, 0.25) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(203, 213, 225, 0.25) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+
+    /* 斜紋警示帶 */
+    .warning-stripes {
+      height: 6px;
+      width: 100%;
+      background-image: repeating-linear-gradient(45deg, var(--color-warning) 0, var(--color-warning) 10px, #ffffff 10px, #ffffff 20px);
+      opacity: 0.95;
+    }
+
+    /* ================= 頁首/導覽列 ================= */
+    header {
+      background-color: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon-wrapper {
+      background-color: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
+      padding: 10px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon-wrapper i {
+      color: var(--color-primary);
+      animation: spin 12s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--color-dark);
+    }
+
+    .brand-text span {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* 身份顯示狀態區 */
+    .user-status-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      padding: 6px 12px;
+      border-radius: var(--radius-md);
+    }
+    
+    .user-status-text {
+      font-size: 0.8rem;
+      font-weight: 750;
+      color: var(--color-muted);
+      white-space: nowrap;
+    }
+
+    /* 按鈕樣式 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+
+    .btn-xs {
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-primary {
+      background-color: var(--color-primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--color-primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--color-surface);
+      color: var(--color-dark);
+      border-color: var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--color-bg);
+      border-color: var(--color-muted);
+    }
+
+    .btn-secondary.active {
+      background-color: var(--color-primary-light);
+      color: var(--color-primary);
+      border-color: var(--color-primary-border);
+    }
+
+    .btn-danger {
+      background-color: var(--color-danger-light);
+      color: var(--color-danger);
+      border-color: var(--color-danger-border);
+    }
+
+    .btn-danger:hover {
+      background-color: var(--color-danger);
+      color: #ffffff;
+    }
+
+    .btn-icon {
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      color: var(--color-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .btn-icon:hover {
+      background-color: var(--color-bg);
+      color: var(--color-dark);
+    }
+
+    .btn-icon.active {
+      background-color: var(--color-primary-light);
+      color: var(--color-primary);
+      border: 1px solid var(--color-primary-border);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ================= 主內容區 ================= */
+    main {
+      max-width: 1200px;
+      width: 100%;
+      margin: 32px auto;
+      padding: 0 24px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 控制與搜尋面板 */
+    .control-panel {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .search-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-muted);
+      pointer-events: none;
+      display: flex;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      font-size: 0.875rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: var(--transition);
+      font-family: var(--font-primary);
+    }
+
+    .search-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    /* 樹狀分類導覽佈局 (方案 B) */
+    .db-content-layout {
+      display: flex;
+      gap: 20px;
+      margin-top: 8px;
+    }
+
+    .category-tree-sidebar {
+      width: 250px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border);
+      padding-right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .category-tree-sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      color: var(--color-dark);
+      font-size: 0.95rem;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--color-border);
+    }
+
+    .db-files-area {
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .category-tree-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .category-tree-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .category-tree-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: var(--color-muted);
+      transition: var(--transition);
+      user-select: none;
+    }
+
+    .category-tree-row:hover {
+      background-color: var(--color-bg);
+      color: var(--color-dark);
+    }
+
+    .category-tree-row.active {
+      background-color: rgba(2, 132, 199, 0.08);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .category-tree-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      margin-right: 6px;
+      cursor: pointer;
+      color: var(--color-muted);
+      transition: var(--transition);
+    }
+
+    .category-tree-toggle:hover {
+      background-color: var(--color-border);
+      color: var(--color-dark);
+    }
+
+    .category-tree-icon {
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    .category-tree-children {
+      margin-left: 20px;
+      padding-left: 10px;
+      border-left: 1px dashed var(--color-border);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .db-content-layout {
+        flex-direction: column;
+      }
+      .category-tree-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+        padding-right: 0;
+        padding-bottom: 16px;
+      }
+      .category-tree-children {
+        margin-left: 16px;
+        padding-left: 8px;
+      }
+    }
+
+    .tag-btn {
+      white-space: nowrap;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
+      color: var(--color-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .tag-btn:hover {
+      background-color: var(--color-bg);
+      color: var(--color-dark);
+    }
+
+    .tag-btn.active {
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ================= 檔案數據庫卡片 & 工具列 ================= */
+    .database-card {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .db-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--color-border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .select-all-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      color: var(--color-dark);
+    }
+
+    .batch-actions-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--color-primary-light);
+      border: 1px solid var(--color-primary-border);
+      padding: 5px 12px;
+      border-radius: var(--radius-md);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .toolbar-right {
+      display: flex;
+      gap: 6px;
+    }
+
+    .inset-container {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+    }
+
+    /* 檔案清單/網格模式 */
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 65vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    /* 網格視圖樣式 */
+    .file-list.grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 16px;
+      max-height: none;
+      overflow-y: visible;
+    }
+
+    /* 單個檔案列/卡片 */
+    .file-item {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      transition: var(--transition);
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .file-item:hover {
+      border-color: var(--color-primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .file-selection {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .file-checkbox {
+      width: 18px;
+      height: 18px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--color-border);
+      accent-color: var(--color-primary);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .file-checkbox:hover {
+      border-color: var(--color-primary);
+    }
+
+    .file-meta-side {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      overflow: hidden;
+      flex-grow: 1;
+    }
+
+    .file-icon-box {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      padding: 10px;
+      border-radius: var(--radius-md);
+      color: var(--color-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .file-item:hover .file-icon-box {
+      background-color: var(--color-primary-light);
+      border-color: var(--color-primary-border);
+      color: var(--color-primary);
+    }
+
+    .file-info {
+      overflow: hidden;
+      flex-grow: 1;
+    }
+
+    .file-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--color-dark);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .file-details {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      flex-wrap: wrap;
+    }
+
+    .category-badge {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+
+    .detail-uploader, .detail-downloads {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background-color: var(--color-primary-light);
+      color: var(--color-primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    
+    .detail-downloads {
+      background-color: var(--color-warning-light);
+      color: var(--color-warning);
+    }
+
+    .file-desc-text {
+      font-size: 0.8rem;
+      color: var(--color-muted);
+      margin-top: 8px;
+      background-color: var(--color-bg);
+      border-left: 3px solid var(--color-border);
+      padding: 6px 12px;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* 網格視圖特有覆寫 */
+    .file-list.grid .file-item {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 18px;
+      height: 100%;
+    }
+
+    .file-list.grid .file-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .file-list.grid .file-meta-side {
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      gap: 12px;
+    }
+
+    .file-list.grid .file-info {
+      width: 100%;
+    }
+
+    .file-list.grid .file-title {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+
+    .file-list.grid .file-desc-text {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .file-list.grid .file-actions {
+      width: 100%;
+      justify-content: flex-end;
+      border-top: 1px solid var(--color-border);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .file-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-download {
+      font-size: 0.75rem;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      border: 1px solid var(--color-border);
+      background-color: var(--color-surface);
+      color: var(--color-dark);
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-download:hover {
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #ffffff;
+    }
+
+    /* 空狀態 */
+    .empty-state {
+      padding: 48px;
+      text-align: center;
+      color: var(--color-muted);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      font-size: 0.875rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .empty-state i {
+      color: var(--color-border);
+    }
+
+    /* ================= 彈出視窗 (Modals) ================= */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      transition: opacity 0.2s ease-out;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 520px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      transform: translateY(-20px);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-backdrop.active .modal-card {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.125rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-dark);
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      max-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-footer {
+      padding: 14px 24px;
+      background-color: var(--color-bg);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* 表單元件 */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--color-dark);
+    }
+
+    .form-control {
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: var(--transition);
+      font-family: var(--font-primary);
+      background-color: var(--color-bg);
+    }
+
+    .form-control:focus {
+      border-color: var(--color-primary);
+      background-color: var(--color-surface);
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    /* 檔案上傳輸入樣式 */
+    .file-input-wrapper {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      text-align: center;
+      background-color: var(--color-bg);
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .file-input-wrapper:hover {
+      border-color: var(--color-primary);
+      background-color: var(--color-primary-light);
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .file-input-desc {
+      font-size: 0.825rem;
+      color: var(--color-muted);
+      margin-top: 6px;
+    }
+
+    .file-input-wrapper i {
+      color: var(--color-muted);
+      margin-bottom: 8px;
+    }
+
+    .file-input-wrapper:hover i {
+      color: var(--color-primary);
+    }
+
+    /* 資訊/警告訊息框 */
+    .msg-box {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      display: none;
+    }
+    
+    .msg-box.active {
+      display: block;
+    }
+
+    .msg-box-warning {
+      background-color: var(--color-warning-light);
+      border-color: var(--color-warning-border);
+      color: var(--color-warning);
+    }
+
+    .msg-box-danger {
+      background-color: var(--color-danger-light);
+      border-color: var(--color-danger-border);
+      color: var(--color-danger);
+    }
+
+    /* 分類列表 (管理分類視窗中) */
+    .cat-list-container {
+      background-color: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .cat-list-item {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .cat-list-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cat-badge-system {
+      font-size: 0.75rem;
+      color: var(--color-muted);
+      background-color: var(--color-bg);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ================= 確認對話框 (特別主題) ================= */
+    .confirm-modal {
+      z-index: 70;
+    }
+    .confirm-modal .modal-card {
+      max-width: 380px;
+      border-top: 4px solid var(--color-danger);
+    }
+
+    .confirm-body {
+      text-align: center;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .confirm-icon-wrapper {
+      width: 64px;
+      height: 64px;
+      background-color: var(--color-danger-light);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-danger);
+    }
+
+    .confirm-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-dark);
+    }
+
+    .confirm-desc {
+      font-size: 0.875rem;
+      color: var(--color-muted);
+      line-height: 1.6;
+    }
+
+    .confirm-footer {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      background: transparent;
+      border: none;
+      padding: 0 24px 32px 24px;
+    }
+
+    /* RWD 響應式微調 */
+    @media (max-width: 768px) {
+      .btn-text {
+        display: none; /* 手機端只顯示按鈕圖示以防擁擠 */
+      }
+      .btn {
+        padding: 10px;
+      }
+      .btn-download .btn-text {
+        display: inline; /* 項目內下載按鈕保留文字 */
+      }
+      .btn-download {
+        padding: 8px 14px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav-container {
+        padding: 12px 16px;
+      }
+      main {
+        margin: 16px auto;
+        padding: 0 16px;
+        gap: 16px;
+      }
+      .control-panel, .database-card {
+        padding: 16px;
+      }
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 14px;
+      }
+      .file-meta-side {
+        width: 100%;
+      }
+      .file-actions {
+        width: 100%;
+        justify-content: flex-end;
+        border-top: 1px solid var(--color-border);
+        padding-top: 10px;
+        margin-top: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="warning-stripes"></div>
+
+  <!-- 頁首導覽 -->
+  <header>
+    <div class="nav-container">
+      <div class="brand-section">
+        <div class="brand-icon-wrapper">
+          <i data-lucide="database" class="w-6 h-6"></i>
+        </div>
+        <div class="brand-text">
+          <h1>技術檔案資料庫</h1>
+          <span>TECHNICAL FILE REPOSITORY</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <!-- 身份切換區域 -->
+        <div class="user-status-area">
+          <span class="user-status-text" id="currentUserDisplay">👤 一般訪客 (唯讀)</span>
+          <button onclick="window.openLoginModal()" class="btn btn-secondary btn-xs" id="loginBtn" style="padding: 6px 10px;">
+            <i data-lucide="log-in" class="w-3.5 h-3.5"></i> <span class="btn-text">變更身分</span>
+          </button>
+        </div>
+
+        <a href="RD.html" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> <span class="btn-text">返回中控台</span>
+        </a>
+
+        <button id="btnManageStaffHeader" onclick="window.openManageStaffModal()" class="btn btn-secondary" style="display: none;">
+          <i data-lucide="users" class="w-4 h-4"></i> <span class="btn-text">人員管理</span>
+        </button>
+        <button id="btnManageCategoryHeader" onclick="window.openManageCategoryModal()" class="btn btn-secondary" style="display: none;">
+          <i data-lucide="settings-2" class="w-4 h-4"></i> <span class="btn-text">管理分類</span>
+        </button>
+        <button id="btnUploadFileHeader" onclick="window.openAddFileModal()" class="btn btn-primary" style="display: none;">
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i> <span class="btn-text">上傳文件</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main>
+    
+    <!-- 搜尋與分類過濾面板 -->
+    <section class="control-panel">
+      <div class="search-wrapper" style="max-width: 100%; width: 100%;">
+        <div class="search-icon">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </div>
+        <input type="text" id="fileSearchInput" placeholder="搜尋檔案名稱、分類標籤、上傳者或真實檔名..." class="search-input" oninput="window.renderFiles()"/>
+      </div>
+    </section>
+
+    <!-- 檔案數據庫卡片 -->
+    <section class="database-card">
+      
+      <!-- 頂部批次與視圖工具列 -->
+      <div class="db-toolbar">
+        <div class="toolbar-left">
+          <label class="select-all-label">
+            <input type="checkbox" id="selectAllCheckbox" onchange="window.toggleSelectAll(this)" class="file-checkbox">
+            <span>全選</span>
+          </label>
+          
+          <!-- 浮動批次工具列 -->
+          <div id="batchActionsBar" class="batch-actions-bar" style="display: none;">
+            <span id="selectedCountLabel">已選擇 0 個項目</span>
+            <button onclick="window.promptBatchDelete()" class="btn btn-danger btn-xs">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 批次刪除
+            </button>
+            <button onclick="window.batchDownload()" class="btn btn-primary btn-xs">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> 批次下載
+            </button>
+          </div>
+        </div>
+        
+        <!-- 視圖切換器 -->
+        <div class="toolbar-right">
+          <button id="btnListView" onclick="window.setViewMode('list')" class="btn-icon active" title="列表視圖">
+            <i data-lucide="list" class="w-4 h-4"></i>
+          </button>
+          <button id="btnGridView" onclick="window.setViewMode('grid')" class="btn-icon" title="網格視圖">
+            <i data-lucide="grid" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 檔案資料與分類導覽佈局 (方案 B 樹狀圖) -->
+      <div class="db-content-layout">
+        <!-- 左側樹狀分類導覽 -->
+        <aside class="category-tree-sidebar">
+          <div class="category-tree-sidebar-header">
+            <i data-lucide="folder-tree" class="w-4 h-4 text-primary"></i>
+            <span>資料庫分類</span>
+          </div>
+          <div id="categoryTreeContainer" class="category-tree-container">
+            <!-- JS 動態樹狀圖 -->
+          </div>
+        </aside>
+
+        <!-- 右側主內容區 -->
+        <div class="db-files-area">
+          <!-- 置頂「🔥 最新上傳」精選專區 -->
+          <div id="recentUploadsWrapper" style="display: none; margin-bottom: 16px; border-bottom: 1px dashed var(--color-border); padding-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--color-warning); font-size: 0.9rem; margin-bottom: 8px;">
+              <i data-lucide="flame" class="w-4.5 h-4.5" style="color: var(--color-warning);"></i>
+              <span>最新上傳技術文件</span>
+            </div>
+            <div id="recentUploadsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 8px;">
+              <!-- JS 動態置頂卡片 -->
+            </div>
+          </div>
+
+          <div class="inset-container">
+            <div id="fileListContainer" class="file-list">
+              <!-- JS 動態檔案清單 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================= 各類 Modals 彈出視窗 ======================= -->
+
+  <!-- 1. 新增/編輯檔案 Modal -->
+  <div id="addFileModal" class="modal-backdrop">
+    <form id="addFileForm" onsubmit="window.submitFile(event)" class="modal-card">
+      <div class="modal-header">
+        <h3 id="addFileModalTitle" class="modal-title"></h3>
+        <button type="button" onclick="window.closeAddFileModal()" class="btn-icon">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        
+        <div id="fileInputWrapper" class="file-input-wrapper">
+          <i data-lucide="upload" class="w-8 h-8"></i>
+          <p class="form-label" id="fileInputLabel">拖曳檔案至此或點擊選取</p>
+          <p class="file-input-desc">限制最大 10MB。支援副檔名: PDF, DOC, DOCX, XLS, XLSX</p>
+          <input type="file" id="addFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addFileName">檔案顯示名稱</label>
+          <input type="text" id="addFileName" required placeholder="例如：機台維護標準規範 v1.2" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addFileCategory">所屬分類</label>
+          <select id="addFileCategory" class="form-control">
+            <!-- JS 動態產生選項 -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addFileAccessOverride">安全限制等級</label>
+          <select id="addFileAccessOverride" class="form-control" style="background-color: var(--color-surface);">
+            <option value="Inherit">繼承分類預設設定</option>
+            <option value="Viewer">一般檢視者 (Viewer) 可看</option>
+            <option value="Uploader">技術上傳者 (Uploader) 可看</option>
+            <option value="Editor">編輯管理員 (Editor) 可看</option>
+            <option value="Admin">僅系統管理員 (Admin) 可看</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">發行對象 (適用部門，多選)</label>
+          <div id="addFileDeptContainer" style="display: flex; gap: 12px; flex-wrap: wrap; background-color: var(--color-bg); padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            <!-- JS 動態生成 -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addFileUploader">上傳者姓名</label>
+          <input type="text" id="addFileUploader" required placeholder="如：林建國" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="addFileDescription">備註說明</label>
+          <textarea id="addFileDescription" placeholder="輸入此檔案的簡短說明或更新摘要（選填）..." class="form-control" rows="3" style="resize: vertical; font-family: var(--font-primary);"></textarea>
+        </div>
+
+        <div id="fileUploadMessage" class="msg-box msg-box-danger"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" onclick="window.closeAddFileModal()" class="btn btn-secondary">取消</button>
+        <button type="submit" id="fileSubmitBtn" class="btn btn-primary">確認上傳</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 2. 管理分類標籤 Modal -->
+  <div id="manageCategoryModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i data-lucide="settings-2" class="w-5 h-5 text-primary"></i> 管理分類標籤
+        </h3>
+        <button onclick="window.closeManageCategoryModal()" class="btn-icon">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="categoryListContainer" class="cat-list-container">
+          <!-- JS 動態清單 -->
+        </div>
+
+        <form onsubmit="window.submitNewCategory(event)" class="form-group" style="margin-top: 16px; border-top: 1px dashed var(--color-border); padding-top: 16px;">
+          <label class="form-label" style="font-weight:700;">建立新分類</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="newCategoryName" required placeholder="輸入新分類名稱..." class="form-control" style="flex-grow: 1;">
+              <button type="submit" class="btn btn-primary" style="padding: 10px 16px;">新增</button>
+            </div>
+            <div>
+              <label class="form-label" for="newCategoryParent" style="font-size:0.75rem; color:var(--color-muted); margin-bottom:4px;">上級分類 (留空則建立為大類)</label>
+              <select id="newCategoryParent" class="form-control">
+                <option value="">無 (作為大類)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.closeManageCategoryModal()" class="btn btn-secondary">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 編輯分類屬性與權限彈出視窗 (已擴充) -->
+  <div id="editCategoryModal" class="modal-backdrop" style="background-color: rgba(15, 23, 42, 0.6); z-index: 60;">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title">修改分類屬性</h3>
+        <button onclick="window.closeEditCategoryModal()" class="btn-icon">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="editCategoryInput">分類名稱</label>
+          <input type="text" id="editCategoryInput" class="form-control" placeholder="輸入新的分類名稱">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editCategoryParent">上級分類</label>
+          <select id="editCategoryParent" class="form-control" style="background-color: var(--color-surface);">
+            <option value="">無 (作為大類)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editCategoryAccess">預設安全等級限制</label>
+          <select id="editCategoryAccess" class="form-control" style="background-color: var(--color-surface);">
+            <option value="Viewer">檢視者 (Viewer) 以上可看</option>
+            <option value="Uploader">上傳者 (Uploader) 以上可看</option>
+            <option value="Editor">編輯管理員 (Editor) 以上可看</option>
+            <option value="Admin">僅系統管理員 (Admin) 可看</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label">預設發行部門對象</label>
+          <div id="editCategoryDeptContainer" style="display: flex; gap: 8px; flex-wrap: wrap; background-color: var(--color-bg); padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            <!-- JS 動態生成 -->
+          </div>
+        </div>
+        <p style="font-size: 0.72rem; color: var(--color-muted); margin-top: 6px;">注意：變更後，該分類下目前設定為「繼承」之檔案將會套用新規則。</p>
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.closeEditCategoryModal()" class="btn btn-secondary">取消</button>
+        <button onclick="window.confirmEditCategory()" class="btn btn-primary">確認修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 通用危險確認視窗 (如刪除) -->
+  <div id="actionConfirmModal" class="modal-backdrop confirm-modal">
+    <div class="modal-card">
+      <div class="confirm-body">
+        <div class="confirm-icon-wrapper">
+          <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+        </div>
+        <h4 id="confirmModalTitle" class="confirm-title">確認執行此操作？</h4>
+        <p id="confirmModalDesc" class="confirm-desc">此操作執行後將無法復原，請確認是否繼續。</p>
+      </div>
+      <div class="confirm-footer">
+        <button onclick="window.closeConfirmModal()" class="btn btn-secondary">取消</button>
+        <button id="confirmModalActionBtn" class="btn btn-danger" style="background-color: var(--color-danger); color: white;">確認執行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 身份驗證登入 Modal (方案 B) -->
+  <div id="loginModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i data-lucide="user-check" class="w-5 h-5 text-primary"></i> 變更身分 / 登入
+        </h3>
+        <button onclick="window.closeLoginModal()" class="btn-icon">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="loginForm" onsubmit="window.submitLogin(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="loginDeptSelect">第一步：選擇部門</label>
+            <select id="loginDeptSelect" class="form-control" onchange="window.handleLoginDeptChange(this)">
+              <!-- JS 動態填入部門 -->
+            </select>
+          </div>
+          
+          <div class="form-group" id="loginUserSelectGroup" style="margin-top: 8px; display: none;">
+            <label class="form-label" for="loginUserSelect">第二步：選擇登入帳號</label>
+            <select id="loginUserSelect" class="form-control" onchange="window.handleLoginUserChange(this)">
+              <!-- JS 動態連動人員 -->
+            </select>
+          </div>
+          
+          <div id="loginRoleHint" style="font-size: 0.8rem; color: var(--color-muted); font-weight: 700; margin-top: 4px;">
+            預期角色：讀取中...
+          </div>
+
+          <div class="form-group" id="loginPasswordGroup" style="display: none; margin-top: 8px;">
+            <label class="form-label" for="loginPassword">角色驗證密碼</label>
+            <input type="password" id="loginPassword" class="form-control" placeholder="請輸入對應角色密碼">
+          </div>
+
+          <div id="loginMessage" class="msg-box msg-box-danger"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="window.closeLoginModal()" class="btn btn-secondary">取消</button>
+          <button type="submit" class="btn btn-primary">確認變更</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. 系統人員與權限管理對話框 (三頁籤配置) -->
+  <div id="manageStaffModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i data-lucide="users" class="w-5 h-5 text-primary"></i> 人員與權限配置管理
+        </h3>
+        <button onclick="window.closeManageStaffModal()" class="btn-icon">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="gap: 12px; padding: 20px 24px;">
+        
+        <!-- 頁籤導覽 -->
+        <div style="display: flex; gap: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+          <button id="tabBtnRoster" onclick="window.switchStaffTab('roster')" class="btn btn-secondary btn-xs active" style="font-weight: 700;">人員名冊管理</button>
+          <button id="tabBtnPermissions" onclick="window.switchStaffTab('permissions')" class="btn btn-secondary btn-xs" style="font-weight: 700;">角色功能授權</button>
+          <button id="tabBtnDepartments" onclick="window.switchStaffTab('departments')" class="btn btn-secondary btn-xs" style="font-weight: 700;">發行部門管理</button>
+          <button id="tabBtnLogs" onclick="window.switchStaffTab('logs')" class="btn btn-secondary btn-xs" style="font-weight: 700;">系統操作日誌</button>
+        </div>
+
+        <!-- 頁籤一：名冊管理內容 -->
+        <div id="staffTabRoster" style="display: block;">
+          <!-- 人員清單容器 -->
+          <div id="staffListContainer" class="cat-list-container" style="max-height: 200px;">
+            <!-- JS 動態清單 -->
+          </div>
+
+          <!-- 登錄新人員與權限選單 -->
+          <form onsubmit="window.submitNewStaff(event)" class="form-group" style="margin-top: 12px; border-top: 1px solid var(--color-border); padding-top: 12px;">
+            <label class="form-label">登錄新進人員與授權</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="newStaffName" required placeholder="姓名" class="form-control" style="flex: 1; min-width: 80px; padding: 8px 12px;">
+              <input type="text" id="newStaffRole" required placeholder="職稱" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px;">
+              
+              <select id="newStaffDept" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px; background-color: var(--color-surface);">
+                <!-- JS 動態生成 -->
+              </select>
+
+              <select id="newStaffPermission" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px; background-color: var(--color-surface);" onchange="window.toggleNewStaffPasswordInput(this)">
+                <option value="Viewer">檢視者 (Viewer)</option>
+                <option value="Uploader">上傳者 (Uploader)</option>
+                <option value="Editor">編輯管理員 (Editor)</option>
+                <option value="Admin">管理員 (Admin)</option>
+              </select>
+              <input type="password" id="newStaffPassword" placeholder="登入密碼" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px; display: none;">
+              <button type="submit" class="btn btn-primary btn-xs" style="height: 38px; padding: 0 16px; flex-shrink: 0;">登錄</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 頁籤二：角色功能授權內容 -->
+        <div id="staffTabPermissions" style="display: none;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" for="selectRoleConfig">選擇要配置的角色</label>
+            <select id="selectRoleConfig" class="form-control" style="background-color: var(--color-surface);" onchange="window.renderRolePermissionsConfig()">
+              <option value="Viewer">檢視者 (Viewer)</option>
+              <option value="Uploader">上傳者 (Uploader)</option>
+              <option value="Editor">編輯管理員 (Editor)</option>
+              <option value="Admin">管理員 (Admin)</option>
+            </select>
+          </div>
+
+          <div style="background-color: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_upload" class="file-checkbox">
+              <span>允許上傳技術文件</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_editOwn" class="file-checkbox">
+              <span>允許編輯自己上傳的檔案</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_editAll" class="file-checkbox">
+              <span>允許編輯所有人的檔案</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_deleteOwn" class="file-checkbox">
+              <span>允許刪除自己上傳的檔案</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_deleteAll" class="file-checkbox">
+              <span>允許刪除所有檔案與批次刪除</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_manageCategory" class="file-checkbox">
+              <span>允許管理分類標籤</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.875rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="perm_manageStaff" class="file-checkbox">
+              <span>允許管理人員與權限配置</span>
+            </label>
+          </div>
+
+          <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
+            <button onclick="window.saveRolePermissions()" class="btn btn-primary">儲存角色授權</button>
+          </div>
+          <div id="permissionsSaveMessage" class="msg-box msg-box-warning" style="margin-top: 10px; padding: 8px 12px;"></div>
+        </div>
+
+        <!-- 頁籤三：發行部門管理內容 -->
+        <div id="staffTabDepartments" style="display: none;">
+          <!-- 部門清單容器 -->
+          <div id="deptListContainer" class="cat-list-container" style="max-height: 200px;">
+            <!-- JS 動態清單 -->
+          </div>
+
+          <!-- 建立新部門 (已擴充) -->
+          <form onsubmit="window.submitNewDepartment(event)" class="form-group" style="margin-top: 12px; border-top: 1px solid var(--color-border); padding-top: 12px; gap: 8px;">
+            <label class="form-label">新增自訂部門與公用權限</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <input type="text" id="newDeptInputName" required placeholder="例如：財務部" class="form-control" style="flex: 1.5; min-width: 100px; padding: 8px 12px;">
+              
+              <select id="newDeptDefaultRole" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px; background-color: var(--color-surface);">
+                <option value="Viewer">公用: 檢視者 (Viewer)</option>
+                <option value="Uploader">公用: 上傳者 (Uploader)</option>
+                <option value="Editor">公用: 編輯管理員 (Editor)</option>
+                <option value="Admin">公用: 管理員 (Admin)</option>
+              </select>
+              
+              <input type="password" id="newDeptPassword" placeholder="公用密碼(選填)" class="form-control" style="flex: 1; min-width: 100px; padding: 8px 12px;">
+              <button type="submit" class="btn btn-primary" style="padding: 10px 16px; flex-shrink: 0;">新增</button>
+            </div>
+          </form>
+          <div id="deptSaveMessage" class="msg-box msg-box-warning" style="margin-top: 6px; padding: 6px 12px;"></div>
+        </div>
+
+        <!-- 頁籤四：系統操作日誌 -->
+        <div id="staffTabLogs" style="display: none;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+            <input type="text" id="logSearchInput" placeholder="搜尋人員或檔案名稱..." class="form-control" style="flex: 1; min-width: 120px; padding: 6px 12px; font-size: 0.8rem;" oninput="window.renderAuditLogsList()">
+            <select id="logActionFilter" class="form-control" style="width: 120px; padding: 6px 12px; font-size: 0.8rem; background-color: var(--color-surface);" onchange="window.renderAuditLogsList()">
+              <option value="ALL">全部動作</option>
+              <option value="UPLOAD">上傳檔案</option>
+              <option value="DOWNLOAD">下載檔案</option>
+              <option value="PREVIEW">預覽檔案</option>
+              <option value="EDIT">編輯資訊</option>
+              <option value="DELETE">刪除檔案</option>
+            </select>
+          </div>
+          <div id="auditLogsContainer" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 8px; background-color: var(--color-bg-dark);">
+            <!-- JS 動態產生操作日誌 -->
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.closeManageStaffModal()" class="btn btn-secondary">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. 編輯人員資訊對話框 (微型) -->
+  <div id="editStaffModal" class="modal-backdrop" style="background-color: rgba(15, 23, 42, 0.6); z-index: 60;">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title">修改人員資訊</h3>
+        <button onclick="window.closeEditStaffModal()" class="btn-icon">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="editStaffInputName">人員姓名</label>
+          <input type="text" id="editStaffInputName" class="form-control" placeholder="輸入姓名">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editStaffInputRole">職稱</label>
+          <input type="text" id="editStaffInputRole" class="form-control" placeholder="輸入職稱 (如：現場主管)">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editStaffInputDept">所屬部門</label>
+          <select id="editStaffInputDept" class="form-control" style="background-color: var(--color-surface);">
+            <!-- JS 動態生成 -->
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editStaffInputPermission">權限角色</label>
+          <select id="editStaffInputPermission" class="form-control" style="background-color: var(--color-surface);" onchange="window.toggleEditStaffPasswordInput(this)">
+            <option value="Viewer">檢視者 (Viewer)</option>
+            <option value="Uploader">上傳者 (Uploader)</option>
+            <option value="Editor">編輯管理員 (Editor)</option>
+            <option value="Admin">管理員 (Admin)</option>
+          </select>
+        </div>
+        <div class="form-group" id="editStaffPasswordGroup" style="margin-top: 8px;">
+          <label class="form-label" for="editStaffInputPassword">個人登入密碼</label>
+          <input type="password" id="editStaffInputPassword" class="form-control" placeholder="輸入專屬密碼">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.closeEditStaffModal()" class="btn btn-secondary">取消</button>
+        <button onclick="window.confirmEditStaff()" class="btn btn-primary">確認修改</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 編輯部門對話框 (微型) -->
+  <div id="editDeptModal" class="modal-backdrop" style="background-color: rgba(15, 23, 42, 0.6); z-index: 60;">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title">修改部門資訊</h3>
+        <button onclick="window.closeEditDeptModal()" class="btn-icon">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="editDeptInputName">部門名稱</label>
+          <input type="text" id="editDeptInputName" class="form-control" placeholder="輸入部門名稱">
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editDeptInputRole">公用帳號預設角色</label>
+          <select id="editDeptInputRole" class="form-control" style="background-color: var(--color-surface);">
+            <option value="Viewer">公用: 檢視者 (Viewer)</option>
+            <option value="Uploader">公用: 上傳者 (Uploader)</option>
+            <option value="Editor">公用: 編輯管理員 (Editor)</option>
+            <option value="Admin">公用: 管理員 (Admin)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label class="form-label" for="editDeptInputPassword">公用登入密碼</label>
+          <input type="password" id="editDeptInputPassword" class="form-control" placeholder="輸入公用密碼 (選填)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.closeEditDeptModal()" class="btn btn-secondary">取消</button>
+        <button onclick="window.confirmEditDept()" class="btn btn-primary">確認修改</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- 9. 線上預覽對話框 -->
+  <div id="previewFileModal" class="modal-backdrop" style="z-index: 80;">
+    <div class="modal-card" style="max-width: 90%; width: 1000px; height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i data-lucide="eye" class="w-5 h-5 text-primary"></i> <span id="previewModalTitle">技術檔案線上預覽</span>
+        </h3>
+        <button onclick="window.closePreviewModal()" class="btn-icon">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 0; position: relative; display: flex; flex-direction: column; flex: 1; overflow: hidden; background-color: #525659; min-height: 450px;">
+        <!-- 傾斜浮水印覆蓋層 -->
+        <div id="previewWatermarkOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 99; overflow: hidden;"></div>
+        <!-- 點擊攔截遮罩 (防止 Viewer 點擊 iframe 右上角彈出/下載按鈕) -->
+        <div id="previewClickBlocker" style="position: absolute; top: 0; right: 0; width: 80px; height: 55px; z-index: 100; display: none; background: transparent; cursor: default;"></div>
+        <!-- 文件預覽 iframe -->
+        <iframe id="previewIframe" style="width: 100%; height: 100%; border: none; flex: 1;"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= Firebase 模組與資料邏輯 ======================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, setDoc, deleteDoc, increment, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+    // Firebase 配置 (延用原專案之設置)
+    const userFirebaseConfig = {
+      apiKey: "AIzaSyA12XH2okeXVEgdztM_oKBXHbVWeYp0EGs",
+      authDomain: "weldwps-93ec4.firebaseapp.com",
+      projectId: "weldwps-93ec4",
+      storageBucket: "weldwps-93ec4.firebasestorage.app",
+      messagingSenderId: "734060477729",
+      appId: "1:734060477729:web:b3cb8e6d0afa08e0cd9260",
+      measurementId: "G-KTFKQQ3PJL"
+    };
+
+    const isPreviewEnv = typeof __firebase_config !== 'undefined';
+    const firebaseConfig = isPreviewEnv ? JSON.parse(__firebase_config) : userFirebaseConfig;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    let currentUser = null;
+    let localFiles = [];
+    let localFileCategories = [];
+    let localAttendance = []; // 人員清單 (方案 B & A)
+    let selectedFileIds = []; // 用於記錄被勾選的檔案 ID
+    
+    // 方案 B 權限變數
+    let currentUserName = localStorage.getItem('repo_user_name') || '一般訪客';
+    let currentUserRole = localStorage.getItem('repo_user_role') || 'Viewer'; // 'Viewer', 'Uploader', 'Editor', 'Admin'
+    let currentUserId = localStorage.getItem('repo_user_id') || 'visitor';
+    let currentUserDept = localStorage.getItem('repo_user_dept') || '研發部'; // 部門設定
+    
+    // 編輯人員上下文
+    let editStaffContext = null;
+
+    // 角色權限設定 (與資料庫 system/permissions 同步)
+    let localPermissions = {
+      Viewer: { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false },
+      Uploader: { upload: true, editOwn: true, editAll: false, deleteOwn: true, deleteAll: false, manageCategory: false, manageStaff: false },
+      Editor: { upload: true, editOwn: true, editAll: true, deleteOwn: true, deleteAll: false, manageCategory: true, manageStaff: false },
+      Admin: { upload: true, editOwn: true, editAll: true, deleteOwn: true, deleteAll: true, manageCategory: true, manageStaff: true }
+    };
+
+    // 動態部門列表 (與 system/departments 文件同步)
+    let localDepartments = ["研發部", "品管部", "生產部", "採購部"];
+
+    let selectedCategory = '全部';
+    let editingFileId = null;
+    let viewMode = 'list'; // 'list' 或 'grid'
+    let isRecentUploadsHidden = false;
+
+    const FALLBACK_CATEGORY = '📁 未分類 (暫存區)';
+
+    // 樹狀分類展開收合狀態 (方案 B)
+    let collapsedCategories = {};
+    let collapsedManageCategories = {};
+
+    // 解析分類名稱的輔助函式
+    function resolveCategoryName(catIdOrName) {
+      if (!catIdOrName) return FALLBACK_CATEGORY;
+      const cat = localFileCategories.find(c => c.id === catIdOrName || c.name === catIdOrName);
+      return cat ? cat.name : catIdOrName;
+    }
+
+    // 輔助路徑獲取器 (保證在預覽沙盒與正式環境皆能正確存取)
+    function getCollectionRef(colName) {
+      if (isPreviewEnv) return collection(db, 'artifacts', appId, 'public', 'data', colName);
+      return collection(db, colName);
+    }
+    function getDocRef(colName, docId) {
+      if (isPreviewEnv) return doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+      return doc(db, colName, docId);
+    }
+
+    // 系統操作日誌變數與監聽
+    let localAuditLogs = [];
+    let auditLogsUnsubscribe = null;
+
+    function setupAuditLogsListener() {
+      if (auditLogsUnsubscribe) {
+        auditLogsUnsubscribe();
+        auditLogsUnsubscribe = null;
+      }
+      
+      const q = query(getCollectionRef('fileAuditLogs'), orderBy('timestamp', 'desc'), limit(100));
+      auditLogsUnsubscribe = onSnapshot(q, (snapshot) => {
+        localAuditLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        if (document.getElementById('staffTabLogs').style.display === 'block') {
+          window.renderAuditLogsList();
+        }
+      }, (e) => console.error("Audit Logs Listener Error:", e));
+    }
+
+    // 寫入系統日誌
+    async function writeAuditLog(action, fileName, details) {
+      if (!currentUser) return;
+      try {
+        await addDoc(getCollectionRef('fileAuditLogs'), {
+          timestamp: Date.now(),
+          action,
+          operatorId: currentUserId,
+          operatorName: currentUserName,
+          operatorDept: currentUserDept,
+          fileName,
+          details
+        });
+      } catch (e) {
+        console.error("Failed to write audit log:", e);
+      }
+    }
+
+    // 根據人員與其設定的權限屬性獲得角色，若無設定則以職稱模糊匹配（相容舊格式）
+    function getRoleFromMember(member) {
+      if (!member) return 'Viewer';
+      if (member.permission) return member.permission; // 直接讀取明確指定之權限
+
+      // 模糊判定 Fallback
+      const t = (member.role || '').toLowerCase();
+      if (t.includes('編輯') || t.includes('editor')) {
+        return 'Editor';
+      }
+      if (t.includes('主管') || t.includes('管理員') || t.includes('admin') || t.includes('manager')) {
+        return 'Admin';
+      }
+      if (t.includes('工程師') || t.includes('管理師') || t.includes('uploader') || t.includes('staff')) {
+        return 'Uploader';
+      }
+      return 'Viewer';
+    }
+
+    // 計算檔案最終生效的存取安全等級 (繼承與覆寫)
+    function getEffectiveAccessLevel(file) {
+      if (file.accessLevelOverride && file.accessLevelOverride !== 'Inherit') {
+        return file.accessLevelOverride;
+      }
+      const catDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
+      return (catDoc && catDoc.defaultAccessLevel) ? catDoc.defaultAccessLevel : 'Viewer';
+    }
+
+    // 計算檔案最終發行適用部門 (繼承與覆寫)
+    function getEffectiveTargetDepts(file) {
+      if (file.targetDepts && file.targetDepts.length > 0) {
+        return file.targetDepts;
+      }
+      const catDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
+      return (catDoc && catDoc.defaultTargetDepts) ? catDoc.defaultTargetDepts : ['全公司'];
+    }
+
+    // 初始化預設分類及子分類 (方案 B)
+    async function seedInitialFileCategories() {
+      if(!currentUser) return;
+      const mainCats = [
+        { name: FALLBACK_CATEGORY, isProtected: true, createdAt: 1 },
+        { name: 'SOP標準作業程序', isProtected: false, createdAt: 2 },
+        { name: '工安與環保規章', isProtected: false, createdAt: 3 },
+        { name: '設備操作手冊', isProtected: false, createdAt: 4 }
+      ];
+      
+      const ids = {};
+      for(let c of mainCats) {
+        const docRef = await addDoc(getCollectionRef('fileCategories'), c);
+        ids[c.name] = docRef.id;
+      }
+      
+      // 子分類
+      const subCats = [
+        { name: '生產線SOP', parentId: ids['SOP標準作業程序'], isProtected: false, createdAt: 5, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: '檢驗流程SOP', parentId: ids['SOP標準作業程序'], isProtected: false, createdAt: 6, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: '鍋爐操作指引', parentId: ids['設備操作手冊'], isProtected: false, createdAt: 7, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: '機台保養手冊', parentId: ids['設備操作手冊'], isProtected: false, createdAt: 8, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] }
+      ];
+      for(let sc of subCats) {
+        await addDoc(getCollectionRef('fileCategories'), sc);
+      }
+    }
+
+    // 初始化登入與資料監聽
+    async function init() {
+      // 讀取本地端暫存的視圖模式
+      const savedMode = localStorage.getItem('files_view_mode');
+      if (savedMode) {
+        window.setViewMode(savedMode);
+      }
+
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("Auth error:", error);
+      }
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUser = user;
+          setupDatabaseListeners();
+          window.checkPermissions();
+        }
+      });
+
+      // 檔案選取後的名稱帶入、格式檢查與檔案大小驗證
+      document.getElementById('addFileInput').addEventListener('change', function(e) {
+        const msgBox = document.getElementById('fileUploadMessage');
+        const submitBtn = document.getElementById('fileSubmitBtn');
+        
+        msgBox.classList.remove('active');
+        submitBtn.disabled = false;
+
+        if (this.files && this.files[0]) {
+          const file = this.files[0];
+          const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+          const nameInput = document.getElementById('addFileName');
+          
+          // 1. 副檔名驗證
+          const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx'];
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          
+          if (!allowedExtensions.includes(fileExt)) {
+            msgBox.textContent = `檔案類型錯誤：.${fileExt}。只允許 PDF, Word 或 Excel 技術檔案。`;
+            msgBox.className = "msg-box msg-box-danger active";
+            submitBtn.disabled = true;
+            this.value = ''; // 清除選取
+            return;
+          }
+          
+          // 2. 大小限制驗證 (10MB)
+          const maxSize = 10 * 1024 * 1024;
+          if (file.size > maxSize) {
+            msgBox.textContent = `檔案超出大小限制：${(file.size / 1024 / 1024).toFixed(2)} MB。上限為 10.00 MB。`;
+            msgBox.className = "msg-box msg-box-danger active";
+            submitBtn.disabled = true;
+            this.value = ''; // 清除選取
+            return;
+          }
+
+          if (!nameInput.value) nameInput.value = nameWithoutExt;
+          document.getElementById('fileInputLabel').textContent = "已選擇: " + file.name;
+        }
+      });
+
+      // 檔案分類選取聯動，載入預設的發行對象與安全限制等級
+      document.getElementById('addFileCategory').addEventListener('change', function(e) {
+        const catId = this.value;
+        const catDoc = localFileCategories.find(c => c.id === catId || c.name === catId);
+        if (catDoc) {
+          const depts = catDoc.defaultTargetDepts || ['全公司'];
+          const allCb = document.getElementById('addFileDept_All');
+          
+          allCb.checked = depts.includes('全公司');
+          
+          const boxes = document.getElementsByName('addFileDept');
+          boxes.forEach(b => {
+            b.checked = depts.includes(b.value);
+          });
+          
+          window.handleAllCompanyCheckbox(allCb);
+        }
+      });
+    }
+
+    // 數據即時監聽與更新
+    function setupDatabaseListeners() {
+      if (!currentUser) return;
+
+      // 監聽發行對象部門清單 (後台自訂)
+      onSnapshot(getDocRef('system', 'departments'), (docSnap) => {
+        if (docSnap.exists()) {
+          const rawList = docSnap.data().list || [];
+          localDepartments = rawList.map(item => {
+            if (typeof item === 'string') {
+              return { name: item, defaultRole: 'Viewer', password: '' };
+            }
+            return item;
+          });
+        } else {
+          // 初始化預設發行部門清單 (物件結構)
+          setDoc(getDocRef('system', 'departments'), {
+            list: [
+              { name: "研發部", defaultRole: "Uploader", password: "rd123" },
+              { name: "品管部", defaultRole: "Uploader", password: "qa123" },
+              { name: "生產部", defaultRole: "Viewer", password: "" },
+              { name: "採購部", defaultRole: "Viewer", password: "" }
+            ]
+          }).catch(e => console.error("Seeding initial departments failed: ", e));
+        }
+        window.renderDepartmentSelects();
+        
+        // 若當前登入者為部門帳號，且該部門已被自系統中刪除，則自動回歸一般訪客身分
+        const isDept = currentUserId !== 'visitor' && currentUserId.startsWith('dept_');
+        if (isDept) {
+          const deptName = currentUserId.substring(5); // 剝離 "dept_"
+          const stillExists = localDepartments.some(d => (typeof d === 'string' ? d : d.name) === deptName);
+          if (!stillExists) {
+            currentUserName = '一般訪客';
+            currentUserRole = 'Viewer';
+            currentUserId = 'visitor';
+            currentUserDept = '研發部';
+            localStorage.setItem('repo_user_name', currentUserName);
+            localStorage.setItem('repo_user_role', currentUserRole);
+            localStorage.setItem('repo_user_id', currentUserId);
+            localStorage.setItem('repo_user_dept', currentUserDept);
+            window.checkPermissions();
+            window.renderFiles();
+          }
+        }
+      }, (e) => console.error("Departments Listener Error:", e));
+
+      // 監聽角色功能權限設定
+      onSnapshot(getDocRef('system', 'permissions'), (docSnap) => {
+        if (docSnap.exists()) {
+          localPermissions = docSnap.data();
+        } else {
+          // 初始化預設角色權限
+          setDoc(getDocRef('system', 'permissions'), {
+            Viewer: { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false },
+            Uploader: { upload: true, editOwn: true, editAll: false, deleteOwn: true, deleteAll: false, manageCategory: false, manageStaff: false },
+            Editor: { upload: true, editOwn: true, editAll: true, deleteOwn: true, deleteAll: false, manageCategory: true, manageStaff: false },
+            Admin: { upload: true, editOwn: true, editAll: true, deleteOwn: true, deleteAll: true, manageCategory: true, manageStaff: true }
+          }).catch(e => console.error("Seeding initial permissions failed: ", e));
+        }
+        window.checkPermissions();
+        window.renderFiles();
+      }, (e) => console.error("Permissions Listener Error:", e));
+
+      // 監聽人員名單庫 (方案 B & A)
+      onSnapshot(getCollectionRef('attendance'), (snapshot) => {
+        localAttendance = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        localAttendance.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // 若當前開啟人員管理視窗，則重新渲染名單
+        const manageStaffModal = document.getElementById('manageStaffModal');
+        if (manageStaffModal && manageStaffModal.classList.contains('active')) {
+          window.renderStaffList();
+        }
+
+        // 若當前登入者為個人帳號，且因任何原因被自人員名冊中除名，則自動回歸一般訪客身分
+        const isPerson = currentUserId !== 'visitor' && currentUserId.startsWith('person_');
+        if (isPerson) {
+          const rawPersonId = currentUserId.substring(7); // 剝離 "person_" 前綴
+          if (!localAttendance.some(p => p.id === rawPersonId)) {
+            currentUserName = '一般訪客';
+            currentUserRole = 'Viewer';
+            currentUserId = 'visitor';
+            currentUserDept = '研發部';
+            localStorage.setItem('repo_user_name', currentUserName);
+            localStorage.setItem('repo_user_role', currentUserRole);
+            localStorage.setItem('repo_user_id', currentUserId);
+            localStorage.setItem('repo_user_dept', currentUserDept);
+            window.checkPermissions();
+            window.renderFiles();
+          }
+        }
+      }, (e) => console.error("Attendance Listener Error:", e));
+
+      // 監聽檔案資料庫
+      onSnapshot(getCollectionRef('files'), (snapshot) => {
+        localFiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        selectedFileIds = selectedFileIds.filter(id => localFiles.some(f => f.id === id));
+        window.renderFiles();
+      }, (e) => console.error("Files Listener Error:", e));
+
+      // 監聽分類列表
+      onSnapshot(getCollectionRef('fileCategories'), (snapshot) => {
+        if (snapshot.empty && localFileCategories.length === 0) {
+          seedInitialFileCategories();
+        } else {
+          localFileCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          localFileCategories.sort((a, b) => (a.isProtected === b.isProtected) ? (a.createdAt - b.createdAt) : (a.isProtected ? -1 : 1));
+          window.renderFileCategories();
+          window.renderFileCategoriesManage();
+          window.renderFiles();
+        }
+      }, (e) => console.error("File Categories Listener Error:", e));
+      
+      // 啟動操作日誌監聽
+      setupAuditLogsListener();
+    }
+
+    // ===================================
+    //  動態部門元件渲染邏輯
+    // ===================================
+
+    window.renderDepartmentSelects = () => {
+      const newStaffDept = document.getElementById('newStaffDept');
+      const editStaffInputDept = document.getElementById('editStaffInputDept');
+      const optionsHtml = localDepartments.map(d => {
+        const name = typeof d === 'string' ? d : (d.name || '');
+        return `<option value="${name}">${name}</option>`;
+      }).join('') + `<option value="全公司">全公司</option>`;
+      
+      if (newStaffDept) {
+        const curVal = newStaffDept.value;
+        newStaffDept.innerHTML = optionsHtml;
+        if (curVal && [...newStaffDept.options].some(o => o.value === curVal)) {
+          newStaffDept.value = curVal;
+        }
+      }
+      if (editStaffInputDept) {
+        const curVal = editStaffInputDept.value;
+        editStaffInputDept.innerHTML = optionsHtml;
+        if (curVal && [...editStaffInputDept.options].some(o => o.value === curVal)) {
+          editStaffInputDept.value = curVal;
+        }
+      }
+      
+      window.renderFileDeptCheckboxes();
+      window.renderEditCategoryDeptCheckboxes();
+      
+      // 更新部門管理頁籤名單
+      const manageStaffModal = document.getElementById('manageStaffModal');
+      if (manageStaffModal && manageStaffModal.classList.contains('active')) {
+        window.renderDeptManageList();
+      }
+    };
+
+    // 動態重繪上傳檔案時的發行對象部門核取方塊
+    window.renderFileDeptCheckboxes = () => {
+      const container = document.getElementById('addFileDeptContainer');
+      if (!container) return;
+      
+      let html = localDepartments.map(d => {
+        const name = typeof d === 'string' ? d : (d.name || '');
+        return `
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; cursor: pointer;">
+            <input type="checkbox" name="addFileDept" value="${name}" class="file-checkbox" style="width:16px; height:16px;"> ${name}
+          </label>
+        `;
+      }).join('');
+      
+      html += `
+        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; cursor: pointer;">
+          <input type="checkbox" id="addFileDept_All" value="全公司" class="file-checkbox" style="width:16px; height:16px;" onchange="window.handleAllCompanyCheckbox(this)"> 全公司
+        </label>
+      `;
+      container.innerHTML = html;
+    };
+
+    // 動態重繪編輯分類預設設定時的部門核取方塊
+    window.renderEditCategoryDeptCheckboxes = () => {
+      const container = document.getElementById('editCategoryDeptContainer');
+      if (!container) return;
+      
+      let html = localDepartments.map(d => {
+        const name = typeof d === 'string' ? d : (d.name || '');
+        return `
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; cursor: pointer;">
+            <input type="checkbox" name="editCategoryDept" value="${name}" class="file-checkbox" style="width:14px; height:14px;"> ${name}
+          </label>
+        `;
+      }).join('');
+      
+      html += `
+        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; cursor: pointer;">
+          <input type="checkbox" id="editCategoryDept_All" value="全公司" class="file-checkbox" style="width:14px; height:14px;" onchange="window.handleEditCategoryAllCompanyCheckbox(this)"> 全公司
+        </label>
+      `;
+      container.innerHTML = html;
+    };
+
+    // ===================================
+    //  權限驗證與 UI 狀態變更 (方案 B)
+    // ===================================
+    
+    window.checkPermissions = () => {
+      const display = document.getElementById('currentUserDisplay');
+      const btnManageCategory = document.getElementById('btnManageCategoryHeader');
+      const btnUploadFile = document.getElementById('btnUploadFileHeader');
+      const btnManageStaff = document.getElementById('btnManageStaffHeader');
+      
+      const rolePerms = localPermissions[currentUserRole] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
+
+      const deptLabel = currentUserId === 'visitor' ? '' : ` (${currentUserDept})`;
+
+      if (currentUserRole === 'Admin') {
+        display.innerHTML = `⚙️ ${currentUserName}${deptLabel} (管理員)`;
+        display.style.color = 'var(--color-warning)';
+      } else if (currentUserRole === 'Editor') {
+        display.innerHTML = `✍️ ${currentUserName}${deptLabel} (編輯管理員)`;
+        display.style.color = 'var(--color-success)';
+      } else if (currentUserRole === 'Uploader') {
+        display.innerHTML = `👤 ${currentUserName}${deptLabel} (上傳者)`;
+        display.style.color = 'var(--color-primary)';
+      } else {
+        display.innerHTML = `👤 ${currentUserName}${deptLabel} (唯讀)`;
+        display.style.color = 'var(--color-muted)';
+      }
+      
+      btnUploadFile.style.display = rolePerms.upload ? 'inline-flex' : 'none';
+      btnManageCategory.style.display = rolePerms.manageCategory ? 'inline-flex' : 'none';
+      btnManageStaff.style.display = rolePerms.manageStaff ? 'inline-flex' : 'none';
+
+      // 更新全選狀態連動
+      window.updateBatchActionsBar();
+    };
+
+    // 開啟登入視窗 (初始化第一層：部門)
+    window.openLoginModal = () => {
+      const deptSelect = document.getElementById('loginDeptSelect');
+      const msgBox = document.getElementById('loginMessage');
+      msgBox.classList.remove('active');
+
+      // 取得發行部門與名冊人員實際部門的聯集，確保每個人的部門都能在第一層被選取
+      const customDepts = localDepartments.map(d => typeof d === 'string' ? d : (d.name || ''));
+      const attendanceDepts = [...new Set(localAttendance.map(p => p.department || '研發部'))];
+      const allDepts = [...new Set([...customDepts, ...attendanceDepts])];
+
+      // 載入第一層部門選項 (含一般訪客與所有聯集部門)
+      let deptOptionsHtml = `<option value="visitor" ${currentUserId === 'visitor' ? 'selected' : ''}>一般訪客 (唯讀)</option>`;
+      deptOptionsHtml += allDepts.map(deptName => {
+        const isSelected = (currentUserId !== 'visitor' && currentUserDept === deptName);
+        return `<option value="${deptName}" ${isSelected ? 'selected' : ''}>${deptName}</option>`;
+      }).join('');
+      
+      deptSelect.innerHTML = deptOptionsHtml;
+      
+      // 觸發連動載入第二層
+      window.handleLoginDeptChange(deptSelect);
+      
+      openModal('loginModal');
+    };
+
+    window.closeLoginModal = () => {
+      closeModal('loginModal');
+    };
+
+    // 處理第一層部門選單變更 (動態過濾並產生第二層帳號選單)
+    window.handleLoginDeptChange = (select) => {
+      const deptVal = select.value;
+      const userGroup = document.getElementById('loginUserSelectGroup');
+      const userSelect = document.getElementById('loginUserSelect');
+      
+      if (deptVal === 'visitor') {
+        userGroup.style.display = 'none';
+        
+        // 重設第二層為訪客
+        userSelect.innerHTML = `<option value="visitor" data-type="visitor" data-role="Viewer">一般訪客 (唯讀)</option>`;
+        userSelect.value = 'visitor';
+        window.handleLoginUserChange(userSelect);
+        return;
+      }
+
+      // 載入該部門對應的帳號
+      userGroup.style.display = 'flex';
+      
+      // 1. 取得該部門公用帳號 (僅當該部門存在於自訂發行部門時才建立公用登入)
+      const deptObj = localDepartments.find(d => d.name === deptVal);
+      let optionsHtml = '';
+      if (deptObj) {
+        const deptRole = deptObj.defaultRole || 'Viewer';
+        optionsHtml += `<option value="dept_${deptVal}" data-type="dept" data-role="${deptRole}">${deptVal} (公用帳號)</option>`;
+      }
+      
+      // 2. 取得該部門名冊人員 (防禦性相容未設定部門而預設為研發部的人員)
+      const personnel = localAttendance.filter(p => (p.department || '研發部') === deptVal);
+      optionsHtml += personnel.map(p => {
+        const roleStr = getRoleFromMember(p);
+        return `<option value="person_${p.id}" data-type="person" data-role="${roleStr}">${p.name} - ${p.role}</option>`;
+      }).join('');
+
+      userSelect.innerHTML = optionsHtml;
+
+      // 還原先前的選取狀態 (若當前登入者剛好在該部門中，或預設選取第一項)
+      let defaultUserVal = deptObj ? `dept_${deptVal}` : (personnel.length > 0 ? `person_${personnel[0].id}` : '');
+      if (currentUserId !== 'visitor' && currentUserDept === deptVal) {
+        if (currentUserId.startsWith('dept_') || currentUserId.startsWith('person_')) {
+          defaultUserVal = currentUserId;
+        } else {
+          defaultUserVal = 'person_' + currentUserId;
+        }
+      }
+      
+      // 檢查此預設值是否存在於選項中，若存在則套用
+      if (defaultUserVal && [...userSelect.options].some(o => o.value === defaultUserVal)) {
+        userSelect.value = defaultUserVal;
+      }
+      
+      window.handleLoginUserChange(userSelect);
+    };
+
+    // 處理選擇登入帳號時的密碼欄位隱顯與提示
+    window.handleLoginUserChange = (select) => {
+      const option = select.options[select.selectedIndex];
+      if (!option) return;
+      
+      const val = select.value;
+      const type = option.getAttribute('data-type');
+      const role = option.getAttribute('data-role');
+      const hint = document.getElementById('loginRoleHint');
+      const pwGroup = document.getElementById('loginPasswordGroup');
+      const pwInput = document.getElementById('loginPassword');
+      const msgBox = document.getElementById('loginMessage');
+      
+      msgBox.classList.remove('active');
+      pwInput.value = '';
+
+      let needsPassword = false;
+      let passwordPrompt = '(請輸入您的個人專屬密碼)';
+
+      if (type === 'dept') {
+        const deptName = val.substring(5); // 剝離 "dept_"
+        const dept = localDepartments.find(d => d.name === deptName);
+        if (dept && dept.password) {
+          needsPassword = true;
+          passwordPrompt = `(請輸入【${deptName}】的部門公用密碼)`;
+        }
+      } else if (type === 'person') {
+        const personId = val.substring(7); // 剝離 "person_"
+        const person = localAttendance.find(p => p.id === personId);
+        if (person && role !== 'Viewer' && person.password) {
+          needsPassword = true;
+          passwordPrompt = `(請輸入【${person.name}】的個人驗證密碼)`;
+        }
+      }
+
+      if (needsPassword) {
+        let roleLabel = '技術上傳者';
+        let labelColor = 'var(--color-primary)';
+        if (role === 'Admin') {
+          roleLabel = '系統管理員';
+          labelColor = 'var(--color-warning)';
+        } else if (role === 'Editor') {
+          roleLabel = '編輯管理員';
+          labelColor = 'var(--color-success)';
+        }
+        hint.innerHTML = `判定權限：<span style="color:${labelColor};">${roleLabel}</span> ${passwordPrompt}`;
+        pwGroup.style.display = 'flex';
+        pwInput.setAttribute('required', 'true');
+      } else {
+        let roleLabel = '一般檢視者';
+        if (role === 'Admin') roleLabel = '管理員';
+        else if (role === 'Editor') roleLabel = '編輯管理員';
+        else if (role === 'Uploader') roleLabel = '上傳者';
+        
+        hint.innerHTML = `判定權限：<span style="color:var(--color-muted);">${roleLabel}</span> (免驗證，可直接登入)`;
+        pwGroup.style.display = 'none';
+        pwInput.removeAttribute('required');
+      }
+    };
+
+    // 提交身分變更 (驗證密碼與設定 Session)
+    window.submitLogin = (e) => {
+      e.preventDefault();
+      const select = document.getElementById('loginUserSelect');
+      const option = select.options[select.selectedIndex];
+      if (!option) return;
+      
+      const val = select.value;
+      const type = option.getAttribute('data-type');
+      const role = option.getAttribute('data-role');
+      const pwInput = document.getElementById('loginPassword');
+      const msgBox = document.getElementById('loginMessage');
+
+      // 驗證密碼
+      if (type === 'dept') {
+        const deptName = val.substring(5);
+        const dept = localDepartments.find(d => d.name === deptName);
+        if (dept && dept.password && pwInput.value !== dept.password) {
+          msgBox.textContent = "部門公用密碼錯誤！請重新輸入。";
+          msgBox.className = "msg-box msg-box-danger active";
+          return;
+        }
+        
+        currentUserName = `${deptName} (公用)`;
+        currentUserRole = role;
+        currentUserId = val;
+        currentUserDept = deptName;
+      } else if (type === 'person') {
+        const personId = val.substring(7);
+        const person = localAttendance.find(p => p.id === personId);
+        if (person && role !== 'Viewer' && person.password && pwInput.value !== person.password) {
+          msgBox.textContent = "個人驗證密碼錯誤！請重新確認。";
+          msgBox.className = "msg-box msg-box-danger active";
+          return;
+        }
+        
+        currentUserName = person ? person.name : '未知人員';
+        currentUserRole = role;
+        currentUserId = val;
+        currentUserDept = person ? (person.department || '研發部') : '研發部';
+      } else {
+        // visitor (訪客)
+        currentUserName = '一般訪客';
+        currentUserRole = 'Viewer';
+        currentUserId = 'visitor';
+        currentUserDept = '研發部';
+      }
+
+      // 儲存於 LocalStorage
+      localStorage.setItem('repo_user_name', currentUserName);
+      localStorage.setItem('repo_user_role', currentUserRole);
+      localStorage.setItem('repo_user_id', currentUserId);
+      localStorage.setItem('repo_user_dept', currentUserDept);
+
+      window.checkPermissions();
+      window.renderFiles(); // 重新渲染列表以更新編輯與刪除權限
+      window.closeLoginModal();
+    };
+
+    // ===================================
+    //  人員與編制管理功能 (方案 A)
+    // ===================================
+
+    window.openManageStaffModal = () => {
+      if (currentUserRole !== 'Admin') return;
+      openModal('manageStaffModal');
+      window.switchStaffTab('roster');
+      window.renderStaffList();
+    };
+
+    window.closeManageStaffModal = () => {
+      closeModal('manageStaffModal');
+      window.switchStaffTab('roster');
+    };
+
+    // 人員管理後台四頁籤切換
+    window.switchStaffTab = (tabName) => {
+      const tabBtnRoster = document.getElementById('tabBtnRoster');
+      const tabBtnPermissions = document.getElementById('tabBtnPermissions');
+      const tabBtnDepartments = document.getElementById('tabBtnDepartments');
+      const tabBtnLogs = document.getElementById('tabBtnLogs');
+      
+      const staffTabRoster = document.getElementById('staffTabRoster');
+      const staffTabPermissions = document.getElementById('staffTabPermissions');
+      const staffTabDepartments = document.getElementById('staffTabDepartments');
+      const staffTabLogs = document.getElementById('staffTabLogs');
+      
+      const msgBoxPerm = document.getElementById('permissionsSaveMessage');
+      const msgBoxDept = document.getElementById('deptSaveMessage');
+      if (msgBoxPerm) msgBoxPerm.classList.remove('active');
+      if (msgBoxDept) msgBoxDept.classList.remove('active');
+
+      tabBtnRoster.classList.remove('active');
+      tabBtnPermissions.classList.remove('active');
+      tabBtnDepartments.classList.remove('active');
+      if (tabBtnLogs) tabBtnLogs.classList.remove('active');
+      
+      staffTabRoster.style.display = 'none';
+      staffTabPermissions.style.display = 'none';
+      staffTabDepartments.style.display = 'none';
+      if (staffTabLogs) staffTabLogs.style.display = 'none';
+
+      if (tabName === 'roster') {
+        tabBtnRoster.classList.add('active');
+        staffTabRoster.style.display = 'block';
+      } else if (tabName === 'permissions') {
+        tabBtnPermissions.classList.add('active');
+        staffTabPermissions.style.display = 'block';
+        window.renderRolePermissionsConfig();
+      } else if (tabName === 'departments') {
+        tabBtnDepartments.classList.add('active');
+        staffTabDepartments.style.display = 'block';
+        window.renderDeptManageList();
+      } else if (tabName === 'logs') {
+        if (tabBtnLogs) tabBtnLogs.classList.add('active');
+        if (staffTabLogs) staffTabLogs.style.display = 'block';
+        window.renderAuditLogsList();
+      }
+    };
+
+    // 渲染部門管理清單 (頁籤三)
+    window.renderDeptManageList = () => {
+      const container = document.getElementById('deptListContainer');
+      if (!container) return;
+      
+      container.innerHTML = localDepartments.map((d, index) => {
+        const pwStr = d.password ? `(密碼: ${d.password})` : '(無密碼)';
+        return `
+          <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+              <span style="font-weight: 700; color: var(--color-dark);">${d.name}</span>
+              <span style="font-size: 0.72rem; color: var(--color-muted);">
+                公用角色: ${d.defaultRole || 'Viewer'} | ${pwStr}
+              </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="window.openEditDeptModal(${index})" class="btn-icon text-primary" title="編輯部門" style="color: var(--color-primary);">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+              <button onclick="window.promptDeleteDepartmentByIndex(${index})" class="btn-icon text-danger" title="刪除部門" style="color: var(--color-danger);">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    };
+
+    // 新增自訂發行部門 (寫入物件型態，含預設角色與密碼)
+    window.submitNewDepartment = async (e) => {
+      e.preventDefault();
+      if (!currentUser || currentUserRole !== 'Admin') return;
+      
+      const nameInput = document.getElementById('newDeptInputName');
+      const roleSelect = document.getElementById('newDeptDefaultRole');
+      const pwInput = document.getElementById('newDeptPassword');
+      
+      const name = nameInput.value.trim();
+      const defaultRole = roleSelect.value;
+      const password = pwInput.value.trim();
+      
+      const msgBox = document.getElementById('deptSaveMessage');
+      msgBox.classList.remove('active');
+
+      if (name) {
+        if (localDepartments.some(d => d.name === name)) {
+          msgBox.textContent = "此部門名稱已存在！";
+          msgBox.className = "msg-box msg-box-danger active";
+          return;
+        }
+        
+        try {
+          const newList = [...localDepartments, { name, defaultRole, password }];
+          await setDoc(getDocRef('system', 'departments'), { list: newList });
+          nameInput.value = '';
+          pwInput.value = '';
+        } catch (err) {
+          console.error("Error adding department:", err);
+          msgBox.textContent = "新增失敗：" + err.message;
+          msgBox.className = "msg-box msg-box-danger active";
+        }
+      }
+    };
+
+    // 刪除自訂部門與防護警告 (改用索引以防止特殊字元轉義失敗)
+    window.promptDeleteDepartmentByIndex = (index) => {
+      const msgBox = document.getElementById('deptSaveMessage');
+      if (msgBox) msgBox.classList.remove('active');
+
+      if (currentUserRole !== 'Admin') {
+        if (msgBox) {
+          msgBox.textContent = "僅限管理員執行此操作！";
+          msgBox.className = "msg-box msg-box-danger active";
+        }
+        return;
+      }
+
+      const dept = localDepartments[index];
+      if (!dept) return;
+      const deptName = dept.name || '未知部門';
+      
+      window.openConfirmModal('刪除部門確認', `確定要將「${deptName}」自系統中刪除嗎？這會使該部門不再出現在上傳檔案與分類權限的選項中，但不會主動刪除現有員工資料。`, async () => {
+        if (!currentUser) return;
+        try {
+          const newList = localDepartments.filter((_, idx) => idx !== index);
+          await setDoc(getDocRef('system', 'departments'), { list: newList });
+          window.closeConfirmModal();
+        } catch (err) {
+          console.error("Error deleting department:", err);
+          if (msgBox) {
+            msgBox.textContent = "刪除失敗：" + err.message;
+            msgBox.className = "msg-box msg-box-danger active";
+          }
+          window.closeConfirmModal();
+        }
+      });
+    };
+
+    // 編輯部門上下文
+    let editDeptContextIndex = null;
+
+    // 開啟編輯部門 Modal
+    window.openEditDeptModal = (index) => {
+      if (currentUserRole !== 'Admin') return;
+      const dept = localDepartments[index];
+      if (!dept) return;
+
+      editDeptContextIndex = index;
+      document.getElementById('editDeptInputName').value = dept.name || '';
+      document.getElementById('editDeptInputRole').value = dept.defaultRole || 'Viewer';
+      document.getElementById('editDeptInputPassword').value = dept.password || '';
+
+      openModal('editDeptModal');
+    };
+
+    // 關閉編輯部門 Modal
+    window.closeEditDeptModal = () => {
+      closeModal('editDeptModal');
+      editDeptContextIndex = null;
+    };
+
+    // 儲存修改部門資訊
+    window.confirmEditDept = async () => {
+      if (!currentUser || currentUserRole !== 'Admin' || editDeptContextIndex === null) return;
+
+      const nameInput = document.getElementById('editDeptInputName');
+      const roleSelect = document.getElementById('editDeptInputRole');
+      const pwInput = document.getElementById('editDeptInputPassword');
+      
+      const newName = nameInput.value.trim();
+      const defaultRole = roleSelect.value;
+      const password = pwInput.value.trim();
+      
+      const msgBox = document.getElementById('deptSaveMessage');
+      if (msgBox) msgBox.classList.remove('active');
+
+      if (!newName) {
+        alert("部門名稱不能為空！");
+        return;
+      }
+
+      // 檢查名稱是否衝突 (除了自己以外)
+      const isConflict = localDepartments.some((d, idx) => idx !== editDeptContextIndex && d.name === newName);
+      if (isConflict) {
+        alert("此部門名稱已存在！");
+        return;
+      }
+
+      try {
+        const newList = [...localDepartments];
+        newList[editDeptContextIndex] = { name: newName, defaultRole, password };
+
+        await setDoc(getDocRef('system', 'departments'), { list: newList });
+        window.closeEditDeptModal();
+      } catch (err) {
+        console.error("Error editing department:", err);
+        alert("修改失敗：" + err.message);
+      }
+    };
+
+    // 渲染操作日誌清單 (頁籤四)
+    window.renderAuditLogsList = () => {
+      const container = document.getElementById('auditLogsContainer');
+      if (!container) return;
+
+      const searchTerm = (document.getElementById('logSearchInput').value || '').trim().toLowerCase();
+      const actionFilter = document.getElementById('logActionFilter').value;
+
+      // 篩選過濾
+      const filtered = localAuditLogs.filter(log => {
+        // 1. 動作篩選
+        if (actionFilter !== 'ALL' && log.action !== actionFilter) return false;
+        // 2. 關鍵字篩選 (人名、部門、檔案名稱、細節)
+        if (searchTerm) {
+          const matchName = (log.operatorName || '').toLowerCase().includes(searchTerm);
+          const matchDept = (log.operatorDept || '').toLowerCase().includes(searchTerm);
+          const matchFile = (log.fileName || '').toLowerCase().includes(searchTerm);
+          const matchDetail = (log.details || '').toLowerCase().includes(searchTerm);
+          return matchName || matchDept || matchFile || matchDetail;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--color-muted); padding: 20px; font-size: 0.85rem;">暫無符合條件的操作日誌</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(log => {
+        const dateStr = new Date(log.timestamp).toLocaleString();
+        let actionBadge = '';
+        if (log.action === 'UPLOAD') {
+          actionBadge = '<span class="category-badge" style="background-color: var(--color-primary-light); color: var(--color-primary); border-color: var(--color-primary-border); font-size: 0.7rem; padding: 2px 6px;">上傳</span>';
+        } else if (log.action === 'DOWNLOAD') {
+          actionBadge = '<span class="category-badge" style="background-color: var(--color-success-light); color: var(--color-success); border-color: var(--color-success-border); font-size: 0.7rem; padding: 2px 6px;">下載</span>';
+        } else if (log.action === 'PREVIEW') {
+          actionBadge = '<span class="category-badge" style="background-color: rgba(99, 102, 241, 0.1); color: rgb(99, 102, 241); border-color: rgba(99, 102, 241, 0.2); font-size: 0.7rem; padding: 2px 6px;">預覽</span>';
+        } else if (log.action === 'EDIT') {
+          actionBadge = '<span class="category-badge" style="background-color: var(--color-warning-light); color: var(--color-warning); border-color: var(--color-warning-border); font-size: 0.7rem; padding: 2px 6px;">編輯</span>';
+        } else if (log.action === 'DELETE') {
+          actionBadge = '<span class="category-badge" style="background-color: rgba(239, 68, 68, 0.1); color: var(--color-danger); border-color: rgba(239, 68, 68, 0.2); font-size: 0.7rem; padding: 2px 6px;">刪除</span>';
+        }
+
+        return `
+          <div style="padding: 10px 12px; border-bottom: 1px solid var(--color-border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 4px; background-color: var(--color-surface); margin-bottom: 4px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+              <span style="font-weight: 700; color: var(--color-dark);">${log.operatorName} (${log.operatorDept})</span>
+              <span style="color: var(--color-muted); font-size: 0.72rem;">${dateStr}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              ${actionBadge}
+              <span style="font-weight: 500; color: var(--color-dark); flex: 1; word-break: break-all;">
+                檔案: <span style="text-decoration: underline;">${log.fileName || '無'}</span>
+              </span>
+            </div>
+            <div style="color: var(--color-muted); font-size: 0.74rem; background-color: var(--color-bg-dark); padding: 4px 8px; border-radius: 4px; margin-top: 2px;">
+              細節: ${log.details || ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    // 渲染特定角色的授權配置狀態
+    window.renderRolePermissionsConfig = () => {
+      const select = document.getElementById('selectRoleConfig');
+      const role = select.value;
+      const perms = localPermissions[role] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
+      
+      document.getElementById('perm_upload').checked = !!perms.upload;
+      document.getElementById('perm_editOwn').checked = !!perms.editOwn;
+      document.getElementById('perm_editAll').checked = !!perms.editAll;
+      document.getElementById('perm_deleteOwn').checked = !!perms.deleteOwn;
+      document.getElementById('perm_deleteAll').checked = !!perms.deleteAll;
+      document.getElementById('perm_manageCategory').checked = !!perms.manageCategory;
+      
+      const manageStaffCheckbox = document.getElementById('perm_manageStaff');
+      manageStaffCheckbox.checked = !!perms.manageStaff;
+      
+      // Admin 防鎖定
+      if (role === 'Admin') {
+        manageStaffCheckbox.checked = true;
+        manageStaffCheckbox.disabled = true;
+      } else {
+        manageStaffCheckbox.disabled = false;
+      }
+    };
+
+    // 儲存角色權限配置
+    window.saveRolePermissions = async () => {
+      if (!currentUser || currentUserRole !== 'Admin') return;
+      
+      const select = document.getElementById('selectRoleConfig');
+      const role = select.value;
+      const msgBox = document.getElementById('permissionsSaveMessage');
+      
+      msgBox.classList.remove('active');
+
+      const updatedPerms = {
+        upload: document.getElementById('perm_upload').checked,
+        editOwn: document.getElementById('perm_editOwn').checked,
+        editAll: document.getElementById('perm_editAll').checked,
+        deleteOwn: document.getElementById('perm_deleteOwn').checked,
+        deleteAll: document.getElementById('perm_deleteAll').checked,
+        manageCategory: document.getElementById('perm_manageCategory').checked,
+        manageStaff: (role === 'Admin') ? true : document.getElementById('perm_manageStaff').checked
+      };
+
+      try {
+        const fullPermissions = { ...localPermissions };
+        fullPermissions[role] = updatedPerms;
+
+        await setDoc(getDocRef('system', 'permissions'), fullPermissions);
+
+        msgBox.textContent = `角色「${role}」的權限項目已更新成功！`;
+        msgBox.className = "msg-box msg-box-warning active";
+        msgBox.style.backgroundColor = "var(--color-primary-light)";
+        msgBox.style.color = "var(--color-primary)";
+        msgBox.style.borderColor = "var(--color-primary-border)";
+
+        setTimeout(() => {
+          msgBox.classList.remove('active');
+        }, 3000);
+      } catch (err) {
+        console.error("Failed to update role permissions: ", err);
+        msgBox.textContent = "更新失敗：" + err.message;
+        msgBox.className = "msg-box msg-box-danger active";
+      }
+    };
+
+    // 控制新增人員密碼輸入框隱顯
+    window.toggleNewStaffPasswordInput = (select) => {
+      const pwInput = document.getElementById('newStaffPassword');
+      if (select.value === 'Viewer') {
+        pwInput.style.display = 'none';
+        pwInput.removeAttribute('required');
+        pwInput.value = '';
+      } else {
+        pwInput.style.display = 'block';
+        pwInput.setAttribute('required', 'true');
+      }
+    };
+
+    // 控制編輯人員密碼輸入框隱顯
+    window.toggleEditStaffPasswordInput = (select) => {
+      const group = document.getElementById('editStaffPasswordGroup');
+      const pwInput = document.getElementById('editStaffInputPassword');
+      if (select.value === 'Viewer') {
+        group.style.display = 'none';
+        pwInput.removeAttribute('required');
+        pwInput.value = '';
+      } else {
+        group.style.display = 'flex';
+        pwInput.setAttribute('required', 'true');
+      }
+    };
+
+    // 渲染人員清單 (顯示部門資訊)
+    window.renderStaffList = () => {
+      const container = document.getElementById('staffListContainer');
+      if (!container) return;
+
+      container.innerHTML = localAttendance.map(p => {
+        const roleStr = getRoleFromMember(p);
+        let roleLabel = '檢視者 (Viewer)';
+        if (roleStr === 'Admin') roleLabel = '<span style="color:var(--color-warning); font-weight:700;">管理員 (Admin)</span>';
+        else if (roleStr === 'Editor') roleLabel = '<span style="color:var(--color-success); font-weight:700;">編輯管理員 (Editor)</span>';
+        else if (roleStr === 'Uploader') roleLabel = '<span style="color:var(--color-primary); font-weight:700;">上傳者 (Uploader)</span>';
+
+        const plainPassword = p.password || '';
+        const deptStr = p.department || '研發部';
+
+        return `
+          <div class="cat-list-item">
+            <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+              <span style="font-weight: 700; color: var(--color-dark);">${p.name}</span>
+              <span style="font-size: 0.75rem; color: var(--color-muted);">${p.role} - ${deptStr} (${roleLabel})</span>
+            </div>
+            <div>
+              <button onclick="window.openEditStaffModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.role.replace(/'/g, "\\'")}', '${roleStr}', '${plainPassword.replace(/'/g, "\\'")}', '${deptStr}')" class="btn-icon" title="修改資訊">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+              <button onclick="window.promptDeleteStaff('${p.id}', '${p.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="人員除名" style="color: var(--color-danger);">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    };
+
+    // 登錄新人員 (支援部門設定)
+    window.submitNewStaff = async (e) => {
+      e.preventDefault();
+      if (!currentUser || currentUserRole !== 'Admin') return;
+
+      const nameInput = document.getElementById('newStaffName');
+      const roleInput = document.getElementById('newStaffRole');
+      const deptInput = document.getElementById('newStaffDept');
+      const permissionInput = document.getElementById('newStaffPermission');
+      const pwInput = document.getElementById('newStaffPassword');
+      
+      const name = nameInput.value.trim();
+      const role = roleInput.value.trim();
+      const department = deptInput.value;
+      const permission = permissionInput.value;
+      const password = pwInput.value.trim();
+
+      if (name && role) {
+        const order = localAttendance.length > 0 ? Math.max(...localAttendance.map(p => p.order || 0)) + 1 : 1;
+        
+        const newMember = {
+          name,
+          role,
+          department,
+          permission,
+          order,
+          schedule: ['OFFICE', 'OFFICE', 'OFFICE', 'OFFICE', 'OFFICE']
+        };
+
+        if (permission !== 'Viewer') {
+          newMember.password = password;
+        }
+
+        await addDoc(getCollectionRef('attendance'), newMember);
+        
+        nameInput.value = '';
+        roleInput.value = '';
+        permissionInput.value = 'Viewer';
+        pwInput.value = '';
+        pwInput.style.display = 'none';
+        
+        window.renderStaffList();
+      }
+    };
+
+    // 開啟編輯人員 Modal
+    window.openEditStaffModal = (id, oldName, oldRole, permission, password, department) => {
+      if (currentUserRole !== 'Admin') return;
+      editStaffContext = { id, oldName, oldRole, permission, password, department };
+      document.getElementById('editStaffInputName').value = oldName;
+      document.getElementById('editStaffInputRole').value = oldRole;
+      document.getElementById('editStaffInputPermission').value = permission;
+      document.getElementById('editStaffInputPassword').value = password || '';
+      document.getElementById('editStaffInputDept').value = department || '研發部';
+      
+      const group = document.getElementById('editStaffPasswordGroup');
+      const pwInput = document.getElementById('editStaffInputPassword');
+      
+      if (permission === 'Viewer') {
+        group.style.display = 'none';
+        pwInput.removeAttribute('required');
+      } else {
+        group.style.display = 'flex';
+        pwInput.setAttribute('required', 'true');
+      }
+
+      openModal('editStaffModal');
+    };
+
+    window.closeEditStaffModal = () => {
+      closeModal('editStaffModal');
+      editStaffContext = null;
+    };
+
+    // 確認編輯人員資訊
+    window.confirmEditStaff = async () => {
+      if (!currentUser || !editStaffContext || currentUserRole !== 'Admin') return;
+
+      const newName = document.getElementById('editStaffInputName').value.trim();
+      const newRole = document.getElementById('editStaffInputRole').value.trim();
+      const newPermission = document.getElementById('editStaffInputPermission').value;
+      const newPassword = document.getElementById('editStaffInputPassword').value.trim();
+      const newDept = document.getElementById('editStaffInputDept').value;
+
+      const nameChanged = newName !== editStaffContext.oldName;
+      const roleChanged = newRole !== editStaffContext.oldRole;
+      const permissionChanged = newPermission !== editStaffContext.permission;
+      const passwordChanged = newPassword !== (editStaffContext.password || '');
+      const deptChanged = newDept !== editStaffContext.department;
+
+      if (nameChanged || roleChanged || permissionChanged || passwordChanged || deptChanged) {
+        
+        if (nameChanged) {
+          const filesToUpdate = localFiles.filter(f => f.uploader === editStaffContext.oldName);
+          for (let f of filesToUpdate) {
+            await updateDoc(getDocRef('files', f.id), { uploader: newName });
+          }
+          
+          if (editStaffContext.id === currentUserId) {
+            currentUserName = newName;
+            localStorage.setItem('repo_user_name', currentUserName);
+          }
+        }
+
+        if (editStaffContext.id === currentUserId) {
+          if (permissionChanged) {
+            currentUserRole = newPermission;
+            localStorage.setItem('repo_user_role', currentUserRole);
+          }
+          if (deptChanged) {
+            currentUserDept = newDept;
+            localStorage.setItem('repo_user_dept', currentUserDept);
+          }
+        }
+
+        const updatedData = {
+          name: newName,
+          role: newRole,
+          permission: newPermission,
+          department: newDept
+        };
+
+        if (newPermission !== 'Viewer') {
+          updatedData.password = newPassword;
+        } else {
+          updatedData.password = '';
+        }
+
+        await updateDoc(getDocRef('attendance', editStaffContext.id), updatedData);
+
+        window.checkPermissions();
+      }
+      
+      window.closeEditStaffModal();
+      window.renderStaffList();
+    };
+
+    // 刪除人員 / 除名
+    window.promptDeleteStaff = (id, name) => {
+      if (currentUserRole !== 'Admin') return;
+
+      window.openConfirmModal('人員除名確認', `您確定要將「${name}」自人員編制庫中移除嗎？這會同步將其除名出勤管理與值日排程。`, async () => {
+        if (!currentUser) return;
+        await deleteDoc(getDocRef('attendance', id));
+        
+        if (id === currentUserId) {
+          currentUserName = '一般訪客';
+          currentUserRole = 'Viewer';
+          currentUserId = 'visitor';
+          currentUserDept = '研發部';
+          localStorage.setItem('repo_user_name', currentUserName);
+          localStorage.setItem('repo_user_role', currentUserRole);
+          localStorage.setItem('repo_user_id', currentUserId);
+          localStorage.setItem('repo_user_dept', currentUserDept);
+          window.checkPermissions();
+          window.renderFiles();
+        }
+
+        window.closeConfirmModal();
+        window.renderStaffList();
+      });
+    };
+
+    // ===================================
+    //  頁面元件渲染邏輯 (Vanilla JS & CSS)
+    // ===================================
+
+    // 渲染置頂最新上傳專區 (方案 B)
+    window.renderRecentUploads = () => {
+      const wrapper = document.getElementById('recentUploadsWrapper');
+      const container = document.getElementById('recentUploadsContainer');
+      if (!wrapper || !container) return;
+
+      if (isRecentUploadsHidden) {
+        wrapper.style.display = 'none';
+        return;
+      }
+
+      const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+      const recent = localFiles.filter(f => f.createdAt && f.createdAt >= threeDaysAgo)
+                               .sort((a, b) => b.createdAt - a.createdAt);
+
+      if (recent.length === 0) {
+        wrapper.style.display = 'none';
+        return;
+      }
+
+      wrapper.style.display = 'block';
+
+      container.innerHTML = recent.slice(0, 4).map(file => {
+        const rolePerms = localPermissions[currentUserRole] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
+        const isOwnFile = (file.uploader === currentUserName) || 
+                          (file.uploader === currentUserDept) || 
+                          (file.uploader === `${currentUserDept} (公用)`);
+
+        const canEdit = rolePerms.editAll || (rolePerms.editOwn && isOwnFile);
+        const canDelete = rolePerms.deleteAll || (rolePerms.deleteOwn && isOwnFile);
+
+        const actionIcons = (canEdit || canDelete) ? `
+          ${canEdit ? `
+            <button onclick="window.openAddFileModal(event, '${file.id}')" class="btn-icon" title="編輯檔案資訊">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+          ` : ''}
+          ${canDelete ? `
+            <button onclick="window.promptDeleteFile('${file.id}', '${file.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除檔案" style="color: var(--color-danger);">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          ` : ''}
+        ` : '';
+
+        const displayDepts = getEffectiveTargetDepts(file).join(', ');
+
+        return `
+          <div class="file-item" style="border: 1px solid var(--color-warning-border); background-color: var(--color-warning-light); box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.05); position: relative; padding: 12px; border-radius: var(--radius-md); display: flex; flex-direction: column; justify-content: space-between; min-height: 180px;">
+            <div style="position: absolute; top: 8px; left: 8px; background-color: var(--color-warning); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 2px; z-index: 10;">
+              <i data-lucide="flame" class="w-3 h-3"></i> NEW
+            </div>
+            
+            <div class="file-item-header" style="justify-content: flex-end; height: 18px; margin-bottom: 4px;">
+              <div class="file-actions">
+                ${actionIcons}
+              </div>
+            </div>
+            
+            <div class="file-meta-side" style="margin-top: 4px; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                <div class="file-icon-box" style="background-color: rgba(245, 158, 11, 0.15); color: var(--color-warning); padding: 8px; border-radius: 8px;">
+                  <i data-lucide="file-text" class="w-4 h-4"></i>
+                </div>
+                <div class="file-info" style="min-width: 0;">
+                  <h4 class="file-title" title="${file.name}" style="font-size: 0.82rem; font-weight: 700; color: var(--color-dark); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.name}</h4>
+                </div>
+              </div>
+              
+              <div class="file-details" style="width: 100%; gap: 4px; font-size: 0.68rem; margin-top: 6px; display: flex; flex-wrap: wrap; color: var(--color-muted);">
+                <span class="category-badge" style="font-size: 0.65rem;">${resolveCategoryName(file.category)}</span>
+                <span class="category-badge" style="background-color: var(--color-success-light); border-color: var(--color-success-border); color: var(--color-success); font-size: 0.65rem;">對象: ${displayDepts}</span>
+                <span>時間: ${file.date}</span>
+                <span class="detail-uploader"><i data-lucide="user" class="w-3 h-3"></i>${file.uploader || '系統'}</span>
+              </div>
+            </div>
+            
+            <div class="file-actions" style="width: 100%; margin-top: 10px; border-top: 1px solid var(--color-border); padding-top: 10px; display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+              <button onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" class="btn btn-secondary btn-xs" style="padding: 4px 8px; font-weight: 700; gap: 4px; display: inline-flex; align-items: center; font-size: 0.68rem;">
+                <i data-lucide="eye" class="w-3 h-3"></i> ${currentUserRole === 'Viewer' ? '線上預覽' : '預覽'}
+              </button>
+              ${currentUserRole !== 'Viewer' ? `
+                <a href="${file.url}" target="_blank" onclick="window.incrementDownloadCount('${file.id}')" class="btn-download" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 0.68rem;">
+                  <i data-lucide="external-link" class="w-3 h-3"></i> 下載
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    };
+
+    // 渲染檔案清單 (動態綁定安全角色限制與發行部門過濾)
+    window.renderFiles = () => {
+      const container = document.getElementById('fileListContainer');
+      if (!container) return;
+
+      const searchTerm = (document.getElementById('fileSearchInput')?.value || '').trim().toLowerCase();
+      
+      // 當點選了非「全部」分類，或搜尋欄有輸入文字時，工作階段永久隱藏最新上傳專區 (方案 B)
+      if (selectedCategory !== '全部' || searchTerm !== '') {
+        isRecentUploadsHidden = true;
+      }
+
+      // 渲染置頂最新上傳專區
+      window.renderRecentUploads();
+      
+      const ROLE_WEIGHT = { 'Viewer': 0, 'Uploader': 1, 'Editor': 2, 'Admin': 3 };
+
+      const filtered = localFiles.filter(file => {
+        // 1. 關鍵字比對
+        const resolvedCatName = resolveCategoryName(file.category);
+        const matchesSearch = file.name.toLowerCase().includes(searchTerm) || 
+                              resolvedCatName.toLowerCase().includes(searchTerm) || 
+                              (file.uploader && file.uploader.toLowerCase().includes(searchTerm)) ||
+                              (file.fileName && file.fileName.toLowerCase().includes(searchTerm));
+        
+        // 2. 分類標籤篩選
+        let matchesCategory = false;
+        if (selectedCategory === '全部') {
+          matchesCategory = true;
+        } else {
+          const fileCatDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
+          const fileCatId = fileCatDoc ? fileCatDoc.id : null;
+          
+          const selCatDoc = localFileCategories.find(c => c.id === selectedCategory || c.name === selectedCategory);
+          if (selCatDoc) {
+            if (fileCatId === selCatDoc.id) {
+              matchesCategory = true;
+            } else {
+              const fileCatParentId = fileCatDoc ? fileCatDoc.parentId : null;
+              if (fileCatParentId === selCatDoc.id) {
+                matchesCategory = true;
+              }
+            }
+          }
+        }
+
+        if (!matchesSearch || !matchesCategory) return false;
+
+        // 3. 安全角色限制比對 (繼承與覆寫)
+        const effectiveAccess = getEffectiveAccessLevel(file);
+        const userRoleWeight = ROLE_WEIGHT[currentUserRole] || 0;
+        const fileRoleWeight = ROLE_WEIGHT[effectiveAccess] || 0;
+        if (userRoleWeight < fileRoleWeight) return false;
+
+        // 4. 發行適用部門篩選 (僅限制非 Admin 的人員，Admin 可跨部門查看)
+        if (currentUserRole !== 'Admin') {
+          const effectiveDepts = getEffectiveTargetDepts(file);
+          if (!effectiveDepts.includes('全公司') && !effectiveDepts.includes(currentUserDept)) {
+            return false;
+          }
+        }
+
+        return true;
+      }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i data-lucide="folder-open" class="w-12 h-12"></i>
+            <p>找不到符合條件的技術檔案</p>
+          </div>`;
+        lucide.createIcons();
+        window.updateBatchActionsBar();
+        return;
+      }
+
+      container.innerHTML = filtered.map(file => {
+        const isChecked = selectedFileIds.includes(file.id);
+        const descriptionHtml = file.description ? `<div class="file-desc-text" title="${file.description.replace(/"/g, '&quot;')}">${file.description}</div>` : '';
+        
+        // 讀取角色擁有的權限設定
+        const rolePerms = localPermissions[currentUserRole] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
+        
+        // 判定是否為自己（個人或所屬部門公用/一般）上傳的檔案，以實現編輯自己檔案之權限
+        const isOwnFile = (file.uploader === currentUserName) || 
+                          (file.uploader === currentUserDept) || 
+                          (file.uploader === `${currentUserDept} (公用)`);
+
+        const canEdit = rolePerms.editAll || (rolePerms.editOwn && isOwnFile);
+        const canDelete = rolePerms.deleteAll || (rolePerms.deleteOwn && isOwnFile);
+
+        const actionIcons = (canEdit || canDelete) ? `
+          ${canEdit ? `
+            <button onclick="window.openAddFileModal(event, '${file.id}')" class="btn-icon" title="編輯檔案資訊">
+              <i data-lucide="edit-3" class="w-4 h-4"></i>
+            </button>
+          ` : ''}
+          ${canDelete ? `
+            <button onclick="window.promptDeleteFile('${file.id}', '${file.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除檔案" style="color: var(--color-danger);">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          ` : ''}
+        ` : '';
+
+        // 計算並標記發行部門
+        const displayDepts = getEffectiveTargetDepts(file).join(', ');
+        
+        // 解析並取得合適的顯示分類名稱
+        const displayCategory = resolveCategoryName(file.category);
+
+        if (viewMode === 'grid') {
+          // 網格卡片視圖 HTML
+          return `
+            <div class="file-item">
+              <div class="file-item-header">
+                <div class="file-selection">
+                  <input type="checkbox" class="file-checkbox" value="${file.id}" ${isChecked ? 'checked' : ''} onchange="window.handleFileSelect(this, '${file.id}')">
+                </div>
+                <div class="file-actions" style="margin-left: auto;">
+                  ${actionIcons}
+                </div>
+              </div>
+              
+              <div class="file-meta-side">
+                <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                  <div class="file-icon-box">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                  </div>
+                  <div class="file-info" style="min-width: 0;">
+                    <h4 class="file-title" title="${file.name}">${file.name}</h4>
+                  </div>
+                </div>
+                
+                <div class="file-details" style="width: 100%; gap: 6px;">
+                  <span class="category-badge">${displayCategory}</span>
+                  <span class="category-badge" style="background-color: var(--color-success-light); border-color: var(--color-success-border); color: var(--color-success); font-size: 0.7rem;" title="發行對象">對象: ${displayDepts}</span>
+                  <span>時間: ${file.date}</span>
+                  <span>大小: ${file.size || 'N/A'}</span>
+                  <span class="detail-uploader"><i data-lucide="user" class="w-3 h-3"></i>${file.uploader || '系統'}</span>
+                  <span class="detail-downloads"><i data-lucide="download" class="w-3 h-3"></i>${file.downloads || 0}次</span>
+                </div>
+                ${descriptionHtml}
+              </div>
+              
+              <div class="file-actions" style="width: 100%; margin-top: 12px; border-top: 1px solid var(--color-border); padding-top: 12px; display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                <button onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" class="btn btn-secondary btn-xs" style="padding: 6px 10px; font-weight: 700; gap: 4px; display: inline-flex; align-items: center; font-size: 0.72rem;">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i> ${currentUserRole === 'Viewer' ? '線上預覽' : '預覽'}
+                </button>
+                ${currentUserRole !== 'Viewer' ? `
+                  <a href="${file.url}" target="_blank" onclick="window.incrementDownloadCount('${file.id}')" class="btn-download" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 0.72rem;">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i> 下載
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        } else {
+          // 列表視圖 HTML
+          return `
+            <div class="file-item">
+              <div class="file-selection">
+                <input type="checkbox" class="file-checkbox" value="${file.id}" ${isChecked ? 'checked' : ''} onchange="window.handleFileSelect(this, '${file.id}')">
+              </div>
+              <div class="file-meta-side">
+                <div class="file-icon-box">
+                  <i data-lucide="file-text" class="w-5 h-5"></i>
+                </div>
+                <div class="file-info">
+                  <h4 class="file-title" title="${file.name}">${file.name}</h4>
+                  <div class="file-details">
+                    <span class="category-badge">${displayCategory}</span>
+                    <span class="category-badge" style="background-color: var(--color-success-light); border-color: var(--color-success-border); color: var(--color-success); font-size: 0.7rem;" title="發行對象">發行對象: ${displayDepts}</span>
+                    <span>上傳時間: ${file.date}</span>
+                    <span>大小: ${file.size || 'N/A'}</span>
+                    <span class="detail-uploader"><i data-lucide="user" class="w-3 h-3" style="margin-right: 2px;"></i>${file.uploader || '系統'}</span>
+                    <span class="detail-downloads"><i data-lucide="download" class="w-3 h-3" style="margin-right: 2px;"></i>${file.downloads || 0} 次下載</span>
+                  </div>
+                  ${descriptionHtml}
+                </div>
+              </div>
+              <div class="file-actions" style="display: flex; gap: 8px; align-items: center;">
+                ${actionIcons}
+                <button onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" class="btn btn-secondary btn-xs" style="padding: 6px 10px; font-weight: 700; gap: 4px; display: inline-flex; align-items: center; font-size: 0.72rem;">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i> ${currentUserRole === 'Viewer' ? '線上預覽' : '預覽'}
+                </button>
+                ${currentUserRole !== 'Viewer' ? `
+                  <a href="${file.url}" target="_blank" onclick="window.incrementDownloadCount('${file.id}')" class="btn-download" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 0.72rem;">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i> <span class="btn-text">下載</span>
+                  </a>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+      
+      lucide.createIcons();
+      window.updateBatchActionsBar();
+    };
+
+    window.toggleCategoryCollapse = (catId, event) => {
+      if (event) event.stopPropagation(); // 阻止氣泡事件以防止點擊展開鈕時觸發分類選擇
+      const current = collapsedCategories[catId] !== undefined ? collapsedCategories[catId] : true;
+      collapsedCategories[catId] = !current;
+      window.renderFileCategories();
+    };
+
+    // 渲染分類樹狀過濾列 (方案 B 樹狀圖)
+    window.renderFileCategories = () => {
+      const container = document.getElementById('categoryTreeContainer');
+      if (!container) return;
+
+      const mains = localFileCategories.filter(c => !c.parentId);
+      mains.sort((a, b) => {
+        if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+        const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+        const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+        return orderA - orderB || a.createdAt - b.createdAt;
+      });
+
+      const isAllActive = selectedCategory === '全部';
+      
+      let html = `<ul class="category-tree-list">`;
+      
+      // 渲染「全部檔案」選項
+      html += `
+        <li class="category-tree-item">
+          <div class="category-tree-row ${isAllActive ? 'active' : ''}" onclick="window.selectCategory('全部')">
+            <span class="category-tree-icon">
+              <i data-lucide="files" class="w-4 h-4"></i>
+            </span>
+            <span>全部檔案</span>
+          </div>
+        </li>
+      `;
+
+      mains.forEach(cat => {
+        const subs = localFileCategories.filter(c => c.parentId === cat.id);
+        subs.sort((a, b) => {
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
+        });
+
+        const hasSubs = subs.length > 0;
+        const isCollapsed = collapsedCategories[cat.id] !== undefined ? collapsedCategories[cat.id] : true;
+        
+        // 判定此大類是否選中
+        const isActive = selectedCategory === cat.id || selectedCategory === cat.name;
+
+        // 展開/收合按鈕
+        let toggleHtml = '';
+        if (hasSubs) {
+          toggleHtml = `
+            <span class="category-tree-toggle" onclick="window.toggleCategoryCollapse('${cat.id}', event)">
+              <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
+            </span>
+          `;
+        } else {
+          toggleHtml = `<span style="width: 26px;"></span>`;
+        }
+
+        html += `
+          <li class="category-tree-item">
+            <div class="category-tree-row ${isActive ? 'active' : ''}" onclick="window.selectCategory('${cat.id}')">
+              ${toggleHtml}
+              <span class="category-tree-icon">
+                <i data-lucide="${cat.isProtected ? 'lock' : 'folder'}" class="w-4 h-4"></i>
+              </span>
+              <span>${cat.name}</span>
+            </div>
+            
+            ${hasSubs && !isCollapsed ? `
+              <div class="category-tree-children">
+                ${subs.map(sub => {
+                  const isSubActive = selectedCategory === sub.id || selectedCategory === sub.name;
+                  return `
+                    <div class="category-tree-row ${isSubActive ? 'active' : ''}" onclick="window.selectCategory('${sub.id}')">
+                      <span class="category-tree-icon" style="margin-left: 12px;">
+                        <i data-lucide="file" class="w-3.5 h-3.5"></i>
+                      </span>
+                      <span>${sub.name}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+          </li>
+        `;
+      });
+
+      html += `</ul>`;
+      container.innerHTML = html;
+      lucide.createIcons();
+    };
+
+    window.selectCategory = (idOrName) => {
+      selectedCategory = idOrName;
+      window.renderFileCategories();
+      window.renderFiles();
+    };
+
+    // 視圖切換
+    window.setViewMode = (mode) => {
+      viewMode = mode;
+      localStorage.setItem('files_view_mode', mode);
+      
+      const btnList = document.getElementById('btnListView');
+      const btnGrid = document.getElementById('btnGridView');
+      const container = document.getElementById('fileListContainer');
+      
+      if (mode === 'grid') {
+        btnList.classList.remove('active');
+        btnGrid.classList.add('active');
+        container.classList.add('grid');
+      } else {
+        btnList.classList.add('active');
+        btnGrid.classList.remove('active');
+        container.classList.remove('grid');
+      }
+      
+      window.renderFiles();
+    };
+
+    // ===================================
+    //  多選與批次操作邏輯
+    // ===================================
+
+    // 當個別檔案核取方塊被更改
+    window.handleFileSelect = (cb, id) => {
+      if (cb.checked) {
+        if (!selectedFileIds.includes(id)) {
+          selectedFileIds.push(id);
+        }
+      } else {
+        selectedFileIds = selectedFileIds.filter(x => x !== id);
+      }
+      window.updateBatchActionsBar();
+    };
+
+    // 全選/取消全選
+    window.toggleSelectAll = (cb) => {
+      const checkboxes = document.querySelectorAll('.file-checkbox');
+      if (cb.checked) {
+        selectedFileIds = [];
+        checkboxes.forEach(box => {
+          box.checked = true;
+          selectedFileIds.push(box.value);
+        });
+      } else {
+        checkboxes.forEach(box => {
+          box.checked = false;
+        });
+        selectedFileIds = [];
+      }
+      window.updateBatchActionsBar();
+    };
+
+    // 更新批次操作工具列顯示狀態與全選狀態
+    window.updateBatchActionsBar = () => {
+      const bar = document.getElementById('batchActionsBar');
+      const label = document.getElementById('selectedCountLabel');
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      const totalCheckboxes = document.querySelectorAll('.file-checkbox').length;
+
+      const rolePerms = localPermissions[currentUserRole] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
+
+      // 檢查是否具有批次刪除按鈕，並依角色控制隱顯
+      const batchDeleteBtn = document.querySelector('#batchActionsBar .btn-danger');
+      if (batchDeleteBtn) {
+        batchDeleteBtn.style.display = rolePerms.deleteAll ? 'inline-flex' : 'none';
+      }
+
+      if (selectedFileIds.length > 0) {
+        bar.style.display = 'inline-flex';
+        label.textContent = `已選取 ${selectedFileIds.length} 個檔案`;
+        
+        // 全選狀態連動
+        if (selectAllCheckbox) {
+          selectAllCheckbox.checked = selectedFileIds.length === totalCheckboxes && totalCheckboxes > 0;
+        }
+      } else {
+        bar.style.display = 'none';
+        if (selectAllCheckbox) {
+          selectAllCheckbox.checked = false;
+        }
+      }
+    };
+
+    // 批次刪除
+    window.promptBatchDelete = () => {
+      const rolePerms = localPermissions[currentUserRole] || { deleteAll: false };
+      if (selectedFileIds.length === 0 || !rolePerms.deleteAll) return;
+      
+      window.openConfirmModal('批次刪除確認', `確定要將已選擇的 ${selectedFileIds.length} 個檔案永久刪除嗎？此操作將無法復原。`, async () => {
+        if(!currentUser) return;
+        try {
+          await Promise.all(selectedFileIds.map(id => deleteDoc(getDocRef('files', id))));
+          selectedFileIds = [];
+          window.updateBatchActionsBar();
+          window.closeConfirmModal();
+        } catch (error) {
+          console.error("Batch delete error: ", error);
+        }
+      });
+    };
+
+    // 批次下載
+    window.batchDownload = () => {
+      if (selectedFileIds.length === 0) return;
+      
+      const filesToDownload = localFiles.filter(f => selectedFileIds.includes(f.id));
+      
+      filesToDownload.forEach((file, index) => {
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.href = file.url;
+          a.target = '_blank';
+          a.download = file.fileName || file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          
+          window.incrementDownloadCount(file.id);
+        }, index * 400); // 400 毫秒間隔
+      });
+    };
+
+    // 遞增下載次數
+    window.incrementDownloadCount = async (id) => {
+      if(!currentUser) return;
+      const file = localFiles.find(f => f.id === id);
+      const name = file ? file.name : '未知檔案';
+      try {
+        await updateDoc(getDocRef('files', id), {
+          downloads: increment(1)
+        });
+        await writeAuditLog('DOWNLOAD', name, '開啟並下載了此技術檔案');
+      } catch (e) {
+        console.error("Error incrementing downloads counter:", e);
+      }
+    };
+
+
+    // ===================================
+    //  各項新增與編輯邏輯 (Firestore 串接)
+    // ===================================
+    // 動態填充檔案上傳/編輯對話框中的分類下拉選單 (方案 B 樹狀圖)
+    function populateFileCategorySelect(selectedVal = null) {
+      const select = document.getElementById('addFileCategory');
+      if (!select) return;
+      
+      const mains = localFileCategories.filter(c => !c.parentId);
+      let html = '';
+      mains.forEach(main => {
+        const isSel = (main.id === selectedVal || main.name === selectedVal) ? 'selected' : '';
+        html += `<option value="${main.id}" ${isSel}>${main.name}</option>`;
+        
+        const subs = localFileCategories.filter(c => c.parentId === main.id);
+        subs.forEach(sub => {
+          const isSubSel = (sub.id === selectedVal || sub.name === selectedVal) ? 'selected' : '';
+          html += `<option value="${sub.id}" ${isSubSel}>　└ ${sub.name}</option>`;
+        });
+      });
+      select.innerHTML = html;
+    }
+
+    // 全公司部門核取方塊連動控制
+    window.handleAllCompanyCheckbox = (allCb) => {
+      const boxes = document.getElementsByName('addFileDept');
+      boxes.forEach(b => {
+        if (allCb && allCb.checked) {
+          b.checked = true;
+          b.disabled = true;
+        } else {
+          b.disabled = false;
+        }
+      });
+    };
+
+    window.handleEditCategoryAllCompanyCheckbox = (allCb) => {
+      const boxes = document.getElementsByName('editCategoryDept');
+      boxes.forEach(b => {
+        if (allCb && allCb.checked) {
+          b.checked = true;
+          b.disabled = true;
+        } else {
+          b.disabled = false;
+        }
+      });
+    };
+
+    // 開啟新增/編輯檔案視窗
+    window.openAddFileModal = (e = null, fileId = null) => {
+      if(e) e.stopPropagation();
+      editingFileId = fileId;
+      const form = document.getElementById('addFileForm');
+      const titleEl = document.getElementById('addFileModalTitle');
+      const submitBtn = document.getElementById('fileSubmitBtn');
+      const inputWrapper = document.getElementById('fileInputWrapper');
+      const fileInput = document.getElementById('addFileInput');
+      const uploaderInput = document.getElementById('addFileUploader');
+      
+      document.getElementById('fileUploadMessage').classList.remove('active');
+      document.getElementById('fileInputLabel').textContent = "拖曳檔案至此或點擊選取";
+      submitBtn.disabled = false;
+
+      // 依據身分將「上傳者姓名」欄位限制為當前使用者名稱並改為唯讀
+      uploaderInput.value = currentUserName;
+      if (currentUserRole === 'Uploader' || currentUserRole === 'Admin' || currentUserRole === 'Editor') {
+        uploaderInput.readOnly = true;
+        uploaderInput.style.backgroundColor = '#e2e8f0';
+        uploaderInput.style.cursor = 'not-allowed';
+      } else {
+        uploaderInput.readOnly = false;
+        uploaderInput.style.backgroundColor = '';
+        uploaderInput.style.cursor = '';
+      }
+
+      if(fileId) {
+        // 編輯模式
+        const file = localFiles.find(f => f.id === fileId);
+        if(!file) return;
+        document.getElementById('addFileName').value = file.name;
+        uploaderInput.value = file.uploader || '';
+        document.getElementById('addFileDescription').value = file.description || '';
+        document.getElementById('addFileAccessOverride').value = file.accessLevelOverride || 'Inherit';
+
+        // 載入發行部門對象
+        const depts = file.targetDepts || ['全公司'];
+        const allCb = document.getElementById('addFileDept_All');
+        allCb.checked = depts.includes('全公司');
+        
+        const boxes = document.getElementsByName('addFileDept');
+        boxes.forEach(b => {
+          b.checked = depts.includes(b.value);
+        });
+        
+        window.handleAllCompanyCheckbox(allCb);
+        
+        populateFileCategorySelect(file.category);
+        inputWrapper.style.display = 'none';
+        fileInput.removeAttribute('required');
+        
+        titleEl.innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-primary"></i> 編輯檔案資訊';
+        submitBtn.innerHTML = '儲存修改';
+      } else {
+        // 新增上傳模式
+        form.reset();
+        uploaderInput.value = currentUserName;
+        const defaultCatDoc = localFileCategories.find(c => !c.isProtected);
+        const defaultCatVal = defaultCatDoc ? defaultCatDoc.id : FALLBACK_CATEGORY;
+        populateFileCategorySelect(defaultCatVal);
+        
+        // 手動調用分類變更監聽，加載該分類的預設發行對象與權限設定
+        const catSelect = document.getElementById('addFileCategory');
+        catSelect.value = defaultCatVal;
+        const changeEvent = new Event('change');
+        catSelect.dispatchEvent(changeEvent);
+
+        document.getElementById('addFileAccessOverride').value = 'Inherit';
+        inputWrapper.style.display = 'block';
+        fileInput.setAttribute('required', 'true');
+        
+        titleEl.innerHTML = '<i data-lucide="upload-cloud" class="w-5 h-5 text-primary"></i> 上傳技術文件';
+        submitBtn.innerHTML = '確認上傳';
+      }
+
+      openModal('addFileModal');
+    };
+
+    window.closeAddFileModal = () => {
+      closeModal('addFileModal');
+      editingFileId = null;
+    };
+
+    // 線上預覽與浮水印控制
+    window.openPreviewModal = async (id, name, url) => {
+      const iframe = document.getElementById('previewIframe');
+      const title = document.getElementById('previewModalTitle');
+      const overlay = document.getElementById('previewWatermarkOverlay');
+      
+      if (!iframe || !overlay) return;
+
+      title.textContent = `線上預覽：${name}`;
+      
+      // 處理浮水印與點擊攔截 (僅針對 Viewer / 一般訪客顯示)
+      const blocker = document.getElementById('previewClickBlocker');
+      if (currentUserRole === 'Viewer') {
+        const dateStr = new Date().toISOString().split('T')[0];
+        const text = `${currentUserName} (${currentUserDept}) | ${dateStr} 內部機密 嚴禁翻拍`;
+        
+        // 繪製斜向平鋪浮水印 (改用半透明石板灰，在白底文件上清晰可見)
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 200;
+        const ctx = canvas.getContext('2d');
+        ctx.rotate(-20 * Math.PI / 180);
+        ctx.font = '700 12px "Microsoft JhengHei", Arial';
+        ctx.fillStyle = 'rgba(100, 116, 139, 0.18)'; 
+        ctx.fillText(text, 10, 150);
+        
+        overlay.style.backgroundImage = `url(${canvas.toDataURL()})`;
+        overlay.style.backgroundRepeat = 'repeat';
+        overlay.style.display = 'block';
+        
+        if (blocker) blocker.style.display = 'block';
+      } else {
+        overlay.style.display = 'none';
+        if (blocker) blocker.style.display = 'none';
+      }
+
+      // 提取檔案路徑部分（排除問號後面的 Token 參數）進行副檔名判定，避免 endsWith 判定失效
+      const urlPath = url.split('?')[0].toLowerCase();
+      let finalPreviewUrl = url;
+      
+      if (urlPath.includes('.pdf') || urlPath.endsWith('.pdf')) {
+        // PDF 檔案可直接使用原生 iframe 內嵌 (加 toolbar=0 隱藏下載工具列)
+        finalPreviewUrl = `${url}#toolbar=0`;
+      } else if (urlPath.endsWith('.doc') || urlPath.endsWith('.docx') || urlPath.endsWith('.xls') || urlPath.endsWith('.xlsx')) {
+        // Word 或 Excel 技術文件，採用 Google Docs Viewer 線上服務內嵌預覽
+        finalPreviewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      }
+
+      iframe.src = finalPreviewUrl;
+
+      // 寫入線上預覽操作日誌
+      await writeAuditLog('PREVIEW', name, '在瀏覽器線上預覽了此技術文件');
+
+      openModal('previewFileModal');
+    };
+
+    window.closePreviewModal = () => {
+      const iframe = document.getElementById('previewIframe');
+      if (iframe) iframe.src = 'about:blank'; // 清除載入
+      closeModal('previewFileModal');
+    };
+
+    // 提交上傳或修改檔案資料
+    window.submitFile = async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('fileSubmitBtn');
+      const msgBox = document.getElementById('fileUploadMessage');
+
+      if (!currentUser) return;
+      
+      const name = document.getElementById('addFileName').value.trim();
+      const category = document.getElementById('addFileCategory').value;
+      const uploader = document.getElementById('addFileUploader').value.trim();
+      const description = document.getElementById('addFileDescription').value.trim();
+      const accessLevelOverride = document.getElementById('addFileAccessOverride').value;
+
+      // 取得選取的發行適用部門
+      const targetDepts = [];
+      if (document.getElementById('addFileDept_All').checked) {
+        targetDepts.push('全公司');
+      } else {
+        const boxes = document.getElementsByName('addFileDept');
+        boxes.forEach(b => {
+          if (b.checked) targetDepts.push(b.value);
+        });
+      }
+
+      // 重複檔案上傳防呆機制 (方案 A：直接阻擋)
+      if (!editingFileId) {
+        // 1. 比對檔案顯示名稱
+        const duplicateName = localFiles.find(f => f.name === name);
+        if (duplicateName) {
+          msgBox.textContent = `上傳失敗：技術檔案名稱「${name}」已存在於資料庫中！`;
+          msgBox.className = "msg-box msg-box-danger active";
+          return;
+        }
+
+        // 2. 比對實體檔案名稱
+        const fileInput = document.getElementById('addFileInput');
+        const selectedFile = fileInput ? fileInput.files[0] : null;
+        if (selectedFile) {
+          const duplicateFile = localFiles.find(f => f.fileName === selectedFile.name);
+          if (duplicateFile) {
+            msgBox.textContent = `上傳失敗：實體檔案「${selectedFile.name}」已上傳過 (已存在對應技術檔案為: ${duplicateFile.name})！`;
+            msgBox.className = "msg-box msg-box-danger active";
+            return;
+          }
+        }
+      }
+
+      submitBtn.disabled = true;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中...';
+      lucide.createIcons();
+
+      try {
+        if (editingFileId) {
+          // 更新資料庫記錄
+          await updateDoc(getDocRef('files', editingFileId), {
+            name,
+            category,
+            uploader,
+            description,
+            accessLevelOverride,
+            targetDepts
+          });
+          
+          // 寫入編輯操作日誌
+          await writeAuditLog('EDIT', name, `編輯了技術檔案資訊 (分類: ${resolveCategoryName(category)})`);
+          
+          window.closeAddFileModal();
+        } else {
+          // 全新上傳檔案
+          const fileInput = document.getElementById('addFileInput');
+          const file = fileInput.files[0];
+          if (!file) throw new Error("尚未選擇檔案");
+
+          let downloadURL = "";
+          try {
+            const uniqueFileName = `${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, `documents/${uniqueFileName}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            downloadURL = await getDownloadURL(snapshot.ref);
+          } catch (storageError) {
+            console.warn("Storage upload failed, falling back to dummy link.", storageError);
+            msgBox.textContent = "提醒：儲存空間權限未開放，已採用虛擬測試連結。";
+            msgBox.className = "msg-box msg-box-warning active";
+            downloadURL = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+            await new Promise(r => setTimeout(r, 1200));
+          }
+
+          // 寫入 Firestore 檔案紀錄
+          await addDoc(getCollectionRef('files'), {
+            name,
+            category,
+            url: downloadURL,
+            fileName: file.name,
+            size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+            date: new Date().toISOString().split('T')[0],
+            createdAt: Date.now(),
+            uploader,
+            description,
+            downloads: 0,
+            accessLevelOverride,
+            targetDepts
+          });
+
+          // 寫入上傳操作日誌
+          await writeAuditLog('UPLOAD', name, `上傳了新技術檔案 (檔名: ${file.name}, 分類: ${resolveCategoryName(category)})`);
+
+          window.closeAddFileModal();
+        }
+      } catch (error) {
+        msgBox.textContent = "發生錯誤：" + error.message;
+        msgBox.className = "msg-box msg-box-danger active";
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    };
+
+    // 刪除檔案確認
+    window.promptDeleteFile = (id, name) => {
+      window.openConfirmModal('刪除確認', `您確定要永久刪除技術檔案「${name}」嗎？此操作無法還原。`, async () => {
+        if(!currentUser) return;
+        await deleteDoc(getDocRef('files', id));
+        
+        // 寫入刪除操作日誌
+        await writeAuditLog('DELETE', name, '永久刪除檔案');
+        
+        selectedFileIds = selectedFileIds.filter(x => x !== id);
+        window.updateBatchActionsBar();
+        window.closeConfirmModal();
+      });
+    };
+
+    // ===================================
+    //  分類標籤管理 (Firestore 串接)
+    // ===================================
+
+    window.openManageCategoryModal = () => {
+      const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
+      if (!rolePerms.manageCategory) return;
+      openModal('manageCategoryModal');
+      window.renderFileCategoriesManage();
+    };
+
+    window.closeManageCategoryModal = () => {
+      closeModal('manageCategoryModal');
+    };
+
+    // 渲染管理分類對話框中的分類清單 (列出其預設安全限制與部門發行設定)
+    window.renderFileCategoriesManage = () => {
+      const container = document.getElementById('categoryListContainer');
+      if(!container) return;
+
+      // 同步更新新增分類選單中的上級分類選項
+      const parentSelect = document.getElementById('newCategoryParent');
+      if (parentSelect) {
+        const mains = localFileCategories.filter(c => !c.parentId);
+        // 先依照排序欄位排序 mains
+        mains.sort((a, b) => {
+          if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
+        });
+        parentSelect.innerHTML = '<option value="">無 (作為大類)</option>' +
+          mains.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+      }
+
+      // 將分類分組為大類/小類樹狀結構進行渲染
+      const mains = localFileCategories.filter(c => !c.parentId);
+      mains.sort((a, b) => {
+        if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+        const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+        const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+        return orderA - orderB || a.createdAt - b.createdAt;
+      });
+
+      const movableMains = mains.filter(m => !m.isProtected);
+      let html = '';
+
+      mains.forEach(cat => {
+        const defaultAccess = cat.defaultAccessLevel || 'Viewer';
+        const defaultDepts = (cat.defaultTargetDepts || ['全公司']).join(', ');
+
+        const subs = localFileCategories.filter(c => c.parentId === cat.id);
+        const hasSubs = subs.length > 0;
+        const isCollapsed = collapsedManageCategories[cat.id] !== undefined ? collapsedManageCategories[cat.id] : true;
+
+        // 大類上下移動判定
+        const mainIndex = movableMains.findIndex(m => m.id === cat.id);
+        const isFirstMain = mainIndex === 0;
+        const isLastMain = mainIndex === movableMains.length - 1;
+
+        // 展開/收合按鈕
+        let toggleHtml = '';
+        if (hasSubs) {
+          toggleHtml = `
+            <span class="category-tree-toggle" onclick="window.toggleManageCategoryCollapse('${cat.id}', event)" style="margin-right: 4px;">
+              <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
+            </span>
+          `;
+        } else {
+          toggleHtml = `<span style="width: 26px; display: inline-block;"></span>`;
+        }
+
+        html += `
+          <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px; font-weight: 700; background-color: var(--color-bg); margin-top: 8px;">
+            <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                ${toggleHtml}
+                <i data-lucide="${cat.isProtected ? 'lock' : 'folder-open'}" class="w-4 h-4 text-primary"></i>
+                <span>${cat.name} <span style="font-size:0.72rem; font-weight:normal; color:var(--color-muted);">(大類)</span></span>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--color-muted); font-weight: normal; margin-left: 26px;">
+                預設等級：${defaultAccess} | 預設部門：${defaultDepts}
+              </span>
+            </div>
+            ${!cat.isProtected ? `
+              <div style="display: flex; align-items: center; gap: 2px;">
+                <button onclick="window.moveCategory('${cat.id}', 'up')" class="btn-icon" title="上移" ${isFirstMain ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                </button>
+                <button onclick="window.moveCategory('${cat.id}', 'down')" class="btn-icon" title="下移" ${isLastMain ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </button>
+                <button onclick="window.openEditCategoryModal('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon" title="修改屬性與權限">
+                  <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button onclick="window.promptDeleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除分類">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            ` : '<span class="cat-badge-system">預設</span>'}
+          </div>
+        `;
+
+        // 渲染子分類
+        if (!isCollapsed) {
+          subs.sort((a, b) => {
+            const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+            const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+            return orderA - orderB || a.createdAt - b.createdAt;
+          });
+
+          subs.forEach(sub => {
+            const subAccess = sub.defaultAccessLevel || 'Viewer';
+            const subDepts = (sub.defaultTargetDepts || ['全公司']).join(', ');
+
+            // 子分類上下移動判定
+            const subIndex = subs.findIndex(s => s.id === sub.id);
+            const isFirstSub = subIndex === 0;
+            const isLastSub = subIndex === subs.length - 1;
+
+            html += `
+              <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px; margin-left: 24px; border-left: 2px solid var(--color-border); padding-left: 12px;">
+                <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="folder" class="w-4 h-4 text-muted"></i>
+                    <span>${sub.name}</span>
+                  </div>
+                  <span style="font-size: 0.72rem; color: var(--color-muted);">
+                    預設等級：${subAccess} | 預設部門：${subDepts}
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 2px;">
+                  <button onclick="window.moveCategory('${sub.id}', 'up')" class="btn-icon" title="上移" ${isFirstSub ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                    <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                  </button>
+                  <button onclick="window.moveCategory('${sub.id}', 'down')" class="btn-icon" title="下移" ${isLastSub ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                  </button>
+                  <button onclick="window.openEditCategoryModal('${sub.id}', '${sub.name.replace(/'/g, "\\'")}')" class="btn-icon" title="修改屬性與權限">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                  </button>
+                  <button onclick="window.promptDeleteCategory('${sub.id}', '${sub.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除分類">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+        }
+      });
+
+      container.innerHTML = html || '<div class="text-muted text-center py-4">無分類資料</div>';
+      lucide.createIcons();
+    };
+
+    window.toggleManageCategoryCollapse = (catId, event) => {
+      if (event) event.stopPropagation();
+      const current = collapsedManageCategories[catId] !== undefined ? collapsedManageCategories[catId] : true;
+      collapsedManageCategories[catId] = !current;
+      window.renderFileCategoriesManage();
+    };
+
+    // 調整分類順序大類/小類分開邏輯 (方案 B)
+    window.moveCategory = async (id, direction) => {
+      const cat = localFileCategories.find(c => c.id === id);
+      if (!cat) return;
+      
+      let siblings = [];
+      if (!cat.parentId) {
+        // 大類互換 (不包含系統預設分類，保持預設在最前)
+        siblings = localFileCategories.filter(c => !c.parentId && !c.isProtected);
+        siblings.sort((a, b) => {
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
+        });
+      } else {
+        // 同一父分類底下的子分類互換
+        siblings = localFileCategories.filter(c => c.parentId === cat.parentId);
+        siblings.sort((a, b) => {
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
+        });
+      }
+      
+      const currentIndex = siblings.findIndex(c => c.id === id);
+      if (currentIndex === -1) return;
+      
+      let targetIndex = -1;
+      if (direction === 'up' && currentIndex > 0) {
+        targetIndex = currentIndex - 1;
+      } else if (direction === 'down' && currentIndex < siblings.length - 1) {
+        targetIndex = currentIndex + 1;
+      }
+      
+      if (targetIndex !== -1) {
+        const targetCat = siblings[targetIndex];
+        
+        // 賦予預設 index 當作權重，防呆避免 undefined 衝突
+        const currentOrder = cat.sortOrder !== undefined ? cat.sortOrder : currentIndex;
+        const targetOrder = targetCat.sortOrder !== undefined ? targetCat.sortOrder : targetIndex;
+        
+        // 交換權重並更新至資料庫
+        await updateDoc(getDocRef('fileCategories', cat.id), { sortOrder: targetOrder });
+        await updateDoc(getDocRef('fileCategories', targetCat.id), { sortOrder: currentOrder });
+      }
+    };
+
+    // 新增標籤分類
+    window.submitNewCategory = async (e) => {
+      e.preventDefault();
+      const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
+      if(!currentUser || !rolePerms.manageCategory) return;
+      const input = document.getElementById('newCategoryName');
+      const parentInput = document.getElementById('newCategoryParent');
+      
+      const name = input.value.trim();
+      const parentId = parentInput ? parentInput.value : '';
+
+      if (!name) {
+        alert("分類名稱不能為空！");
+        return;
+      }
+      if (name.length > 20) {
+        alert("分類名稱長度不能超過 20 個字元！");
+        return;
+      }
+      const normalized = name.toLowerCase();
+      if (localFileCategories.some(c => c.name.trim().toLowerCase() === normalized)) {
+        alert("此分類名稱已存在！");
+        return;
+      }
+
+      // 取得當前最大 sortOrder 以放至最後
+      const siblings = localFileCategories.filter(c => parentId ? c.parentId === parentId : !c.parentId);
+      const maxOrder = siblings.reduce((max, c) => {
+        const o = c.sortOrder !== undefined ? c.sortOrder : 0;
+        return o > max ? o : max;
+      }, 0);
+
+      await addDoc(getCollectionRef('fileCategories'), {
+        name,
+        parentId,
+        isProtected: false,
+        createdAt: Date.now(),
+        sortOrder: maxOrder + 1,
+        defaultAccessLevel: 'Viewer',
+        defaultTargetDepts: ['全公司']
+      });
+      input.value = '';
+      if (parentInput) parentInput.value = '';
+    };
+
+    let editCatContext = null;
+    
+    // 開啟編輯分類名稱與權限對話框
+    window.openEditCategoryModal = (id, oldName) => {
+      const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
+      if (!rolePerms.manageCategory) return;
+      
+      const cat = localFileCategories.find(c => c.id === id);
+      if (!cat) return;
+
+      editCatContext = { id, oldName, ...cat };
+      
+      document.getElementById('editCategoryInput').value = oldName;
+      document.getElementById('editCategoryAccess').value = cat.defaultAccessLevel || 'Viewer';
+      
+      // 動態渲染上級分類選擇器 (防呆：已有子分類的大類不能再被降級)
+      const editParentSelect = document.getElementById('editCategoryParent');
+      if (editParentSelect) {
+        const hasChildren = localFileCategories.some(c => c.parentId === id);
+        if (hasChildren) {
+          editParentSelect.innerHTML = '<option value="">無 (此大類已有子分類，無法降級)</option>';
+          editParentSelect.value = '';
+          editParentSelect.disabled = true;
+        } else {
+          editParentSelect.disabled = false;
+          const mains = localFileCategories.filter(c => !c.parentId && c.id !== id);
+          editParentSelect.innerHTML = '<option value="">無 (作為大類)</option>' +
+            mains.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+          editParentSelect.value = cat.parentId || '';
+        }
+      }
+      
+      const depts = cat.defaultTargetDepts || ['全公司'];
+      const allCb = document.getElementById('editCategoryDept_All');
+      
+      allCb.checked = depts.includes('全公司');
+      
+      const boxes = document.getElementsByName('editCategoryDept');
+      boxes.forEach(b => {
+        b.checked = depts.includes(b.value);
+      });
+      
+      window.handleEditCategoryAllCompanyCheckbox(allCb);
+      
+      openModal('editCategoryModal');
+    };
+
+    window.closeEditCategoryModal = () => {
+      closeModal('editCategoryModal');
+      editCatContext = null;
+    };
+
+    // 儲存修改的分類名稱與預設屬性
+    window.confirmEditCategory = async () => {
+      const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
+      if(!currentUser || !editCatContext || !rolePerms.manageCategory) return;
+      
+      const newName = document.getElementById('editCategoryInput').value.trim();
+      const newAccess = document.getElementById('editCategoryAccess').value;
+      const editParentSelect = document.getElementById('editCategoryParent');
+      const newParentId = editParentSelect ? editParentSelect.value : '';
+
+      if (!newName) {
+        alert("分類名稱不能為空！");
+        return;
+      }
+      if (newName.length > 20) {
+        alert("分類名稱長度不能超過 20 個字元！");
+        return;
+      }
+      const normalized = newName.toLowerCase();
+      if (localFileCategories.some(c => c.id !== editCatContext.id && c.name.trim().toLowerCase() === normalized)) {
+        alert("此分類名稱已存在！");
+        return;
+      }
+
+      // 取得修改的部門預設對象
+      const depts = [];
+      if (document.getElementById('editCategoryDept_All').checked) {
+        depts.push('全公司');
+      } else {
+        const boxes = document.getElementsByName('editCategoryDept');
+        boxes.forEach(b => {
+          if (b.checked) depts.push(b.value);
+        });
+      }
+      
+      // 1. 批次更新舊檔案中的分類標籤為新分類的 ID，確保關聯移轉並升級為 ID 關聯
+      if (newName !== editCatContext.oldName) {
+        const filesToUpdate = localFiles.filter(f => f.category === editCatContext.oldName || f.category === editCatContext.id);
+        for(let f of filesToUpdate) {
+          await updateDoc(getDocRef('files', f.id), { category: editCatContext.id });
+        }
+      }
+      // 2. 更新分類本體
+      await updateDoc(getDocRef('fileCategories', editCatContext.id), {
+        name: newName,
+        parentId: newParentId,
+        defaultAccessLevel: newAccess,
+        defaultTargetDepts: depts
+      });
+      window.closeEditCategoryModal();
+    };
+
+    // 刪除分類標籤，並將對應檔案移至 fallback (如果刪除大類，會一併刪除其下的子分類)
+    window.promptDeleteCategory = (id, name) => {
+      const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
+      if (!rolePerms.manageCategory) return;
+      
+      const subCats = localFileCategories.filter(c => c.parentId === id);
+      const subCatIds = subCats.map(c => c.id);
+      const targetIds = [id, ...subCatIds];
+      const targetNames = [name, ...subCats.map(c => c.name)];
+      
+      // 計算受影響檔案數量 (包含大類與其所有子分類)
+      const affectedFilesCount = localFiles.filter(f => 
+        targetIds.includes(f.category) || targetNames.includes(f.category)
+      ).length;
+      
+      let confirmMsg = '';
+      if (subCats.length > 0) {
+        confirmMsg = `確定刪除大類「${name}」？此操作會一併刪除其下的 ${subCats.length} 個子分類，且這將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動移至「${FALLBACK_CATEGORY}」。`;
+      } else {
+        confirmMsg = `確定刪除分類「${name}」？此操作將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動移至「${FALLBACK_CATEGORY}」。`;
+      }
+      
+      window.openConfirmModal(
+        '刪除分類確認', 
+        confirmMsg, 
+        async () => {
+          if(!currentUser) return;
+          
+          // 找出屬於被刪除分類(包含子分類)的檔案
+          const filesToUpdate = localFiles.filter(f => 
+            targetIds.includes(f.category) || targetNames.includes(f.category)
+          );
+          
+          for(let f of filesToUpdate) {
+            await updateDoc(getDocRef('files', f.id), { category: FALLBACK_CATEGORY });
+          }
+          
+          // 批次刪除分類
+          for(let catId of targetIds) {
+            await deleteDoc(getDocRef('fileCategories', catId));
+          }
+          
+          window.closeConfirmModal();
+        }
+      );
+    };
+
+    // ===================================
+    //  通用對話框控制器 (Modal Helpers)
+    // ===================================
+
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.add('active');
+      }
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+
+    // 通用確認視窗開關
+    let confirmAction = null;
+    window.openConfirmModal = (title, desc, action) => {
+      document.getElementById('confirmModalTitle').textContent = title;
+      document.getElementById('confirmModalDesc').textContent = desc;
+      confirmAction = action;
+      openModal('actionConfirmModal');
+    };
+
+    window.closeConfirmModal = () => {
+      closeModal('actionConfirmModal');
+      confirmAction = null;
+    };
+
+    document.getElementById('confirmModalActionBtn').addEventListener('click', () => {
+      if(confirmAction) confirmAction();
+    });
+
+    // 綁定鍵盤 ESC 鍵關閉所有彈出視窗
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal('addFileModal');
+        closeModal('manageCategoryModal');
+        closeModal('editCategoryModal');
+        closeModal('actionConfirmModal');
+        closeModal('loginModal');
+        closeModal('manageStaffModal');
+        closeModal('editStaffModal');
+      }
+    });
+
+    // 啟動頁面
+    window.onload = init;
+  </script>
+</body>
+</html>
