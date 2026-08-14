@@ -309,7 +309,7 @@
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
     }
 
-    /* 樹狀分類導覽佈局 (方案 B) */
+    /* 樹狀分類導覽佈局 (支援 5 層結構) */
     .db-content-layout {
       display: flex;
       gap: 20px;
@@ -317,7 +317,8 @@
     }
 
     .category-tree-sidebar {
-      width: 250px;
+      width: 270px;
+      min-width: 250px;
       flex-shrink: 0;
       border-right: 1px solid var(--color-border);
       padding-right: 16px;
@@ -348,7 +349,7 @@
       margin: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .category-tree-item {
@@ -359,13 +360,15 @@
     .category-tree-row {
       display: flex;
       align-items: center;
-      padding: 8px 10px;
+      padding: 6px 8px;
       border-radius: var(--radius-md);
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       color: var(--color-muted);
       transition: var(--transition);
       user-select: none;
+      min-width: 0;
+      gap: 4px;
     }
 
     .category-tree-row:hover {
@@ -383,13 +386,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border-radius: 4px;
-      margin-right: 6px;
       cursor: pointer;
       color: var(--color-muted);
       transition: var(--transition);
+      flex-shrink: 0;
     }
 
     .category-tree-toggle:hover {
@@ -398,20 +401,21 @@
     }
 
     .category-tree-icon {
-      margin-right: 8px;
+      margin-right: 4px;
       display: flex;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .category-tree-children {
-      margin-left: 20px;
-      padding-left: 10px;
+      margin-left: 12px;
+      padding-left: 6px;
       border-left: 1px dashed var(--color-border);
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-top: 4px;
-      margin-bottom: 4px;
+      gap: 2px;
+      margin-top: 2px;
+      margin-bottom: 2px;
     }
 
     @media (max-width: 768px) {
@@ -426,8 +430,8 @@
         padding-bottom: 16px;
       }
       .category-tree-children {
-        margin-left: 16px;
-        padding-left: 8px;
+        margin-left: 12px;
+        padding-left: 6px;
       }
     }
 
@@ -1320,7 +1324,7 @@
 
   <!-- 3. 編輯分類屬性與權限彈出視窗 (已擴充) -->
   <div id="editCategoryModal" class="modal-backdrop" style="background-color: rgba(15, 23, 42, 0.6); z-index: 60;">
-    <div class="modal-card" style="max-width: 420px;">
+    <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
         <h3 class="modal-title">修改分類屬性</h3>
         <button onclick="window.closeEditCategoryModal()" class="btn-icon">
@@ -1334,26 +1338,35 @@
         </div>
         <div class="form-group" style="margin-top: 8px;">
           <label class="form-label" for="editCategoryParent">上級分類</label>
-          <select id="editCategoryParent" class="form-control" style="background-color: var(--color-surface);">
-            <option value="">無 (作為大類)</option>
+          <select id="editCategoryParent" class="form-control" style="background-color: var(--color-surface);" onchange="window.handleEditCategoryParentChange(this)">
+            <option value="">無 (作為第 1 層大類)</option>
           </select>
         </div>
-        <div class="form-group" style="margin-top: 8px;">
-          <label class="form-label" for="editCategoryAccess">預設安全等級限制</label>
-          <select id="editCategoryAccess" class="form-control" style="background-color: var(--color-surface);">
-            <option value="Viewer">檢視者 (Viewer) 以上可看</option>
-            <option value="Uploader">上傳者 (Uploader) 以上可看</option>
-            <option value="Editor">編輯管理員 (Editor) 以上可看</option>
-            <option value="Admin">僅系統管理員 (Admin) 可看</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin-top: 8px;">
-          <label class="form-label">預設發行部門對象</label>
-          <div id="editCategoryDeptContainer" style="display: flex; gap: 8px; flex-wrap: wrap; background-color: var(--color-bg); padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
-            <!-- JS 動態生成 -->
+        
+        <!-- 第 1 層大類設定區域 -->
+        <div id="editCategoryRootSettingsGroup">
+          <div class="form-group" style="margin-top: 8px;">
+            <label class="form-label" for="editCategoryAccess">預設安全等級限制 (第 1 層大類)</label>
+            <select id="editCategoryAccess" class="form-control" style="background-color: var(--color-surface);">
+              <option value="Viewer">檢視者 (Viewer) 以上可看</option>
+              <option value="Uploader">上傳者 (Uploader) 以上可看</option>
+              <option value="Editor">編輯管理員 (Editor) 以上可看</option>
+              <option value="Admin">僅系統管理員 (Admin) 可看</option>
+            </select>
           </div>
+          <div class="form-group" style="margin-top: 8px;">
+            <label class="form-label">預設發行部門對象 (第 1 層大類)</label>
+            <div id="editCategoryDeptContainer" style="display: flex; gap: 8px; flex-wrap: wrap; background-color: var(--color-bg); padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+              <!-- JS 動態生成 -->
+            </div>
+          </div>
+          <p id="editCategoryRootNotice" style="font-size: 0.72rem; color: var(--color-muted); margin-top: 6px;">注意：變更第 1 層大類設定後，該大類下所有設定為「繼承」之子分類與檔案將自動套用新規則。</p>
         </div>
-        <p style="font-size: 0.72rem; color: var(--color-muted); margin-top: 6px;">注意：變更後，該分類下目前設定為「繼承」之檔案將會套用新規則。</p>
+
+        <!-- 第 2~5 層子分類繼承提示區域 -->
+        <div id="editCategoryInheritNotice" style="display: none; background-color: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px 12px; margin-top: 8px; font-size: 0.78rem; color: var(--color-muted); line-height: 1.5;">
+          <!-- JS 動態生成繼承來源資訊 -->
+        </div>
       </div>
       <div class="modal-footer">
         <button onclick="window.closeEditCategoryModal()" class="btn btn-secondary">取消</button>
@@ -1817,22 +1830,99 @@
       return 'Viewer';
     }
 
-    // 計算檔案最終生效的存取安全等級 (繼承與覆寫)
+    // 取得分類之第 1 層根大類 (Level 1 Root Category)
+    function getRootCategory(catIdOrName) {
+      if (!catIdOrName) return null;
+      let cat = localFileCategories.find(c => c.id === catIdOrName || c.name === catIdOrName);
+      if (!cat) return null;
+      let current = cat;
+      let visited = new Set();
+      while (current && current.parentId && !visited.has(current.id)) {
+        visited.add(current.id);
+        const parent = localFileCategories.find(c => c.id === current.parentId);
+        if (!parent) break;
+        current = parent;
+      }
+      return current;
+    }
+
+    // 取得分類的深度 (1 ~ 5)
+    function getCategoryDepth(catId) {
+      if (!catId) return 0;
+      let depth = 1;
+      let cat = localFileCategories.find(c => c.id === catId);
+      let visited = new Set();
+      while (cat && cat.parentId && !visited.has(cat.id)) {
+        visited.add(cat.id);
+        depth++;
+        cat = localFileCategories.find(c => c.id === cat.parentId);
+      }
+      return depth;
+    }
+
+    // 取得以某分類為根的子樹高度 (含自己，葉節點高度為 1)
+    function getCategorySubtreeHeight(catId) {
+      const children = localFileCategories.filter(c => c.parentId === catId);
+      if (children.length === 0) return 1;
+      let maxChildHeight = 0;
+      for (let ch of children) {
+        const h = getCategorySubtreeHeight(ch.id);
+        if (h > maxChildHeight) maxChildHeight = h;
+      }
+      return 1 + maxChildHeight;
+    }
+
+    // 取得某分類底下所有層級的子孫分類 ID (含自己與相容名稱)
+    function getAllDescendantCategoryIds(catId) {
+      let ids = [catId];
+      const cat = localFileCategories.find(c => c.id === catId);
+      if (cat && cat.name) ids.push(cat.name);
+
+      function collectChildren(parentId) {
+        const children = localFileCategories.filter(c => c.parentId === parentId);
+        for (let child of children) {
+          ids.push(child.id);
+          if (child.name) ids.push(child.name);
+          collectChildren(child.id);
+        }
+      }
+      collectChildren(catId);
+      return [...new Set(ids)];
+    }
+
+    // 取得某分類由上至下的完整路徑名稱
+    function getCategoryPath(catId) {
+      const cat = localFileCategories.find(c => c.id === catId);
+      if (!cat) return '';
+      const path = [cat.name];
+      let current = cat;
+      let visited = new Set();
+      while (current && current.parentId && !visited.has(current.id)) {
+        visited.add(current.id);
+        const parent = localFileCategories.find(c => c.id === current.parentId);
+        if (!parent) break;
+        path.unshift(parent.name);
+        current = parent;
+      }
+      return path.join(' > ');
+    }
+
+    // 計算檔案最終生效的存取安全等級 (嚴格遵循第 1 層大類繼承機制與獨立覆寫)
     function getEffectiveAccessLevel(file) {
       if (file.accessLevelOverride && file.accessLevelOverride !== 'Inherit') {
         return file.accessLevelOverride;
       }
-      const catDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
-      return (catDoc && catDoc.defaultAccessLevel) ? catDoc.defaultAccessLevel : 'Viewer';
+      const rootCat = getRootCategory(file.category);
+      return (rootCat && rootCat.defaultAccessLevel) ? rootCat.defaultAccessLevel : 'Viewer';
     }
 
-    // 計算檔案最終發行適用部門 (繼承與覆寫)
+    // 計算檔案最終發行適用部門 (嚴格遵循第 1 層大類繼承機制與獨立覆寫)
     function getEffectiveTargetDepts(file) {
       if (file.targetDepts && file.targetDepts.length > 0) {
         return file.targetDepts;
       }
-      const catDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
-      return (catDoc && catDoc.defaultTargetDepts) ? catDoc.defaultTargetDepts : ['全公司'];
+      const rootCat = getRootCategory(file.category);
+      return (rootCat && rootCat.defaultTargetDepts) ? rootCat.defaultTargetDepts : ['全公司'];
     }
 
     // 初始化預設分類及子分類 (方案 B)
@@ -1929,12 +2019,12 @@
         }
       });
 
-      // 檔案分類選取聯動，載入預設的發行對象與安全限制等級
+      // 檔案分類選取聯動，載入所屬第 1 層大類之預設發行對象
       document.getElementById('addFileCategory').addEventListener('change', function(e) {
         const catId = this.value;
-        const catDoc = localFileCategories.find(c => c.id === catId || c.name === catId);
-        if (catDoc) {
-          const depts = catDoc.defaultTargetDepts || ['全公司'];
+        const rootCat = getRootCategory(catId);
+        if (rootCat) {
+          const depts = rootCat.defaultTargetDepts || ['全公司'];
           const allCb = document.getElementById('addFileDept_All');
           
           allCb.checked = depts.includes('全公司');
@@ -3086,23 +3176,19 @@
                               (file.uploader && file.uploader.toLowerCase().includes(searchTerm)) ||
                               (file.fileName && file.fileName.toLowerCase().includes(searchTerm));
         
-        // 2. 分類標籤篩選
+        // 2. 分類標籤篩選 (支援 5 層任意節點篩選)
         let matchesCategory = false;
         if (selectedCategory === '全部') {
           matchesCategory = true;
         } else {
-          const fileCatDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
-          const fileCatId = fileCatDoc ? fileCatDoc.id : null;
-          
           const selCatDoc = localFileCategories.find(c => c.id === selectedCategory || c.name === selectedCategory);
           if (selCatDoc) {
-            if (fileCatId === selCatDoc.id) {
+            const validCatIds = getAllDescendantCategoryIds(selCatDoc.id);
+            const fileCatDoc = localFileCategories.find(c => c.id === file.category || c.name === file.category);
+            if (fileCatDoc && validCatIds.includes(fileCatDoc.id)) {
               matchesCategory = true;
-            } else {
-              const fileCatParentId = fileCatDoc ? fileCatDoc.parentId : null;
-              if (fileCatParentId === selCatDoc.id) {
-                matchesCategory = true;
-              }
+            } else if (validCatIds.includes(file.category)) {
+              matchesCategory = true;
             }
           }
         }
@@ -3268,18 +3354,10 @@
       window.renderFileCategories();
     };
 
-    // 渲染分類樹狀過濾列 (方案 B 樹狀圖)
+    // 渲染分類樹狀過濾列 (支援 5 層遞迴樹狀圖)
     window.renderFileCategories = () => {
       const container = document.getElementById('categoryTreeContainer');
       if (!container) return;
-
-      const mains = localFileCategories.filter(c => !c.parentId);
-      mains.sort((a, b) => {
-        if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
-        const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
-        const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
-        return orderA - orderB || a.createdAt - b.createdAt;
-      });
 
       const isAllActive = selectedCategory === '全部';
       
@@ -3288,70 +3366,78 @@
       // 渲染「全部檔案」選項
       html += `
         <li class="category-tree-item">
-          <div class="category-tree-row ${isAllActive ? 'active' : ''}" onclick="window.selectCategory('全部')">
+          <div class="category-tree-row ${isAllActive ? 'active' : ''}" onclick="window.selectCategory('全部')" title="全部技術檔案">
+            <span style="width: 18px; flex-shrink: 0; display: inline-block;"></span>
             <span class="category-tree-icon">
               <i data-lucide="files" class="w-4 h-4"></i>
             </span>
-            <span>全部檔案</span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 0.85rem;">全部檔案</span>
           </div>
         </li>
       `;
 
-      mains.forEach(cat => {
-        const subs = localFileCategories.filter(c => c.parentId === cat.id);
-        subs.sort((a, b) => {
+      function renderTreeNodes(parentId = null, depth = 1) {
+        if (depth > 5) return '';
+        let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        nodes.sort((a, b) => {
+          if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
           const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
           const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
           return orderA - orderB || a.createdAt - b.createdAt;
         });
 
-        const hasSubs = subs.length > 0;
-        const isCollapsed = collapsedCategories[cat.id] !== undefined ? collapsedCategories[cat.id] : true;
-        
-        // 判定此大類是否選中
-        const isActive = selectedCategory === cat.id || selectedCategory === cat.name;
+        if (nodes.length === 0) return '';
 
-        // 展開/收合按鈕
-        let toggleHtml = '';
-        if (hasSubs) {
-          toggleHtml = `
-            <span class="category-tree-toggle" onclick="window.toggleCategoryCollapse('${cat.id}', event)">
-              <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
-            </span>
-          `;
-        } else {
-          toggleHtml = `<span style="width: 26px;"></span>`;
-        }
+        let out = '';
+        nodes.forEach(cat => {
+          const children = localFileCategories.filter(c => c.parentId === cat.id);
+          const hasChildren = children.length > 0 && depth < 5;
+          const isCollapsed = collapsedCategories[cat.id] !== undefined ? collapsedCategories[cat.id] : true;
+          const isActive = selectedCategory === cat.id || selectedCategory === cat.name;
 
-        html += `
-          <li class="category-tree-item">
-            <div class="category-tree-row ${isActive ? 'active' : ''}" onclick="window.selectCategory('${cat.id}')">
-              ${toggleHtml}
-              <span class="category-tree-icon">
-                <i data-lucide="${cat.isProtected ? 'lock' : 'folder'}" class="w-4 h-4"></i>
+          let toggleHtml = '';
+          if (hasChildren) {
+            toggleHtml = `
+              <span class="category-tree-toggle" onclick="window.toggleCategoryCollapse('${cat.id}', event)" title="${isCollapsed ? '展開子分類' : '收合子分類'}">
+                <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
               </span>
-              <span>${cat.name}</span>
-            </div>
-            
-            ${hasSubs && !isCollapsed ? `
-              <div class="category-tree-children">
-                ${subs.map(sub => {
-                  const isSubActive = selectedCategory === sub.id || selectedCategory === sub.name;
-                  return `
-                    <div class="category-tree-row ${isSubActive ? 'active' : ''}" onclick="window.selectCategory('${sub.id}')">
-                      <span class="category-tree-icon" style="margin-left: 12px;">
-                        <i data-lucide="file" class="w-3.5 h-3.5"></i>
-                      </span>
-                      <span>${sub.name}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : ''}
-          </li>
-        `;
-      });
+            `;
+          } else {
+            toggleHtml = `<span style="width: 18px; flex-shrink: 0; display: inline-block;"></span>`;
+          }
 
+          let iconName = 'folder';
+          if (cat.isProtected) iconName = 'lock';
+          else if (depth === 1) iconName = 'folder-tree';
+          else if (depth >= 4) iconName = 'file-text';
+          else iconName = 'folder';
+
+          const fullPath = getCategoryPath(cat.id);
+
+          out += `
+            <li class="category-tree-item">
+              <div class="category-tree-row ${isActive ? 'active' : ''}" onclick="window.selectCategory('${cat.id}')" title="${fullPath} (第 ${depth} 層)">
+                ${toggleHtml}
+                <span class="category-tree-icon">
+                  <i data-lucide="${iconName}" class="w-3.5 h-3.5 ${cat.isProtected ? 'text-primary' : ''}"></i>
+                </span>
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 0.85rem;">${cat.name}</span>
+              </div>
+              
+              ${hasChildren && !isCollapsed ? `
+                <div class="category-tree-children">
+                  <ul class="category-tree-list">
+                    ${renderTreeNodes(cat.id, depth + 1)}
+                  </ul>
+                </div>
+              ` : ''}
+            </li>
+          `;
+        });
+        return out;
+      }
+
+      html += renderTreeNodes(null, 1);
       html += `</ul>`;
       container.innerHTML = html;
       lucide.createIcons();
@@ -3508,24 +3594,38 @@
     // ===================================
     //  各項新增與編輯邏輯 (Firestore 串接)
     // ===================================
-    // 動態填充檔案上傳/編輯對話框中的分類下拉選單 (方案 B 樹狀圖)
+    // 動態填充檔案上傳/編輯對話框中的分類下拉選單 (支援 5 層階層標註)
     function populateFileCategorySelect(selectedVal = null) {
       const select = document.getElementById('addFileCategory');
       if (!select) return;
       
-      const mains = localFileCategories.filter(c => !c.parentId);
-      let html = '';
-      mains.forEach(main => {
-        const isSel = (main.id === selectedVal || main.name === selectedVal) ? 'selected' : '';
-        html += `<option value="${main.id}" ${isSel}>${main.name}</option>`;
-        
-        const subs = localFileCategories.filter(c => c.parentId === main.id);
-        subs.forEach(sub => {
-          const isSubSel = (sub.id === selectedVal || sub.name === selectedVal) ? 'selected' : '';
-          html += `<option value="${sub.id}" ${isSubSel}>　└ ${sub.name}</option>`;
+      function buildSelectOptions(parentId = null, depth = 1) {
+        if (depth > 5) return '';
+        let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        nodes.sort((a, b) => {
+          if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
         });
-      });
-      select.innerHTML = html;
+
+        let out = '';
+        nodes.forEach(node => {
+          const isSel = (node.id === selectedVal || node.name === selectedVal) ? 'selected' : '';
+          let indent = '';
+          if (depth === 1) indent = '📁 ';
+          else if (depth === 2) indent = '　└ 📁 ';
+          else if (depth === 3) indent = '　　└ 📁 ';
+          else if (depth === 4) indent = '　　　└ 📁 ';
+          else if (depth === 5) indent = '　　　　└ 📄 ';
+
+          out += `<option value="${node.id}" ${isSel}>${indent}${node.name} (第${depth}層)</option>`;
+          out += buildSelectOptions(node.id, depth + 1);
+        });
+        return out;
+      }
+
+      select.innerHTML = buildSelectOptions(null, 1);
     }
 
     // 全公司部門核取方塊連動控制
@@ -3847,143 +3947,149 @@
       closeModal('manageCategoryModal');
     };
 
-    // 渲染管理分類對話框中的分類清單 (列出其預設安全限制與部門發行設定)
+    // 渲染管理分類對話框中的分類清單 (支援 5 層階梯與第 1 層繼承標籤)
     window.renderFileCategoriesManage = () => {
       const container = document.getElementById('categoryListContainer');
       if(!container) return;
 
-      // 同步更新新增分類選單中的上級分類選項
+      // 同步更新「建立新分類」選單中的上級分類選項 (深度 < 5 方可選擇)
       const parentSelect = document.getElementById('newCategoryParent');
       if (parentSelect) {
-        const mains = localFileCategories.filter(c => !c.parentId);
-        // 先依照排序欄位排序 mains
-        mains.sort((a, b) => {
-          if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
-          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
-          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
-          return orderA - orderB || a.createdAt - b.createdAt;
-        });
-        parentSelect.innerHTML = '<option value="">無 (作為大類)</option>' +
-          mains.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-      }
-
-      // 將分類分組為大類/小類樹狀結構進行渲染
-      const mains = localFileCategories.filter(c => !c.parentId);
-      mains.sort((a, b) => {
-        if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
-        const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
-        const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
-        return orderA - orderB || a.createdAt - b.createdAt;
-      });
-
-      const movableMains = mains.filter(m => !m.isProtected);
-      let html = '';
-
-      mains.forEach(cat => {
-        const defaultAccess = cat.defaultAccessLevel || 'Viewer';
-        const defaultDepts = (cat.defaultTargetDepts || ['全公司']).join(', ');
-
-        const subs = localFileCategories.filter(c => c.parentId === cat.id);
-        const hasSubs = subs.length > 0;
-        const isCollapsed = collapsedManageCategories[cat.id] !== undefined ? collapsedManageCategories[cat.id] : true;
-
-        // 大類上下移動判定
-        const mainIndex = movableMains.findIndex(m => m.id === cat.id);
-        const isFirstMain = mainIndex === 0;
-        const isLastMain = mainIndex === movableMains.length - 1;
-
-        // 展開/收合按鈕
-        let toggleHtml = '';
-        if (hasSubs) {
-          toggleHtml = `
-            <span class="category-tree-toggle" onclick="window.toggleManageCategoryCollapse('${cat.id}', event)" style="margin-right: 4px;">
-              <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
-            </span>
-          `;
-        } else {
-          toggleHtml = `<span style="width: 26px; display: inline-block;"></span>`;
-        }
-
-        html += `
-          <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px; font-weight: 700; background-color: var(--color-bg); margin-top: 8px;">
-            <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                ${toggleHtml}
-                <i data-lucide="${cat.isProtected ? 'lock' : 'folder-open'}" class="w-4 h-4 text-primary"></i>
-                <span>${cat.name} <span style="font-size:0.72rem; font-weight:normal; color:var(--color-muted);">(大類)</span></span>
-              </div>
-              <span style="font-size: 0.72rem; color: var(--color-muted); font-weight: normal; margin-left: 26px;">
-                預設等級：${defaultAccess} | 預設部門：${defaultDepts}
-              </span>
-            </div>
-            ${!cat.isProtected ? `
-              <div style="display: flex; align-items: center; gap: 2px;">
-                <button onclick="window.moveCategory('${cat.id}', 'up')" class="btn-icon" title="上移" ${isFirstMain ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
-                  <i data-lucide="chevron-up" class="w-4 h-4"></i>
-                </button>
-                <button onclick="window.moveCategory('${cat.id}', 'down')" class="btn-icon" title="下移" ${isLastMain ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
-                  <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                </button>
-                <button onclick="window.openEditCategoryModal('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon" title="修改屬性與權限">
-                  <i data-lucide="edit-3" class="w-4 h-4"></i>
-                </button>
-                <button onclick="window.promptDeleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除分類">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-              </div>
-            ` : '<span class="cat-badge-system">預設</span>'}
-          </div>
-        `;
-
-        // 渲染子分類
-        if (!isCollapsed) {
-          subs.sort((a, b) => {
+        function buildParentOptions(parentId = null, depth = 1) {
+          if (depth > 5) return '';
+          let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+          nodes.sort((a, b) => {
+            if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
             const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
             const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
             return orderA - orderB || a.createdAt - b.createdAt;
           });
 
-          subs.forEach(sub => {
-            const subAccess = sub.defaultAccessLevel || 'Viewer';
-            const subDepts = (sub.defaultTargetDepts || ['全公司']).join(', ');
+          let out = '';
+          nodes.forEach(node => {
+            let indent = '';
+            if (depth === 1) indent = '📁 ';
+            else if (depth === 2) indent = '　└ 📁 ';
+            else if (depth === 3) indent = '　　└ 📁 ';
+            else if (depth === 4) indent = '　　　└ 📁 ';
+            else if (depth === 5) indent = '　　　　└ 📄 ';
 
-            // 子分類上下移動判定
-            const subIndex = subs.findIndex(s => s.id === sub.id);
-            const isFirstSub = subIndex === 0;
-            const isLastSub = subIndex === subs.length - 1;
+            if (depth >= 5) {
+              out += `<option value="${node.id}" disabled style="color: #94a3b8;">${indent}${node.name} (第 5 層 - 已達深度上限)</option>`;
+            } else {
+              out += `<option value="${node.id}">${indent}${node.name} (第 ${depth} 層)</option>`;
+            }
+            out += buildParentOptions(node.id, depth + 1);
+          });
+          return out;
+        }
 
-            html += `
-              <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px; margin-left: 24px; border-left: 2px solid var(--color-border); padding-left: 12px;">
-                <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="folder" class="w-4 h-4 text-muted"></i>
-                    <span>${sub.name}</span>
-                  </div>
-                  <span style="font-size: 0.72rem; color: var(--color-muted);">
-                    預設等級：${subAccess} | 預設部門：${subDepts}
-                  </span>
+        parentSelect.innerHTML = '<option value="">無 (作為第 1 層大類)</option>' + buildParentOptions(null, 1);
+      }
+
+      // 遞迴渲染管理分類項目清單
+      function renderManageTreeList(parentId = null, depth = 1) {
+        if (depth > 5) return '';
+        let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        nodes.sort((a, b) => {
+          if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+          return orderA - orderB || a.createdAt - b.createdAt;
+        });
+
+        if (nodes.length === 0) return '';
+
+        const movableNodes = nodes.filter(m => !m.isProtected);
+        let out = '';
+
+        nodes.forEach(cat => {
+          const children = localFileCategories.filter(c => c.parentId === cat.id);
+          const hasChildren = children.length > 0 && depth < 5;
+          const isCollapsed = collapsedManageCategories[cat.id] !== undefined ? collapsedManageCategories[cat.id] : true;
+
+          // 判定上下移動按鈕可用性
+          const nodeIndex = movableNodes.findIndex(m => m.id === cat.id);
+          const isFirst = nodeIndex === 0;
+          const isLast = nodeIndex === movableNodes.length - 1;
+
+          // 展開/收合按鈕
+          let toggleHtml = '';
+          if (hasChildren) {
+            toggleHtml = `
+              <span class="category-tree-toggle" onclick="window.toggleManageCategoryCollapse('${cat.id}', event)" style="margin-right: 4px;" title="${isCollapsed ? '展開子分類' : '收合子分類'}">
+                <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
+              </span>
+            `;
+          } else {
+            toggleHtml = `<span style="width: 22px; display: inline-block;"></span>`;
+          }
+
+          // 資訊與繼承文字
+          let infoHtml = '';
+          let depthBadge = '';
+          if (depth === 1) {
+            const defaultAccess = cat.defaultAccessLevel || 'Viewer';
+            const defaultDepts = (cat.defaultTargetDepts || ['全公司']).join(', ');
+            depthBadge = `<span class="category-badge" style="background-color: var(--color-primary-light); color: var(--color-primary); border-color: var(--color-primary-border); font-size: 0.68rem; padding: 1px 5px;">第 1 層 (大類)</span>`;
+            infoHtml = `預設等級：${defaultAccess} | 預設部門：${defaultDepts}`;
+          } else {
+            const root = getRootCategory(cat.id);
+            depthBadge = `<span class="category-badge" style="font-size: 0.68rem; padding: 1px 5px;">第 ${depth} 層</span>`;
+            infoHtml = `🔗 繼承第 1 層【${root ? root.name : ''}】(${root ? root.defaultAccessLevel : 'Viewer'})`;
+          }
+
+          const indentStyle = depth > 1 ? `margin-left: ${(depth - 1) * 16}px; border-left: 2px solid var(--color-border); padding-left: 8px;` : '';
+          const bgStyle = depth === 1 ? 'background-color: var(--color-bg); font-weight: 700;' : 'background-color: var(--color-surface);';
+
+          let iconName = 'folder';
+          if (cat.isProtected) iconName = 'lock';
+          else if (depth === 1) iconName = 'folder-open';
+          else if (depth >= 4) iconName = 'file-text';
+          else iconName = 'folder';
+
+          out += `
+            <div class="cat-list-item" style="flex-wrap: wrap; gap: 8px; margin-top: 6px; ${indentStyle} ${bgStyle}">
+              <div class="cat-list-item-left" style="flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; flex: 1;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  ${toggleHtml}
+                  <i data-lucide="${iconName}" class="w-4 h-4 ${depth === 1 ? 'text-primary' : 'text-muted'}"></i>
+                  <span style="font-size: 0.88rem;">${cat.name}</span>
+                  ${depthBadge}
                 </div>
+                <span style="font-size: 0.72rem; color: var(--color-muted); font-weight: normal; margin-left: 26px;">
+                  ${infoHtml}
+                </span>
+              </div>
+              ${!cat.isProtected ? `
                 <div style="display: flex; align-items: center; gap: 2px;">
-                  <button onclick="window.moveCategory('${sub.id}', 'up')" class="btn-icon" title="上移" ${isFirstSub ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <button onclick="window.moveCategory('${cat.id}', 'up')" class="btn-icon" title="上移" ${isFirst ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
                     <i data-lucide="chevron-up" class="w-4 h-4"></i>
                   </button>
-                  <button onclick="window.moveCategory('${sub.id}', 'down')" class="btn-icon" title="下移" ${isLastSub ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                  <button onclick="window.moveCategory('${cat.id}', 'down')" class="btn-icon" title="下移" ${isLast ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
                     <i data-lucide="chevron-down" class="w-4 h-4"></i>
                   </button>
-                  <button onclick="window.openEditCategoryModal('${sub.id}', '${sub.name.replace(/'/g, "\\'")}')" class="btn-icon" title="修改屬性與權限">
+                  <button onclick="window.openEditCategoryModal('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon" title="修改屬性與權限">
                     <i data-lucide="edit-3" class="w-4 h-4"></i>
                   </button>
-                  <button onclick="window.promptDeleteCategory('${sub.id}', '${sub.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除分類">
+                  <button onclick="window.promptDeleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除分類">
                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                   </button>
                 </div>
-              </div>
-            `;
-          });
-        }
-      });
+              ` : '<span class="cat-badge-system">預設</span>'}
+            </div>
+          `;
 
-      container.innerHTML = html || '<div class="text-muted text-center py-4">無分類資料</div>';
+          // 遞迴渲染子分類
+          if (hasChildren && !isCollapsed) {
+            out += renderManageTreeList(cat.id, depth + 1);
+          }
+        });
+
+        return out;
+      }
+
+      container.innerHTML = renderManageTreeList(null, 1) || '<div class="text-muted text-center py-4">無分類資料</div>';
       lucide.createIcons();
     };
 
@@ -3994,29 +4100,24 @@
       window.renderFileCategoriesManage();
     };
 
-    // 調整分類順序大類/小類分開邏輯 (方案 B)
+    // 調整分類順序 (在同一個父節點下同層互換)
     window.moveCategory = async (id, direction) => {
       const cat = localFileCategories.find(c => c.id === id);
       if (!cat) return;
       
       let siblings = [];
       if (!cat.parentId) {
-        // 大類互換 (不包含系統預設分類，保持預設在最前)
+        // 第 1 層大類互換 (不包含系統預設分類，保持預設在最前)
         siblings = localFileCategories.filter(c => !c.parentId && !c.isProtected);
-        siblings.sort((a, b) => {
-          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
-          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
-          return orderA - orderB || a.createdAt - b.createdAt;
-        });
       } else {
-        // 同一父分類底下的子分類互換
+        // 第 2~5 層：同一父分類底下的子分類互換
         siblings = localFileCategories.filter(c => c.parentId === cat.parentId);
-        siblings.sort((a, b) => {
-          const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
-          const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
-          return orderA - orderB || a.createdAt - b.createdAt;
-        });
       }
+      siblings.sort((a, b) => {
+        const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+        const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+        return orderA - orderB || a.createdAt - b.createdAt;
+      });
       
       const currentIndex = siblings.findIndex(c => c.id === id);
       if (currentIndex === -1) return;
@@ -4031,17 +4132,15 @@
       if (targetIndex !== -1) {
         const targetCat = siblings[targetIndex];
         
-        // 賦予預設 index 當作權重，防呆避免 undefined 衝突
         const currentOrder = cat.sortOrder !== undefined ? cat.sortOrder : currentIndex;
         const targetOrder = targetCat.sortOrder !== undefined ? targetCat.sortOrder : targetIndex;
         
-        // 交換權重並更新至資料庫
         await updateDoc(getDocRef('fileCategories', cat.id), { sortOrder: targetOrder });
         await updateDoc(getDocRef('fileCategories', targetCat.id), { sortOrder: currentOrder });
       }
     };
 
-    // 新增標籤分類
+    // 新增標籤分類 (支援 5 層深度限制)
     window.submitNewCategory = async (e) => {
       e.preventDefault();
       const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
@@ -4066,29 +4165,44 @@
         return;
       }
 
-      // 取得當前最大 sortOrder 以放至最後
+      // 深度檢查 (最大 5 層深度)
+      if (parentId) {
+        const parentDepth = getCategoryDepth(parentId);
+        if (parentDepth >= 5) {
+          alert("所選上級分類已達第 5 層深度上限，無法再建立子分類！");
+          return;
+        }
+      }
+
+      // 取得同層最大 sortOrder 以放至最後
       const siblings = localFileCategories.filter(c => parentId ? c.parentId === parentId : !c.parentId);
       const maxOrder = siblings.reduce((max, c) => {
         const o = c.sortOrder !== undefined ? c.sortOrder : 0;
         return o > max ? o : max;
       }, 0);
 
-      await addDoc(getCollectionRef('fileCategories'), {
+      const newDoc = {
         name,
-        parentId,
+        parentId: parentId || '',
         isProtected: false,
         createdAt: Date.now(),
-        sortOrder: maxOrder + 1,
-        defaultAccessLevel: 'Viewer',
-        defaultTargetDepts: ['全公司']
-      });
+        sortOrder: maxOrder + 1
+      };
+
+      // 僅第 1 層（大類）配置預設安全等級與發行部門，其餘子層自動繼承
+      if (!parentId) {
+        newDoc.defaultAccessLevel = 'Viewer';
+        newDoc.defaultTargetDepts = ['全公司'];
+      }
+
+      await addDoc(getCollectionRef('fileCategories'), newDoc);
       input.value = '';
       if (parentInput) parentInput.value = '';
     };
 
     let editCatContext = null;
     
-    // 開啟編輯分類名稱與權限對話框
+    // 開啟編輯分類名稱與權限對話框 (支援 5 層防呆與第 1 層繼承切換)
     window.openEditCategoryModal = (id, oldName) => {
       const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
       if (!rolePerms.manageCategory) return;
@@ -4101,36 +4215,100 @@
       document.getElementById('editCategoryInput').value = oldName;
       document.getElementById('editCategoryAccess').value = cat.defaultAccessLevel || 'Viewer';
       
-      // 動態渲染上級分類選擇器 (防呆：已有子分類的大類不能再被降級)
+      // 計算自身子樹高度與後代 ID（防止循環引用與深度超標）
+      const subtreeHeight = getCategorySubtreeHeight(id);
+      const descendantIds = getAllDescendantCategoryIds(id);
+      
       const editParentSelect = document.getElementById('editCategoryParent');
       if (editParentSelect) {
-        const hasChildren = localFileCategories.some(c => c.parentId === id);
-        if (hasChildren) {
-          editParentSelect.innerHTML = '<option value="">無 (此大類已有子分類，無法降級)</option>';
-          editParentSelect.value = '';
-          editParentSelect.disabled = true;
-        } else {
-          editParentSelect.disabled = false;
-          const mains = localFileCategories.filter(c => !c.parentId && c.id !== id);
-          editParentSelect.innerHTML = '<option value="">無 (作為大類)</option>' +
-            mains.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-          editParentSelect.value = cat.parentId || '';
+        function buildEditParentOptions(parentId = null, depth = 1) {
+          if (depth > 5) return '';
+          let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+          nodes.sort((a, b) => {
+            if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
+            const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
+            const orderB = b.sortOrder !== undefined ? b.sortOrder : 0;
+            return orderA - orderB || a.createdAt - b.createdAt;
+          });
+
+          let out = '';
+          nodes.forEach(node => {
+            // 排除自己與所有後代節點
+            if (descendantIds.includes(node.id)) return;
+
+            let indent = '';
+            if (depth === 1) indent = '📁 ';
+            else if (depth === 2) indent = '　└ 📁 ';
+            else if (depth === 3) indent = '　　└ 📁 ';
+            else if (depth === 4) indent = '　　　└ 📁 ';
+            else if (depth === 5) indent = '　　　　└ 📄 ';
+
+            const isExceedingDepth = (depth + subtreeHeight > 5);
+            if (isExceedingDepth) {
+              out += `<option value="${node.id}" disabled style="color: #94a3b8;">${indent}${node.name} (第${depth}層 - 搬移後將超過5層限制)</option>`;
+            } else {
+              out += `<option value="${node.id}">${indent}${node.name} (第 ${depth} 層)</option>`;
+            }
+
+            out += buildEditParentOptions(node.id, depth + 1);
+          });
+          return out;
         }
+
+        editParentSelect.innerHTML = '<option value="">無 (作為第 1 層大類)</option>' + buildEditParentOptions(null, 1);
+        editParentSelect.value = cat.parentId || '';
       }
       
       const depts = cat.defaultTargetDepts || ['全公司'];
       const allCb = document.getElementById('editCategoryDept_All');
-      
-      allCb.checked = depts.includes('全公司');
+      if (allCb) allCb.checked = depts.includes('全公司');
       
       const boxes = document.getElementsByName('editCategoryDept');
       boxes.forEach(b => {
         b.checked = depts.includes(b.value);
       });
-      
-      window.handleEditCategoryAllCompanyCheckbox(allCb);
+      if (allCb) window.handleEditCategoryAllCompanyCheckbox(allCb);
+
+      // 切換第 1 層設定與第 2~5 層繼承提示
+      window.handleEditCategoryParentChange(editParentSelect);
       
       openModal('editCategoryModal');
+    };
+
+    // 處理編輯視窗中上級分類切換時的 UI 顯示連動
+    window.handleEditCategoryParentChange = (select) => {
+      const parentVal = select ? select.value : '';
+      const rootSettingsGroup = document.getElementById('editCategoryRootSettingsGroup');
+      const inheritNotice = document.getElementById('editCategoryInheritNotice');
+
+      if (!parentVal) {
+        // 設定為第 1 層大類：顯示安全等級與發行部門配置
+        if (rootSettingsGroup) rootSettingsGroup.style.display = 'block';
+        if (inheritNotice) inheritNotice.style.display = 'none';
+      } else {
+        // 設定為第 2~5 層子分類：隱藏並提示繼承第 1 層設定
+        if (rootSettingsGroup) rootSettingsGroup.style.display = 'none';
+        if (inheritNotice) {
+          const rootCat = getRootCategory(parentVal);
+          const rootName = rootCat ? rootCat.name : '頂層大類';
+          const rootAccess = rootCat ? (rootCat.defaultAccessLevel || 'Viewer') : 'Viewer';
+          const rootDepts = rootCat ? (rootCat.defaultTargetDepts || ['全公司']).join(', ') : '全公司';
+          
+          inheritNotice.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--color-primary); margin-bottom: 4px;">
+              <i data-lucide="info" class="w-4 h-4"></i>
+              <span>自動繼承機制</span>
+            </div>
+            <div>此子分類自動繼承第 1 層【<strong style="color:var(--color-dark);">${rootName}</strong>】之預設設定：</div>
+            <div style="margin-top: 4px; padding-left: 8px;">
+              • 預設安全等級：<strong>${rootAccess}</strong><br>
+              • 預設發行部門：<strong>${rootDepts}</strong>
+            </div>
+          `;
+          inheritNotice.style.display = 'block';
+          lucide.createIcons();
+        }
+      }
     };
 
     window.closeEditCategoryModal = () => {
@@ -4138,7 +4316,7 @@
       editCatContext = null;
     };
 
-    // 儲存修改的分類名稱與預設屬性
+    // 儲存修改的分類名稱與屬性
     window.confirmEditCategory = async () => {
       const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
       if(!currentUser || !editCatContext || !rolePerms.manageCategory) return;
@@ -4162,9 +4340,20 @@
         return;
       }
 
+      // 搬移深度防呆驗證
+      if (newParentId) {
+        const parentDepth = getCategoryDepth(newParentId);
+        const subtreeHeight = getCategorySubtreeHeight(editCatContext.id);
+        if (parentDepth + subtreeHeight > 5) {
+          alert("搬移後該子樹層級將超過 5 層限制，操作已取消！");
+          return;
+        }
+      }
+
       // 取得修改的部門預設對象
       const depts = [];
-      if (document.getElementById('editCategoryDept_All').checked) {
+      const allCb = document.getElementById('editCategoryDept_All');
+      if (allCb && allCb.checked) {
         depts.push('全公司');
       } else {
         const boxes = document.getElementsByName('editCategoryDept');
@@ -4180,36 +4369,41 @@
           await updateDoc(getDocRef('files', f.id), { category: editCatContext.id });
         }
       }
+
       // 2. 更新分類本體
-      await updateDoc(getDocRef('fileCategories', editCatContext.id), {
+      const updateData = {
         name: newName,
-        parentId: newParentId,
-        defaultAccessLevel: newAccess,
-        defaultTargetDepts: depts
-      });
+        parentId: newParentId || ''
+      };
+
+      if (!newParentId) {
+        updateData.defaultAccessLevel = newAccess;
+        updateData.defaultTargetDepts = depts.length > 0 ? depts : ['全公司'];
+      }
+
+      await updateDoc(getDocRef('fileCategories', editCatContext.id), updateData);
       window.closeEditCategoryModal();
     };
 
-    // 刪除分類標籤，並將對應檔案移至 fallback (如果刪除大類，會一併刪除其下的子分類)
+    // 刪除分類標籤 (遞迴向下找出所有 1~5 層子孫分類，一併安全刪除並遷移檔案)
     window.promptDeleteCategory = (id, name) => {
       const rolePerms = localPermissions[currentUserRole] || { manageCategory: false };
       if (!rolePerms.manageCategory) return;
       
-      const subCats = localFileCategories.filter(c => c.parentId === id);
-      const subCatIds = subCats.map(c => c.id);
-      const targetIds = [id, ...subCatIds];
-      const targetNames = [name, ...subCats.map(c => c.name)];
+      // 遞迴收集所有子孫分類 ID
+      const targetIds = getAllDescendantCategoryIds(id);
       
-      // 計算受影響檔案數量 (包含大類與其所有子分類)
+      // 計算受影響檔案數量
       const affectedFilesCount = localFiles.filter(f => 
-        targetIds.includes(f.category) || targetNames.includes(f.category)
+        targetIds.includes(f.category)
       ).length;
       
+      const subCatsCount = targetIds.length - 1;
       let confirmMsg = '';
-      if (subCats.length > 0) {
-        confirmMsg = `確定刪除大類「${name}」？此操作會一併刪除其下的 ${subCats.length} 個子分類，且這將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動移至「${FALLBACK_CATEGORY}」。`;
+      if (subCatsCount > 0) {
+        confirmMsg = `確定刪除分類「${name}」？此操作會一併刪除其下的 ${subCatsCount} 個子分類，且這將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動安全移至「${FALLBACK_CATEGORY}」。`;
       } else {
-        confirmMsg = `確定刪除分類「${name}」？此操作將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動移至「${FALLBACK_CATEGORY}」。`;
+        confirmMsg = `確定刪除分類「${name}」？此操作將影響 ${affectedFilesCount} 個檔案，受影響檔案會自動安全移至「${FALLBACK_CATEGORY}」。`;
       }
       
       window.openConfirmModal(
@@ -4218,18 +4412,22 @@
         async () => {
           if(!currentUser) return;
           
-          // 找出屬於被刪除分類(包含子分類)的檔案
+          // 找出屬於被刪除分類(包含所有子孫分類)的檔案
           const filesToUpdate = localFiles.filter(f => 
-            targetIds.includes(f.category) || targetNames.includes(f.category)
+            targetIds.includes(f.category)
           );
           
           for(let f of filesToUpdate) {
             await updateDoc(getDocRef('files', f.id), { category: FALLBACK_CATEGORY });
           }
           
-          // 批次刪除分類
+          // 批次刪除該分類及其所有子孫分類
           for(let catId of targetIds) {
-            await deleteDoc(getDocRef('fileCategories', catId));
+            // 系統保護分類不可刪除
+            const catDoc = localFileCategories.find(c => c.id === catId);
+            if (catDoc && !catDoc.isProtected) {
+              await deleteDoc(getDocRef('fileCategories', catId));
+            }
           }
           
           window.closeConfirmModal();
