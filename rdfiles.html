@@ -1193,14 +1193,16 @@
 
         <!-- 右側主內容區 -->
         <div class="db-files-area">
-          <!-- 置頂「🔥 最新上傳」精選專區 -->
-          <div id="recentUploadsWrapper" style="display: none; margin-bottom: 16px; border-bottom: 1px dashed var(--color-border); padding-bottom: 16px;">
-            <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--color-warning); font-size: 0.9rem; margin-bottom: 8px;">
-              <i data-lucide="flame" class="w-4.5 h-4.5" style="color: var(--color-warning);"></i>
-              <span>最新上傳技術文件</span>
-            </div>
-            <div id="recentUploadsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 8px;">
-              <!-- JS 動態置頂卡片 -->
+          <!-- 置頂「🔥 最新發布」緊湊膠囊列 (方案 A) -->
+          <div id="recentUploadsWrapper" style="display: none; margin-bottom: 14px; background: #fff7ed; border: 1px solid #ffedd5; border-radius: var(--radius-md); padding: 8px 12px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #ea580c; font-size: 0.8rem; flex-shrink: 0; background: rgba(234, 88, 12, 0.12); padding: 4px 9px; border-radius: var(--radius-full);">
+                <i data-lucide="flame" class="w-3.5 h-3.5"></i>
+                <span>最新發布</span>
+              </div>
+              <div id="recentUploadsContainer" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
+                <!-- JS 動態膠囊標籤 -->
+              </div>
             </div>
           </div>
 
@@ -1231,8 +1233,8 @@
         <div id="fileInputWrapper" class="file-input-wrapper">
           <i data-lucide="upload" class="w-8 h-8"></i>
           <p class="form-label" id="fileInputLabel">拖曳檔案至此或點擊選取</p>
-          <p class="file-input-desc">限制最大 10MB。支援副檔名: PDF, DOC, DOCX, XLS, XLSX</p>
-          <input type="file" id="addFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx" required>
+          <p class="file-input-desc">限制最大 50MB。支援副檔名: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX</p>
+          <input type="file" id="addFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required>
         </div>
 
         <div class="form-group">
@@ -1764,6 +1766,34 @@
       return cat ? cat.name : catIdOrName;
     }
 
+    // 根據檔案副檔名取得對應圖標 HTML (支援 PDF, Word, Excel, PPT)
+    function getFileIconMarkup(fileName = '', isRecent = false) {
+      const ext = ((fileName || '').split('.').pop() || '').toLowerCase();
+      if (isRecent) {
+        if (ext === 'ppt' || ext === 'pptx') {
+          return `<div class="file-icon-box" style="background-color: rgba(234, 88, 12, 0.15); color: #ea580c; padding: 8px; border-radius: 8px;"><i data-lucide="presentation" class="w-4 h-4"></i></div>`;
+        } else if (ext === 'xls' || ext === 'xlsx') {
+          return `<div class="file-icon-box" style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 8px; border-radius: 8px;"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i></div>`;
+        } else if (ext === 'doc' || ext === 'docx') {
+          return `<div class="file-icon-box" style="background-color: rgba(2, 132, 199, 0.15); color: #0284c7; padding: 8px; border-radius: 8px;"><i data-lucide="file-text" class="w-4 h-4"></i></div>`;
+        } else if (ext === 'pdf') {
+          return `<div class="file-icon-box" style="background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 8px; border-radius: 8px;"><i data-lucide="file-text" class="w-4 h-4"></i></div>`;
+        }
+        return `<div class="file-icon-box" style="background-color: rgba(245, 158, 11, 0.15); color: var(--color-warning); padding: 8px; border-radius: 8px;"><i data-lucide="file-text" class="w-4 h-4"></i></div>`;
+      }
+      
+      if (ext === 'ppt' || ext === 'pptx') {
+        return `<div class="file-icon-box" style="color: #ea580c; background-color: #fff7ed; border-color: #ffedd5;"><i data-lucide="presentation" class="w-5 h-5"></i></div>`;
+      } else if (ext === 'xls' || ext === 'xlsx') {
+        return `<div class="file-icon-box" style="color: #10b981; background-color: #ecfdf5; border-color: #a7f3d0;"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>`;
+      } else if (ext === 'doc' || ext === 'docx') {
+        return `<div class="file-icon-box" style="color: #0284c7; background-color: #f0f9ff; border-color: #bae6fd;"><i data-lucide="file-text" class="w-5 h-5"></i></div>`;
+      } else if (ext === 'pdf') {
+        return `<div class="file-icon-box" style="color: #ef4444; background-color: #fef2f2; border-color: #fee2e2;"><i data-lucide="file-text" class="w-5 h-5"></i></div>`;
+      }
+      return `<div class="file-icon-box"><i data-lucide="file-text" class="w-5 h-5"></i></div>`;
+    }
+
     // 輔助路徑獲取器 (保證在預覽沙盒與正式環境皆能正確存取)
     function getCollectionRef(colName) {
       if (isPreviewEnv) return collection(db, 'artifacts', appId, 'public', 'data', colName);
@@ -1993,21 +2023,21 @@
           const nameInput = document.getElementById('addFileName');
           
           // 1. 副檔名驗證
-          const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx'];
+          const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
           const fileExt = file.name.split('.').pop().toLowerCase();
           
           if (!allowedExtensions.includes(fileExt)) {
-            msgBox.textContent = `檔案類型錯誤：.${fileExt}。只允許 PDF, Word 或 Excel 技術檔案。`;
+            msgBox.textContent = `檔案類型錯誤：.${fileExt}。只允許 PDF, Word, Excel 或 PPT 簡報技術檔案。`;
             msgBox.className = "msg-box msg-box-danger active";
             submitBtn.disabled = true;
             this.value = ''; // 清除選取
             return;
           }
           
-          // 2. 大小限制驗證 (10MB)
-          const maxSize = 10 * 1024 * 1024;
+          // 2. 大小限制驗證 (50MB)
+          const maxSize = 50 * 1024 * 1024;
           if (file.size > maxSize) {
-            msgBox.textContent = `檔案超出大小限制：${(file.size / 1024 / 1024).toFixed(2)} MB。上限為 10.00 MB。`;
+            msgBox.textContent = `檔案超出大小限制：${(file.size / 1024 / 1024).toFixed(2)} MB。上限為 50.00 MB。`;
             msgBox.className = "msg-box msg-box-danger active";
             submitBtn.disabled = true;
             this.value = ''; // 清除選取
@@ -3058,7 +3088,7 @@
     //  頁面元件渲染邏輯 (Vanilla JS & CSS)
     // ===================================
 
-    // 渲染置頂最新上傳專區 (方案 B)
+    // 渲染置頂最新發布膠囊列 (方案 A)
     window.renderRecentUploads = () => {
       const wrapper = document.getElementById('recentUploadsWrapper');
       const container = document.getElementById('recentUploadsContainer');
@@ -3080,7 +3110,7 @@
 
       wrapper.style.display = 'block';
 
-      container.innerHTML = recent.slice(0, 4).map(file => {
+      container.innerHTML = recent.slice(0, 5).map(file => {
         const rolePerms = localPermissions[currentUserRole] || { upload: false, editOwn: false, editAll: false, deleteOwn: false, deleteAll: false, manageCategory: false, manageStaff: false };
         const isOwnFile = (file.uploader === currentUserName) || 
                           (file.uploader === currentUserDept) || 
@@ -3089,59 +3119,50 @@
         const canEdit = rolePerms.editAll || (rolePerms.editOwn && isOwnFile);
         const canDelete = rolePerms.deleteAll || (rolePerms.deleteOwn && isOwnFile);
 
-        const actionIcons = (canEdit || canDelete) ? `
-          ${canEdit ? `
-            <button onclick="window.openAddFileModal(event, '${file.id}')" class="btn-icon" title="編輯檔案資訊">
-              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-            </button>
-          ` : ''}
-          ${canDelete ? `
-            <button onclick="window.promptDeleteFile('${file.id}', '${file.name.replace(/'/g, "\\'")}')" class="btn-icon text-danger" title="刪除檔案" style="color: var(--color-danger);">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          ` : ''}
-        ` : '';
+        const ext = ((file.fileName || file.name || '').split('.').pop() || '').toLowerCase();
+        let iconName = 'file-text';
+        let iconColor = '#0284c7';
+        if (ext === 'ppt' || ext === 'pptx') {
+          iconName = 'presentation';
+          iconColor = '#ea580c';
+        } else if (ext === 'xls' || ext === 'xlsx') {
+          iconName = 'file-spreadsheet';
+          iconColor = '#10b981';
+        } else if (ext === 'pdf') {
+          iconName = 'file-text';
+          iconColor = '#ef4444';
+        }
 
-        const displayDepts = getEffectiveTargetDepts(file).join(', ');
+        const dateStr = file.date ? (file.date.length > 5 ? file.date.slice(5) : file.date) : '';
+        const shortUploader = file.uploader ? file.uploader.split(' ')[0] : '';
 
         return `
-          <div class="file-item" style="border: 1px solid var(--color-warning-border); background-color: var(--color-warning-light); box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.05); position: relative; padding: 12px; border-radius: var(--radius-md); display: flex; flex-direction: column; justify-content: space-between; min-height: 180px;">
-            <div style="position: absolute; top: 8px; left: 8px; background-color: var(--color-warning); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 2px; z-index: 10;">
-              <i data-lucide="flame" class="w-3 h-3"></i> NEW
+          <div class="recent-pill" style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; border: 1px solid #fed7aa; padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.76rem; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.03);" onmouseover="this.style.borderColor='#f97316'; this.style.boxShadow='0 2px 5px rgba(234,88,12,0.12)'" onmouseout="this.style.borderColor='#fed7aa'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.03)'">
+            <div style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;" onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" title="點擊預覽：${file.name}">
+              <i data-lucide="${iconName}" class="w-3.5 h-3.5" style="color: ${iconColor}; flex-shrink: 0;"></i>
+              <span style="font-weight: 700; color: var(--color-dark); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${file.name}</span>
             </div>
             
-            <div class="file-item-header" style="justify-content: flex-end; height: 18px; margin-bottom: 4px;">
-              <div class="file-actions">
-                ${actionIcons}
-              </div>
-            </div>
+            <span style="color: var(--color-muted); font-size: 0.68rem; flex-shrink: 0;">${shortUploader ? shortUploader + ' · ' : ''}${dateStr}</span>
             
-            <div class="file-meta-side" style="margin-top: 4px; flex: 1;">
-              <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                <div class="file-icon-box" style="background-color: rgba(245, 158, 11, 0.15); color: var(--color-warning); padding: 8px; border-radius: 8px;">
-                  <i data-lucide="file-text" class="w-4 h-4"></i>
-                </div>
-                <div class="file-info" style="min-width: 0;">
-                  <h4 class="file-title" title="${file.name}" style="font-size: 0.82rem; font-weight: 700; color: var(--color-dark); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.name}</h4>
-                </div>
-              </div>
-              
-              <div class="file-details" style="width: 100%; gap: 4px; font-size: 0.68rem; margin-top: 6px; display: flex; flex-wrap: wrap; color: var(--color-muted);">
-                <span class="category-badge" style="font-size: 0.65rem;">${resolveCategoryName(file.category)}</span>
-                <span class="category-badge" style="background-color: var(--color-success-light); border-color: var(--color-success-border); color: var(--color-success); font-size: 0.65rem;">對象: ${displayDepts}</span>
-                <span>時間: ${file.date}</span>
-                <span class="detail-uploader"><i data-lucide="user" class="w-3 h-3"></i>${file.uploader || '系統'}</span>
-              </div>
-            </div>
-            
-            <div class="file-actions" style="width: 100%; margin-top: 10px; border-top: 1px solid var(--color-border); padding-top: 10px; display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
-              <button onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" class="btn btn-secondary btn-xs" style="padding: 4px 8px; font-weight: 700; gap: 4px; display: inline-flex; align-items: center; font-size: 0.68rem;">
-                <i data-lucide="eye" class="w-3 h-3"></i> ${currentUserRole === 'Viewer' ? '線上預覽' : '預覽'}
+            <div style="display: inline-flex; align-items: center; gap: 2px; margin-left: 2px; border-left: 1px solid #fed7aa; padding-left: 5px;">
+              <button onclick="window.openPreviewModal('${file.id}', '${file.name.replace(/'/g, "\\'")}', '${file.url}')" title="線上預覽" style="background: none; border: none; cursor: pointer; color: var(--color-primary); padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; transition: background 0.15s;" onmouseover="this.style.background='var(--color-primary-light)'" onmouseout="this.style.background='none'">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
               </button>
               ${currentUserRole !== 'Viewer' ? `
-                <a href="${file.url}" target="_blank" onclick="window.incrementDownloadCount('${file.id}')" class="btn-download" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 0.68rem;">
-                  <i data-lucide="external-link" class="w-3 h-3"></i> 下載
+                <a href="${file.url}" target="_blank" onclick="window.incrementDownloadCount('${file.id}')" title="下載檔案" style="color: var(--color-muted); padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; text-decoration: none; transition: all 0.15s;" onmouseover="this.style.color='var(--color-dark)'; this.style.background='#f1f5f9'" onmouseout="this.style.color='var(--color-muted)'; this.style.background='none'">
+                  <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                 </a>
+              ` : ''}
+              ${canEdit ? `
+                <button onclick="window.openAddFileModal(event, '${file.id}')" title="編輯檔案" style="background: none; border: none; cursor: pointer; color: var(--color-muted); padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; transition: all 0.15s;" onmouseover="this.style.color='var(--color-dark)'; this.style.background='#f1f5f9'" onmouseout="this.style.color='var(--color-muted)'; this.style.background='none'">
+                  <i data-lucide="edit-3" class="w-3 h-3"></i>
+                </button>
+              ` : ''}
+              ${canDelete ? `
+                <button onclick="window.promptDeleteFile('${file.id}', '${file.name.replace(/'/g, "\\'")}')" title="刪除檔案" style="background: none; border: none; cursor: pointer; color: var(--color-danger); padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; transition: all 0.15s;" onmouseover="this.style.background='var(--color-danger-light)'" onmouseout="this.style.background='none'">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
               ` : ''}
             </div>
           </div>
@@ -3272,9 +3293,7 @@
               
               <div class="file-meta-side">
                 <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-                  <div class="file-icon-box">
-                    <i data-lucide="file-text" class="w-5 h-5"></i>
-                  </div>
+                  ${getFileIconMarkup(file.fileName || file.name, false)}
                   <div class="file-info" style="min-width: 0;">
                     <h4 class="file-title" title="${file.name}">${file.name}</h4>
                   </div>
@@ -3311,9 +3330,7 @@
                 <input type="checkbox" class="file-checkbox" value="${file.id}" ${isChecked ? 'checked' : ''} onchange="window.handleFileSelect(this, '${file.id}')">
               </div>
               <div class="file-meta-side">
-                <div class="file-icon-box">
-                  <i data-lucide="file-text" class="w-5 h-5"></i>
-                </div>
+                ${getFileIconMarkup(file.fileName || file.name, false)}
                 <div class="file-info">
                   <h4 class="file-title" title="${file.name}">${file.name}</h4>
                   <div class="file-details">
@@ -3780,8 +3797,8 @@
       if (urlPath.includes('.pdf') || urlPath.endsWith('.pdf')) {
         // PDF 檔案可直接使用原生 iframe 內嵌 (加 toolbar=0 隱藏下載工具列)
         finalPreviewUrl = `${url}#toolbar=0`;
-      } else if (urlPath.endsWith('.doc') || urlPath.endsWith('.docx') || urlPath.endsWith('.xls') || urlPath.endsWith('.xlsx')) {
-        // Word 或 Excel 技術文件，採用 Google Docs Viewer 線上服務內嵌預覽
+      } else if (urlPath.endsWith('.doc') || urlPath.endsWith('.docx') || urlPath.endsWith('.xls') || urlPath.endsWith('.xlsx') || urlPath.endsWith('.ppt') || urlPath.endsWith('.pptx')) {
+        // Word, Excel 或 PowerPoint 技術文件，採用 Google Docs Viewer 線上服務內嵌預覽
         finalPreviewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
       }
 
@@ -3873,6 +3890,15 @@
           const fileInput = document.getElementById('addFileInput');
           const file = fileInput.files[0];
           if (!file) throw new Error("尚未選擇檔案");
+
+          const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+          const fileExt = file.name.split('.').pop().toLowerCase();
+          if (!allowedExtensions.includes(fileExt)) {
+            throw new Error(`檔案類型錯誤：.${fileExt}。只允許 PDF, Word, Excel 或 PPT 簡報技術檔案。`);
+          }
+          if (file.size > 50 * 1024 * 1024) {
+            throw new Error(`檔案大小超過 50MB 上限 (${(file.size / 1024 / 1024).toFixed(2)} MB)，請選擇較小的檔案！`);
+          }
 
           let downloadURL = "";
           try {
