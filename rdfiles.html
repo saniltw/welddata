@@ -1732,7 +1732,7 @@
     let currentUserName = localStorage.getItem('repo_user_name') || '一般訪客';
     let currentUserRole = localStorage.getItem('repo_user_role') || 'Viewer'; // 'Viewer', 'Uploader', 'Editor', 'Admin'
     let currentUserId = localStorage.getItem('repo_user_id') || 'visitor';
-    let currentUserDept = localStorage.getItem('repo_user_dept') || '研發部'; // 部門設定
+    let currentUserDept = (currentUserId === 'visitor') ? '一般訪客' : (localStorage.getItem('repo_user_dept') || '一般訪客'); // 部門設定
     
     // 編輯人員上下文
     let editStaffContext = null;
@@ -1937,6 +1937,35 @@
       return path.join(' > ');
     }
 
+    // 判定分類（及子分類）對於當前使用者是否可見（模式 A 完全隱形、父層隱藏子層連帶隱藏）
+    function isCategoryVisible(catIdOrName) {
+      if (!catIdOrName) return false;
+      if (catIdOrName === '全部') return true;
+
+      // 1. 系統管理員 (Admin) 具備全域管理特權，一律可見
+      if (currentUserRole === 'Admin') return true;
+
+      // 2. 取得所屬第 1 層根大類 (Root Category)
+      const rootCat = getRootCategory(catIdOrName);
+      if (!rootCat) return false;
+
+      // 3. 預設暫存區與受保護分類：設定為全公司預設可見 (防呆保護)
+      if (rootCat.isProtected || rootCat.name === FALLBACK_CATEGORY) return true;
+
+      // 4. 取得第 1 層大類的適用發行部門 (若未設定則預設為 '全公司')
+      const targetDepts = (rootCat.defaultTargetDepts && rootCat.defaultTargetDepts.length > 0) 
+        ? rootCat.defaultTargetDepts 
+        : ['全公司'];
+
+      // 5. 若大類包含 '全公司'，則全員皆可見
+      if (targetDepts.includes('全公司')) return true;
+
+      // 6. 比對當前登入者所屬部門 (嚴格隔離)
+      if (currentUserDept && targetDepts.includes(currentUserDept)) return true;
+
+      return false;
+    }
+
     // 計算檔案最終生效的存取安全等級 (嚴格遵循第 1 層大類繼承機制與獨立覆寫)
     function getEffectiveAccessLevel(file) {
       if (file.accessLevelOverride && file.accessLevelOverride !== 'Inherit') {
@@ -1959,10 +1988,10 @@
     async function seedInitialFileCategories() {
       if(!currentUser) return;
       const mainCats = [
-        { name: FALLBACK_CATEGORY, isProtected: true, createdAt: 1 },
-        { name: 'SOP標準作業程序', isProtected: false, createdAt: 2 },
-        { name: '工安與環保規章', isProtected: false, createdAt: 3 },
-        { name: '設備操作手冊', isProtected: false, createdAt: 4 }
+        { name: FALLBACK_CATEGORY, isProtected: true, createdAt: 1, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: 'SOP標準作業程序', isProtected: false, createdAt: 2, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: '工安與環保規章', isProtected: false, createdAt: 3, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] },
+        { name: '設備操作手冊', isProtected: false, createdAt: 4, defaultAccessLevel: 'Viewer', defaultTargetDepts: ['全公司'] }
       ];
       
       const ids = {};
@@ -2105,12 +2134,13 @@
             currentUserName = '一般訪客';
             currentUserRole = 'Viewer';
             currentUserId = 'visitor';
-            currentUserDept = '研發部';
+            currentUserDept = '一般訪客';
             localStorage.setItem('repo_user_name', currentUserName);
             localStorage.setItem('repo_user_role', currentUserRole);
             localStorage.setItem('repo_user_id', currentUserId);
             localStorage.setItem('repo_user_dept', currentUserDept);
             window.checkPermissions();
+            window.renderFileCategories();
             window.renderFiles();
           }
         }
@@ -2493,7 +2523,7 @@
         currentUserName = '一般訪客';
         currentUserRole = 'Viewer';
         currentUserId = 'visitor';
-        currentUserDept = '研發部';
+        currentUserDept = '一般訪客';
       }
 
       // 儲存於 LocalStorage
@@ -2502,7 +2532,13 @@
       localStorage.setItem('repo_user_id', currentUserId);
       localStorage.setItem('repo_user_dept', currentUserDept);
 
+      // 防呆：若切換身分後原先選取的分類在目前新身分下不可見，自動重置為 '全部'
+      if (selectedCategory !== '全部' && !isCategoryVisible(selectedCategory)) {
+        selectedCategory = '全部';
+      }
+
       window.checkPermissions();
+      window.renderFileCategories(); // 即時重新渲染左側分類樹 (模式 A 隱私過濾)
       window.renderFiles(); // 重新渲染列表以更新編輯與刪除權限
       window.closeLoginModal();
     };
@@ -3070,12 +3106,13 @@
           currentUserName = '一般訪客';
           currentUserRole = 'Viewer';
           currentUserId = 'visitor';
-          currentUserDept = '研發部';
+          currentUserDept = '一般訪客';
           localStorage.setItem('repo_user_name', currentUserName);
           localStorage.setItem('repo_user_role', currentUserRole);
           localStorage.setItem('repo_user_id', currentUserId);
           localStorage.setItem('repo_user_dept', currentUserDept);
           window.checkPermissions();
+          window.renderFileCategories();
           window.renderFiles();
         }
 
@@ -3100,8 +3137,17 @@
       }
 
       const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
-      const recent = localFiles.filter(f => f.createdAt && f.createdAt >= threeDaysAgo)
-                               .sort((a, b) => b.createdAt - a.createdAt);
+      const recent = localFiles.filter(f => {
+        if (!f.createdAt || f.createdAt < threeDaysAgo) return false;
+        // 模式 A：檢查該檔案所屬分類對當前使用者是否可見 (父層隱藏子層連帶隱藏)
+        if (!isCategoryVisible(f.category)) return false;
+        // 檢查發行適用部門 (僅限制非 Admin 的人員)
+        if (currentUserRole !== 'Admin') {
+          const effectiveDepts = getEffectiveTargetDepts(f);
+          if (!effectiveDepts.includes('全公司') && !effectiveDepts.includes(currentUserDept)) return false;
+        }
+        return true;
+      }).sort((a, b) => b.createdAt - a.createdAt);
 
       if (recent.length === 0) {
         wrapper.style.display = 'none';
@@ -3200,8 +3246,13 @@
         // 2. 分類標籤篩選 (支援 5 層任意節點篩選)
         let matchesCategory = false;
         if (selectedCategory === '全部') {
+          // 全部檔案模式下，僅顯示所屬分類對當前使用者可見的檔案 (模式 A 完全隱形)
+          if (!isCategoryVisible(file.category)) return false;
           matchesCategory = true;
         } else {
+          // 若當前選取的分類對該使用者不可見，直接不匹配
+          if (!isCategoryVisible(selectedCategory)) return false;
+
           const selCatDoc = localFileCategories.find(c => c.id === selectedCategory || c.name === selectedCategory);
           if (selCatDoc) {
             const validCatIds = getAllDescendantCategoryIds(selCatDoc.id);
@@ -3376,6 +3427,11 @@
       const container = document.getElementById('categoryTreeContainer');
       if (!container) return;
 
+      // 防呆：若當前選取的分類在當前身分下不可見，自動重置為 '全部'
+      if (selectedCategory !== '全部' && !isCategoryVisible(selectedCategory)) {
+        selectedCategory = '全部';
+      }
+
       const isAllActive = selectedCategory === '全部';
       
       let html = `<ul class="category-tree-list">`;
@@ -3396,6 +3452,10 @@
       function renderTreeNodes(parentId = null, depth = 1) {
         if (depth > 5) return '';
         let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        
+        // 模式 A：完全隱形過濾 (父層隱藏，子層連帶隱藏)
+        nodes = nodes.filter(c => isCategoryVisible(c.id));
+
         nodes.sort((a, b) => {
           if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
           const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
@@ -3619,6 +3679,10 @@
       function buildSelectOptions(parentId = null, depth = 1) {
         if (depth > 5) return '';
         let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        
+        // 模式 A：上傳/編輯檔案時的分類下拉選單也套用完全隱形過濾
+        nodes = nodes.filter(c => isCategoryVisible(c.id));
+
         nodes.sort((a, b) => {
           if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
           const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
@@ -3984,6 +4048,9 @@
         function buildParentOptions(parentId = null, depth = 1) {
           if (depth > 5) return '';
           let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+          if (currentUserRole !== 'Admin') {
+            nodes = nodes.filter(c => isCategoryVisible(c.id));
+          }
           nodes.sort((a, b) => {
             if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
             const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
@@ -4017,6 +4084,9 @@
       function renderManageTreeList(parentId = null, depth = 1) {
         if (depth > 5) return '';
         let nodes = localFileCategories.filter(c => parentId === null ? !c.parentId : c.parentId === parentId);
+        if (currentUserRole !== 'Admin') {
+          nodes = nodes.filter(c => isCategoryVisible(c.id));
+        }
         nodes.sort((a, b) => {
           if (a.isProtected !== b.isProtected) return a.isProtected ? -1 : 1;
           const orderA = a.sortOrder !== undefined ? a.sortOrder : 0;
@@ -4285,15 +4355,20 @@
         editParentSelect.value = cat.parentId || '';
       }
       
-      const depts = cat.defaultTargetDepts || ['全公司'];
+      const isProtected = cat.isProtected || cat.name === FALLBACK_CATEGORY;
+      const depts = isProtected ? ['全公司'] : (cat.defaultTargetDepts || ['全公司']);
       const allCb = document.getElementById('editCategoryDept_All');
-      if (allCb) allCb.checked = depts.includes('全公司');
+      if (allCb) {
+        allCb.checked = depts.includes('全公司');
+        allCb.disabled = isProtected;
+      }
       
       const boxes = document.getElementsByName('editCategoryDept');
       boxes.forEach(b => {
         b.checked = depts.includes(b.value);
+        b.disabled = isProtected || (allCb && allCb.checked);
       });
-      if (allCb) window.handleEditCategoryAllCompanyCheckbox(allCb);
+      if (allCb && !isProtected) window.handleEditCategoryAllCompanyCheckbox(allCb);
 
       // 切換第 1 層設定與第 2~5 層繼承提示
       window.handleEditCategoryParentChange(editParentSelect);
@@ -4404,7 +4479,8 @@
 
       if (!newParentId) {
         updateData.defaultAccessLevel = newAccess;
-        updateData.defaultTargetDepts = depts.length > 0 ? depts : ['全公司'];
+        const isProtected = editCatContext.isProtected || editCatContext.name === FALLBACK_CATEGORY;
+        updateData.defaultTargetDepts = (isProtected || depts.length === 0) ? ['全公司'] : depts;
       }
 
       await updateDoc(getDocRef('fileCategories', editCatContext.id), updateData);
