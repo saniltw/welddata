@@ -87,11 +87,23 @@
           <div class="mt-3 pt-2.5 border-t border-white/15 grid grid-cols-2 gap-2 text-xs">
             <div>
               <span class="text-[11px] text-blue-200 block">本月總收入</span>
-              <span class="font-bold text-white">NT$ <span id="statMonthIncome">0</span></span>
+              <div class="text-sm font-black text-white">
+                NT$ <span id="statMonthIncome">0</span>
+              </div>
+              <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
+                <span>👨‍👩‍👧 父母提供 <strong id="statMonthParentIncome" class="text-emerald-300 font-bold">NT$ 0</strong></span>
+                <span class="text-blue-200/80">🧧 外部自力 <strong id="statMonthExtIncome" class="text-white font-semibold">NT$ 0</strong></span>
+              </div>
             </div>
             <div>
               <span class="text-[11px] text-blue-200 block">本月日常支出</span>
-              <span class="font-bold text-rose-200">NT$ <span id="statMonthExpense">0</span></span>
+              <div class="text-sm font-black text-rose-200">
+                NT$ <span id="statMonthExpense">0</span>
+              </div>
+              <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
+                <span>🎯 必要需要 <strong id="statMonthNeedExpense" class="text-blue-200 font-bold">NT$ 0</strong></span>
+                <span class="text-rose-200/80">💖 休閒想要 <strong id="statMonthWantExpense" class="text-rose-200 font-semibold">NT$ 0</strong></span>
+              </div>
             </div>
           </div>
         </div>
@@ -1022,6 +1034,53 @@
       '👟','👕','⚽','🏸','🎬','🎤','🎁','🧧','💵','🧹','🎯','✨','✈️','🏖️','🎫','🍜',
       '🐕','🐱','💊','🩺','📌','💡','🔥','⭐'
     ];
+
+    // Helper: Normalize transaction type
+    function normalizeType(type) {
+      if (!type) return 'expense';
+      const t = String(type).trim().toLowerCase();
+      if (t === 'income' || t === '收入') return 'income';
+      if (t === 'expense' || t === '日常支出' || t === '支出') return 'expense';
+      if (t === 'wishlist' || t === '存心願' || t === '心願') return 'wishlist';
+      if (t === 'travel' || t === '存出國' || t === '出國') return 'travel';
+      return t;
+    }
+
+    // Helper: Check if funding is provided by parents
+    function isParentFunding(tx) {
+      if (tx.fundingSource === 'external') return false;
+      if (tx.fundingSource === 'parent') return true;
+      if (tx.category && (tx.category.includes('紅包') || tx.category.includes('長輩') || tx.category.includes('自力'))) {
+        return false;
+      }
+      return true;
+    }
+
+    // Helper: Check if wishlist/travel was sponsored by parents
+    function isParentSponsor(tx) {
+      return tx.sponsorType === 'parent' || tx.sponsorType === '家長' || tx.sponsorType === '父母贊助';
+    }
+
+    // Helper: Check if date string belongs to current calendar month
+    function isCurrentMonth(dateStr) {
+      if (!dateStr) return false;
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = now.getMonth() + 1;
+
+      const str = String(dateStr).trim();
+      const match = str.match(/^(\d{4})[-/.](\d{1,2})/);
+      if (match) {
+        const y = parseInt(match[1], 10);
+        const m = parseInt(match[2], 10);
+        return y === curYear && m === curMonth;
+      }
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        return d.getFullYear() === curYear && (d.getMonth() + 1) === curMonth;
+      }
+      return false;
+    }
 
     async function initAuthAndFirestore() {
       onAuthStateChanged(auth, async (user) => {
@@ -2385,11 +2444,13 @@
     }
 
     function refreshUI() {
-      const now = new Date();
-      const currentYearMonth = now.toISOString().slice(0, 7);
-
       let monthIncome = 0;
+      let monthParentIncome = 0;
+      let monthExtIncome = 0;
       let monthExpense = 0;
+      let monthNeedExpense = 0;
+      let monthWantExpense = 0;
+
       let totalAllIncome = 0;
       let totalAllExpense = 0;
       let totalWishSaved = 0;
@@ -2397,8 +2458,6 @@
       let needExpense = 0;
       let wantExpense = 0;
 
-      let monthParentIncome = 0;
-      let monthExtIncome = 0;
       let wishSelfSaved = 0;
       let wishParentSaved = 0;
       let travelSelfSaved = 0;
@@ -2406,35 +2465,47 @@
       let totalParentGivenAll = 0;
 
       transactions.forEach(tx => {
-        const amt = Number(tx.amount) || 0;
-        const txYearMonth = (tx.date || '').slice(0, 7);
+        const rawAmt = String(tx.amount || 0).replace(/,/g, '').trim();
+        const amt = parseFloat(rawAmt) || 0;
+        const normType = normalizeType(tx.type);
+        const inThisMonth = isCurrentMonth(tx.date);
 
-        if (tx.type === 'income') {
+        if (normType === 'income') {
           totalAllIncome += amt;
-          if (txYearMonth === currentYearMonth) {
-            monthIncome += amt;
-            if (tx.fundingSource === 'external') monthExtIncome += amt;
-            else monthParentIncome += amt;
-          }
-          if (tx.fundingSource !== 'external') {
+          const isParent = isParentFunding(tx);
+          if (isParent) {
             totalParentGivenAll += amt;
           }
-        } else if (tx.type === 'expense') {
+          if (inThisMonth) {
+            monthIncome += amt;
+            if (isParent) {
+              monthParentIncome += amt;
+            } else {
+              monthExtIncome += amt;
+            }
+          }
+        } else if (normType === 'expense') {
           totalAllExpense += amt;
-          if (txYearMonth === currentYearMonth) monthExpense += amt;
-          if (tx.intent === '想要') wantExpense += amt;
+          const isWant = tx.intent === '想要';
+          if (isWant) wantExpense += amt;
           else needExpense += amt;
-        } else if (tx.type === 'wishlist') {
+
+          if (inThisMonth) {
+            monthExpense += amt;
+            if (isWant) monthWantExpense += amt;
+            else monthNeedExpense += amt;
+          }
+        } else if (normType === 'wishlist') {
           totalWishSaved += amt;
-          if (tx.sponsorType === 'parent') {
+          if (isParentSponsor(tx)) {
             wishParentSaved += amt;
             totalParentGivenAll += amt;
           } else {
             wishSelfSaved += amt;
           }
-        } else if (tx.type === 'travel') {
+        } else if (normType === 'travel') {
           totalTravelSaved += amt;
-          if (tx.sponsorType === 'parent') {
+          if (isParentSponsor(tx)) {
             travelParentSaved += amt;
             totalParentGivenAll += amt;
           } else {
@@ -2443,19 +2514,28 @@
         }
       });
 
-      const walletBalance = totalAllIncome - totalAllExpense - totalWishSaved - totalTravelSaved;
+      // 自由錢包結餘：只扣除小孩「自存」進心願與出國的款項，父母贊助款不從小孩錢包扣除
+      const walletBalance = totalAllIncome - totalAllExpense - wishSelfSaved - travelSelfSaved;
 
       const elWallet = document.getElementById('statWalletBalance');
       const elMonthInc = document.getElementById('statMonthIncome');
+      const elMonthParentInc = document.getElementById('statMonthParentIncome');
+      const elMonthExtInc = document.getElementById('statMonthExtIncome');
       const elMonthExp = document.getElementById('statMonthExpense');
+      const elMonthNeedExp = document.getElementById('statMonthNeedExpense');
+      const elMonthWantExp = document.getElementById('statMonthWantExpense');
       const elWishSaved = document.getElementById('statWishlistSaved');
       const elTravelSaved = document.getElementById('statTravelSaved');
 
-      if (elWallet) elWallet.textContent = walletBalance.toLocaleString();
-      if (elMonthInc) elMonthInc.textContent = monthIncome.toLocaleString();
-      if (elMonthExp) elMonthExp.textContent = monthExpense.toLocaleString();
-      if (elWishSaved) elWishSaved.textContent = totalWishSaved.toLocaleString();
-      if (elTravelSaved) elTravelSaved.textContent = totalTravelSaved.toLocaleString();
+      if (elWallet) elWallet.textContent = Math.round(walletBalance).toLocaleString();
+      if (elMonthInc) elMonthInc.textContent = Math.round(monthIncome).toLocaleString();
+      if (elMonthParentInc) elMonthParentInc.textContent = Math.round(monthParentIncome).toLocaleString();
+      if (elMonthExtInc) elMonthExtInc.textContent = Math.round(monthExtIncome).toLocaleString();
+      if (elMonthExp) elMonthExp.textContent = Math.round(monthExpense).toLocaleString();
+      if (elMonthNeedExp) elMonthNeedExp.textContent = Math.round(monthNeedExpense).toLocaleString();
+      if (elMonthWantExp) elMonthWantExp.textContent = Math.round(monthWantExpense).toLocaleString();
+      if (elWishSaved) elWishSaved.textContent = Math.round(totalWishSaved).toLocaleString();
+      if (elTravelSaved) elTravelSaved.textContent = Math.round(totalTravelSaved).toLocaleString();
 
       const curWish = getActiveWish();
       const totalWishBudget = getWishlistTotalBudget();
@@ -2632,21 +2712,32 @@
       if (chartMode === 'asset') {
         let totalIncome = 0;
         let totalExpense = 0;
-        let wishSaved = 0;
-        let travelSaved = 0;
+        let wishSelf = 0;
+        let wishParent = 0;
+        let travelSelf = 0;
+        let travelParent = 0;
 
         transactions.forEach(t => {
-          const a = Number(t.amount) || 0;
-          if (t.type === 'income') totalIncome += a;
-          else if (t.type === 'expense') totalExpense += a;
-          else if (t.type === 'wishlist') wishSaved += a;
-          else if (t.type === 'travel') travelSaved += a;
+          const rawAmt = String(t.amount || 0).replace(/,/g, '').trim();
+          const a = parseFloat(rawAmt) || 0;
+          const nType = normalizeType(t.type);
+          if (nType === 'income') totalIncome += a;
+          else if (nType === 'expense') totalExpense += a;
+          else if (nType === 'wishlist') {
+            if (isParentSponsor(t)) wishParent += a;
+            else wishSelf += a;
+          } else if (nType === 'travel') {
+            if (isParentSponsor(t)) travelParent += a;
+            else travelSelf += a;
+          }
         });
 
-        const wallet = Math.max(0, totalIncome - totalExpense - wishSaved - travelSaved);
+        const wallet = Math.max(0, totalIncome - totalExpense - wishSelf - travelSelf);
+        const totalWish = wishSelf + wishParent;
+        const totalTravel = travelSelf + travelParent;
 
         labels = ['錢包自由結餘', '心願專款', '出國基金', '日常總支出'];
-        data = [wallet, wishSaved, travelSaved, totalExpense];
+        data = [wallet, totalWish, totalTravel, totalExpense];
         colors = ['#2563eb', '#9333ea', '#f59e0b', '#f43f5e'];
       } else if (chartMode === 'expense') {
         const catMap = {};
