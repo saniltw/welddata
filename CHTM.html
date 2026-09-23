@@ -301,7 +301,7 @@
         <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <i class="fa-solid fa-key text-blue-600"></i> 家長安全密碼
         </h3>
-        <p class="text-[11px] text-slate-500">預設 PIN 碼為 1234。若小孩漸長，可自行變更為專屬的 4 位數密碼。</p>
+        <p class="text-[11px] text-slate-500">若需強化管理權限安全，可在此隨時自訂專屬的 4 位數 PIN 碼。</p>
         <button onclick="openChangePinModal()" class="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 active:scale-95 transition-all">
           更改家長 PIN 碼
         </button>
@@ -497,11 +497,6 @@
         <input type="password" id="inputPinCode" maxlength="4" inputmode="numeric" placeholder="••••" class="w-36 mx-auto text-center text-2xl tracking-widest font-black py-2 rounded-xl border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
 
-      <!-- Quick Fill Default PIN -->
-      <button type="button" onclick="quickFillDefaultPin()" class="text-[11px] text-blue-600 font-bold hover:underline block mx-auto">
-        一鍵填入預設 PIN (1234)
-      </button>
-
       <!-- Action Buttons -->
       <div class="grid grid-cols-2 gap-2 pt-1">
         <button onclick="closePinModal()" class="py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
@@ -651,10 +646,13 @@
     </div>
   </div>
 
-  <div id="editTxModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
-    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-3.5 shadow-2xl">
+  <div id="editTxModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-3.5 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
-        <h3 class="text-sm font-bold text-slate-800">✏️ 修改收支紀錄</h3>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">🛡️ 家長更正</span>
+          <h3 class="text-sm font-bold text-slate-800">修改收支紀錄</h3>
+        </div>
         <button onclick="closeEditTxModal()" class="text-slate-400 hover:text-slate-600 p-1">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
@@ -662,27 +660,80 @@
 
       <form onsubmit="handleSaveEditedTx(event)" class="space-y-3">
         <input type="hidden" id="editTxId">
+
+        <!-- Type Switcher -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">收支類型</label>
+          <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl">
+            <button type="button" onclick="setEditType('expense')" id="editTypeBtnExpense" class="py-1.5 text-xs font-bold rounded-lg transition-all">日常支出</button>
+            <button type="button" onclick="setEditType('income')" id="editTypeBtnIncome" class="py-1.5 text-xs font-bold rounded-lg transition-all">收入</button>
+            <button type="button" onclick="setEditType('wishlist')" id="editTypeBtnWishlist" class="py-1.5 text-xs font-bold rounded-lg transition-all">存心願</button>
+            <button type="button" onclick="setEditType('travel')" id="editTypeBtnTravel" class="py-1.5 text-xs font-bold rounded-lg transition-all">存出國</button>
+          </div>
+        </div>
         
+        <!-- Amount Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">金額 (NT$)</label>
-          <input type="number" id="editTxAmount" min="1" step="1" inputmode="numeric" required class="w-full text-base font-bold p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">NT$</span>
+            <input type="number" id="editTxAmount" min="1" step="1" inputmode="numeric" required class="w-full pl-11 pr-3 py-2.5 text-lg font-bold rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
         </div>
 
+        <!-- Category Dropdown with Auto Fill Button -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-slate-600">分類標籤</label>
+            <button type="button" onclick="fillCategoryNameToEditDesc()" class="text-[11px] font-bold text-blue-600 hover:text-blue-800">
+              <i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 帶入分類名稱
+            </button>
+          </div>
+          <select id="editTxCategory" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <!-- Optional Travel Branch -->
+        <div id="editTxTravelBranchWrapper" class="hidden">
+          <label class="block text-xs font-bold text-amber-700 mb-1">存入出國細項分支</label>
+          <select id="editTxTravelBranchSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 text-slate-700">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <!-- Description Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">項目備註 / 說明</label>
-          <input type="text" id="editTxDescription" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+          <input type="text" id="editTxDescription" required placeholder="項目說明" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
+        <!-- Intent: Need vs Want (only for expense) -->
+        <div id="editWrapperNeedWant" class="space-y-1">
+          <label class="block text-xs font-bold text-slate-600">消費動機</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
+              <input type="radio" name="editTxIntent" id="editTxIntentNeed" value="需要" class="hidden">
+              <i class="fa-solid fa-check-circle"></i> 需要 (必要支出)
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-rose-50 has-[:checked]:border-rose-400 has-[:checked]:text-rose-700 transition-all">
+              <input type="radio" name="editTxIntent" id="editTxIntentWant" value="想要" class="hidden">
+              <i class="fa-solid fa-heart"></i> 想要 (休閒享受)
+            </label>
+          </div>
+        </div>
+
+        <!-- Date Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">記帳日期</label>
-          <input type="date" id="editTxDate" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50">
+          <input type="date" id="editTxDate" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
         <div class="grid grid-cols-2 gap-2 pt-2">
           <button type="button" onclick="closeEditTxModal()" class="py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">
             取消
           </button>
-          <button type="submit" class="py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700">
+          <button type="submit" class="py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 active:scale-95 transition-all">
             儲存更正
           </button>
         </div>
@@ -761,7 +812,13 @@
 
     // State Variables
     let currentRole = safeStorage.getItem(STORAGE_KEY_ROLE) || 'child'; // 'child' | 'parent'
-    let parentPin = safeStorage.getItem(STORAGE_KEY_PIN) || '1234';
+    let savedStoredPin = safeStorage.getItem(STORAGE_KEY_PIN);
+    // 若尚未設定或仍為舊預設值 1234，一律自動升級為新預設密碼 1379
+    if (!savedStoredPin || savedStoredPin === '1234') {
+      savedStoredPin = '1379';
+      safeStorage.setItem(STORAGE_KEY_PIN, '1379');
+    }
+    let parentPin = savedStoredPin;
     let sheetUrl = safeStorage.getItem(STORAGE_KEY_SHEET_URL) || DEFAULT_SHEET_URL;
 
     let transactions = [];
@@ -844,6 +901,7 @@
       renderQuickChips();
       renderActiveWishSelect();
       refreshUI();
+      updatePendingQueueBadge();
 
       // Setup Emoji Palette
       initEmojiPalette();
@@ -1027,11 +1085,6 @@
     function closePinModal() {
       document.getElementById('pinModal').classList.add('hidden');
       pendingAuthCallback = null;
-    }
-
-    function quickFillDefaultPin() {
-      const elPin = document.getElementById('inputPinCode');
-      if (elPin) elPin.value = parentPin;
     }
 
     function verifyPinCode() {
@@ -1796,6 +1849,74 @@
       }).join('');
     }
 
+    let currentEditType = 'expense';
+
+    function setEditType(type, selectedCategory = null) {
+      currentEditType = type;
+      const types = ['expense', 'income', 'wishlist', 'travel'];
+      types.forEach(t => {
+        const btn = document.getElementById('editTypeBtn' + capitalize(t));
+        if (!btn) return;
+        if (t === type) {
+          btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-blue-700 transition-all';
+          if (t === 'expense') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-rose-600 transition-all';
+          if (t === 'wishlist') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-purple-700 transition-all';
+          if (t === 'travel') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-amber-700 transition-all';
+        } else {
+          btn.className = 'py-1.5 text-xs font-bold rounded-lg text-slate-500 transition-all';
+        }
+      });
+
+      // Toggle Need vs Want
+      const wrapperNeedWant = document.getElementById('editWrapperNeedWant');
+      if (wrapperNeedWant) {
+        if (type === 'expense') wrapperNeedWant.classList.remove('hidden');
+        else wrapperNeedWant.classList.add('hidden');
+      }
+
+      // Toggle Travel Branch Selector
+      const travelBranchWrapper = document.getElementById('editTxTravelBranchWrapper');
+      if (travelBranchWrapper) {
+        if (type === 'travel') {
+          travelBranchWrapper.classList.remove('hidden');
+          renderEditTravelBranchSelector();
+        } else {
+          travelBranchWrapper.classList.add('hidden');
+        }
+      }
+
+      // Populate Category select
+      const catSelect = document.getElementById('editTxCategory');
+      if (catSelect) {
+        const list = categories[type] || [];
+        catSelect.innerHTML = list.map(c => {
+          const val = `${c.icon} ${c.name}`;
+          const isSelected = selectedCategory && (selectedCategory === val || selectedCategory.includes(c.name));
+          return `<option value="${val}" ${isSelected ? 'selected' : ''}>${val}</option>`;
+        }).join('');
+      }
+    }
+
+    function renderEditTravelBranchSelector() {
+      const select = document.getElementById('editTxTravelBranchSelect');
+      if (!select) return;
+      if (!travelConfig.branches || travelConfig.branches.length === 0) {
+        select.innerHTML = '<option value="general">出國總專款自由支配</option>';
+        return;
+      }
+      select.innerHTML = travelConfig.branches.map(b => `
+        <option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (子預算 NT$ ${b.targetPrice.toLocaleString()})</option>
+      `).join('');
+    }
+
+    function fillCategoryNameToEditDesc() {
+      const select = document.getElementById('editTxCategory');
+      const descInput = document.getElementById('editTxDescription');
+      if (!select || !descInput) return;
+      const val = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
+      descInput.value = val;
+    }
+
     function openEditTxModal(id) {
       requestParentAuth(() => {
         const tx = transactions.find(t => t.id === id);
@@ -1804,6 +1925,28 @@
         document.getElementById('editTxAmount').value = tx.amount;
         document.getElementById('editTxDescription').value = tx.description;
         document.getElementById('editTxDate').value = tx.date;
+
+        currentEditType = tx.type || 'expense';
+        setEditType(currentEditType, tx.category);
+
+        if (tx.intent === '想要') {
+          const radioWant = document.getElementById('editTxIntentWant');
+          if (radioWant) radioWant.checked = true;
+        } else {
+          const radioNeed = document.getElementById('editTxIntentNeed');
+          if (radioNeed) radioNeed.checked = true;
+        }
+
+        if (currentEditType === 'travel') {
+          const branchSelect = document.getElementById('editTxTravelBranchSelect');
+          if (branchSelect) {
+            const match = tx.description.match(/\[(.*?)\]/);
+            if (match && match[1]) {
+              branchSelect.value = match[1];
+            }
+          }
+        }
+
         document.getElementById('editTxModal').classList.remove('hidden');
       }, '修改帳目紀錄', '更正歷史紀錄需家長審核');
     }
@@ -1816,21 +1959,44 @@
       e.preventDefault();
       const id = document.getElementById('editTxId').value;
       const amount = parseInt(document.getElementById('editTxAmount').value, 10);
-      const desc = document.getElementById('editTxDescription').value.trim();
+      let desc = document.getElementById('editTxDescription').value.trim();
       const date = document.getElementById('editTxDate').value;
+      const category = document.getElementById('editTxCategory').value;
 
       const tx = transactions.find(t => t.id === id);
       if (!tx || isNaN(amount) || amount <= 0) return;
 
-      const oldDesc = `${tx.description} (NT$${tx.amount})`;
+      let intent = '需要';
+      if (currentEditType === 'expense') {
+        const intentChecked = document.querySelector('input[name="editTxIntent"]:checked');
+        if (intentChecked) intent = intentChecked.value;
+      }
+
+      if (currentEditType === 'travel') {
+        const branchSelect = document.getElementById('editTxTravelBranchSelect');
+        if (branchSelect && branchSelect.value && branchSelect.value !== 'general') {
+          const cleanDesc = desc.replace(/\s*\[.*?\]/g, '').trim();
+          desc = cleanDesc ? `${cleanDesc} [${branchSelect.value}]` : `存入出國分支: ${branchSelect.value}`;
+        }
+      }
+
+      if (!desc) {
+        desc = category.replace(/^[\p{Emoji}\s]+/u, '').trim();
+      }
+
+      const oldSummary = `${tx.type} | ${tx.category} - ${tx.description} (NT$${tx.amount})`;
+      tx.type = currentEditType;
+      tx.category = category;
       tx.amount = amount;
       tx.description = desc;
+      tx.intent = intent;
       tx.date = date;
       tx.operator = '🛡️ 家長更正';
       tx.updatedAt = Date.now();
 
       saveLocalTransactions();
-      addAuditLog('修改收支', `🛡️ 家長更正紀錄：${oldDesc} ➔ ${desc} (NT$${amount})`);
+      saveRecentTag(desc);
+      addAuditLog('修改收支', `🛡️ 家長更正紀錄：${oldSummary} ➔ ${currentEditType} | ${category} - ${desc} (NT$${amount})`);
       queueAction('update', tx);
 
       closeEditTxModal();
@@ -2146,6 +2312,65 @@
       } else {
         badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text || '離線快取中'}`;
         badge.className = 'inline-flex items-center gap-1 text-slate-500 font-medium';
+      }
+    }
+
+    function updatePendingQueueBadge() {
+      const badge = document.getElementById('pendingQueueBadge');
+      if (!badge) return;
+      if (offlineQueue && offlineQueue.length > 0) {
+        badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-[9px]"></i> 待傳 ${offlineQueue.length}`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    let isFlushingQueue = false;
+
+    async function flushOfflineQueue() {
+      if (isFlushingQueue || !navigator.onLine || !sheetUrl || !offlineQueue || offlineQueue.length === 0) {
+        updatePendingQueueBadge();
+        return;
+      }
+      isFlushingQueue = true;
+
+      try {
+        while (offlineQueue.length > 0 && navigator.onLine) {
+          const item = offlineQueue[0];
+          let bodyData = {};
+
+          if (item.action === 'add') {
+            bodyData = { action: 'add', data: item.payload };
+          } else if (item.action === 'delete') {
+            bodyData = { action: 'delete', id: item.payload.id, operator: currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩' };
+          } else if (item.action === 'update') {
+            bodyData = { action: 'update', data: item.payload };
+          } else if (item.action === 'audit_log') {
+            bodyData = { 
+              action: 'audit_log', 
+              operator: item.payload.operator, 
+              logAction: item.payload.logAction, 
+              detail: item.payload.detail 
+            };
+          }
+
+          // POST to Google Apps Script Webhook
+          await fetch(sheetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(bodyData)
+          });
+
+          offlineQueue.shift();
+          safeStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(offlineQueue));
+          updatePendingQueueBadge();
+        }
+      } catch (err) {
+        console.warn('Flush offline queue error:', err);
+      } finally {
+        isFlushingQueue = false;
+        updatePendingQueueBadge();
       }
     }
 
