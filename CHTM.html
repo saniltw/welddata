@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>青少年理財與願望清單收支本</title>
+  <title>青少年理財與願望清單收支本 (Firebase 即時雲端版)</title>
   <!-- PWA & Mobile Web App Capabilities -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -22,7 +22,7 @@
     .pt-safe {
       padding-top: env(safe-area-inset-top, 16px);
     }
-    /* Hide scrollbar for tabs and chips while allowing smooth scroll */
+    /* Hide scrollbars */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -50,21 +50,13 @@
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500">
             <span id="connBadge" class="inline-flex items-center gap-1 text-emerald-600 font-medium">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              雲端就緒
-            </span>
-            <span id="pendingQueueBadge" class="hidden text-amber-600 font-semibold px-1 rounded bg-amber-50">
-              <i class="fa-solid fa-cloud-arrow-up text-[9px]"></i> 待傳 1
+              雲端連線中...
             </span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- Manual Sync Button -->
-        <button onclick="handleManualSync()" id="btnSyncNow" title="手動同步" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 active:scale-95 transition-all text-xs">
-          <i class="fa-solid fa-rotate"></i>
-        </button>
-
         <!-- Role Badge Button -->
         <button onclick="toggleRoleMode()" id="roleBadgeBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-100 text-slate-700 border-slate-200 active:scale-95">
           <span id="roleIcon">🎒</span>
@@ -129,6 +121,7 @@
         </div>
       </div>
 
+      <!-- Wishlist Target Card (Open to Children) -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -142,6 +135,7 @@
               </span>
             </div>
           </div>
+          <!-- Now open to child directly -->
           <button onclick="openWishlistManagerModal()" class="text-xs font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 active:scale-95 transition-all">
             <i class="fa-solid fa-sliders"></i> 多心願管理
           </button>
@@ -154,22 +148,28 @@
           </select>
         </div>
 
-        <!-- Active Wish Progress Bar -->
+        <!-- Active Wish Dual-Color Progress Bar -->
         <div class="bg-purple-50/60 rounded-xl p-3 border border-purple-100 space-y-2">
           <div class="flex justify-between items-center text-xs">
             <span class="font-bold text-slate-700" id="wishTargetName">目前目標</span>
             <span class="font-black text-purple-700">NT$ <span id="wishTargetCurrent">0</span> / <span id="wishTargetPrice">0</span></span>
           </div>
-          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-            <div id="wishProgressBar" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          <!-- Dual Segment Progress Bar -->
+          <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex">
+            <div id="wishBarSelf" class="bg-purple-600 h-full transition-all" style="width: 0%" title="小孩自存"></div>
+            <div id="wishBarParent" class="bg-emerald-500 h-full transition-all" style="width: 0%" title="父母贊助"></div>
           </div>
           <div class="flex justify-between items-center text-[10px] text-slate-500">
-            <span>達成進度 <strong id="wishProgressPercent" class="text-purple-700">0%</strong></span>
+            <span>達成率 <strong id="wishProgressPercent" class="text-purple-700">0%</strong></span>
+            <span>自存 <strong id="wishSelfAmount" class="text-purple-700">NT$ 0</strong> + 父母贊助 <strong id="wishParentAmount" class="text-emerald-600">NT$ 0</strong></span>
+          </div>
+          <div class="text-right text-[10px] text-slate-400">
             <span>尚缺 NT$ <strong id="wishRemainingAmount" class="text-slate-700">0</strong></span>
           </div>
         </div>
       </div>
 
+      <!-- Travel Target Card (Open to Children) -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -183,32 +183,37 @@
               </span>
             </div>
           </div>
+          <!-- Now open to child directly -->
           <button onclick="openTravelBranchModal()" class="text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 active:scale-95 transition-all">
             <i class="fa-solid fa-sitemap"></i> 管理分支
           </button>
         </div>
 
-        <!-- Travel Progress -->
+        <!-- Travel Dual Progress Bar -->
         <div class="bg-amber-50/60 rounded-xl p-3 border border-amber-100 space-y-2">
           <div class="flex justify-between items-center text-xs">
             <span class="font-bold text-slate-700">總專案累積進度</span>
             <span class="font-black text-amber-700">NT$ <span id="travelTargetCurrent">0</span> / <span id="travelTargetPrice">0</span></span>
           </div>
-          <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-            <div id="travelProgressBar" class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          <!-- Dual Segment Progress Bar -->
+          <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex">
+            <div id="travelBarSelf" class="bg-amber-500 h-full transition-all" style="width: 0%" title="小孩自存"></div>
+            <div id="travelBarParent" class="bg-emerald-500 h-full transition-all" style="width: 0%" title="父母贊助"></div>
           </div>
           <div class="flex justify-between items-center text-[10px] text-slate-500">
-            <span>達成進度 <strong id="travelProgressPercent" class="text-amber-700">0%</strong></span>
+            <span>達成率 <strong id="travelProgressPercent" class="text-amber-700">0%</strong></span>
+            <span>自存 <strong id="travelSelfAmount" class="text-amber-700">NT$ 0</strong> + 父母贊助 <strong id="travelParentAmount" class="text-emerald-600">NT$ 0</strong></span>
+          </div>
+          <div class="text-right text-[10px] text-slate-400">
             <span>尚缺 NT$ <strong id="travelRemainingAmount" class="text-slate-700">0</strong></span>
           </div>
         </div>
 
         <!-- Branches preview list -->
-        <div id="dashboardTravelBranchesMini" class="space-y-1.5 pt-1">
-          <!-- Dynamically populated branch progress bars -->
-        </div>
+        <div id="dashboardTravelBranchesMini" class="space-y-1.5 pt-1"></div>
       </div>
 
+      <!-- Financial Chart Card -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
         <div class="flex items-center justify-between">
           <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -221,10 +226,12 @@
             <button id="btnChartModeExpense" onclick="switchChartMode('expense')" class="px-2 py-0.5 rounded-md text-slate-500">
               支出佔比
             </button>
+            <button id="btnChartModeIncome" onclick="switchChartMode('income')" class="px-2 py-0.5 rounded-md text-slate-500">
+              收入來源
+            </button>
           </div>
         </div>
 
-        <!-- Canvas Container -->
         <div class="relative h-48 flex items-center justify-center">
           <canvas id="financeChart"></canvas>
           <div id="chartEmptyNotice" class="hidden text-xs text-slate-400 font-medium text-center">
@@ -232,6 +239,18 @@
           </div>
         </div>
         
+        <!-- Income Source Ratio Bar -->
+        <div class="pt-2 border-t border-slate-100">
+          <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1.5">
+            <span>本月收入來源分流</span>
+            <span>父母資助 <span id="statParentIncomePercent" class="text-blue-600 font-black">0%</span> vs 外部/自力 <span id="statExtIncomePercent" class="text-emerald-600 font-black">0%</span></span>
+          </div>
+          <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+            <div id="barParentIncome" class="bg-blue-500 h-full transition-all" style="width: 50%"></div>
+            <div id="barExtIncome" class="bg-emerald-500 h-full transition-all" style="width: 50%"></div>
+          </div>
+        </div>
+
         <!-- Needs vs Wants Bar -->
         <div class="pt-2 border-t border-slate-100">
           <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1.5">
@@ -247,15 +266,16 @@
 
     </section>
 
+    <!-- TAB 2: 明細 (History) -->
     <section id="viewHistory" class="space-y-3 hidden">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-sm font-bold text-slate-800">收支流水帳明細</h2>
           <span class="text-[11px] text-slate-400" id="recordCountLabel">共 0 筆紀錄</span>
         </div>
-        <button onclick="handleManualSync()" class="text-xs text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-          <i class="fa-solid fa-rotate mr-1"></i> 即時同步
-        </button>
+        <span class="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+          <i class="fa-solid fa-bolt mr-1"></i> Firebase 即時監聽
+        </span>
       </div>
 
       <!-- Filter Buttons -->
@@ -268,11 +288,10 @@
       </div>
 
       <!-- Transaction List Items -->
-      <div id="txListContainer" class="space-y-2">
-        <!-- Rendered by renderTxList() -->
-      </div>
+      <div id="txListContainer" class="space-y-2"></div>
     </section>
 
+    <!-- TAB 3: 操作記錄 (Logs - Parent Only) -->
     <section id="viewLogs" class="space-y-3 hidden">
       <div class="flex items-center justify-between">
         <div>
@@ -282,18 +301,61 @@
         <span class="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">透明誠信</span>
       </div>
 
-      <div id="auditLogListContainer" class="space-y-2">
-        <!-- Rendered by renderAuditLogs() -->
-      </div>
+      <div id="auditLogListContainer" class="space-y-2"></div>
     </section>
 
+    <!-- TAB 4: 設定 (Settings - Parent Only) -->
     <section id="viewSettings" class="space-y-4 hidden">
       <div class="flex items-center justify-between border-b pb-2 border-slate-200">
         <div>
           <h2 class="text-sm font-bold text-slate-800">🛡️ 家長系統控制台</h2>
-          <p class="text-[11px] text-slate-400">進階權限、後端連線與安全管理</p>
+          <p class="text-[11px] text-slate-400">進階權限、雲端架構與安全管理</p>
         </div>
         <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">家長管理中</span>
+      </div>
+
+      <!-- Parent Funding & Effectiveness Dashboard -->
+      <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-4 text-white shadow-md space-y-3">
+        <div class="flex justify-between items-center border-b border-white/10 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs font-bold">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+            </span>
+            <h3 class="text-xs font-bold text-slate-100">👨‍👩‍👧 父母累計資助與成效分析</h3>
+          </div>
+          <span class="text-[10px] bg-emerald-400/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">教育統計</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div class="bg-white/5 rounded-xl p-2.5 border border-white/10">
+            <span class="text-[10px] text-slate-300 block">父母歷來發放總額</span>
+            <span class="text-lg font-black text-emerald-300">NT$ <span id="cardParentTotalGiven">0</span></span>
+            <span class="text-[9px] text-slate-400 block mt-0.5">含零用錢、獎勵與專案贊助</span>
+          </div>
+          <div class="bg-white/5 rounded-xl p-2.5 border border-white/10">
+            <span class="text-[10px] text-slate-300 block">小孩整體儲蓄達成率</span>
+            <span class="text-lg font-black text-blue-300" id="cardChildSavingsRate">0%</span>
+            <span class="text-[9px] text-slate-400 block mt-0.5" id="cardSavingsStatus">儲蓄良好</span>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-white/10 space-y-1.5 text-[11px]">
+          <span class="text-slate-300 font-bold block text-[10px]">父母提供資金的流向分佈：</span>
+          <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+            <div class="bg-purple-900/40 border border-purple-500/30 rounded-lg p-1.5">
+              <span class="text-purple-200 block">心願專款</span>
+              <strong class="text-purple-300">NT$ <span id="parentFlowWish">0</span></strong>
+            </div>
+            <div class="bg-amber-900/40 border border-amber-500/30 rounded-lg p-1.5">
+              <span class="text-amber-200 block">出國基金</span>
+              <strong class="text-amber-300">NT$ <span id="parentFlowTravel">0</span></strong>
+            </div>
+            <div class="bg-rose-900/40 border border-rose-500/30 rounded-lg p-1.5">
+              <span class="text-rose-200 block">日常開銷</span>
+              <strong class="text-rose-300">NT$ <span id="parentFlowExpense">0</span></strong>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Change Parent PIN -->
@@ -307,29 +369,28 @@
         </button>
       </div>
 
-      <!-- Google Sheets Endpoint Configuration -->
+      <!-- Firebase Cloud Backend Status -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
         <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-          <i class="fa-solid fa-cloud text-emerald-600"></i> Google Apps Script 雲端網址
+          <i class="fa-solid fa-fire text-amber-500"></i> Firebase Cloud Firestore 狀態
         </h3>
-        <p class="text-[11px] text-slate-500">系統已預載你的專用 Webhook 端點，支援雙向資料快取。</p>
-        <input type="url" id="inputSettingsSheetUrl" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://script.google.com/macros/s/.../exec">
-        <div class="flex gap-2">
-          <button onclick="saveSheetUrlFromSettings()" class="flex-1 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 active:scale-95 transition-all">
-            儲存並重新同步
-          </button>
+        <div class="p-3 bg-slate-50 rounded-xl space-y-1.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-500">專案 ID：</span>
+            <span class="font-mono font-bold text-slate-800">family-travel-e5912</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">連線模式：</span>
+            <span class="font-bold text-emerald-600">即時推播 (onSnapshot)</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">認證身分：</span>
+            <span class="font-bold text-blue-600" id="firebaseAuthStatusText">匿名安全驗證</span>
+          </div>
         </div>
-      </div>
-
-      <!-- System Reset and Cache Clear -->
-      <div class="bg-white rounded-2xl p-4 border border-rose-200 shadow-xs space-y-3">
-        <h3 class="text-xs font-bold text-rose-700 flex items-center gap-1.5">
-          <i class="fa-solid fa-triangle-exclamation"></i> 資料維護
-        </h3>
-        <p class="text-[11px] text-slate-500">可清除手機本機快取並從 Google 試算表重新抓取最新資料。</p>
-        <button onclick="handleReloadCloudData()" class="w-full py-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 active:scale-95 transition-all">
-          清空本機快取並重新自雲端載入
-        </button>
+        <p class="text-[11px] text-slate-500">
+          已成功由 Google Sheets 全面升級至 Firebase Firestore，享有毫秒級雙向同步與零衝突離線存取。
+        </p>
       </div>
     </section>
 
@@ -338,32 +399,30 @@
   <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-30 pb-safe shadow-lg">
     <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-around relative">
       
-      <!-- Nav Item: 總覽 -->
       <button onclick="switchTab('dashboard')" id="navBtnDashboard" class="flex flex-col items-center justify-center gap-1 text-blue-600 transition-colors">
         <i class="fa-solid fa-house text-lg"></i>
         <span class="text-[10px] font-bold">總覽</span>
       </button>
 
-      <!-- Nav Item: 明細 -->
       <button onclick="switchTab('history')" id="navBtnHistory" class="flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition-colors">
         <i class="fa-solid fa-list-ul text-lg"></i>
         <span class="text-[10px] font-bold">明細</span>
       </button>
 
-      <!-- Floating Plus Button: 快速記帳 -->
+      <!-- Floating Plus Button -->
       <div class="relative -top-5">
-        <button onclick="openAddModal()" class="w-13 h-13 w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all border-4 border-white">
+        <button onclick="openAddModal()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all border-4 border-white">
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
 
-      <!-- Nav Item: 記錄 (Audit Logs) -->
-      <button onclick="switchTab('logs')" id="navBtnLogs" class="flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition-colors">
+      <!-- Logs (Parent Only in Child Mode) -->
+      <button onclick="switchTab('logs')" id="navBtnLogs" class="hidden flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition-colors">
         <i class="fa-solid fa-user-clock text-lg"></i>
         <span class="text-[10px] font-bold">記錄</span>
       </button>
 
-      <!-- Nav Item: 設定 (Parent Only) -->
+      <!-- Settings (Parent Only) -->
       <button onclick="switchTab('settings')" id="navBtnSettings" class="hidden flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition-colors">
         <i class="fa-solid fa-gear text-lg"></i>
         <span class="text-[10px] font-bold">設定</span>
@@ -372,10 +431,10 @@
     </div>
   </nav>
 
+  <!-- Add Transaction Modal -->
   <div id="addModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
     <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
       
-      <!-- Modal Header -->
       <div class="flex items-center justify-between border-b pb-3 border-slate-100">
         <div class="flex items-center gap-2">
           <span id="addFormRoleBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700">🎒 小孩記帳中</span>
@@ -402,10 +461,8 @@
         </button>
       </div>
 
-      <!-- Main Form -->
       <form id="txForm" onsubmit="handleFormSubmit(event)" class="space-y-3.5">
         
-        <!-- Amount Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">金額 (NT$)</label>
           <div class="relative">
@@ -414,7 +471,6 @@
           </div>
         </div>
 
-        <!-- Category Selector with Manage Button -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600">選擇分類</label>
@@ -423,19 +479,46 @@
             </button>
           </div>
           <select id="txCategory" onchange="handleCategoryChange()" class="w-full text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
-            <!-- Dynamically populated -->
           </select>
         </div>
 
-        <!-- Optional Travel Branch selection if type is travel -->
         <div id="txTravelBranchWrapper" class="hidden">
           <label class="block text-xs font-bold text-amber-700 mb-1">存入出國細項分支</label>
           <select id="txTravelBranchSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 text-slate-700">
-            <!-- Dynamically populated -->
           </select>
         </div>
 
-        <!-- Single Description Field with Fill Category & Quick Chips -->
+        <!-- Funding Source for Income -->
+        <div id="wrapperIncomeFundingSource" class="hidden space-y-1">
+          <label class="block text-xs font-bold text-slate-600">資金來源屬性</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
+              <input type="radio" name="txFundingSource" value="parent" checked class="hidden">
+              <i class="fa-solid fa-house-user"></i> 👨‍👩‍👧 父母提供
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
+              <input type="radio" name="txFundingSource" value="external" class="hidden">
+              <i class="fa-solid fa-coins"></i> 🧧 自力 / 長輩外部
+            </label>
+          </div>
+        </div>
+
+        <!-- Sponsor Type for Wishlist & Travel -->
+        <div id="wrapperSponsorType" class="hidden space-y-1">
+          <label class="block text-xs font-bold text-slate-600">存入資金性質</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-purple-50 has-[:checked]:border-purple-400 has-[:checked]:text-purple-700 transition-all">
+              <input type="radio" name="txSponsorType" value="self" checked class="hidden">
+              <i class="fa-solid fa-child"></i> 🎒 小孩自存
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
+              <input type="radio" name="txSponsorType" value="parent" class="hidden">
+              <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
+            </label>
+          </div>
+        </div>
+
+        <!-- Description Field with Fill Category & Quick Chips -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600">項目備註 / 說明</label>
@@ -446,13 +529,9 @@
           <input type="text" id="txDescription" list="descHistoryList" placeholder="如：放學點心、捷運加值、零用錢..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <datalist id="descHistoryList"></datalist>
 
-          <!-- Quick chips -->
-          <div class="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" id="quickChipsContainer">
-            <!-- Populated dynamically with category chip + recent tags -->
-          </div>
+          <div class="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" id="quickChipsContainer"></div>
         </div>
 
-        <!-- Need vs Want Toggle (Shown only for expense) -->
         <div id="wrapperNeedWant" class="space-y-1">
           <label class="block text-xs font-bold text-slate-600">消費動機</label>
           <div class="grid grid-cols-2 gap-2">
@@ -467,13 +546,11 @@
           </div>
         </div>
 
-        <!-- Date Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">記帳日期</label>
           <input type="date" id="txDate" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
-        <!-- Submit Button -->
         <button type="submit" id="btnSubmitTx" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all">
           確認送出記帳
         </button>
@@ -482,6 +559,7 @@
     </div>
   </div>
 
+  <!-- PIN Modal -->
   <div id="pinModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-xs rounded-2xl p-5 space-y-4 shadow-2xl text-center">
       <div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 mx-auto flex items-center justify-center text-xl">
@@ -492,12 +570,10 @@
         <p class="text-xs text-slate-500 mt-0.5" id="pinModalDesc">請輸入 4 位數家長 PIN 碼</p>
       </div>
 
-      <!-- PIN Input -->
       <div>
         <input type="password" id="inputPinCode" maxlength="4" inputmode="numeric" placeholder="••••" class="w-36 mx-auto text-center text-2xl tracking-widest font-black py-2 rounded-xl border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
 
-      <!-- Action Buttons -->
       <div class="grid grid-cols-2 gap-2 pt-1">
         <button onclick="closePinModal()" class="py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
           取消
@@ -509,19 +585,19 @@
     </div>
   </div>
 
+  <!-- Wishlist Manager Modal (Now open to both kids & parents with in-place edit) -->
   <div id="wishlistManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
         <div>
           <h3 class="text-sm font-bold text-slate-800">🎯 多心願清單管理</h3>
-          <p class="text-[10px] text-slate-400">設定多個心願目標與儲蓄進度</p>
+          <p class="text-[10px] text-slate-400">自訂心願目標、預算與儲蓄進度</p>
         </div>
         <button onclick="closeWishlistManagerModal()" class="text-slate-400 hover:text-slate-600 p-1">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <!-- Total Cost Header Banner -->
       <div class="bg-purple-50 p-3 rounded-xl border border-purple-200 flex justify-between items-center text-xs">
         <div>
           <span class="text-purple-700 font-bold block" id="modalWishlistCountText">共 1 項心願</span>
@@ -530,25 +606,27 @@
         <span class="text-base font-black text-purple-900" id="modalWishlistTotal">NT$ 0</span>
       </div>
 
-      <!-- Add New Wish Form -->
-      <form onsubmit="handleAddNewWish(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <span class="text-xs font-bold text-slate-700 block">新增心願目標</span>
+      <!-- Add or Edit Wish Form -->
+      <form onsubmit="handleSaveWishItem(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-700" id="wishFormTitle">新增心願目標</span>
+          <button type="button" id="btnCancelWishEdit" onclick="cancelWishEdit()" class="hidden text-[10px] text-rose-600 font-bold">取消修改</button>
+        </div>
+        <input type="hidden" id="editWishId" value="">
         <div class="grid grid-cols-2 gap-2">
-          <input type="text" id="newWishName" placeholder="目標名稱 (如: 球鞋)" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
+          <input type="text" id="newWishName" placeholder="心願名稱 (如: 球鞋)" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
           <input type="number" id="newWishPrice" min="1" step="1" inputmode="numeric" placeholder="預算金額" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
         </div>
-        <button type="submit" class="w-full py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+        <button type="submit" id="btnSaveWishSubmit" class="w-full py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
           + 新增心願
         </button>
       </form>
 
-      <!-- Existing Wish Items List -->
-      <div id="wishlistItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1">
-        <!-- Rendered by renderWishlistItemsList() -->
-      </div>
+      <div id="wishlistItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1"></div>
     </div>
   </div>
 
+  <!-- Travel Branch Modal (Now open to both kids & parents with in-place edit) -->
   <div id="travelBranchModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
@@ -561,7 +639,6 @@
         </button>
       </div>
 
-      <!-- Project Name & Auto Summed Budget Display -->
       <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
         <label class="text-xs font-bold text-amber-900 block">出國專案名稱</label>
         <div class="flex gap-2">
@@ -576,25 +653,27 @@
         </div>
       </div>
 
-      <!-- Add New Branch Form -->
-      <form onsubmit="handleAddNewBranch(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <span class="text-xs font-bold text-slate-700 block">新增細項分支 (如: 機票住宿、伴手禮)</span>
+      <!-- Add or Edit Branch Form -->
+      <form onsubmit="handleSaveBranchItem(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-700" id="branchFormTitle">新增細項分支 (如: 機票住宿、伴手禮)</span>
+          <button type="button" id="btnCancelBranchEdit" onclick="cancelBranchEdit()" class="hidden text-[10px] text-rose-600 font-bold">取消修改</button>
+        </div>
+        <input type="hidden" id="editBranchIndex" value="-1">
         <div class="grid grid-cols-2 gap-2">
           <input type="text" id="newBranchName" placeholder="分支名稱" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
           <input type="number" id="newBranchPrice" min="1" step="1" inputmode="numeric" placeholder="子預算" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
         </div>
-        <button type="submit" class="w-full py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
+        <button type="submit" id="btnSaveBranchSubmit" class="w-full py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
           + 新增分支 (自動重算總額)
         </button>
       </form>
 
-      <!-- Existing Branches List -->
-      <div id="travelBranchItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1">
-        <!-- Rendered by renderTravelBranchesList() -->
-      </div>
+      <div id="travelBranchItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1"></div>
     </div>
   </div>
 
+  <!-- Category Manager Modal (Parent Authenticated) -->
   <div id="categoryManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
@@ -607,7 +686,6 @@
         </button>
       </div>
 
-      <!-- Scope Switcher -->
       <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold">
         <button onclick="switchCategoryScope('expense')" id="catScopeExpense" class="py-1.5 rounded-lg bg-white text-blue-700 shadow-xs">支出</button>
         <button onclick="switchCategoryScope('income')" id="catScopeIncome" class="py-1.5 rounded-lg text-slate-600">收入</button>
@@ -615,7 +693,6 @@
         <button onclick="switchCategoryScope('travel')" id="catScopeTravel" class="py-1.5 rounded-lg text-slate-600">出國</button>
       </div>
 
-      <!-- Add or Edit Category Section -->
       <form onsubmit="handleSaveCategory(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
         <div class="flex justify-between items-center">
           <span class="text-xs font-bold text-slate-700" id="catFormTitle">新增自訂分類</span>
@@ -629,23 +706,18 @@
           <input type="text" id="inputCatName" placeholder="分類名稱 (如: 珍珠奶茶)" required class="flex-1 text-xs p-2 rounded-lg border border-slate-200 bg-white">
         </div>
 
-        <!-- Emoji Picker Palette -->
-        <div id="emojiPalette" class="hidden grid grid-cols-8 gap-1.5 p-2 bg-white rounded-lg border border-slate-200 text-lg max-h-32 overflow-y-auto">
-          <!-- Populated with quick emojis -->
-        </div>
+        <div id="emojiPalette" class="hidden grid grid-cols-8 gap-1.5 p-2 bg-white rounded-lg border border-slate-200 text-lg max-h-32 overflow-y-auto"></div>
 
         <button type="submit" id="btnSaveCategory" class="w-full py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
           + 儲存分類
         </button>
       </form>
 
-      <!-- Category List -->
-      <div id="categoryManagerList" class="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-        <!-- Rendered dynamically -->
-      </div>
+      <div id="categoryManagerList" class="max-h-48 overflow-y-auto space-y-1.5 pr-1"></div>
     </div>
   </div>
 
+  <!-- Edit Transaction Modal (Parent Authenticated) -->
   <div id="editTxModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
     <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-3.5 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
@@ -661,7 +733,6 @@
       <form onsubmit="handleSaveEditedTx(event)" class="space-y-3">
         <input type="hidden" id="editTxId">
 
-        <!-- Type Switcher -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">收支類型</label>
           <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl">
@@ -672,7 +743,6 @@
           </div>
         </div>
         
-        <!-- Amount Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">金額 (NT$)</label>
           <div class="relative">
@@ -681,7 +751,6 @@
           </div>
         </div>
 
-        <!-- Category Dropdown with Auto Fill Button -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600">分類標籤</label>
@@ -690,25 +759,50 @@
             </button>
           </div>
           <select id="editTxCategory" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
-            <!-- Dynamically populated -->
           </select>
         </div>
 
-        <!-- Optional Travel Branch -->
         <div id="editTxTravelBranchWrapper" class="hidden">
           <label class="block text-xs font-bold text-amber-700 mb-1">存入出國細項分支</label>
           <select id="editTxTravelBranchSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 text-slate-700">
-            <!-- Dynamically populated -->
           </select>
         </div>
 
-        <!-- Description Input -->
+        <!-- Edit Funding Source for Income -->
+        <div id="editWrapperIncomeFundingSource" class="hidden space-y-1">
+          <label class="block text-xs font-bold text-slate-600">資金來源屬性</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
+              <input type="radio" name="editTxFundingSource" id="editFundingParent" value="parent" class="hidden">
+              <i class="fa-solid fa-house-user"></i> 👨‍👩‍👧 父母提供
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
+              <input type="radio" name="editTxFundingSource" id="editFundingExt" value="external" class="hidden">
+              <i class="fa-solid fa-coins"></i> 🧧 自力 / 長輩外部
+            </label>
+          </div>
+        </div>
+
+        <!-- Edit Sponsor Type for Wishlist & Travel -->
+        <div id="editWrapperSponsorType" class="hidden space-y-1">
+          <label class="block text-xs font-bold text-slate-600">存入資金性質</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-purple-50 has-[:checked]:border-purple-400 has-[:checked]:text-purple-700 transition-all">
+              <input type="radio" name="editTxSponsorType" id="editSponsorSelf" value="self" class="hidden">
+              <i class="fa-solid fa-child"></i> 🎒 小孩自存
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
+              <input type="radio" name="editTxSponsorType" id="editSponsorParent" value="parent" class="hidden">
+              <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
+            </label>
+          </div>
+        </div>
+
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">項目備註 / 說明</label>
           <input type="text" id="editTxDescription" required placeholder="項目說明" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
 
-        <!-- Intent: Need vs Want (only for expense) -->
         <div id="editWrapperNeedWant" class="space-y-1">
           <label class="block text-xs font-bold text-slate-600">消費動機</label>
           <div class="grid grid-cols-2 gap-2">
@@ -723,7 +817,6 @@
           </div>
         </div>
 
-        <!-- Date Input -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">記帳日期</label>
           <input type="date" id="editTxDate" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -741,6 +834,7 @@
     </div>
   </div>
 
+  <!-- Change PIN Modal -->
   <div id="changePinModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-xs rounded-2xl p-5 space-y-4 shadow-2xl text-center">
       <div class="w-10 h-10 rounded-xl bg-slate-800 text-white mx-auto flex items-center justify-center text-lg">
@@ -758,6 +852,7 @@
     </div>
   </div>
 
+  <!-- Custom Confirm Modal -->
   <div id="customConfirmModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-xs rounded-2xl p-5 space-y-3 shadow-2xl text-center">
       <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 mx-auto flex items-center justify-center text-lg">
@@ -772,6 +867,7 @@
     </div>
   </div>
 
+  <!-- Toast Notification Box -->
   <div id="toastBox" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 hidden transition-all">
     <div id="toastContent" class="px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold text-white flex items-center gap-2">
       <span id="toastIcon"></span>
@@ -779,61 +875,106 @@
     </div>
   </div>
 
-  <script>
-    // System Storage Keys
-    const STORAGE_KEY_TX = 'teen_finance_transactions_v3';
-    const STORAGE_KEY_QUEUE = 'teen_finance_offline_queue_v3';
-    const STORAGE_KEY_LOGS = 'teen_finance_audit_logs_v3';
-    const STORAGE_KEY_PIN = 'teen_finance_parent_pin_v3';
-    const STORAGE_KEY_ROLE = 'teen_finance_current_role_v3';
-    const STORAGE_KEY_WISH_LIST = 'teen_finance_wishlist_items_v3';
-    const STORAGE_KEY_ACTIVE_WISH = 'teen_finance_active_wish_id_v3';
-    const STORAGE_KEY_TRAVEL = 'teen_finance_travel_config_v3';
-    const STORAGE_KEY_CATS = 'teen_finance_categories_v3';
-    const STORAGE_KEY_RECENT_DESC = 'teen_finance_recent_desc_v3';
-    const STORAGE_KEY_SHEET_URL = 'teen_finance_google_sheet_url_v3';
-    const STORAGE_KEY_TOMBSTONES = 'teen_finance_tombstones_v3';
+  <!-- Child Mode Income Integrity Warning Modal -->
+  <div id="incomeIntegrityModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-3.5 shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center text-xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-slate-800">⚠️ 入帳前誠信確認</h3>
+        <p class="text-xs text-slate-600 mt-1 leading-relaxed text-left bg-amber-50 p-3 rounded-xl border border-amber-200">
+          這筆零用錢或獎勵金，<strong>已經確實拿到現鈔</strong>，或者<strong>爸媽已經幫你存進悠遊卡／帳戶了嗎？</strong><br>
+          <span class="text-[11px] text-amber-800 font-semibold block mt-1">💡 養成誠實記帳的習慣，才能算出自己真正能自由使用的錢喔！</span>
+        </p>
+      </div>
 
-    // Default Pre-configured Google Sheets Apps Script Webhook
-    const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycby7PnrB5Pfd12mhiDXTEkxW3vfIa3ZMjP9zq_PXHUpCYjUWpalyNUIy9HdBh8gnw77I/exec';
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="closeIncomeIntegrityModal(false)" class="py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
+          我再確認一下 (取消)
+        </button>
+        <button onclick="closeIncomeIntegrityModal(true)" class="py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 active:scale-95">
+          確定已收到，正式入帳
+        </button>
+      </div>
+    </div>
+  </div>
 
-    // Safe Storage Wrapper
-    const safeStorage = {
-      getItem(key) {
-        try { return localStorage.getItem(key); } catch (e) { return null; }
-      },
-      setItem(key, val) {
-        try { localStorage.setItem(key, val); } catch (e) {}
-      },
-      removeItem(key) {
-        try { localStorage.removeItem(key); } catch (e) {}
-      }
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      setDoc, 
+      deleteDoc, 
+      onSnapshot, 
+      enableIndexedDbPersistence 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase Configuration from your project: family-travel-e5912
+    const firebaseConfig = {
+      apiKey: "AIzaSyCDuEufPq4cICQv4_UYHPtE3k8pMqknLeY",
+      authDomain: "family-travel-e5912.firebaseapp.com",
+      projectId: "family-travel-e5912",
+      storageBucket: "family-travel-e5912.firebasestorage.app",
+      messagingSenderId: "986096059917",
+      appId: "1:986096059917:web:57c074076007826f73b744",
+      measurementId: "G-MXKML1NDKH"
     };
 
-    // State Variables
-    let currentRole = safeStorage.getItem(STORAGE_KEY_ROLE) || 'child'; // 'child' | 'parent'
+    // Initialize App & Auth & Firestore
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Enable Offline Persistence
+    try {
+      enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.warn('Persistence failed: Multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          console.warn('Persistence not supported by browser');
+        }
+      });
+    } catch (e) {
+      console.warn('IndexedDB persistence setup error:', e);
+    }
+
+    const STORAGE_KEY_PIN = 'teen_finance_parent_pin_v4';
+    const STORAGE_KEY_ROLE = 'teen_finance_current_role_v4';
+    const STORAGE_KEY_RECENT_DESC = 'teen_finance_recent_desc_v4';
+
+    const safeStorage = {
+      getItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+      setItem(key, val) { try { localStorage.setItem(key, val); } catch (e) {} },
+      removeItem(key) { try { localStorage.removeItem(key); } catch (e) {} }
+    };
+
+    let currentUser = null;
+    let currentRole = safeStorage.getItem(STORAGE_KEY_ROLE) || 'child';
     let savedStoredPin = safeStorage.getItem(STORAGE_KEY_PIN);
-    // 若尚未設定或仍為舊預設值 1234，一律自動升級為新預設密碼 1379
     if (!savedStoredPin || savedStoredPin === '1234') {
       savedStoredPin = '1379';
       safeStorage.setItem(STORAGE_KEY_PIN, '1379');
     }
     let parentPin = savedStoredPin;
-    let sheetUrl = safeStorage.getItem(STORAGE_KEY_SHEET_URL) || DEFAULT_SHEET_URL;
 
     let transactions = [];
-    let offlineQueue = [];
     let auditLogs = [];
-    let tombstones = []; // 已刪除的 ID 墓碑清單，防止雲端拉取時復活
     let activeFilter = 'all';
     let chartInstance = null;
-    let chartMode = 'asset'; // 'asset' | 'expense'
+    let chartMode = 'asset';
 
     // Wishlist Structure
-    let wishlistItems = [];
-    let activeWishId = '';
+    let wishlistItems = [
+      { id: 'wish_1', name: '降噪藍牙耳機', targetPrice: 3200 },
+      { id: 'wish_2', name: '專業慢跑鞋', targetPrice: 2800 }
+    ];
+    let activeWishId = 'wish_1';
 
-    // Travel Structure (Total is auto-summed from branches)
+    // Travel Structure
     let travelConfig = {
       name: '🇯🇵 日本親子遊',
       targetPrice: 25000,
@@ -874,143 +1015,186 @@
     let currentCatScope = 'expense';
     let pendingAuthCallback = null;
     let confirmCallback = null;
+    let pendingIncomeSubmitFn = null;
 
-    // Available Emoji Palette for Custom Categories
     const EMOJI_PALETTE = [
       '🍱','🧋','🍕','🍔','🍦','☕','🚌','🚇','🚲','⛽','✏️','📚','💻','🎧','🎮','📱',
       '👟','👕','⚽','🏸','🎬','🎤','🎁','🧧','💵','🧹','🎯','✨','✈️','🏖️','🎫','🍜',
       '🐕','🐱','💊','🩺','📌','💡','🔥','⭐'
     ];
 
+    async function initAuthAndFirestore() {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentUser = user;
+          const authStatusEl = document.getElementById('firebaseAuthStatusText');
+          if (authStatusEl) authStatusEl.textContent = `已驗證 (UID: ${user.uid.slice(0, 8)}...)`;
+          updateConnectionBadge(true);
+          listenToFirestoreCollections();
+        } else {
+          try {
+            await signInAnonymously(auth);
+          } catch (err) {
+            console.error('Anonymous Sign-In Error:', err);
+            updateConnectionBadge(false, '驗證失敗，離線快取中');
+          }
+        }
+      });
+    }
+
+    function listenToFirestoreCollections() {
+      // 1. Transactions Listener
+      const txCol = collection(db, 'transactions');
+      onSnapshot(txCol, (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data());
+        });
+        list.sort((a, b) => {
+          const tA = new Date(a.date || a.timestamp || 0).getTime();
+          const tB = new Date(b.date || b.timestamp || 0).getTime();
+          return tB - tA;
+        });
+        transactions = list;
+        refreshUI();
+        updateConnectionBadge(true);
+      }, (error) => {
+        console.warn('Transactions onSnapshot error:', error);
+        updateConnectionBadge(false);
+      });
+
+      // 2. Configs Listener (Wishlist, Travel, Categories)
+      const configCol = collection(db, 'configs');
+      onSnapshot(configCol, (snapshot) => {
+        snapshot.forEach((docSnap) => {
+          const id = docSnap.id;
+          const data = docSnap.data();
+          if (id === 'wishlist' && data.items) {
+            wishlistItems = data.items;
+            if (data.activeWishId) activeWishId = data.activeWishId;
+            renderActiveWishSelect();
+            renderWishlistItemsList();
+          } else if (id === 'travel' && data.branches) {
+            travelConfig = data;
+            renderTravelBranchesList();
+          } else if (id === 'categories' && data.categories) {
+            categories = data.categories;
+            renderCategorySelect();
+          }
+        });
+        refreshUI();
+      }, (error) => {
+        console.warn('Configs onSnapshot error:', error);
+      });
+
+      // 3. Audit Logs Listener
+      const logsCol = collection(db, 'audit_logs');
+      onSnapshot(logsCol, (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data());
+        });
+        list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        auditLogs = list.slice(0, 100);
+        renderAuditLogs();
+      }, (error) => {
+        console.warn('Audit logs onSnapshot error:', error);
+      });
+    }
+
+    async function saveTxToFirestore(tx) {
+      try {
+        await setDoc(doc(db, 'transactions', tx.id), tx);
+      } catch (e) {
+        console.error('Error saving transaction to Firestore:', e);
+      }
+    }
+
+    async function deleteTxFromFirestore(id) {
+      try {
+        await deleteDoc(doc(db, 'transactions', id));
+      } catch (e) {
+        console.error('Error deleting transaction from Firestore:', e);
+      }
+    }
+
+    async function saveWishlistToFirestore() {
+      try {
+        await setDoc(doc(db, 'configs', 'wishlist'), {
+          items: wishlistItems,
+          activeWishId: activeWishId,
+          updatedAt: Date.now()
+        });
+      } catch (e) {
+        console.error('Error saving wishlist config:', e);
+      }
+    }
+
+    async function saveTravelToFirestore() {
+      try {
+        await setDoc(doc(db, 'configs', 'travel'), {
+          ...travelConfig,
+          updatedAt: Date.now()
+        });
+      } catch (e) {
+        console.error('Error saving travel config:', e);
+      }
+    }
+
+    async function saveCategoriesToFirestore() {
+      try {
+        await setDoc(doc(db, 'configs', 'categories'), {
+          categories: categories,
+          updatedAt: Date.now()
+        });
+      } catch (e) {
+        console.error('Error saving categories config:', e);
+      }
+    }
+
+    async function addAuditLogToFirestore(action, detail) {
+      const operator = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
+      const logId = 'log_' + Date.now();
+      const logData = {
+        logId: logId,
+        time: new Date().toLocaleString('zh-TW'),
+        operator: operator,
+        action: action,
+        detail: detail,
+        createdAt: Date.now()
+      };
+      try {
+        await setDoc(doc(db, 'audit_logs', logId), logData);
+      } catch (e) {
+        console.warn('Audit log write error:', e);
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
-      // Set today's date on form
       const todayStr = new Date().toISOString().split('T')[0];
       const elDate = document.getElementById('txDate');
       if (elDate) elDate.value = todayStr;
 
-      // Load Settings Input
-      const elUrl = document.getElementById('inputSettingsSheetUrl');
-      if (elUrl) elUrl.value = sheetUrl;
-
-      // Load local data
-      loadLocalState();
-
-      // Render UI
       updateRoleUI();
       renderCategorySelect();
       renderQuickChips();
       renderActiveWishSelect();
       refreshUI();
-      updatePendingQueueBadge();
-
-      // Setup Emoji Palette
       initEmojiPalette();
 
-      // Start Cloud Background Sync
-      if (navigator.onLine && sheetUrl) {
-        handleManualSync(false);
-      }
+      // Start Firebase Auth & Live Sync
+      initAuthAndFirestore();
 
-      // Online/Offline Listeners
-      window.addEventListener('online', () => {
-        updateConnectionBadge(true);
-        flushOfflineQueue();
-      });
-      window.addEventListener('offline', () => {
-        updateConnectionBadge(false);
-      });
+      window.addEventListener('online', () => updateConnectionBadge(true));
+      window.addEventListener('offline', () => updateConnectionBadge(false));
     });
-
-    function loadLocalState() {
-      // Transactions
-      const savedTx = safeStorage.getItem(STORAGE_KEY_TX);
-      if (savedTx) {
-        try { transactions = JSON.parse(savedTx); } catch (e) { transactions = []; }
-      } else {
-        // Mock sample initial transaction
-        transactions = [
-          {
-            id: 'tx_demo_1',
-            date: new Date().toISOString().split('T')[0],
-            type: 'income',
-            category: '💵 每月固定零用錢',
-            description: '九月份固定零用錢',
-            intent: '需要',
-            amount: 2000,
-            operator: '🛡️ 家長',
-            timestamp: new Date().toLocaleString('zh-TW'),
-            updatedAt: Date.now()
-          }
-        ];
-        safeStorage.setItem(STORAGE_KEY_TX, JSON.stringify(transactions));
-      }
-
-      // Offline Queue
-      const savedQueue = safeStorage.getItem(STORAGE_KEY_QUEUE);
-      if (savedQueue) {
-        try { offlineQueue = JSON.parse(savedQueue); } catch (e) { offlineQueue = []; }
-      }
-
-      // Tombstones (防死而復生墓碑清單)
-      const savedTombstones = safeStorage.getItem(STORAGE_KEY_TOMBSTONES);
-      if (savedTombstones) {
-        try { tombstones = JSON.parse(savedTombstones); } catch (e) { tombstones = []; }
-      }
-
-      // Audit Logs
-      const savedLogs = safeStorage.getItem(STORAGE_KEY_LOGS);
-      if (savedLogs) {
-        try { auditLogs = JSON.parse(savedLogs); } catch (e) { auditLogs = []; }
-      } else {
-        auditLogs = [
-          {
-            logId: 'log_init',
-            time: new Date().toLocaleString('zh-TW'),
-            operator: '系統初始化',
-            action: '建立帳本',
-            detail: '歡迎使用青少年理財記帳系統'
-          }
-        ];
-        safeStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(auditLogs));
-      }
-
-      // Categories
-      const savedCats = safeStorage.getItem(STORAGE_KEY_CATS);
-      if (savedCats) {
-        try { categories = JSON.parse(savedCats); } catch (e) {}
-      }
-
-      // Wishlist
-      const savedWishes = safeStorage.getItem(STORAGE_KEY_WISH_LIST);
-      if (savedWishes) {
-        try { wishlistItems = JSON.parse(savedWishes); } catch (e) {}
-      }
-      if (!wishlistItems || wishlistItems.length === 0) {
-        wishlistItems = [
-          { id: 'wish_1', name: '降噪藍牙耳機', targetPrice: 3200 },
-          { id: 'wish_2', name: '專業慢跑鞋', targetPrice: 2800 }
-        ];
-        safeStorage.setItem(STORAGE_KEY_WISH_LIST, JSON.stringify(wishlistItems));
-      }
-
-      activeWishId = safeStorage.getItem(STORAGE_KEY_ACTIVE_WISH) || wishlistItems[0].id;
-
-      // Travel
-      const savedTravel = safeStorage.getItem(STORAGE_KEY_TRAVEL);
-      if (savedTravel) {
-        try { 
-          travelConfig = JSON.parse(savedTravel); 
-          // Ensure total price is auto-summed
-          travelConfig.targetPrice = getTravelTotalBudget();
-        } catch (e) {}
-      }
-    }
 
     function updateRoleUI() {
       const isParent = currentRole === 'parent';
       const roleText = document.getElementById('roleText');
       const roleIcon = document.getElementById('roleIcon');
       const roleBadgeBtn = document.getElementById('roleBadgeBtn');
+      const navBtnLogs = document.getElementById('navBtnLogs');
       const navBtnSettings = document.getElementById('navBtnSettings');
       const addFormRoleBadge = document.getElementById('addFormRoleBadge');
 
@@ -1020,6 +1204,7 @@
         if (roleBadgeBtn) {
           roleBadgeBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border bg-amber-500 text-white border-amber-600 active:scale-95';
         }
+        if (navBtnLogs) navBtnLogs.classList.remove('hidden');
         if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         if (addFormRoleBadge) {
           addFormRoleBadge.textContent = '🛡️ 家長管理模式';
@@ -1031,14 +1216,16 @@
         if (roleBadgeBtn) {
           roleBadgeBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-100 text-slate-700 border-slate-200 active:scale-95';
         }
+        if (navBtnLogs) navBtnLogs.classList.add('hidden');
         if (navBtnSettings) navBtnSettings.classList.add('hidden');
         if (addFormRoleBadge) {
           addFormRoleBadge.textContent = '🎒 小孩記帳模式';
           addFormRoleBadge.className = 'text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700';
         }
-        // If current tab is settings, automatically return to dashboard
         const viewSettings = document.getElementById('viewSettings');
-        if (viewSettings && !viewSettings.classList.contains('hidden')) {
+        const viewLogs = document.getElementById('viewLogs');
+        if ((viewSettings && !viewSettings.classList.contains('hidden')) || 
+            (viewLogs && !viewLogs.classList.contains('hidden'))) {
           switchTab('dashboard');
         }
       }
@@ -1050,14 +1237,14 @@
       if (currentRole === 'parent') {
         currentRole = 'child';
         safeStorage.setItem(STORAGE_KEY_ROLE, 'child');
-        addAuditLog('身分切換', '切換為 🎒 小孩模式');
+        addAuditLogToFirestore('身分切換', '切換為 🎒 小孩模式');
         showToast('已切換為「小孩模式」', 'info');
         updateRoleUI();
       } else {
         requestParentAuth(() => {
           currentRole = 'parent';
           safeStorage.setItem(STORAGE_KEY_ROLE, 'parent');
-          addAuditLog('身分切換', '驗證通過，切換為 🛡️ 家長模式');
+          addAuditLogToFirestore('身分切換', '驗證通過，切換為 🛡️ 家長模式');
           showToast('成功進入「家長管理模式」！', 'success');
           updateRoleUI();
         }, '進入家長模式', '請輸入家長安全 PIN 碼解鎖完整管理權限');
@@ -1104,7 +1291,6 @@
       }
     }
 
-    // Change Parent PIN Modal
     function openChangePinModal() {
       document.getElementById('inputNewPin').value = '';
       document.getElementById('changePinModal').classList.remove('hidden');
@@ -1122,7 +1308,7 @@
       }
       parentPin = newPin;
       safeStorage.setItem(STORAGE_KEY_PIN, newPin);
-      addAuditLog('安全設定', '🛡️ 家長已更新安全 PIN 碼');
+      addAuditLogToFirestore('安全設定', '🛡️ 家長已更新安全 PIN 碼');
       closeChangePinModal();
       showToast('家長 PIN 碼已成功修改！', 'success');
     }
@@ -1158,6 +1344,11 @@
         document.getElementById('viewHistory').classList.remove('hidden');
         renderTxList();
       } else if (tabId === 'logs') {
+        if (currentRole !== 'parent') {
+          showToast('操作記錄僅家長管理模式開放', 'warning');
+          switchTab('dashboard');
+          return;
+        }
         document.getElementById('viewLogs').classList.remove('hidden');
         renderAuditLogs();
       } else if (tabId === 'settings') {
@@ -1188,19 +1379,20 @@
 
     function changeActiveWish(id) {
       activeWishId = id;
-      safeStorage.setItem(STORAGE_KEY_ACTIVE_WISH, id);
+      saveWishlistToFirestore();
       refreshUI();
       showToast(`已切換主要心願為「${getActiveWish().name}」`, 'info');
     }
 
+    // Wishlist Manager: Open directly to both child & parent
     function openWishlistManagerModal() {
-      requestParentAuth(() => {
-        renderWishlistItemsList();
-        document.getElementById('wishlistManagerModal').classList.remove('hidden');
-      }, '管理心願清單', '新增或調整多個心願目標需家長驗證');
+      cancelWishEdit();
+      renderWishlistItemsList();
+      document.getElementById('wishlistManagerModal').classList.remove('hidden');
     }
 
     function closeWishlistManagerModal() {
+      cancelWishEdit();
       document.getElementById('wishlistManagerModal').classList.add('hidden');
       renderActiveWishSelect();
       refreshUI();
@@ -1233,20 +1425,23 @@
         const isActive = w.id === activeWishId;
         return `
           <div class="flex items-center justify-between p-2.5 rounded-xl border ${isActive ? 'bg-purple-50 border-purple-300' : 'bg-slate-50 border-slate-200'}">
-            <div>
+            <div class="flex-1 min-w-0 pr-2">
               <div class="flex items-center gap-1.5">
-                <h5 class="text-xs font-bold text-slate-800">${escapeHtml(w.name)}</h5>
-                ${isActive ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-600 text-white font-bold">主目標</span>' : ''}
+                <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(w.name)}</h5>
+                ${isActive ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-600 text-white font-bold whitespace-nowrap">主目標</span>' : ''}
               </div>
               <span class="text-[11px] text-purple-700 font-bold">預算 NT$ ${w.targetPrice.toLocaleString()}</span>
             </div>
             <div class="flex items-center gap-1">
               ${!isActive ? `
-                <button onclick="setActiveWishDirect('${w.id}')" class="px-2 py-1 text-[11px] font-bold bg-white text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50">
+                <button type="button" onclick="setActiveWishDirect('${w.id}')" class="px-2 py-1 text-[10px] font-bold bg-white text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50 whitespace-nowrap">
                   設為主目標
                 </button>
               ` : ''}
-              <button onclick="deleteWishItem('${w.id}')" class="text-slate-400 hover:text-rose-600 p-1">
+              <button type="button" onclick="startEditWish('${w.id}')" class="text-slate-400 hover:text-blue-600 p-1" title="修改心願">
+                <i class="fa-solid fa-pen text-xs"></i>
+              </button>
+              <button type="button" onclick="deleteWishItem('${w.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="刪除心願">
                 <i class="fa-regular fa-trash-can text-xs"></i>
               </button>
             </div>
@@ -1261,33 +1456,75 @@
       renderActiveWishSelect();
     }
 
-    function handleAddNewWish(e) {
+    function startEditWish(id) {
+      const item = wishlistItems.find(w => w.id === id);
+      if (!item) return;
+      document.getElementById('wishFormTitle').textContent = '修改心願目標';
+      document.getElementById('editWishId').value = item.id;
+      document.getElementById('newWishName').value = item.name;
+      document.getElementById('newWishPrice').value = item.targetPrice;
+      document.getElementById('btnCancelWishEdit').classList.remove('hidden');
+      document.getElementById('btnSaveWishSubmit').textContent = '儲存修改';
+    }
+
+    function cancelWishEdit() {
+      const titleEl = document.getElementById('wishFormTitle');
+      const editIdEl = document.getElementById('editWishId');
+      const nameEl = document.getElementById('newWishName');
+      const priceEl = document.getElementById('newWishPrice');
+      const btnCancel = document.getElementById('btnCancelWishEdit');
+      const btnSubmit = document.getElementById('btnSaveWishSubmit');
+      
+      if (titleEl) titleEl.textContent = '新增心願目標';
+      if (editIdEl) editIdEl.value = '';
+      if (nameEl) nameEl.value = '';
+      if (priceEl) priceEl.value = '';
+      if (btnCancel) btnCancel.classList.add('hidden');
+      if (btnSubmit) btnSubmit.textContent = '+ 新增心願';
+    }
+
+    function handleSaveWishItem(e) {
       e.preventDefault();
+      const editId = document.getElementById('editWishId').value;
       const nameInput = document.getElementById('newWishName');
       const priceInput = document.getElementById('newWishPrice');
       const name = nameInput.value.trim();
       const price = parseInt(priceInput.value, 10);
+      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
 
       if (!name || isNaN(price) || price <= 0) {
         showToast('請輸入有效心願名稱與金額', 'warning');
         return;
       }
 
-      wishlistItems.push({
-        id: 'wish_' + Date.now(),
-        name: name,
-        targetPrice: price
-      });
+      if (editId) {
+        // Edit existing wish
+        const wishIndex = wishlistItems.findIndex(w => w.id === editId);
+        if (wishIndex !== -1) {
+          const oldName = wishlistItems[wishIndex].name;
+          const oldPrice = wishlistItems[wishIndex].targetPrice;
+          wishlistItems[wishIndex].name = name;
+          wishlistItems[wishIndex].targetPrice = price;
+          saveWishlistToFirestore();
+          addAuditLogToFirestore('心願修改', `${roleLabel}修改心願「${oldName}」(NT$${oldPrice}) ➔ 「${name}」(NT$${price})`);
+          showToast(`已更新心願「${name}」！`, 'success');
+        }
+      } else {
+        // Add new wish
+        wishlistItems.push({
+          id: 'wish_' + Date.now(),
+          name: name,
+          targetPrice: price
+        });
+        saveWishlistToFirestore();
+        addAuditLogToFirestore('心願新增', `${roleLabel}新增心願「${name}」(NT$ ${price})`);
+        showToast(`已新增心願「${name}」！`, 'success');
+      }
 
-      safeStorage.setItem(STORAGE_KEY_WISH_LIST, JSON.stringify(wishlistItems));
-      addAuditLog('心願管理', `🛡️ 家長新增心願「${name}」(NT$ ${price})`);
-
-      nameInput.value = '';
-      priceInput.value = '';
+      cancelWishEdit();
       renderWishlistItemsList();
       renderActiveWishSelect();
       refreshUI();
-      showToast(`已新增心願「${name}」！`, 'success');
     }
 
     function deleteWishItem(id) {
@@ -1295,47 +1532,48 @@
         showToast('至少需保留一個心願目標', 'warning');
         return;
       }
+      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
       const item = wishlistItems.find(w => w.id === id);
       wishlistItems = wishlistItems.filter(w => w.id !== id);
       if (activeWishId === id) {
         activeWishId = wishlistItems[0].id;
       }
-      safeStorage.setItem(STORAGE_KEY_WISH_LIST, JSON.stringify(wishlistItems));
-      safeStorage.setItem(STORAGE_KEY_ACTIVE_WISH, activeWishId);
-      addAuditLog('心願管理', `🛡️ 家長刪除心願「${item ? item.name : id}」`);
+      saveWishlistToFirestore();
+      addAuditLogToFirestore('心願刪除', `${roleLabel}刪除心願「${item ? item.name : id}」`);
       renderWishlistItemsList();
       renderActiveWishSelect();
       refreshUI();
       showToast('已刪除心願項目', 'info');
     }
 
-    // Travel Branches Logic
+    // Travel Branch Manager: Open directly to both child & parent
     function openTravelBranchModal() {
-      requestParentAuth(() => {
-        document.getElementById('travelMainNameInput').value = travelConfig.name;
-        const totalBudget = getTravelTotalBudget();
-        const autoPriceEl = document.getElementById('travelMainAutoPrice');
-        if (autoPriceEl) autoPriceEl.textContent = `NT$ ${totalBudget.toLocaleString()}`;
-        renderTravelBranchesList();
-        document.getElementById('travelBranchModal').classList.remove('hidden');
-      }, '出國專款管理', '調整出國旅遊專案與分支預算需家長授權');
+      cancelBranchEdit();
+      document.getElementById('travelMainNameInput').value = travelConfig.name;
+      const totalBudget = getTravelTotalBudget();
+      const autoPriceEl = document.getElementById('travelMainAutoPrice');
+      if (autoPriceEl) autoPriceEl.textContent = `NT$ ${totalBudget.toLocaleString()}`;
+      renderTravelBranchesList();
+      document.getElementById('travelBranchModal').classList.remove('hidden');
     }
 
     function closeTravelBranchModal() {
+      cancelBranchEdit();
       document.getElementById('travelBranchModal').classList.add('hidden');
       refreshUI();
     }
 
     function saveTravelMainInfo() {
       const name = document.getElementById('travelMainNameInput').value.trim();
+      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
       if (!name) {
         showToast('請輸入有效專案名稱', 'warning');
         return;
       }
       travelConfig.name = name;
       travelConfig.targetPrice = getTravelTotalBudget();
-      safeStorage.setItem(STORAGE_KEY_TRAVEL, JSON.stringify(travelConfig));
-      addAuditLog('旅遊專案', `更新出國專案名稱：${name}`);
+      saveTravelToFirestore();
+      addAuditLogToFirestore('旅遊專案', `${roleLabel}更新出國專案名稱：${name}`);
       showToast('專案名稱已更新！', 'success');
       refreshUI();
     }
@@ -1355,23 +1593,57 @@
 
       container.innerHTML = travelConfig.branches.map((b, idx) => `
         <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-          <div>
-            <h5 class="text-xs font-bold text-slate-800">${escapeHtml(b.name)}</h5>
+          <div class="flex-1 min-w-0 pr-2">
+            <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(b.name)}</h5>
             <span class="text-[11px] text-amber-700 font-bold">子預算 NT$ ${b.targetPrice.toLocaleString()}</span>
           </div>
-          <button onclick="deleteTravelBranch(${idx})" class="text-slate-400 hover:text-rose-600 p-1">
-            <i class="fa-regular fa-trash-can text-xs"></i>
-          </button>
+          <div class="flex items-center gap-1">
+            <button type="button" onclick="startEditBranch(${idx})" class="p-1 text-slate-400 hover:text-blue-600" title="修改分支">
+              <i class="fa-solid fa-pen text-xs"></i>
+            </button>
+            <button type="button" onclick="deleteTravelBranch(${idx})" class="p-1 text-slate-400 hover:text-rose-600" title="刪除分支">
+              <i class="fa-regular fa-trash-can text-xs"></i>
+            </button>
+          </div>
         </div>
       `).join('');
     }
 
-    function handleAddNewBranch(e) {
+    function startEditBranch(idx) {
+      const branch = travelConfig.branches[idx];
+      if (!branch) return;
+      document.getElementById('branchFormTitle').textContent = '修改細項分支';
+      document.getElementById('editBranchIndex').value = idx;
+      document.getElementById('newBranchName').value = branch.name;
+      document.getElementById('newBranchPrice').value = branch.targetPrice;
+      document.getElementById('btnCancelBranchEdit').classList.remove('hidden');
+      document.getElementById('btnSaveBranchSubmit').textContent = '儲存修改';
+    }
+
+    function cancelBranchEdit() {
+      const titleEl = document.getElementById('branchFormTitle');
+      const editIdxEl = document.getElementById('editBranchIndex');
+      const nameEl = document.getElementById('newBranchName');
+      const priceEl = document.getElementById('newBranchPrice');
+      const btnCancel = document.getElementById('btnCancelBranchEdit');
+      const btnSubmit = document.getElementById('btnSaveBranchSubmit');
+
+      if (titleEl) titleEl.textContent = '新增細項分支 (如: 機票住宿、伴手禮)';
+      if (editIdxEl) editIdxEl.value = '-1';
+      if (nameEl) nameEl.value = '';
+      if (priceEl) priceEl.value = '';
+      if (btnCancel) btnCancel.classList.add('hidden');
+      if (btnSubmit) btnSubmit.textContent = '+ 新增分支 (自動重算總額)';
+    }
+
+    function handleSaveBranchItem(e) {
       e.preventDefault();
+      const idx = parseInt(document.getElementById('editBranchIndex').value, 10);
       const nameInput = document.getElementById('newBranchName');
       const priceInput = document.getElementById('newBranchPrice');
       const name = nameInput.value.trim();
       const price = parseInt(priceInput.value, 10);
+      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
 
       if (!name || isNaN(price) || price <= 0) {
         showToast('請輸入有效分支名稱與金額', 'warning');
@@ -1379,28 +1651,41 @@
       }
 
       if (!travelConfig.branches) travelConfig.branches = [];
-      travelConfig.branches.push({
-        id: 'br_' + Date.now(),
-        name: name,
-        targetPrice: price
-      });
 
-      travelConfig.targetPrice = getTravelTotalBudget();
-      safeStorage.setItem(STORAGE_KEY_TRAVEL, JSON.stringify(travelConfig));
-      addAuditLog('旅遊分支', `新增出國細項分支「${name}」(NT$ ${price})，總額自動加總`);
+      if (idx >= 0 && idx < travelConfig.branches.length) {
+        // Edit existing branch
+        const oldName = travelConfig.branches[idx].name;
+        const oldPrice = travelConfig.branches[idx].targetPrice;
+        travelConfig.branches[idx].name = name;
+        travelConfig.branches[idx].targetPrice = price;
+        travelConfig.targetPrice = getTravelTotalBudget();
+        saveTravelToFirestore();
+        addAuditLogToFirestore('旅遊分支', `${roleLabel}修改分支「${oldName}」(NT$${oldPrice}) ➔ 「${name}」(NT$${price})`);
+        showToast(`已更新分支「${name}」！`, 'success');
+      } else {
+        // Add new branch
+        travelConfig.branches.push({
+          id: 'br_' + Date.now(),
+          name: name,
+          targetPrice: price
+        });
+        travelConfig.targetPrice = getTravelTotalBudget();
+        saveTravelToFirestore();
+        addAuditLogToFirestore('旅遊分支', `${roleLabel}新增分支「${name}」(NT$ ${price})，總額自動加總`);
+        showToast(`已新增分支「${name}」，總費用自動更新！`, 'success');
+      }
 
-      nameInput.value = '';
-      priceInput.value = '';
+      cancelBranchEdit();
       renderTravelBranchesList();
       refreshUI();
-      showToast(`已新增分支「${name}」，總費用自動更新！`, 'success');
     }
 
     function deleteTravelBranch(idx) {
+      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
       const removed = travelConfig.branches.splice(idx, 1);
       travelConfig.targetPrice = getTravelTotalBudget();
-      safeStorage.setItem(STORAGE_KEY_TRAVEL, JSON.stringify(travelConfig));
-      addAuditLog('旅遊分支', `刪除出國分支「${removed[0] ? removed[0].name : ''}」`);
+      saveTravelToFirestore();
+      addAuditLogToFirestore('旅遊分支', `${roleLabel}刪除出國分支「${removed[0] ? removed[0].name : ''}」`);
       renderTravelBranchesList();
       refreshUI();
       showToast('已刪除分支，總費用已重新加總', 'info');
@@ -1438,11 +1723,20 @@
 
       const wrapperNeedWant = document.getElementById('wrapperNeedWant');
       if (wrapperNeedWant) {
-        if (type === 'expense') {
-          wrapperNeedWant.classList.remove('hidden');
-        } else {
-          wrapperNeedWant.classList.add('hidden');
-        }
+        if (type === 'expense') wrapperNeedWant.classList.remove('hidden');
+        else wrapperNeedWant.classList.add('hidden');
+      }
+
+      const wrapperIncomeFundingSource = document.getElementById('wrapperIncomeFundingSource');
+      if (wrapperIncomeFundingSource) {
+        if (type === 'income') wrapperIncomeFundingSource.classList.remove('hidden');
+        else wrapperIncomeFundingSource.classList.add('hidden');
+      }
+
+      const wrapperSponsorType = document.getElementById('wrapperSponsorType');
+      if (wrapperSponsorType) {
+        if (type === 'wishlist' || type === 'travel') wrapperSponsorType.classList.remove('hidden');
+        else wrapperSponsorType.classList.add('hidden');
       }
 
       const txTravelBranchWrapper = document.getElementById('txTravelBranchWrapper');
@@ -1489,7 +1783,6 @@
       const select = document.getElementById('txCategory');
       const descInput = document.getElementById('txDescription');
       if (!select || !descInput) return;
-      // Strip leading emoji
       const val = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
       descInput.value = val;
     }
@@ -1502,7 +1795,6 @@
       const catSelect = document.getElementById('txCategory');
       const currentCatRaw = catSelect ? catSelect.value.replace(/^[\p{Emoji}\s]+/u, '').trim() : '';
 
-      // Load saved description history
       let recentTags = [];
       const savedTags = safeStorage.getItem(STORAGE_KEY_RECENT_DESC);
       if (savedTags) {
@@ -1512,12 +1804,10 @@
         recentTags = ['公車加值', '便利商店點心', '放學飲料', '筆記本與文具', '同學聚餐', '手機月租費'];
       }
 
-      // Update datalist
       if (datalist) {
         datalist.innerHTML = recentTags.map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
       }
 
-      // Build chips HTML
       let html = '';
       if (currentCatRaw) {
         html += `
@@ -1558,8 +1848,30 @@
       safeStorage.setItem(STORAGE_KEY_RECENT_DESC, JSON.stringify(tags));
     }
 
-    function handleFormSubmit(e) {
+    async function handleFormSubmit(e) {
       e.preventDefault();
+
+      if (currentRole === 'child' && currentFormType === 'income') {
+        pendingIncomeSubmitFn = () => executeFormSubmit();
+        document.getElementById('incomeIntegrityModal').classList.remove('hidden');
+        return;
+      }
+
+      await executeFormSubmit();
+    }
+
+    function closeIncomeIntegrityModal(confirmed) {
+      document.getElementById('incomeIntegrityModal').classList.add('hidden');
+      if (confirmed && typeof pendingIncomeSubmitFn === 'function') {
+        const fn = pendingIncomeSubmitFn;
+        pendingIncomeSubmitFn = null;
+        fn();
+      } else {
+        pendingIncomeSubmitFn = null;
+      }
+    }
+
+    async function executeFormSubmit() {
       const amount = parseInt(document.getElementById('txAmount').value, 10);
       const category = document.getElementById('txCategory').value;
       let description = document.getElementById('txDescription').value.trim();
@@ -1572,7 +1884,18 @@
         if (intentChecked) intent = intentChecked.value;
       }
 
-      // If travel, attach branch if selected
+      let fundingSource = 'parent';
+      if (currentFormType === 'income') {
+        const sourceChecked = document.querySelector('input[name="txFundingSource"]:checked');
+        if (sourceChecked) fundingSource = sourceChecked.value;
+      }
+
+      let sponsorType = 'self';
+      if (currentFormType === 'wishlist' || currentFormType === 'travel') {
+        const sponsorChecked = document.querySelector('input[name="txSponsorType"]:checked');
+        if (sponsorChecked) sponsorType = sponsorChecked.value;
+      }
+
       if (currentFormType === 'travel') {
         const branchSelect = document.getElementById('txTravelBranchSelect');
         if (branchSelect && branchSelect.value) {
@@ -1596,29 +1919,23 @@
         category: category,
         description: description,
         intent: intent,
+        fundingSource: fundingSource,
+        sponsorType: sponsorType,
         amount: amount,
         operator: operator,
         timestamp: new Date().toLocaleString('zh-TW'),
         updatedAt: Date.now()
       };
 
-      transactions.unshift(newTx);
-      saveLocalTransactions();
+      await saveTxToFirestore(newTx);
       saveRecentTag(description);
 
-      // Audit Log
-      addAuditLog('新增收支', `${operator} 記帳：${category} - NT$ ${amount} (${description})`);
-
-      // Queue for cloud sync
-      queueAction('add', newTx);
+      const sponsorLabel = sponsorType === 'parent' ? ' (父母贊助)' : '';
+      const sourceLabel = currentFormType === 'income' ? (fundingSource === 'parent' ? ' [父母提供]' : ' [外部/自力]') : '';
+      addAuditLogToFirestore('新增收支', `${operator} 記帳：${category} - NT$ ${amount} (${description}${sponsorLabel}${sourceLabel})`);
 
       closeAddModal();
-      refreshUI();
-      showToast('記帳成功！已儲存至手機快取', 'success');
-    }
-
-    function saveLocalTransactions() {
-      safeStorage.setItem(STORAGE_KEY_TX, JSON.stringify(transactions));
+      showToast('記帳成功！已同步至 Firebase 雲端', 'success');
     }
 
     function openCategoryManagerModal() {
@@ -1731,21 +2048,20 @@
       const icon = document.getElementById('selectedCatEmojiBtn').textContent.trim() || '🏷️';
 
       if (!name) return;
-
       if (!categories[currentCatScope]) categories[currentCatScope] = [];
 
       if (idx >= 0 && idx < categories[currentCatScope].length) {
         const oldName = categories[currentCatScope][idx].name;
         categories[currentCatScope][idx] = { name, icon };
-        addAuditLog('分類修改', `🛡️ 家長修改分類：${oldName} ➔ ${icon} ${name}`);
+        addAuditLogToFirestore('分類修改', `🛡️ 家長修改分類：${oldName} ➔ ${icon} ${name}`);
         showToast('分類已成功更正！', 'success');
       } else {
         categories[currentCatScope].push({ name, icon });
-        addAuditLog('分類新增', `🛡️ 家長新增分類：${icon} ${name}`);
+        addAuditLogToFirestore('分類新增', `🛡️ 家長新增分類：${icon} ${name}`);
         showToast('已新增分類！', 'success');
       }
 
-      safeStorage.setItem(STORAGE_KEY_CATS, JSON.stringify(categories));
+      saveCategoriesToFirestore();
       cancelCategoryEdit();
       renderCategoryManagerList();
       renderCategorySelect();
@@ -1758,8 +2074,8 @@
         return;
       }
       const removed = list.splice(idx, 1);
-      safeStorage.setItem(STORAGE_KEY_CATS, JSON.stringify(categories));
-      addAuditLog('分類刪除', `🛡️ 家長刪除分類：${removed[0] ? removed[0].name : ''}`);
+      saveCategoriesToFirestore();
+      addAuditLogToFirestore('分類刪除', `🛡️ 家長刪除分類：${removed[0] ? removed[0].name : ''}`);
       renderCategoryManagerList();
       renderCategorySelect();
       showToast('已刪除分類', 'info');
@@ -1808,11 +2124,21 @@
         return `
           <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-1.5 mb-1">
+              <div class="flex items-center gap-1.5 mb-1 flex-wrap">
                 <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(tx.description)}</span>
                 ${tx.type === 'expense' ? `
                   <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.intent === '需要' ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}">
                     ${tx.intent}
+                  </span>
+                ` : ''}
+                ${tx.type === 'income' ? `
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.fundingSource === 'external' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
+                    ${tx.fundingSource === 'external' ? '🧧 自力/外部' : '👨‍👩‍👧 父母提供'}
+                  </span>
+                ` : ''}
+                ${(tx.type === 'wishlist' || tx.type === 'travel') ? `
+                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.sponsorType === 'parent' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}">
+                    ${tx.sponsorType === 'parent' ? '👨‍👩‍👧 父母贊助' : '🎒 小孩自存'}
                   </span>
                 ` : ''}
               </div>
@@ -1867,14 +2193,24 @@
         }
       });
 
-      // Toggle Need vs Want
       const wrapperNeedWant = document.getElementById('editWrapperNeedWant');
       if (wrapperNeedWant) {
         if (type === 'expense') wrapperNeedWant.classList.remove('hidden');
         else wrapperNeedWant.classList.add('hidden');
       }
 
-      // Toggle Travel Branch Selector
+      const editWrapperIncomeFundingSource = document.getElementById('editWrapperIncomeFundingSource');
+      if (editWrapperIncomeFundingSource) {
+        if (type === 'income') editWrapperIncomeFundingSource.classList.remove('hidden');
+        else editWrapperIncomeFundingSource.classList.add('hidden');
+      }
+
+      const editWrapperSponsorType = document.getElementById('editWrapperSponsorType');
+      if (editWrapperSponsorType) {
+        if (type === 'wishlist' || type === 'travel') editWrapperSponsorType.classList.remove('hidden');
+        else editWrapperSponsorType.classList.add('hidden');
+      }
+
       const travelBranchWrapper = document.getElementById('editTxTravelBranchWrapper');
       if (travelBranchWrapper) {
         if (type === 'travel') {
@@ -1885,7 +2221,6 @@
         }
       }
 
-      // Populate Category select
       const catSelect = document.getElementById('editTxCategory');
       if (catSelect) {
         const list = categories[type] || [];
@@ -1937,6 +2272,22 @@
           if (radioNeed) radioNeed.checked = true;
         }
 
+        if (tx.fundingSource === 'external') {
+          const radioExt = document.getElementById('editFundingExt');
+          if (radioExt) radioExt.checked = true;
+        } else {
+          const radioParent = document.getElementById('editFundingParent');
+          if (radioParent) radioParent.checked = true;
+        }
+
+        if (tx.sponsorType === 'parent') {
+          const radioSponsorParent = document.getElementById('editSponsorParent');
+          if (radioSponsorParent) radioSponsorParent.checked = true;
+        } else {
+          const radioSponsorSelf = document.getElementById('editSponsorSelf');
+          if (radioSponsorSelf) radioSponsorSelf.checked = true;
+        }
+
         if (currentEditType === 'travel') {
           const branchSelect = document.getElementById('editTxTravelBranchSelect');
           if (branchSelect) {
@@ -1955,7 +2306,7 @@
       document.getElementById('editTxModal').classList.add('hidden');
     }
 
-    function handleSaveEditedTx(e) {
+    async function handleSaveEditedTx(e) {
       e.preventDefault();
       const id = document.getElementById('editTxId').value;
       const amount = parseInt(document.getElementById('editTxAmount').value, 10);
@@ -1972,6 +2323,18 @@
         if (intentChecked) intent = intentChecked.value;
       }
 
+      let fundingSource = 'parent';
+      if (currentEditType === 'income') {
+        const fundingChecked = document.querySelector('input[name="editTxFundingSource"]:checked');
+        if (fundingChecked) fundingSource = fundingChecked.value;
+      }
+
+      let sponsorType = 'self';
+      if (currentEditType === 'wishlist' || currentEditType === 'travel') {
+        const sponsorChecked = document.querySelector('input[name="editTxSponsorType"]:checked');
+        if (sponsorChecked) sponsorType = sponsorChecked.value;
+      }
+
       if (currentEditType === 'travel') {
         const branchSelect = document.getElementById('editTxTravelBranchSelect');
         if (branchSelect && branchSelect.value && branchSelect.value !== 'general') {
@@ -1985,44 +2348,37 @@
       }
 
       const oldSummary = `${tx.type} | ${tx.category} - ${tx.description} (NT$${tx.amount})`;
-      tx.type = currentEditType;
-      tx.category = category;
-      tx.amount = amount;
-      tx.description = desc;
-      tx.intent = intent;
-      tx.date = date;
-      tx.operator = '🛡️ 家長更正';
-      tx.updatedAt = Date.now();
+      const updatedTx = {
+        ...tx,
+        type: currentEditType,
+        category: category,
+        amount: amount,
+        description: desc,
+        intent: intent,
+        fundingSource: fundingSource,
+        sponsorType: sponsorType,
+        date: date,
+        operator: '🛡️ 家長更正',
+        updatedAt: Date.now()
+      };
 
-      saveLocalTransactions();
+      await saveTxToFirestore(updatedTx);
       saveRecentTag(desc);
-      addAuditLog('修改收支', `🛡️ 家長更正紀錄：${oldSummary} ➔ ${currentEditType} | ${category} - ${desc} (NT$${amount})`);
-      queueAction('update', tx);
+      addAuditLogToFirestore('修改收支', `🛡️ 家長更正紀錄：${oldSummary} ➔ ${currentEditType} | ${category} - ${desc} (NT$${amount})`);
 
       closeEditTxModal();
-      refreshUI();
-      showToast('紀錄更正已成功儲存！', 'success');
+      showToast('紀錄更正已成功儲存至雲端！', 'success');
     }
 
     function confirmDeleteTx(id) {
       requestParentAuth(() => {
         const tx = transactions.find(t => t.id === id);
         if (!tx) return;
-        openCustomConfirm('刪除帳目紀錄', `確定要刪除「${tx.description}」(NT$ ${tx.amount}) 嗎？`, (confirmed) => {
+        openCustomConfirm('刪除帳目紀錄', `確定要刪除「${tx.description}」(NT$ ${tx.amount}) 嗎？`, async (confirmed) => {
           if (confirmed) {
-            // 加入墓碑清單，防止從雲端重新拉取時復活
-            if (!tombstones.includes(id)) {
-              tombstones.push(id);
-              if (tombstones.length > 100) tombstones.shift();
-              safeStorage.setItem(STORAGE_KEY_TOMBSTONES, JSON.stringify(tombstones));
-            }
-
-            transactions = transactions.filter(t => t.id !== id);
-            saveLocalTransactions();
-            addAuditLog('刪除收支', `🛡️ 家長刪除紀錄：${tx.description} (NT$${tx.amount})`);
-            queueAction('delete', { id: id });
-            refreshUI();
-            showToast('已刪除帳目紀錄', 'info');
+            await deleteTxFromFirestore(id);
+            addAuditLogToFirestore('刪除收支', `🛡️ 家長刪除紀錄：${tx.description} (NT$${tx.amount})`);
+            showToast('已從雲端刪除帳目紀錄', 'info');
           }
         });
       }, '刪除帳目紀錄', '刪除紀錄需家長驗證');
@@ -2041,13 +2397,28 @@
       let needExpense = 0;
       let wantExpense = 0;
 
+      let monthParentIncome = 0;
+      let monthExtIncome = 0;
+      let wishSelfSaved = 0;
+      let wishParentSaved = 0;
+      let travelSelfSaved = 0;
+      let travelParentSaved = 0;
+      let totalParentGivenAll = 0;
+
       transactions.forEach(tx => {
         const amt = Number(tx.amount) || 0;
         const txYearMonth = (tx.date || '').slice(0, 7);
 
         if (tx.type === 'income') {
           totalAllIncome += amt;
-          if (txYearMonth === currentYearMonth) monthIncome += amt;
+          if (txYearMonth === currentYearMonth) {
+            monthIncome += amt;
+            if (tx.fundingSource === 'external') monthExtIncome += amt;
+            else monthParentIncome += amt;
+          }
+          if (tx.fundingSource !== 'external') {
+            totalParentGivenAll += amt;
+          }
         } else if (tx.type === 'expense') {
           totalAllExpense += amt;
           if (txYearMonth === currentYearMonth) monthExpense += amt;
@@ -2055,15 +2426,25 @@
           else needExpense += amt;
         } else if (tx.type === 'wishlist') {
           totalWishSaved += amt;
+          if (tx.sponsorType === 'parent') {
+            wishParentSaved += amt;
+            totalParentGivenAll += amt;
+          } else {
+            wishSelfSaved += amt;
+          }
         } else if (tx.type === 'travel') {
           totalTravelSaved += amt;
+          if (tx.sponsorType === 'parent') {
+            travelParentSaved += amt;
+            totalParentGivenAll += amt;
+          } else {
+            travelSelfSaved += amt;
+          }
         }
       });
 
-      // Free Wallet Balance = Total Income - Total Expense - Wish Saved - Travel Saved
       const walletBalance = totalAllIncome - totalAllExpense - totalWishSaved - totalTravelSaved;
 
-      // Update Top Asset Badges
       const elWallet = document.getElementById('statWalletBalance');
       const elMonthInc = document.getElementById('statMonthIncome');
       const elMonthExp = document.getElementById('statMonthExpense');
@@ -2076,7 +2457,6 @@
       if (elWishSaved) elWishSaved.textContent = totalWishSaved.toLocaleString();
       if (elTravelSaved) elTravelSaved.textContent = totalTravelSaved.toLocaleString();
 
-      // Update Wishlist Progress & Total Budget
       const curWish = getActiveWish();
       const totalWishBudget = getWishlistTotalBudget();
 
@@ -2090,19 +2470,29 @@
       const elWishName = document.getElementById('wishTargetName');
       const elWishTargetPrice = document.getElementById('wishTargetPrice');
       const elWishCurrent = document.getElementById('wishTargetCurrent');
-      const elWishBar = document.getElementById('wishProgressBar');
+      const elWishBarSelf = document.getElementById('wishBarSelf');
+      const elWishBarParent = document.getElementById('wishBarParent');
       const elWishPct = document.getElementById('wishProgressPercent');
       const elWishRem = document.getElementById('wishRemainingAmount');
+      const elWishSelf = document.getElementById('wishSelfAmount');
+      const elWishParent = document.getElementById('wishParentAmount');
 
       if (elWishName) elWishName.textContent = curWish.name;
       if (elWishTargetPrice) elWishTargetPrice.textContent = curWish.targetPrice.toLocaleString();
       if (elWishCurrent) elWishCurrent.textContent = totalWishSaved.toLocaleString();
-      const wishPct = curWish.targetPrice > 0 ? Math.min(100, Math.round((totalWishSaved / curWish.targetPrice) * 100)) : 0;
-      if (elWishBar) elWishBar.style.width = `${wishPct}%`;
-      if (elWishPct) elWishPct.textContent = `${wishPct}%`;
+      if (elWishSelf) elWishSelf.textContent = `NT$ ${wishSelfSaved.toLocaleString()}`;
+      if (elWishParent) elWishParent.textContent = `NT$ ${wishParentSaved.toLocaleString()}`;
+
+      const wishTargetPrice = curWish.targetPrice || 1;
+      const wishSelfPct = Math.min(100, Math.round((wishSelfSaved / wishTargetPrice) * 100));
+      const wishParentPct = Math.min(100 - wishSelfPct, Math.round((wishParentSaved / wishTargetPrice) * 100));
+      const totalWishPct = Math.min(100, Math.round((totalWishSaved / wishTargetPrice) * 100));
+
+      if (elWishBarSelf) elWishBarSelf.style.width = `${wishSelfPct}%`;
+      if (elWishBarParent) elWishBarParent.style.width = `${wishParentPct}%`;
+      if (elWishPct) elWishPct.textContent = `${totalWishPct}%`;
       if (elWishRem) elWishRem.textContent = Math.max(0, curWish.targetPrice - totalWishSaved).toLocaleString();
 
-      // Update Travel Auto-summed Budget & Branches
       const travelTotalBudget = getTravelTotalBudget();
       travelConfig.targetPrice = travelTotalBudget;
 
@@ -2114,22 +2504,43 @@
       const elTravName = document.getElementById('travelTargetName');
       const elTravTargetPrice = document.getElementById('travelTargetPrice');
       const elTravCurrent = document.getElementById('travelTargetCurrent');
-      const elTravBar = document.getElementById('travelProgressBar');
+      const elTravBarSelf = document.getElementById('travelBarSelf');
+      const elTravBarParent = document.getElementById('travelBarParent');
       const elTravPct = document.getElementById('travelProgressPercent');
       const elTravRem = document.getElementById('travelRemainingAmount');
+      const elTravSelf = document.getElementById('travelSelfAmount');
+      const elTravParent = document.getElementById('travelParentAmount');
 
       if (elTravName) elTravName.textContent = travelConfig.name;
       if (elTravTargetPrice) elTravTargetPrice.textContent = travelTotalBudget.toLocaleString();
       if (elTravCurrent) elTravCurrent.textContent = totalTravelSaved.toLocaleString();
-      const travPct = travelTotalBudget > 0 ? Math.min(100, Math.round((totalTravelSaved / travelTotalBudget) * 100)) : 0;
-      if (elTravBar) elTravBar.style.width = `${travPct}%`;
-      if (elTravPct) elTravPct.textContent = `${travPct}%`;
+      if (elTravSelf) elTravSelf.textContent = `NT$ ${travelSelfSaved.toLocaleString()}`;
+      if (elTravParent) elTravParent.textContent = `NT$ ${travelParentSaved.toLocaleString()}`;
+
+      const travTargetPrice = travelTotalBudget || 1;
+      const travSelfPct = Math.min(100, Math.round((travelSelfSaved / travTargetPrice) * 100));
+      const travParentPct = Math.min(100 - travSelfPct, Math.round((travelParentSaved / travTargetPrice) * 100));
+      const totalTravPct = Math.min(100, Math.round((totalTravelSaved / travTargetPrice) * 100));
+
+      if (elTravBarSelf) elTravBarSelf.style.width = `${travSelfPct}%`;
+      if (elTravBarParent) elTravBarParent.style.width = `${travParentPct}%`;
+      if (elTravPct) elTravPct.textContent = `${totalTravPct}%`;
       if (elTravRem) elTravRem.textContent = Math.max(0, travelTotalBudget - totalTravelSaved).toLocaleString();
 
-      // Render Mini Travel Branches
       renderDashboardTravelBranchesMini();
 
-      // Need vs Want Percentages
+      const totalMonthIncomeCalc = monthParentIncome + monthExtIncome;
+      const parentIncPct = totalMonthIncomeCalc > 0 ? Math.round((monthParentIncome / totalMonthIncomeCalc) * 100) : 100;
+      const extIncPct = totalMonthIncomeCalc > 0 ? 100 - parentIncPct : 0;
+      const elParentIncPct = document.getElementById('statParentIncomePercent');
+      const elExtIncPct = document.getElementById('statExtIncomePercent');
+      const barParentIncome = document.getElementById('barParentIncome');
+      const barExtIncome = document.getElementById('barExtIncome');
+      if (elParentIncPct) elParentIncPct.textContent = `${parentIncPct}%`;
+      if (elExtIncPct) elExtIncPct.textContent = `${extIncPct}%`;
+      if (barParentIncome) barParentIncome.style.width = `${parentIncPct}%`;
+      if (barExtIncome) barExtIncome.style.width = `${extIncPct}%`;
+
       const totalNeedWant = needExpense + wantExpense;
       const needPct = totalNeedWant > 0 ? Math.round((needExpense / totalNeedWant) * 100) : 50;
       const wantPct = totalNeedWant > 0 ? 100 - needPct : 50;
@@ -2141,6 +2552,28 @@
       if (elWantPct) elWantPct.textContent = `${wantPct}%`;
       if (barNeed) barNeed.style.width = `${needPct}%`;
       if (barWant) barWant.style.width = `${wantPct}%`;
+
+      const elCardParentTotal = document.getElementById('cardParentTotalGiven');
+      const elCardChildSavingsRate = document.getElementById('cardChildSavingsRate');
+      const elCardSavingsStatus = document.getElementById('cardSavingsStatus');
+      const elParentFlowWish = document.getElementById('parentFlowWish');
+      const elParentFlowTravel = document.getElementById('parentFlowTravel');
+      const elParentFlowExpense = document.getElementById('parentFlowExpense');
+
+      if (elCardParentTotal) elCardParentTotal.textContent = totalParentGivenAll.toLocaleString();
+      
+      const totalSavedSum = totalWishSaved + totalTravelSaved + Math.max(0, walletBalance);
+      const savingsRate = totalAllIncome > 0 ? Math.round((totalSavedSum / totalAllIncome) * 100) : 0;
+      if (elCardChildSavingsRate) elCardChildSavingsRate.textContent = `${savingsRate}%`;
+      if (elCardSavingsStatus) {
+        if (savingsRate >= 60) elCardSavingsStatus.textContent = '🌟 儲蓄習慣極佳';
+        else if (savingsRate >= 30) elCardSavingsStatus.textContent = '👍 資金運用良好';
+        else elCardSavingsStatus.textContent = '📌 建議增加儲蓄比例';
+      }
+
+      if (elParentFlowWish) elParentFlowWish.textContent = totalWishSaved.toLocaleString();
+      if (elParentFlowTravel) elParentFlowTravel.textContent = totalTravelSaved.toLocaleString();
+      if (elParentFlowExpense) elParentFlowExpense.textContent = totalAllExpense.toLocaleString();
 
       renderTxList();
       renderFinanceChart();
@@ -2165,12 +2598,18 @@
       chartMode = mode;
       const btnAsset = document.getElementById('btnChartModeAsset');
       const btnExpense = document.getElementById('btnChartModeExpense');
-      if (mode === 'asset') {
-        if (btnAsset) btnAsset.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
-        if (btnExpense) btnExpense.className = 'px-2 py-0.5 rounded-md text-slate-500';
-      } else {
-        if (btnAsset) btnAsset.className = 'px-2 py-0.5 rounded-md text-slate-500';
-        if (btnExpense) btnExpense.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
+      const btnIncome = document.getElementById('btnChartModeIncome');
+
+      [btnAsset, btnExpense, btnIncome].forEach(b => {
+        if (b) b.className = 'px-2 py-0.5 rounded-md text-slate-500';
+      });
+
+      if (mode === 'asset' && btnAsset) {
+        btnAsset.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
+      } else if (mode === 'expense' && btnExpense) {
+        btnExpense.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
+      } else if (mode === 'income' && btnIncome) {
+        btnIncome.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
       }
       renderFinanceChart();
     }
@@ -2191,7 +2630,6 @@
       let colors = [];
 
       if (chartMode === 'asset') {
-        // Calculate totals
         let totalIncome = 0;
         let totalExpense = 0;
         let wishSaved = 0;
@@ -2210,8 +2648,7 @@
         labels = ['錢包自由結餘', '心願專款', '出國基金', '日常總支出'];
         data = [wallet, wishSaved, travelSaved, totalExpense];
         colors = ['#2563eb', '#9333ea', '#f59e0b', '#f43f5e'];
-      } else {
-        // Expense by categories
+      } else if (chartMode === 'expense') {
         const catMap = {};
         transactions.filter(t => t.type === 'expense').forEach(t => {
           const cat = t.category || '未分類';
@@ -2221,6 +2658,19 @@
         labels = Object.keys(catMap);
         data = Object.values(catMap);
         colors = ['#f43f5e', '#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b'];
+      } else if (chartMode === 'income') {
+        let parentIncome = 0;
+        let extIncome = 0;
+
+        transactions.filter(t => t.type === 'income').forEach(t => {
+          const a = Number(t.amount) || 0;
+          if (t.fundingSource === 'external') extIncome += a;
+          else parentIncome += a;
+        });
+
+        labels = ['👨‍👩‍👧 父母提供/零用獎勵', '🧧 自力/長輩外部紅包'];
+        data = [parentIncome, extIncome];
+        colors = ['#3b82f6', '#10b981'];
       }
 
       const hasData = data.some(v => v > 0);
@@ -2261,27 +2711,6 @@
       });
     }
 
-    function addAuditLog(action, detail) {
-      const operator = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
-      const newLog = {
-        logId: 'log_' + Date.now(),
-        time: new Date().toLocaleString('zh-TW'),
-        operator: operator,
-        action: action,
-        detail: detail
-      };
-      auditLogs.unshift(newLog);
-      if (auditLogs.length > 100) auditLogs.pop();
-      safeStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(auditLogs));
-
-      // Push to cloud queue
-      queueAction('audit_log', {
-        logAction: action,
-        operator: operator,
-        detail: detail
-      });
-    }
-
     function renderAuditLogs() {
       const container = document.getElementById('auditLogListContainer');
       if (!container) return;
@@ -2307,198 +2736,12 @@
       const badge = document.getElementById('connBadge');
       if (!badge) return;
       if (online) {
-        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${text || '雲端已就緒'}`;
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${text || 'Firebase 雲端已連線'}`;
         badge.className = 'inline-flex items-center gap-1 text-emerald-600 font-medium';
       } else {
-        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text || '離線快取中'}`;
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text || '離線持久化快取中'}`;
         badge.className = 'inline-flex items-center gap-1 text-slate-500 font-medium';
       }
-    }
-
-    function updatePendingQueueBadge() {
-      const badge = document.getElementById('pendingQueueBadge');
-      if (!badge) return;
-      if (offlineQueue && offlineQueue.length > 0) {
-        badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up text-[9px]"></i> 待傳 ${offlineQueue.length}`;
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
-    }
-
-    let isFlushingQueue = false;
-
-    async function flushOfflineQueue() {
-      if (isFlushingQueue || !navigator.onLine || !sheetUrl || !offlineQueue || offlineQueue.length === 0) {
-        updatePendingQueueBadge();
-        return;
-      }
-      isFlushingQueue = true;
-
-      try {
-        while (offlineQueue.length > 0 && navigator.onLine) {
-          const item = offlineQueue[0];
-          let bodyData = {};
-
-          if (item.action === 'add') {
-            bodyData = { action: 'add', data: item.payload };
-          } else if (item.action === 'delete') {
-            bodyData = { action: 'delete', id: item.payload.id, operator: currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩' };
-          } else if (item.action === 'update') {
-            bodyData = { action: 'update', data: item.payload };
-          } else if (item.action === 'audit_log') {
-            bodyData = { 
-              action: 'audit_log', 
-              operator: item.payload.operator, 
-              logAction: item.payload.logAction, 
-              detail: item.payload.detail 
-            };
-          }
-
-          // POST to Google Apps Script Webhook
-          await fetch(sheetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(bodyData)
-          });
-
-          offlineQueue.shift();
-          safeStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(offlineQueue));
-          updatePendingQueueBadge();
-        }
-      } catch (err) {
-        console.warn('Flush offline queue error:', err);
-      } finally {
-        isFlushingQueue = false;
-        updatePendingQueueBadge();
-      }
-    }
-
-    function queueAction(action, payload) {
-      offlineQueue.push({ action, payload, time: Date.now() });
-      safeStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(offlineQueue));
-      updatePendingQueueBadge();
-      if (navigator.onLine) {
-        flushOfflineQueue();
-      }
-    }
-
-    // 智慧雙向合併演算法 (解決手機快取與雲端試算表衝突的核心)
-    function smartMergeTransactions(localList, cloudList) {
-      const mergedMap = new Map();
-
-      // 1. 先將手機本機項目置入 Map（包含離線尚未上傳的）
-      localList.forEach(item => {
-        // 若該筆已在墓碑清單（代表使用者在手機已刪除），則直接忽略
-        if (!tombstones.includes(item.id)) {
-          mergedMap.set(item.id, item);
-        }
-      });
-
-      // 2. 比對雲端拉下來的項目
-      cloudList.forEach(cloudItem => {
-        // 如果屬於手機已刪除的墓碑項目，跳過不納入（防止死而復生）
-        if (tombstones.includes(cloudItem.id)) return;
-
-        if (!mergedMap.has(cloudItem.id)) {
-          // 本機沒有，代表是其他裝置新增的：直接納入
-          mergedMap.set(cloudItem.id, cloudItem);
-        } else {
-          // 本機與雲端都有：比對修改時間戳記 (最後寫入者勝)
-          const localItem = mergedMap.get(cloudItem.id);
-          const localTime = Number(localItem.updatedAt) || 0;
-          const cloudTime = Number(cloudItem.updatedAt) || 0;
-
-          // 若雲端時間較新，採用雲端版本；若本機有尚未同步的離線修改，以本機為準
-          if (cloudTime > localTime) {
-            mergedMap.set(cloudItem.id, cloudItem);
-          }
-        }
-      });
-
-      // 3. 轉回陣列並依日期與時間排序（最新在前）
-      const result = Array.from(mergedMap.values());
-      result.sort((a, b) => {
-        const dateA = new Date(a.date || a.timestamp || 0).getTime();
-        const dateB = new Date(b.date || b.timestamp || 0).getTime();
-        return dateB - dateA;
-      });
-
-      return result;
-    }
-
-    async function handleManualSync(showToastFeedback = true) {
-      if (!sheetUrl) {
-        if (showToastFeedback) showToast('尚未設定 Google Sheet 網址', 'warning');
-        return;
-      }
-      if (!navigator.onLine) {
-        if (showToastFeedback) showToast('手機目前處於離線狀態，使用本機快取', 'info');
-        updateConnectionBadge(false);
-        return;
-      }
-
-      updateConnectionBadge(true, '正在智慧同步雲端紀錄...');
-      if (showToastFeedback) showToast('與 Google Sheets 雙向同步中...', 'info');
-
-      try {
-        // 步驟 1：優先傳送手機上的離線待傳佇列（保證本機操作優先抵達雲端）
-        await flushOfflineQueue();
-
-        // 步驟 2：從雲端拉取全量歷史資料
-        const res = await fetch(sheetUrl);
-        const json = await res.json();
-
-        if (json.status === 'success' && Array.isArray(json.data)) {
-          // 步驟 3：使用「智慧合併 (Smart Merge)」而非粗暴整包覆蓋！
-          transactions = smartMergeTransactions(transactions, json.data);
-          saveLocalTransactions();
-
-          if (Array.isArray(json.logs) && json.logs.length > 0) {
-            // 合併審計日誌並去重
-            const logMap = new Map();
-            auditLogs.forEach(l => logMap.set(l.logId || l.time + l.detail, l));
-            json.logs.forEach(l => logMap.set(l.logId || l.time + l.detail, l));
-            auditLogs = Array.from(logMap.values()).slice(0, 100);
-            safeStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(auditLogs));
-          }
-
-          refreshUI();
-          updateConnectionBadge(true, 'Google Sheet 已同步');
-          if (showToastFeedback) showToast('同步完成！本機與雲端已無衝突合併', 'success');
-        } else {
-          updateConnectionBadge(true, '雲端已就緒');
-        }
-      } catch (err) {
-        console.warn('Fetch GET failed, fallback to local cache:', err);
-        updateConnectionBadge(true, '已儲存於本機快取');
-        if (showToastFeedback) showToast('已連接 Google Sheet (快取防護模式)', 'success');
-      }
-    }
-
-    function saveSheetUrlFromSettings() {
-      const url = document.getElementById('inputSettingsSheetUrl').value.trim();
-      if (!url) {
-        showToast('請輸入有效 Google Apps Script URL', 'warning');
-        return;
-      }
-      sheetUrl = url;
-      safeStorage.setItem(STORAGE_KEY_SHEET_URL, url);
-      addAuditLog('系統設定', '🛡️ 家長更新 Google Sheets Webhook 連線網址');
-      showToast('網址已儲存！開始嘗試連線同步', 'success');
-      handleManualSync(true);
-    }
-
-    function handleReloadCloudData() {
-      openCustomConfirm('重載雲端資料', '確定要清空手機本機快取，並自 Google 試算表重新抓取最新資料嗎？', (ok) => {
-        if (ok) {
-          transactions = [];
-          offlineQueue = [];
-          safeStorage.removeItem(STORAGE_KEY_TX);
-          safeStorage.removeItem(STORAGE_KEY_QUEUE);
-          handleManualSync(true);
-        }
-      });
     }
 
     function showToast(text, type = 'info') {
@@ -2561,6 +2804,56 @@
       if (!str) return '';
       return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
+
+    // Expose necessary functions to window for onclick handlers
+    window.toggleRoleMode = toggleRoleMode;
+    window.switchTab = switchTab;
+    window.openAddModal = openAddModal;
+    window.closeAddModal = closeAddModal;
+    window.setType = setType;
+    window.handleCategoryChange = handleCategoryChange;
+    window.fillCategoryNameToDesc = fillCategoryNameToDesc;
+    window.selectQuickTag = selectQuickTag;
+    window.handleFormSubmit = handleFormSubmit;
+    window.closeIncomeIntegrityModal = closeIncomeIntegrityModal;
+    window.closePinModal = closePinModal;
+    window.verifyPinCode = verifyPinCode;
+    window.openWishlistManagerModal = openWishlistManagerModal;
+    window.closeWishlistManagerModal = closeWishlistManagerModal;
+    window.handleSaveWishItem = handleSaveWishItem;
+    window.startEditWish = startEditWish;
+    window.cancelWishEdit = cancelWishEdit;
+    window.deleteWishItem = deleteWishItem;
+    window.setActiveWishDirect = setActiveWishDirect;
+    window.changeActiveWish = changeActiveWish;
+    window.openTravelBranchModal = openTravelBranchModal;
+    window.closeTravelBranchModal = closeTravelBranchModal;
+    window.saveTravelMainInfo = saveTravelMainInfo;
+    window.startEditBranch = startEditBranch;
+    window.cancelBranchEdit = cancelBranchEdit;
+    window.handleSaveBranchItem = handleSaveBranchItem;
+    window.deleteTravelBranch = deleteTravelBranch;
+    window.openCategoryManagerModal = openCategoryManagerModal;
+    window.closeCategoryManagerModal = closeCategoryManagerModal;
+    window.switchCategoryScope = switchCategoryScope;
+    window.toggleEmojiPicker = toggleEmojiPicker;
+    window.selectCatEmoji = selectCatEmoji;
+    window.startEditCategory = startEditCategory;
+    window.cancelCategoryEdit = cancelCategoryEdit;
+    window.handleSaveCategory = handleSaveCategory;
+    window.deleteCategory = deleteCategory;
+    window.setFilter = setFilter;
+    window.openEditTxModal = openEditTxModal;
+    window.closeEditTxModal = closeEditTxModal;
+    window.setEditType = setEditType;
+    window.fillCategoryNameToEditDesc = fillCategoryNameToEditDesc;
+    window.handleSaveEditedTx = handleSaveEditedTx;
+    window.confirmDeleteTx = confirmDeleteTx;
+    window.openChangePinModal = openChangePinModal;
+    window.closeChangePinModal = closeChangePinModal;
+    window.saveNewPinCode = saveNewPinCode;
+    window.closeCustomConfirm = closeCustomConfirm;
+    window.switchChartMode = switchChartMode;
   </script>
 </body>
 </html>
