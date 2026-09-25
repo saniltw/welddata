@@ -3,42 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>青少年理財與願望清單收支本 (Firebase 即時雲端版)</title>
-  <!-- PWA & Mobile Web App Capabilities -->
+  <title>青少年理財與夢想專案收支本 (含借款與負債管理)</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#2563eb">
   
-  <!-- Tailwind CSS & FontAwesome & Chart.js CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
-    /* Safe-area padding for mobile browsers */
-    .pb-safe {
-      padding-bottom: env(safe-area-inset-bottom, 16px);
-    }
-    .pt-safe {
-      padding-top: env(safe-area-inset-top, 16px);
-    }
-    /* Hide scrollbars */
-    .no-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-    .no-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    /* Modal smooth animation */
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    .pt-safe { padding-top: env(safe-area-inset-top, 16px); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .modal-backdrop {
       background-color: rgba(15, 23, 42, 0.65);
       backdrop-filter: blur(4px);
+    }
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.95; transform: scale(0.995); }
+    }
+    .pulse-alert {
+      animation: pulse-subtle 3s infinite ease-in-out;
     }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col selection:bg-blue-200">
 
+  <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs pt-safe">
     <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -46,18 +40,17 @@
           <i class="fa-solid fa-wallet text-sm"></i>
         </div>
         <div>
-          <h1 class="text-sm font-bold leading-tight text-slate-800">青少年理財筆記</h1>
+          <h1 class="text-sm font-bold leading-tight text-slate-800">青少年理財與夢想專案</h1>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-500">
             <span id="connBadge" class="inline-flex items-center gap-1 text-emerald-600 font-medium">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              雲端連線中...
+              雲端已就緒
             </span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- Role Badge Button -->
         <button onclick="toggleRoleMode()" id="roleBadgeBtn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-100 text-slate-700 border-slate-200 active:scale-95">
           <span id="roleIcon">🎒</span>
           <span id="roleText">小孩模式</span>
@@ -67,162 +60,125 @@
     </div>
   </header>
 
+  <!-- Main View Area -->
   <main class="flex-1 max-w-xl w-full mx-auto p-4 pb-28">
 
-    <!-- TAB 1: 總覽 (Overview Dashboard) -->
+    <!-- TAB 1: 總覽 Dashboard -->
     <section id="viewDashboard" class="space-y-4">
       
-      <!-- Top Asset Cards -->
-      <div class="grid grid-cols-2 gap-3">
-        <!-- Wallet Free Balance -->
-        <div class="col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md shadow-blue-500/10">
-          <div class="flex justify-between items-start mb-1">
-            <span class="text-xs font-medium text-blue-100">當前自由錢包結餘</span>
-            <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">可支配</span>
-          </div>
-          <div class="flex items-baseline gap-1">
-            <span class="text-xs opacity-80">NT$</span>
-            <span id="statWalletBalance" class="text-2xl font-black tracking-tight">0</span>
-          </div>
-          <div class="mt-3 pt-2.5 border-t border-white/15 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span class="text-[11px] text-blue-200 block">本月總收入</span>
-              <div class="text-sm font-black text-white">
-                NT$ <span id="statMonthIncome">0</span>
-              </div>
-              <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
-                <span>👨‍👩‍👧 父母提供 <strong id="statMonthParentIncome" class="text-emerald-300 font-bold">NT$ 0</strong></span>
-                <span class="text-blue-200/80">🧧 外部自力 <strong id="statMonthExtIncome" class="text-white font-semibold">NT$ 0</strong></span>
-              </div>
+      <!-- Proposal A: Debt Alert Bar (信用借款提醒橫幅) -->
+      <div id="debtAlertBanner" class="hidden rounded-2xl p-3.5 border shadow-sm transition-all pulse-alert">
+        <!-- Rendered dynamically via renderDebtStatus() -->
+      </div>
+
+      <!-- Wallet & Net Worth Overview Card -->
+      <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md shadow-blue-500/10 space-y-3">
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="text-xs font-medium text-blue-100 block">自由錢包現金</span>
+            <div class="flex items-baseline gap-1 mt-0.5">
+              <span class="text-xs opacity-80">NT$</span>
+              <span id="statWalletBalance" class="text-2xl font-black tracking-tight">0</span>
             </div>
-            <div>
-              <span class="text-[11px] text-blue-200 block">本月日常支出</span>
-              <div class="text-sm font-black text-rose-200">
-                NT$ <span id="statMonthExpense">0</span>
-              </div>
-              <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
-                <span>🎯 必要需要 <strong id="statMonthNeedExpense" class="text-blue-200 font-bold">NT$ 0</strong></span>
-                <span class="text-rose-200/80">💖 休閒想要 <strong id="statMonthWantExpense" class="text-rose-200 font-semibold">NT$ 0</strong></span>
-              </div>
+          </div>
+          
+          <!-- Proposal B: Net Worth Badge (淨資產指示器) -->
+          <div class="text-right bg-white/10 px-3 py-1.5 rounded-xl border border-white/15">
+            <span class="text-[10px] text-blue-200 block font-medium">真實淨資產 (扣除負債)</span>
+            <div class="text-sm font-black flex items-center justify-end gap-1" id="statNetWorthWrapper">
+              <span>NT$</span>
+              <span id="statNetWorth">0</span>
             </div>
           </div>
         </div>
 
-        <!-- Wishlist Saved -->
-        <div class="bg-purple-50 border border-purple-200/80 rounded-2xl p-3.5 shadow-xs">
-          <div class="flex items-center justify-between text-purple-800 mb-1">
-            <span class="text-xs font-bold"><i class="fa-solid fa-bullseye text-purple-600 mr-1"></i> 心願專款</span>
-            <span class="text-[10px] text-purple-600 font-semibold" id="dashWishCountText">1 項</span>
-          </div>
-          <div class="text-lg font-black text-purple-950">
-            <span class="text-xs font-normal">NT$</span> <span id="statWishlistSaved">0</span>
-          </div>
-          <span class="text-[10px] text-purple-700 font-medium block mt-1" id="dashWishSubtotal">總需求 NT$ 0</span>
+        <!-- Debt mini summary inside card if any -->
+        <div id="cardDebtMiniRow" class="hidden text-[11px] bg-rose-950/40 rounded-xl px-2.5 py-1.5 border border-rose-400/30 flex justify-between items-center text-rose-200">
+          <span><i class="fa-solid fa-hand-holding-dollar mr-1"></i> 待還父母借款：</span>
+          <span class="font-bold text-rose-300">NT$ <span id="statDebtRemaining">0</span></span>
         </div>
 
-        <!-- Travel Saved -->
-        <div class="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 shadow-xs">
-          <div class="flex items-center justify-between text-amber-800 mb-1">
-            <span class="text-xs font-bold"><i class="fa-solid fa-plane-departure text-amber-600 mr-1"></i> 出國旅遊</span>
-            <span class="text-[10px] text-amber-600 font-semibold" id="dashTravelBranchCount">分支累計</span>
+        <div class="pt-2.5 border-t border-white/15 grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span class="text-[11px] text-blue-200 block">本月總收入</span>
+            <div class="text-sm font-black text-white">
+              NT$ <span id="statMonthIncome">0</span>
+            </div>
+            <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
+              <span>👨‍👩‍👧 父母提供 <strong id="statMonthParentIncome" class="text-emerald-300 font-bold">NT$ 0</strong></span>
+              <span class="text-blue-200/80">🧧 外部自力 <strong id="statMonthExtIncome" class="text-white font-semibold">NT$ 0</strong></span>
+            </div>
           </div>
-          <div class="text-lg font-black text-amber-950">
-            <span class="text-xs font-normal">NT$</span> <span id="statTravelSaved">0</span>
+          <div>
+            <span class="text-[11px] text-blue-200 block">本月日常支出</span>
+            <div class="text-sm font-black text-rose-200">
+              NT$ <span id="statMonthExpense">0</span>
+            </div>
+            <div class="text-[10px] text-blue-100/90 mt-1 flex flex-col gap-0.5 font-medium">
+              <span>🎯 必要需要 <strong id="statMonthNeedExpense" class="text-blue-200 font-bold">NT$ 0</strong></span>
+              <span class="text-rose-200/80">💖 休閒想要 <strong id="statMonthWantExpense" class="text-rose-200 font-semibold">NT$ 0</strong></span>
+            </div>
           </div>
-          <span class="text-[10px] text-amber-700 font-medium block mt-1" id="dashTravelSubtotal">總預算 NT$ 0</span>
         </div>
       </div>
 
-      <!-- Wishlist Target Card (Open to Children) -->
+      <!-- Integrated Dream Projects & Goals Pool (整合後的專案與心願池) -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-              <i class="fa-solid fa-gift"></i>
+            <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-sm font-bold">
+              <i class="fa-solid fa-bullseye"></i>
             </span>
             <div>
-              <h2 class="text-xs font-bold text-slate-800">心願目標清單</h2>
-              <span id="wishlistTotalBadge" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
-                心願總費用 NT$ 0
+              <h2 class="text-xs font-bold text-slate-800">🎯 夢想與專案目標池</h2>
+              <span id="projectTotalBadge" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                專案總需求 NT$ 0
               </span>
             </div>
           </div>
-          <!-- Now open to child directly -->
-          <button onclick="openWishlistManagerModal()" class="text-xs font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 active:scale-95 transition-all">
-            <i class="fa-solid fa-sliders"></i> 多心願管理
+          
+          <button onclick="openProjectManagerModal()" class="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-50 border border-purple-200 active:scale-95 transition-all">
+            <i class="fa-solid fa-layer-group"></i> 專案管理
           </button>
         </div>
 
-        <!-- Active Wish Selector -->
-        <div class="pt-1">
-          <select id="activeWishSelect" onchange="changeActiveWish(this.value)" class="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400">
+        <!-- Project Selector Dropdown -->
+        <div>
+          <select id="activeProjectSelect" onchange="changeActiveProject(this.value)" class="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400">
             <!-- Dynamically populated options -->
           </select>
         </div>
 
-        <!-- Active Wish Dual-Color Progress Bar -->
-        <div class="bg-purple-50/60 rounded-xl p-3 border border-purple-100 space-y-2">
+        <!-- Active Project Dual-Color Progress Bar Card -->
+        <div class="bg-purple-50/60 rounded-xl p-3.5 border border-purple-100 space-y-2.5">
           <div class="flex justify-between items-center text-xs">
-            <span class="font-bold text-slate-700" id="wishTargetName">目前目標</span>
-            <span class="font-black text-purple-700">NT$ <span id="wishTargetCurrent">0</span> / <span id="wishTargetPrice">0</span></span>
-          </div>
-          <!-- Dual Segment Progress Bar -->
-          <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex">
-            <div id="wishBarSelf" class="bg-purple-600 h-full transition-all" style="width: 0%" title="小孩自存"></div>
-            <div id="wishBarParent" class="bg-emerald-500 h-full transition-all" style="width: 0%" title="父母贊助"></div>
-          </div>
-          <div class="flex justify-between items-center text-[10px] text-slate-500">
-            <span>達成率 <strong id="wishProgressPercent" class="text-purple-700">0%</strong></span>
-            <span>自存 <strong id="wishSelfAmount" class="text-purple-700">NT$ 0</strong> + 父母贊助 <strong id="wishParentAmount" class="text-emerald-600">NT$ 0</strong></span>
-          </div>
-          <div class="text-right text-[10px] text-slate-400">
-            <span>尚缺 NT$ <strong id="wishRemainingAmount" class="text-slate-700">0</strong></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Travel Target Card (Open to Children) -->
-      <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">
-              <i class="fa-solid fa-plane"></i>
-            </span>
-            <div>
-              <h2 class="text-xs font-bold text-slate-800" id="travelTargetName">出國旅遊專案</h2>
-              <span id="travelAutoSumBadge" class="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                細項加總 NT$ 0
-              </span>
+            <div class="flex items-center gap-1.5">
+              <span id="activeProjectBadgeType" class="text-[10px] px-1.5 py-0.2 rounded font-bold bg-purple-200 text-purple-800">心願</span>
+              <span class="font-bold text-slate-800" id="activeProjectName">目前專案</span>
             </div>
+            <span class="font-black text-purple-700">NT$ <span id="activeProjectCurrent">0</span> / <span id="activeProjectPrice">0</span></span>
           </div>
-          <!-- Now open to child directly -->
-          <button onclick="openTravelBranchModal()" class="text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 active:scale-95 transition-all">
-            <i class="fa-solid fa-sitemap"></i> 管理分支
-          </button>
-        </div>
 
-        <!-- Travel Dual Progress Bar -->
-        <div class="bg-amber-50/60 rounded-xl p-3 border border-amber-100 space-y-2">
-          <div class="flex justify-between items-center text-xs">
-            <span class="font-bold text-slate-700">總專案累積進度</span>
-            <span class="font-black text-amber-700">NT$ <span id="travelTargetCurrent">0</span> / <span id="travelTargetPrice">0</span></span>
-          </div>
-          <!-- Dual Segment Progress Bar -->
+          <!-- Dual Color Progress Bar (Self-saved vs Parent-sponsored) -->
           <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden flex">
-            <div id="travelBarSelf" class="bg-amber-500 h-full transition-all" style="width: 0%" title="小孩自存"></div>
-            <div id="travelBarParent" class="bg-emerald-500 h-full transition-all" style="width: 0%" title="父母贊助"></div>
+            <div id="projectBarSelf" class="bg-purple-600 h-full transition-all" style="width: 0%" title="小孩自存"></div>
+            <div id="projectBarParent" class="bg-emerald-500 h-full transition-all" style="width: 0%" title="父母贊助"></div>
           </div>
+
           <div class="flex justify-between items-center text-[10px] text-slate-500">
-            <span>達成率 <strong id="travelProgressPercent" class="text-amber-700">0%</strong></span>
-            <span>自存 <strong id="travelSelfAmount" class="text-amber-700">NT$ 0</strong> + 父母贊助 <strong id="travelParentAmount" class="text-emerald-600">NT$ 0</strong></span>
+            <span>達成率 <strong id="projectProgressPercent" class="text-purple-700 font-bold">0%</strong></span>
+            <span>自存 <strong id="projectSelfAmount" class="text-purple-700 font-bold">NT$ 0</strong> + 父母贊助 <strong id="projectParentAmount" class="text-emerald-600 font-bold">NT$ 0</strong></span>
           </div>
+
           <div class="text-right text-[10px] text-slate-400">
-            <span>尚缺 NT$ <strong id="travelRemainingAmount" class="text-slate-700">0</strong></span>
+            <span>尚缺 NT$ <strong id="projectRemainingAmount" class="text-slate-700 font-bold">0</strong></span>
+          </div>
+
+          <!-- Sub-branches preview if travel or structured project -->
+          <div id="activeProjectBranchesPreview" class="pt-1.5 space-y-1 hidden border-t border-purple-200/50">
+            <!-- Branches sub-items rendered here -->
           </div>
         </div>
-
-        <!-- Branches preview list -->
-        <div id="dashboardTravelBranchesMini" class="space-y-1.5 pt-1"></div>
       </div>
 
       <!-- Financial Chart Card -->
@@ -233,7 +189,7 @@
           </h3>
           <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
             <button id="btnChartModeAsset" onclick="switchChartMode('asset')" class="px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs">
-              資產配置
+              資產與負債
             </button>
             <button id="btnChartModeExpense" onclick="switchChartMode('expense')" class="px-2 py-0.5 rounded-md text-slate-500">
               支出佔比
@@ -286,7 +242,7 @@
           <span class="text-[11px] text-slate-400" id="recordCountLabel">共 0 筆紀錄</span>
         </div>
         <span class="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-          <i class="fa-solid fa-bolt mr-1"></i> Firebase 即時監聽
+          <i class="fa-solid fa-bolt mr-1"></i> 即時同步
         </span>
       </div>
 
@@ -295,8 +251,8 @@
         <button onclick="setFilter('all')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-blue-600 text-white">全部</button>
         <button onclick="setFilter('expense')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">支出</button>
         <button onclick="setFilter('income')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">收入</button>
-        <button onclick="setFilter('wishlist')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">心願</button>
-        <button onclick="setFilter('travel')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">出國</button>
+        <button onclick="setFilter('project')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">專案/心願</button>
+        <button onclick="setFilter('debt')" class="filter-btn px-3 py-1 text-xs font-bold rounded-xl whitespace-nowrap bg-white text-slate-600 border border-slate-200">借還款</button>
       </div>
 
       <!-- Transaction List Items -->
@@ -321,7 +277,7 @@
       <div class="flex items-center justify-between border-b pb-2 border-slate-200">
         <div>
           <h2 class="text-sm font-bold text-slate-800">🛡️ 家長系統控制台</h2>
-          <p class="text-[11px] text-slate-400">進階權限、雲端架構與安全管理</p>
+          <p class="text-[11px] text-slate-400">進階權限、負債審核與資助統計</p>
         </div>
         <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">家長管理中</span>
       </div>
@@ -355,12 +311,12 @@
           <span class="text-slate-300 font-bold block text-[10px]">父母提供資金的流向分佈：</span>
           <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
             <div class="bg-purple-900/40 border border-purple-500/30 rounded-lg p-1.5">
-              <span class="text-purple-200 block">心願專款</span>
-              <strong class="text-purple-300">NT$ <span id="parentFlowWish">0</span></strong>
+              <span class="text-purple-200 block">專案與目標</span>
+              <strong class="text-purple-300">NT$ <span id="parentFlowProjects">0</span></strong>
             </div>
             <div class="bg-amber-900/40 border border-amber-500/30 rounded-lg p-1.5">
-              <span class="text-amber-200 block">出國基金</span>
-              <strong class="text-amber-300">NT$ <span id="parentFlowTravel">0</span></strong>
+              <span class="text-amber-200 block">代墊借款</span>
+              <strong class="text-amber-300">NT$ <span id="parentFlowDebt">0</span></strong>
             </div>
             <div class="bg-rose-900/40 border border-rose-500/30 rounded-lg p-1.5">
               <span class="text-rose-200 block">日常開銷</span>
@@ -375,7 +331,7 @@
         <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <i class="fa-solid fa-key text-blue-600"></i> 家長安全密碼
         </h3>
-        <p class="text-[11px] text-slate-500">若需強化管理權限安全，可在此隨時自訂專屬的 4 位數 PIN 碼。</p>
+        <p class="text-[11px] text-slate-500">預設 PIN 碼為 1379，可在此自訂修改。</p>
         <button onclick="openChangePinModal()" class="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 active:scale-95 transition-all">
           更改家長 PIN 碼
         </button>
@@ -384,7 +340,7 @@
       <!-- Firebase Cloud Backend Status -->
       <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
         <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-          <i class="fa-solid fa-fire text-amber-500"></i> Firebase Cloud Firestore 狀態
+          <i class="fa-solid fa-fire text-amber-500"></i> Firebase 雲端狀態
         </h3>
         <div class="p-3 bg-slate-50 rounded-xl space-y-1.5 text-xs">
           <div class="flex justify-between">
@@ -392,22 +348,16 @@
             <span class="font-mono font-bold text-slate-800">family-travel-e5912</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">連線模式：</span>
-            <span class="font-bold text-emerald-600">即時推播 (onSnapshot)</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">認證身分：</span>
-            <span class="font-bold text-blue-600" id="firebaseAuthStatusText">匿名安全驗證</span>
+            <span class="text-slate-500">即時連線：</span>
+            <span class="font-bold text-emerald-600">Firestore 毫秒級推播 (onSnapshot)</span>
           </div>
         </div>
-        <p class="text-[11px] text-slate-500">
-          已成功由 Google Sheets 全面升級至 Firebase Firestore，享有毫秒級雙向同步與零衝突離線存取。
-        </p>
       </div>
     </section>
 
   </main>
 
+  <!-- Bottom Navigation Bar -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-30 pb-safe shadow-lg">
     <div class="max-w-xl mx-auto px-4 h-16 flex items-center justify-around relative">
       
@@ -421,14 +371,14 @@
         <span class="text-[10px] font-bold">明細</span>
       </button>
 
-      <!-- Floating Plus Button -->
+      <!-- Center Floating Plus Button -->
       <div class="relative -top-5">
         <button onclick="openAddModal()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all border-4 border-white">
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
 
-      <!-- Logs (Parent Only in Child Mode) -->
+      <!-- Logs (Parent Only) -->
       <button onclick="switchTab('logs')" id="navBtnLogs" class="hidden flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 transition-colors">
         <i class="fa-solid fa-user-clock text-lg"></i>
         <span class="text-[10px] font-bold">記錄</span>
@@ -443,7 +393,7 @@
     </div>
   </nav>
 
-  <!-- Add Transaction Modal -->
+  <!-- Add Transaction Modal (Unified Types: Expense / Income / Project / Debt) -->
   <div id="addModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
     <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
       
@@ -457,19 +407,19 @@
         </button>
       </div>
 
-      <!-- Type Selector Buttons -->
-      <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl">
-        <button type="button" onclick="setType('expense')" id="typeBtnExpense" class="py-2 text-xs font-bold rounded-lg bg-white text-rose-600 shadow-xs transition-all">
+      <!-- 4 Core Transaction Types -->
+      <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl">
+        <button type="button" onclick="setType('expense')" id="typeBtnExpense" class="py-2 text-[11px] font-bold rounded-lg bg-white text-rose-600 shadow-xs transition-all">
           日常支出
         </button>
-        <button type="button" onclick="setType('income')" id="typeBtnIncome" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition-all">
+        <button type="button" onclick="setType('income')" id="typeBtnIncome" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
           收入
         </button>
-        <button type="button" onclick="setType('wishlist')" id="typeBtnWishlist" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition-all">
-          存心願
+        <button type="button" onclick="setType('project')" id="typeBtnProject" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
+          存入專案
         </button>
-        <button type="button" onclick="setType('travel')" id="typeBtnTravel" class="py-2 text-xs font-bold rounded-lg text-slate-600 transition-all">
-          存出國
+        <button type="button" onclick="setType('debt')" id="typeBtnDebt" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
+          借款/還款
         </button>
       </div>
 
@@ -483,7 +433,55 @@
           </div>
         </div>
 
-        <div>
+        <!-- Debt Mode: Borrow from parent vs Repay parent -->
+        <div id="wrapperDebtSubAction" class="hidden space-y-1.5 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <label class="block text-xs font-bold text-amber-900">借貸性質選擇</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-amber-300 bg-white cursor-pointer text-xs font-bold text-amber-800 has-[:checked]:bg-amber-600 has-[:checked]:text-white transition-all shadow-xs">
+              <input type="radio" name="txDebtSubAction" value="borrow" checked class="hidden" onchange="updateDebtLabels()">
+              <i class="fa-solid fa-hand-holding-dollar"></i> 🤝 向父母借款 (預支)
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-amber-300 bg-white cursor-pointer text-xs font-bold text-amber-800 has-[:checked]:bg-emerald-600 has-[:checked]:text-white transition-all shadow-xs">
+              <input type="radio" name="txDebtSubAction" value="repay" class="hidden" onchange="updateDebtLabels()">
+              <i class="fa-solid fa-money-bill-transfer"></i> 💸 償還欠款
+            </label>
+          </div>
+          <p class="text-[10px] text-amber-700 mt-1" id="debtHelpText">
+            💡 借款會增加你可支配的自由現金，但會列入待還負債。
+          </p>
+        </div>
+
+        <!-- Project Selector for 'project' type -->
+        <div id="wrapperProjectSelector" class="hidden space-y-2 p-3 bg-purple-50 rounded-2xl border border-purple-200">
+          <label class="block text-xs font-bold text-purple-900">選擇存入的專案或心願目標</label>
+          <select id="txTargetProjectSelect" onchange="handleTargetProjectChange()" class="w-full text-xs font-bold p-2.5 rounded-xl border border-purple-300 bg-white text-slate-800">
+          </select>
+
+          <!-- Branch selector if project has branches (like Travel) -->
+          <div id="txTargetBranchWrapper" class="hidden pt-1">
+            <label class="block text-[11px] font-bold text-purple-800 mb-1">存入細項分支</label>
+            <select id="txTargetBranchSelect" class="w-full text-xs font-bold p-2 rounded-xl border border-purple-200 bg-white text-slate-700">
+            </select>
+          </div>
+
+          <!-- Sponsor Type for Project (Child vs Parent) -->
+          <div class="pt-1 space-y-1">
+            <label class="block text-[11px] font-bold text-purple-800">存入資金性質</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-purple-200 bg-white cursor-pointer text-xs font-bold text-purple-700 has-[:checked]:bg-purple-600 has-[:checked]:text-white transition-all shadow-xs">
+                <input type="radio" name="txSponsorType" value="self" checked class="hidden">
+                <i class="fa-solid fa-child"></i> 🎒 小孩自存
+              </label>
+              <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-purple-200 bg-white cursor-pointer text-xs font-bold text-purple-700 has-[:checked]:bg-emerald-600 has-[:checked]:text-white transition-all shadow-xs">
+                <input type="radio" name="txSponsorType" value="parent" class="hidden">
+                <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Selector (for Expense and Income) -->
+        <div id="wrapperCategory">
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600">選擇分類</label>
             <button type="button" onclick="openCategoryManagerModal()" class="text-[11px] font-bold text-blue-600 hover:text-blue-800">
@@ -494,13 +492,7 @@
           </select>
         </div>
 
-        <div id="txTravelBranchWrapper" class="hidden">
-          <label class="block text-xs font-bold text-amber-700 mb-1">存入出國細項分支</label>
-          <select id="txTravelBranchSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 text-slate-700">
-          </select>
-        </div>
-
-        <!-- Funding Source for Income -->
+        <!-- Funding Source for Income (Parent vs External) -->
         <div id="wrapperIncomeFundingSource" class="hidden space-y-1">
           <label class="block text-xs font-bold text-slate-600">資金來源屬性</label>
           <div class="grid grid-cols-2 gap-2">
@@ -515,35 +507,21 @@
           </div>
         </div>
 
-        <!-- Sponsor Type for Wishlist & Travel -->
-        <div id="wrapperSponsorType" class="hidden space-y-1">
-          <label class="block text-xs font-bold text-slate-600">存入資金性質</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-purple-50 has-[:checked]:border-purple-400 has-[:checked]:text-purple-700 transition-all">
-              <input type="radio" name="txSponsorType" value="self" checked class="hidden">
-              <i class="fa-solid fa-child"></i> 🎒 小孩自存
-            </label>
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
-              <input type="radio" name="txSponsorType" value="parent" class="hidden">
-              <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
-            </label>
-          </div>
-        </div>
-
         <!-- Description Field with Fill Category & Quick Chips -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-xs font-bold text-slate-600">項目備註 / 說明</label>
             <button type="button" onclick="fillCategoryNameToDesc()" class="text-[11px] font-bold text-blue-600 hover:text-blue-800">
-              <i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 帶入分類名稱
+              <i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 帶入標籤名稱
             </button>
           </div>
-          <input type="text" id="txDescription" list="descHistoryList" placeholder="如：放學點心、捷運加值、零用錢..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input type="text" id="txDescription" list="descHistoryList" placeholder="如：放學點心、借款買參考書、還款..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
           <datalist id="descHistoryList"></datalist>
 
           <div class="mt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5" id="quickChipsContainer"></div>
         </div>
 
+        <!-- Needs vs Wants (for Expense) -->
         <div id="wrapperNeedWant" class="space-y-1">
           <label class="block text-xs font-bold text-slate-600">消費動機</label>
           <div class="grid grid-cols-2 gap-2">
@@ -568,6 +546,98 @@
         </button>
 
       </form>
+    </div>
+  </div>
+
+  <!-- Project Manager Modal (Now open to kids & parents: handles both Wishes and Travel projects) -->
+  <div id="projectManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-2 border-slate-100">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800">🎯 專案與心願清單管理</h3>
+          <p class="text-[10px] text-slate-400">支援一般目標或多分支旅遊專案</p>
+        </div>
+        <button onclick="closeProjectManagerModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="bg-purple-50 p-3 rounded-xl border border-purple-200 flex justify-between items-center text-xs">
+        <div>
+          <span class="text-purple-700 font-bold block" id="modalProjectCountText">共 0 項專案</span>
+          <span class="text-[10px] text-purple-600">累計全部專案總需求</span>
+        </div>
+        <span class="text-base font-black text-purple-900" id="modalProjectTotal">NT$ 0</span>
+      </div>
+
+      <!-- Add or Edit Project Form -->
+      <form onsubmit="handleSaveProject(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-slate-700" id="projectFormTitle">新增專案或心願</span>
+          <button type="button" id="btnCancelProjectEdit" onclick="cancelProjectEdit()" class="hidden text-[10px] text-rose-600 font-bold">取消修改</button>
+        </div>
+        <input type="hidden" id="editProjectId" value="">
+        
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text" id="newProjectName" placeholder="專案名稱 (如: 日本遊、耳機)" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
+          <select id="newProjectType" onchange="toggleProjectBranchInput(this.value)" class="text-xs p-2 rounded-lg border border-slate-200 bg-white font-bold text-slate-700">
+            <option value="wish">🎁 一般個人心願</option>
+            <option value="travel">✈️ 旅遊/多分支專案</option>
+          </select>
+        </div>
+
+        <div id="projectSinglePriceWrapper">
+          <input type="number" id="newProjectPrice" min="1" step="1" inputmode="numeric" placeholder="預算總金額 (NT$)" class="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white">
+        </div>
+
+        <p id="travelAutoCalcNotice" class="hidden text-[10px] text-amber-700 bg-amber-50 p-1.5 rounded border border-amber-200">
+          💡 旅遊/多分支專案總預算將在儲存後由「細項分支」自動加總。
+        </p>
+
+        <button type="submit" id="btnSaveProjectSubmit" class="w-full py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+          + 儲存專案目標
+        </button>
+      </form>
+
+      <!-- Projects List -->
+      <div id="projectsItemsList" class="space-y-2 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Branch Sub-Manager Modal (For editing sub-branches of a specific project) -->
+  <div id="branchManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-2 border-slate-100">
+        <div>
+          <h3 class="text-sm font-bold text-slate-800" id="branchModalProjectTitle">✈️ 細項分支管理</h3>
+          <p class="text-[10px] text-slate-400">總費用自動由所有細項分支即時加總</p>
+        </div>
+        <button onclick="closeBranchManagerModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 flex justify-between items-center text-xs">
+        <span class="text-amber-800 font-bold">細項分支加總總預算</span>
+        <span class="text-sm font-black text-amber-950" id="branchModalAutoPrice">NT$ 0</span>
+      </div>
+
+      <!-- Add or Edit Branch Form -->
+      <form onsubmit="handleSaveBranch(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <input type="hidden" id="editBranchIndex" value="-1">
+        <div class="grid grid-cols-2 gap-2">
+          <input type="text" id="newBranchName" placeholder="分支 (如: 機票住宿)" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
+          <input type="number" id="newBranchPrice" min="1" step="1" inputmode="numeric" placeholder="子預算" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
+        </div>
+        <div class="flex gap-2">
+          <button type="button" id="btnCancelSubBranchEdit" onclick="cancelBranchEdit()" class="hidden py-1 px-3 border border-slate-300 rounded-lg text-xs font-bold text-slate-600">取消</button>
+          <button type="submit" id="btnSaveBranchSubmit" class="flex-1 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
+            + 儲存分支
+          </button>
+        </div>
+      </form>
+
+      <div id="subBranchesList" class="space-y-2 pr-1 max-h-48 overflow-y-auto"></div>
     </div>
   </div>
 
@@ -597,95 +667,7 @@
     </div>
   </div>
 
-  <!-- Wishlist Manager Modal (Now open to both kids & parents with in-place edit) -->
-  <div id="wishlistManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
-    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b pb-2 border-slate-100">
-        <div>
-          <h3 class="text-sm font-bold text-slate-800">🎯 多心願清單管理</h3>
-          <p class="text-[10px] text-slate-400">自訂心願目標、預算與儲蓄進度</p>
-        </div>
-        <button onclick="closeWishlistManagerModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <div class="bg-purple-50 p-3 rounded-xl border border-purple-200 flex justify-between items-center text-xs">
-        <div>
-          <span class="text-purple-700 font-bold block" id="modalWishlistCountText">共 1 項心願</span>
-          <span class="text-[10px] text-purple-600">累計全部心願總需求</span>
-        </div>
-        <span class="text-base font-black text-purple-900" id="modalWishlistTotal">NT$ 0</span>
-      </div>
-
-      <!-- Add or Edit Wish Form -->
-      <form onsubmit="handleSaveWishItem(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <div class="flex justify-between items-center">
-          <span class="text-xs font-bold text-slate-700" id="wishFormTitle">新增心願目標</span>
-          <button type="button" id="btnCancelWishEdit" onclick="cancelWishEdit()" class="hidden text-[10px] text-rose-600 font-bold">取消修改</button>
-        </div>
-        <input type="hidden" id="editWishId" value="">
-        <div class="grid grid-cols-2 gap-2">
-          <input type="text" id="newWishName" placeholder="心願名稱 (如: 球鞋)" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
-          <input type="number" id="newWishPrice" min="1" step="1" inputmode="numeric" placeholder="預算金額" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
-        </div>
-        <button type="submit" id="btnSaveWishSubmit" class="w-full py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
-          + 新增心願
-        </button>
-      </form>
-
-      <div id="wishlistItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1"></div>
-    </div>
-  </div>
-
-  <!-- Travel Branch Modal (Now open to both kids & parents with in-place edit) -->
-  <div id="travelBranchModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
-    <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b pb-2 border-slate-100">
-        <div>
-          <h3 class="text-sm font-bold text-slate-800">✈️ 出國專款細項分支管理</h3>
-          <p class="text-[10px] text-slate-400">總費用自動由所有細項分支加總</p>
-        </div>
-        <button onclick="closeTravelBranchModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
-        <label class="text-xs font-bold text-amber-900 block">出國專案名稱</label>
-        <div class="flex gap-2">
-          <input type="text" id="travelMainNameInput" class="flex-1 text-xs p-2 rounded-lg border border-amber-300 bg-white font-bold text-slate-800">
-          <button onclick="saveTravelMainInfo()" class="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
-            更新名稱
-          </button>
-        </div>
-        <div class="flex justify-between items-center text-xs pt-1 border-t border-amber-200/60">
-          <span class="text-amber-800 font-bold">細項分支加總總預算</span>
-          <span class="text-sm font-black text-amber-950" id="travelMainAutoPrice">NT$ 0</span>
-        </div>
-      </div>
-
-      <!-- Add or Edit Branch Form -->
-      <form onsubmit="handleSaveBranchItem(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <div class="flex justify-between items-center">
-          <span class="text-xs font-bold text-slate-700" id="branchFormTitle">新增細項分支 (如: 機票住宿、伴手禮)</span>
-          <button type="button" id="btnCancelBranchEdit" onclick="cancelBranchEdit()" class="hidden text-[10px] text-rose-600 font-bold">取消修改</button>
-        </div>
-        <input type="hidden" id="editBranchIndex" value="-1">
-        <div class="grid grid-cols-2 gap-2">
-          <input type="text" id="newBranchName" placeholder="分支名稱" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
-          <input type="number" id="newBranchPrice" min="1" step="1" inputmode="numeric" placeholder="子預算" required class="text-xs p-2 rounded-lg border border-slate-200 bg-white">
-        </div>
-        <button type="submit" id="btnSaveBranchSubmit" class="w-full py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
-          + 新增分支 (自動重算總額)
-        </button>
-      </form>
-
-      <div id="travelBranchItemsList" class="max-h-52 overflow-y-auto space-y-2 pr-1"></div>
-    </div>
-  </div>
-
-  <!-- Category Manager Modal (Parent Authenticated) -->
+  <!-- Category Manager Modal -->
   <div id="categoryManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b pb-2 border-slate-100">
@@ -698,11 +680,9 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold">
-        <button onclick="switchCategoryScope('expense')" id="catScopeExpense" class="py-1.5 rounded-lg bg-white text-blue-700 shadow-xs">支出</button>
-        <button onclick="switchCategoryScope('income')" id="catScopeIncome" class="py-1.5 rounded-lg text-slate-600">收入</button>
-        <button onclick="switchCategoryScope('wishlist')" id="catScopeWishlist" class="py-1.5 rounded-lg text-slate-600">心願</button>
-        <button onclick="switchCategoryScope('travel')" id="catScopeTravel" class="py-1.5 rounded-lg text-slate-600">出國</button>
+      <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold">
+        <button onclick="switchCategoryScope('expense')" id="catScopeExpense" class="py-1.5 rounded-lg bg-white text-blue-700 shadow-xs">支出分類</button>
+        <button onclick="switchCategoryScope('income')" id="catScopeIncome" class="py-1.5 rounded-lg text-slate-600">收入分類</button>
       </div>
 
       <form onsubmit="handleSaveCategory(event)" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -715,7 +695,7 @@
           <button type="button" onclick="toggleEmojiPicker()" id="selectedCatEmojiBtn" class="w-10 h-9 rounded-lg border border-slate-300 bg-white text-base flex items-center justify-center shadow-xs">
             🏷️
           </button>
-          <input type="text" id="inputCatName" placeholder="分類名稱 (如: 珍珠奶茶)" required class="flex-1 text-xs p-2 rounded-lg border border-slate-200 bg-white">
+          <input type="text" id="inputCatName" placeholder="分類名稱" required class="flex-1 text-xs p-2 rounded-lg border border-slate-200 bg-white">
         </div>
 
         <div id="emojiPalette" class="hidden grid grid-cols-8 gap-1.5 p-2 bg-white rounded-lg border border-slate-200 text-lg max-h-32 overflow-y-auto"></div>
@@ -726,123 +706,6 @@
       </form>
 
       <div id="categoryManagerList" class="max-h-48 overflow-y-auto space-y-1.5 pr-1"></div>
-    </div>
-  </div>
-
-  <!-- Edit Transaction Modal (Parent Authenticated) -->
-  <div id="editTxModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
-    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-3.5 shadow-2xl">
-      <div class="flex items-center justify-between border-b pb-2 border-slate-100">
-        <div class="flex items-center gap-2">
-          <span class="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">🛡️ 家長更正</span>
-          <h3 class="text-sm font-bold text-slate-800">修改收支紀錄</h3>
-        </div>
-        <button onclick="closeEditTxModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <form onsubmit="handleSaveEditedTx(event)" class="space-y-3">
-        <input type="hidden" id="editTxId">
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">收支類型</label>
-          <div class="grid grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl">
-            <button type="button" onclick="setEditType('expense')" id="editTypeBtnExpense" class="py-1.5 text-xs font-bold rounded-lg transition-all">日常支出</button>
-            <button type="button" onclick="setEditType('income')" id="editTypeBtnIncome" class="py-1.5 text-xs font-bold rounded-lg transition-all">收入</button>
-            <button type="button" onclick="setEditType('wishlist')" id="editTypeBtnWishlist" class="py-1.5 text-xs font-bold rounded-lg transition-all">存心願</button>
-            <button type="button" onclick="setEditType('travel')" id="editTypeBtnTravel" class="py-1.5 text-xs font-bold rounded-lg transition-all">存出國</button>
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">金額 (NT$)</label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">NT$</span>
-            <input type="number" id="editTxAmount" min="1" step="1" inputmode="numeric" required class="w-full pl-11 pr-3 py-2.5 text-lg font-bold rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-bold text-slate-600">分類標籤</label>
-            <button type="button" onclick="fillCategoryNameToEditDesc()" class="text-[11px] font-bold text-blue-600 hover:text-blue-800">
-              <i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 帶入分類名稱
-            </button>
-          </div>
-          <select id="editTxCategory" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-700">
-          </select>
-        </div>
-
-        <div id="editTxTravelBranchWrapper" class="hidden">
-          <label class="block text-xs font-bold text-amber-700 mb-1">存入出國細項分支</label>
-          <select id="editTxTravelBranchSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 text-slate-700">
-          </select>
-        </div>
-
-        <!-- Edit Funding Source for Income -->
-        <div id="editWrapperIncomeFundingSource" class="hidden space-y-1">
-          <label class="block text-xs font-bold text-slate-600">資金來源屬性</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
-              <input type="radio" name="editTxFundingSource" id="editFundingParent" value="parent" class="hidden">
-              <i class="fa-solid fa-house-user"></i> 👨‍👩‍👧 父母提供
-            </label>
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
-              <input type="radio" name="editTxFundingSource" id="editFundingExt" value="external" class="hidden">
-              <i class="fa-solid fa-coins"></i> 🧧 自力 / 長輩外部
-            </label>
-          </div>
-        </div>
-
-        <!-- Edit Sponsor Type for Wishlist & Travel -->
-        <div id="editWrapperSponsorType" class="hidden space-y-1">
-          <label class="block text-xs font-bold text-slate-600">存入資金性質</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-purple-50 has-[:checked]:border-purple-400 has-[:checked]:text-purple-700 transition-all">
-              <input type="radio" name="editTxSponsorType" id="editSponsorSelf" value="self" class="hidden">
-              <i class="fa-solid fa-child"></i> 🎒 小孩自存
-            </label>
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
-              <input type="radio" name="editTxSponsorType" id="editSponsorParent" value="parent" class="hidden">
-              <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">項目備註 / 說明</label>
-          <input type="text" id="editTxDescription" required placeholder="項目說明" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-
-        <div id="editWrapperNeedWant" class="space-y-1">
-          <label class="block text-xs font-bold text-slate-600">消費動機</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
-              <input type="radio" name="editTxIntent" id="editTxIntentNeed" value="需要" class="hidden">
-              <i class="fa-solid fa-check-circle"></i> 需要 (必要支出)
-            </label>
-            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-rose-50 has-[:checked]:border-rose-400 has-[:checked]:text-rose-700 transition-all">
-              <input type="radio" name="editTxIntent" id="editTxIntentWant" value="想要" class="hidden">
-              <i class="fa-solid fa-heart"></i> 想要 (休閒享受)
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">記帳日期</label>
-          <input type="date" id="editTxDate" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 pt-2">
-          <button type="button" onclick="closeEditTxModal()" class="py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">
-            取消
-          </button>
-          <button type="submit" class="py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 active:scale-95 transition-all">
-            儲存更正
-          </button>
-        </div>
-      </form>
     </div>
   </div>
 
@@ -879,15 +742,7 @@
     </div>
   </div>
 
-  <!-- Toast Notification Box -->
-  <div id="toastBox" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 hidden transition-all">
-    <div id="toastContent" class="px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold text-white flex items-center gap-2">
-      <span id="toastIcon"></span>
-      <span id="toastText"></span>
-    </div>
-  </div>
-
-  <!-- Child Mode Income Integrity Warning Modal -->
+  <!-- Income Integrity Alert Modal (for Child Mode) -->
   <div id="incomeIntegrityModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-3.5 shadow-2xl text-center">
       <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center text-xl">
@@ -912,6 +767,15 @@
     </div>
   </div>
 
+  <!-- Toast Notification Box -->
+  <div id="toastBox" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 hidden transition-all">
+    <div id="toastContent" class="px-4 py-2.5 rounded-xl shadow-lg text-xs font-bold text-white flex items-center gap-2">
+      <span id="toastIcon"></span>
+      <span id="toastText"></span>
+    </div>
+  </div>
+
+  <!-- Firebase Script Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -925,7 +789,7 @@
       enableIndexedDbPersistence 
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Firebase Configuration from your project: family-travel-e5912
+    // Firebase Configuration from project family-travel-e5912
     const firebaseConfig = {
       apiKey: "AIzaSyCDuEufPq4cICQv4_UYHPtE3k8pMqknLeY",
       authDomain: "family-travel-e5912.firebaseapp.com",
@@ -936,27 +800,17 @@
       measurementId: "G-MXKML1NDKH"
     };
 
-    // Initialize App & Auth & Firestore
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Enable Offline Persistence
     try {
-      enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code === 'failed-precondition') {
-          console.warn('Persistence failed: Multiple tabs open');
-        } else if (err.code === 'unimplemented') {
-          console.warn('Persistence not supported by browser');
-        }
-      });
-    } catch (e) {
-      console.warn('IndexedDB persistence setup error:', e);
-    }
+      enableIndexedDbPersistence(db).catch(() => {});
+    } catch (e) {}
 
-    const STORAGE_KEY_PIN = 'teen_finance_parent_pin_v4';
-    const STORAGE_KEY_ROLE = 'teen_finance_current_role_v4';
-    const STORAGE_KEY_RECENT_DESC = 'teen_finance_recent_desc_v4';
+    const STORAGE_KEY_PIN = 'teen_finance_parent_pin_v5';
+    const STORAGE_KEY_ROLE = 'teen_finance_current_role_v5';
+    const STORAGE_KEY_RECENT_DESC = 'teen_finance_recent_desc_v5';
 
     const safeStorage = {
       getItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
@@ -966,11 +820,7 @@
 
     let currentUser = null;
     let currentRole = safeStorage.getItem(STORAGE_KEY_ROLE) || 'child';
-    let savedStoredPin = safeStorage.getItem(STORAGE_KEY_PIN);
-    if (!savedStoredPin || savedStoredPin === '1234') {
-      savedStoredPin = '1379';
-      safeStorage.setItem(STORAGE_KEY_PIN, '1379');
-    }
+    let savedStoredPin = safeStorage.getItem(STORAGE_KEY_PIN) || '1379';
     let parentPin = savedStoredPin;
 
     let transactions = [];
@@ -979,26 +829,38 @@
     let chartInstance = null;
     let chartMode = 'asset';
 
-    // Wishlist Structure
-    let wishlistItems = [
-      { id: 'wish_1', name: '降噪藍牙耳機', targetPrice: 3200 },
-      { id: 'wish_2', name: '專業慢跑鞋', targetPrice: 2800 }
+    // Unified Projects Pool (Integrating wishes and travel into flexible projects)
+    let projects = [
+      {
+        id: 'proj_travel_japan',
+        name: '🇯🇵 日本親子遊',
+        type: 'travel',
+        targetPrice: 25000,
+        branches: [
+          { id: 'br_1', name: '✈️ 機票住宿', targetPrice: 15000 },
+          { id: 'br_2', name: '🎫 環球影城門票交通', targetPrice: 5000 },
+          { id: 'br_3', name: '🍜 當地美食與自由花費', targetPrice: 3000 },
+          { id: 'br_4', name: '🎁 伴手禮與紀念品', targetPrice: 2000 }
+        ]
+      },
+      {
+        id: 'proj_wish_earphones',
+        name: '降噪藍牙耳機',
+        type: 'wish',
+        targetPrice: 3200,
+        branches: []
+      },
+      {
+        id: 'proj_wish_shoes',
+        name: '專業慢跑鞋',
+        type: 'wish',
+        targetPrice: 2800,
+        branches: []
+      }
     ];
-    let activeWishId = 'wish_1';
+    let activeProjectId = 'proj_travel_japan';
+    let currentManagingBranchProjectId = null;
 
-    // Travel Structure
-    let travelConfig = {
-      name: '🇯🇵 日本親子遊',
-      targetPrice: 25000,
-      branches: [
-        { id: 'br_1', name: '✈️ 機票住宿', targetPrice: 15000 },
-        { id: 'br_2', name: '🎫 環球影城門票交通', targetPrice: 5000 },
-        { id: 'br_3', name: '🍜 當地美食與自由花費', targetPrice: 3000 },
-        { id: 'br_4', name: '🎁 伴手禮與紀念品', targetPrice: 2000 }
-      ]
-    };
-
-    // Category Configuration
     let categories = {
       expense: [
         { name: '外食點心 (午餐/飲料)', icon: '🍱' },
@@ -1014,12 +876,6 @@
         { name: '好習慣/考試進步獎勵金', icon: '🎯' },
         { name: '過年三節紅包', icon: '🧧' },
         { name: '其他收入', icon: '✨' }
-      ],
-      wishlist: [
-        { name: '轉存心願儲蓄專款', icon: '🎁' }
-      ],
-      travel: [
-        { name: '轉存出國旅遊基金', icon: '✈️' }
       ]
     };
 
@@ -1032,21 +888,19 @@
     const EMOJI_PALETTE = [
       '🍱','🧋','🍕','🍔','🍦','☕','🚌','🚇','🚲','⛽','✏️','📚','💻','🎧','🎮','📱',
       '👟','👕','⚽','🏸','🎬','🎤','🎁','🧧','💵','🧹','🎯','✨','✈️','🏖️','🎫','🍜',
-      '🐕','🐱','💊','🩺','📌','💡','🔥','⭐'
+      '🐕','🐱','💊','🩺','📌','💡','🔥','⭐','🤝','💸'
     ];
 
-    // Helper: Normalize transaction type
     function normalizeType(type) {
       if (!type) return 'expense';
       const t = String(type).trim().toLowerCase();
       if (t === 'income' || t === '收入') return 'income';
       if (t === 'expense' || t === '日常支出' || t === '支出') return 'expense';
-      if (t === 'wishlist' || t === '存心願' || t === '心願') return 'wishlist';
-      if (t === 'travel' || t === '存出國' || t === '出國') return 'travel';
+      if (t === 'project' || t === 'wishlist' || t === 'travel' || t === '存入專案' || t === '存心願' || t === '存出國') return 'project';
+      if (t === 'debt' || t === 'borrow' || t === 'repay' || t === '借還款') return 'debt';
       return t;
     }
 
-    // Helper: Check if funding is provided by parents
     function isParentFunding(tx) {
       if (tx.fundingSource === 'external') return false;
       if (tx.fundingSource === 'parent') return true;
@@ -1056,46 +910,36 @@
       return true;
     }
 
-    // Helper: Check if wishlist/travel was sponsored by parents
     function isParentSponsor(tx) {
       return tx.sponsorType === 'parent' || tx.sponsorType === '家長' || tx.sponsorType === '父母贊助';
     }
 
-    // Helper: Check if date string belongs to current calendar month
     function isCurrentMonth(dateStr) {
       if (!dateStr) return false;
       const now = new Date();
       const curYear = now.getFullYear();
       const curMonth = now.getMonth() + 1;
-
       const str = String(dateStr).trim();
       const match = str.match(/^(\d{4})[-/.](\d{1,2})/);
       if (match) {
-        const y = parseInt(match[1], 10);
-        const m = parseInt(match[2], 10);
-        return y === curYear && m === curMonth;
+        return parseInt(match[1], 10) === curYear && parseInt(match[2], 10) === curMonth;
       }
       const d = new Date(str);
-      if (!isNaN(d.getTime())) {
-        return d.getFullYear() === curYear && (d.getMonth() + 1) === curMonth;
-      }
-      return false;
+      return !isNaN(d.getTime()) && d.getFullYear() === curYear && (d.getMonth() + 1) === curMonth;
     }
 
+    // Firebase Auth & Listeners
     async function initAuthAndFirestore() {
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           currentUser = user;
-          const authStatusEl = document.getElementById('firebaseAuthStatusText');
-          if (authStatusEl) authStatusEl.textContent = `已驗證 (UID: ${user.uid.slice(0, 8)}...)`;
           updateConnectionBadge(true);
           listenToFirestoreCollections();
         } else {
           try {
             await signInAnonymously(auth);
           } catch (err) {
-            console.error('Anonymous Sign-In Error:', err);
-            updateConnectionBadge(false, '驗證失敗，離線快取中');
+            updateConnectionBadge(false, '離線快取中');
           }
         }
       });
@@ -1106,58 +950,40 @@
       const txCol = collection(db, 'transactions');
       onSnapshot(txCol, (snapshot) => {
         const list = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data());
-        });
-        list.sort((a, b) => {
-          const tA = new Date(a.date || a.timestamp || 0).getTime();
-          const tB = new Date(b.date || b.timestamp || 0).getTime();
-          return tB - tA;
-        });
+        snapshot.forEach((docSnap) => list.push(docSnap.data()));
+        list.sort((a, b) => new Date(b.date || b.timestamp || 0) - new Date(a.date || a.timestamp || 0));
         transactions = list;
         refreshUI();
         updateConnectionBadge(true);
-      }, (error) => {
-        console.warn('Transactions onSnapshot error:', error);
-        updateConnectionBadge(false);
-      });
+      }, () => updateConnectionBadge(false));
 
-      // 2. Configs Listener (Wishlist, Travel, Categories)
+      // 2. Configs Listener (Projects & Categories)
       const configCol = collection(db, 'configs');
       onSnapshot(configCol, (snapshot) => {
         snapshot.forEach((docSnap) => {
           const id = docSnap.id;
           const data = docSnap.data();
-          if (id === 'wishlist' && data.items) {
-            wishlistItems = data.items;
-            if (data.activeWishId) activeWishId = data.activeWishId;
-            renderActiveWishSelect();
-            renderWishlistItemsList();
-          } else if (id === 'travel' && data.branches) {
-            travelConfig = data;
-            renderTravelBranchesList();
+          if (id === 'projects' && data.projects) {
+            projects = data.projects;
+            if (data.activeProjectId) activeProjectId = data.activeProjectId;
+            renderActiveProjectSelect();
+            renderProjectsListModal();
           } else if (id === 'categories' && data.categories) {
             categories = data.categories;
             renderCategorySelect();
           }
         });
         refreshUI();
-      }, (error) => {
-        console.warn('Configs onSnapshot error:', error);
       });
 
       // 3. Audit Logs Listener
       const logsCol = collection(db, 'audit_logs');
       onSnapshot(logsCol, (snapshot) => {
         const list = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data());
-        });
+        snapshot.forEach((docSnap) => list.push(docSnap.data()));
         list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         auditLogs = list.slice(0, 100);
         renderAuditLogs();
-      }, (error) => {
-        console.warn('Audit logs onSnapshot error:', error);
       });
     }
 
@@ -1165,7 +991,7 @@
       try {
         await setDoc(doc(db, 'transactions', tx.id), tx);
       } catch (e) {
-        console.error('Error saving transaction to Firestore:', e);
+        console.error('Error saving tx:', e);
       }
     }
 
@@ -1173,30 +999,19 @@
       try {
         await deleteDoc(doc(db, 'transactions', id));
       } catch (e) {
-        console.error('Error deleting transaction from Firestore:', e);
+        console.error('Error deleting tx:', e);
       }
     }
 
-    async function saveWishlistToFirestore() {
+    async function saveProjectsToFirestore() {
       try {
-        await setDoc(doc(db, 'configs', 'wishlist'), {
-          items: wishlistItems,
-          activeWishId: activeWishId,
+        await setDoc(doc(db, 'configs', 'projects'), {
+          projects: projects,
+          activeProjectId: activeProjectId,
           updatedAt: Date.now()
         });
       } catch (e) {
-        console.error('Error saving wishlist config:', e);
-      }
-    }
-
-    async function saveTravelToFirestore() {
-      try {
-        await setDoc(doc(db, 'configs', 'travel'), {
-          ...travelConfig,
-          updatedAt: Date.now()
-        });
-      } catch (e) {
-        console.error('Error saving travel config:', e);
+        console.error('Error saving projects:', e);
       }
     }
 
@@ -1207,7 +1022,7 @@
           updatedAt: Date.now()
         });
       } catch (e) {
-        console.error('Error saving categories config:', e);
+        console.error('Error saving categories:', e);
       }
     }
 
@@ -1224,9 +1039,7 @@
       };
       try {
         await setDoc(doc(db, 'audit_logs', logId), logData);
-      } catch (e) {
-        console.warn('Audit log write error:', e);
-      }
+      } catch (e) {}
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -1237,11 +1050,10 @@
       updateRoleUI();
       renderCategorySelect();
       renderQuickChips();
-      renderActiveWishSelect();
+      renderActiveProjectSelect();
       refreshUI();
       initEmojiPalette();
 
-      // Start Firebase Auth & Live Sync
       initAuthAndFirestore();
 
       window.addEventListener('online', () => updateConnectionBadge(true));
@@ -1373,8 +1185,7 @@
     }
 
     function switchTab(tabId) {
-      const views = ['viewDashboard', 'viewHistory', 'viewLogs', 'viewSettings'];
-      views.forEach(v => {
+      ['viewDashboard', 'viewHistory', 'viewLogs', 'viewSettings'].forEach(v => {
         const el = document.getElementById(v);
         if (el) el.classList.add('hidden');
       });
@@ -1403,264 +1214,269 @@
         document.getElementById('viewHistory').classList.remove('hidden');
         renderTxList();
       } else if (tabId === 'logs') {
-        if (currentRole !== 'parent') {
-          showToast('操作記錄僅家長管理模式開放', 'warning');
-          switchTab('dashboard');
-          return;
-        }
+        if (currentRole !== 'parent') return switchTab('dashboard');
         document.getElementById('viewLogs').classList.remove('hidden');
         renderAuditLogs();
       } else if (tabId === 'settings') {
-        if (currentRole !== 'parent') {
-          showToast('設定頁僅家長管理模式開放', 'warning');
-          switchTab('dashboard');
-          return;
-        }
+        if (currentRole !== 'parent') return switchTab('dashboard');
         document.getElementById('viewSettings').classList.remove('hidden');
       }
     }
 
-    function getActiveWish() {
-      return wishlistItems.find(w => w.id === activeWishId) || wishlistItems[0] || { id: 'wish_default', name: '個人心願', targetPrice: 3000 };
+    // Projects Pool Helper Functions
+    function getActiveProject() {
+      return projects.find(p => p.id === activeProjectId) || projects[0] || { id: 'default', name: '夢想目標', targetPrice: 1000, branches: [] };
     }
 
-    function getWishlistTotalBudget() {
-      if (!wishlistItems || wishlistItems.length === 0) return 0;
-      return wishlistItems.reduce((sum, w) => sum + (Number(w.targetPrice) || 0), 0);
-    }
-
-    function getTravelTotalBudget() {
-      if (!travelConfig.branches || travelConfig.branches.length === 0) {
-        return Number(travelConfig.targetPrice) || 0;
+    function getProjectBudget(p) {
+      if (p.branches && p.branches.length > 0) {
+        return p.branches.reduce((sum, b) => sum + (Number(b.targetPrice) || 0), 0);
       }
-      return travelConfig.branches.reduce((sum, b) => sum + (Number(b.targetPrice) || 0), 0);
+      return Number(p.targetPrice) || 0;
     }
 
-    function changeActiveWish(id) {
-      activeWishId = id;
-      saveWishlistToFirestore();
+    function getAllProjectsTotalBudget() {
+      return projects.reduce((sum, p) => sum + getProjectBudget(p), 0);
+    }
+
+    function changeActiveProject(id) {
+      activeProjectId = id;
+      saveProjectsToFirestore();
       refreshUI();
-      showToast(`已切換主要心願為「${getActiveWish().name}」`, 'info');
+      showToast(`已切換主要目標為「${getActiveProject().name}」`, 'info');
     }
 
-    // Wishlist Manager: Open directly to both child & parent
-    function openWishlistManagerModal() {
-      cancelWishEdit();
-      renderWishlistItemsList();
-      document.getElementById('wishlistManagerModal').classList.remove('hidden');
-    }
-
-    function closeWishlistManagerModal() {
-      cancelWishEdit();
-      document.getElementById('wishlistManagerModal').classList.add('hidden');
-      renderActiveWishSelect();
-      refreshUI();
-    }
-
-    function renderActiveWishSelect() {
-      const select = document.getElementById('activeWishSelect');
+    function renderActiveProjectSelect() {
+      const select = document.getElementById('activeProjectSelect');
       if (!select) return;
-      select.innerHTML = wishlistItems.map(w => `
-        <option value="${w.id}" ${w.id === activeWishId ? 'selected' : ''}>🎯 主目標：${escapeHtml(w.name)} (預算 NT$ ${w.targetPrice.toLocaleString()})</option>
+      select.innerHTML = projects.map(p => `
+        <option value="${p.id}" ${p.id === activeProjectId ? 'selected' : ''}>
+          ${p.type === 'travel' ? '✈️' : '🎁'} ${escapeHtml(p.name)} (預算 NT$ ${getProjectBudget(p).toLocaleString()})
+        </option>
       `).join('');
     }
 
-    function renderWishlistItemsList() {
-      const container = document.getElementById('wishlistItemsList');
-      const totalEl = document.getElementById('modalWishlistTotal');
-      const countEl = document.getElementById('modalWishlistCountText');
+    // Open Unified Project Manager
+    function openProjectManagerModal() {
+      cancelProjectEdit();
+      renderProjectsListModal();
+      document.getElementById('projectManagerModal').classList.remove('hidden');
+    }
+
+    function closeProjectManagerModal() {
+      cancelProjectEdit();
+      document.getElementById('projectManagerModal').classList.add('hidden');
+      renderActiveProjectSelect();
+      refreshUI();
+    }
+
+    function renderProjectsListModal() {
+      const container = document.getElementById('projectsItemsList');
+      const totalEl = document.getElementById('modalProjectTotal');
+      const countEl = document.getElementById('modalProjectCountText');
       if (!container) return;
 
-      const totalCost = getWishlistTotalBudget();
-      if (totalEl) totalEl.textContent = `NT$ ${totalCost.toLocaleString()}`;
-      if (countEl) countEl.textContent = `共 ${wishlistItems.length} 項心願`;
+      const totalBudget = getAllProjectsTotalBudget();
+      if (totalEl) totalEl.textContent = `NT$ ${totalBudget.toLocaleString()}`;
+      if (countEl) countEl.textContent = `共 ${projects.length} 項專案`;
 
-      if (wishlistItems.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">尚無心願目標，請在上方新增</p>';
+      if (projects.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">尚無專案目標，請在上方新增</p>';
         return;
       }
 
-      container.innerHTML = wishlistItems.map(w => {
-        const isActive = w.id === activeWishId;
+      container.innerHTML = projects.map(p => {
+        const isActive = p.id === activeProjectId;
+        const budget = getProjectBudget(p);
+        const hasBranches = p.branches && p.branches.length > 0;
+
         return `
-          <div class="flex items-center justify-between p-2.5 rounded-xl border ${isActive ? 'bg-purple-50 border-purple-300' : 'bg-slate-50 border-slate-200'}">
-            <div class="flex-1 min-w-0 pr-2">
-              <div class="flex items-center gap-1.5">
-                <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(w.name)}</h5>
-                ${isActive ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-600 text-white font-bold whitespace-nowrap">主目標</span>' : ''}
+          <div class="p-3 rounded-2xl border ${isActive ? 'bg-purple-50 border-purple-300' : 'bg-slate-50 border-slate-200'} space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex-1 min-w-0 pr-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs font-bold text-slate-800 truncate">${p.type === 'travel' ? '✈️' : '🎁'} ${escapeHtml(p.name)}</span>
+                  ${isActive ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-purple-600 text-white font-bold whitespace-nowrap">主目標</span>' : ''}
+                </div>
+                <span class="text-[11px] text-purple-700 font-bold block mt-0.5">預算 NT$ ${budget.toLocaleString()} ${hasBranches ? `(${p.branches.length} 個細項分支)` : ''}</span>
               </div>
-              <span class="text-[11px] text-purple-700 font-bold">預算 NT$ ${w.targetPrice.toLocaleString()}</span>
-            </div>
-            <div class="flex items-center gap-1">
-              ${!isActive ? `
-                <button type="button" onclick="setActiveWishDirect('${w.id}')" class="px-2 py-1 text-[10px] font-bold bg-white text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50 whitespace-nowrap">
-                  設為主目標
+              <div class="flex items-center gap-1">
+                ${!isActive ? `
+                  <button type="button" onclick="setActiveProjectDirect('${p.id}')" class="px-2 py-1 text-[10px] font-bold bg-white text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-50 whitespace-nowrap">
+                    設為主目標
+                  </button>
+                ` : ''}
+                <button type="button" onclick="startEditProject('${p.id}')" class="p-1 text-slate-400 hover:text-blue-600">
+                  <i class="fa-solid fa-pen text-xs"></i>
                 </button>
-              ` : ''}
-              <button type="button" onclick="startEditWish('${w.id}')" class="text-slate-400 hover:text-blue-600 p-1" title="修改心願">
-                <i class="fa-solid fa-pen text-xs"></i>
-              </button>
-              <button type="button" onclick="deleteWishItem('${w.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="刪除心願">
-                <i class="fa-regular fa-trash-can text-xs"></i>
-              </button>
+                <button type="button" onclick="deleteProject('${p.id}')" class="p-1 text-slate-400 hover:text-rose-600">
+                  <i class="fa-regular fa-trash-can text-xs"></i>
+                </button>
+              </div>
             </div>
+
+            ${p.type === 'travel' || hasBranches ? `
+              <div class="pt-1.5 border-t border-purple-100 flex items-center justify-between text-xs">
+                <span class="text-[10px] text-slate-500 font-medium">細項分支 (${p.branches ? p.branches.length : 0})</span>
+                <button type="button" onclick="openBranchManagerModal('${p.id}')" class="text-[11px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                  <i class="fa-solid fa-sitemap mr-1"></i> 管理分支 (自動加總)
+                </button>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
     }
 
-    function setActiveWishDirect(id) {
-      changeActiveWish(id);
-      renderWishlistItemsList();
-      renderActiveWishSelect();
+    function toggleProjectBranchInput(type) {
+      const priceWrapper = document.getElementById('projectSinglePriceWrapper');
+      const notice = document.getElementById('travelAutoCalcNotice');
+      if (type === 'travel') {
+        if (priceWrapper) priceWrapper.classList.add('hidden');
+        if (notice) notice.classList.remove('hidden');
+      } else {
+        if (priceWrapper) priceWrapper.classList.remove('hidden');
+        if (notice) notice.classList.add('hidden');
+      }
     }
 
-    function startEditWish(id) {
-      const item = wishlistItems.find(w => w.id === id);
-      if (!item) return;
-      document.getElementById('wishFormTitle').textContent = '修改心願目標';
-      document.getElementById('editWishId').value = item.id;
-      document.getElementById('newWishName').value = item.name;
-      document.getElementById('newWishPrice').value = item.targetPrice;
-      document.getElementById('btnCancelWishEdit').classList.remove('hidden');
-      document.getElementById('btnSaveWishSubmit').textContent = '儲存修改';
+    function setActiveProjectDirect(id) {
+      changeActiveProject(id);
+      renderProjectsListModal();
     }
 
-    function cancelWishEdit() {
-      const titleEl = document.getElementById('wishFormTitle');
-      const editIdEl = document.getElementById('editWishId');
-      const nameEl = document.getElementById('newWishName');
-      const priceEl = document.getElementById('newWishPrice');
-      const btnCancel = document.getElementById('btnCancelWishEdit');
-      const btnSubmit = document.getElementById('btnSaveWishSubmit');
-      
-      if (titleEl) titleEl.textContent = '新增心願目標';
-      if (editIdEl) editIdEl.value = '';
-      if (nameEl) nameEl.value = '';
-      if (priceEl) priceEl.value = '';
-      if (btnCancel) btnCancel.classList.add('hidden');
-      if (btnSubmit) btnSubmit.textContent = '+ 新增心願';
+    function startEditProject(id) {
+      const p = projects.find(item => item.id === id);
+      if (!p) return;
+      document.getElementById('projectFormTitle').textContent = '修改專案資訊';
+      document.getElementById('editProjectId').value = p.id;
+      document.getElementById('newProjectName').value = p.name;
+      document.getElementById('newProjectType').value = p.type || 'wish';
+      toggleProjectBranchInput(p.type || 'wish');
+      document.getElementById('newProjectPrice').value = p.targetPrice || getProjectBudget(p);
+      document.getElementById('btnCancelProjectEdit').classList.remove('hidden');
+      document.getElementById('btnSaveProjectSubmit').textContent = '儲存修改';
     }
 
-    function handleSaveWishItem(e) {
+    function cancelProjectEdit() {
+      document.getElementById('projectFormTitle').textContent = '新增專案或心願';
+      document.getElementById('editProjectId').value = '';
+      document.getElementById('newProjectName').value = '';
+      document.getElementById('newProjectType').value = 'wish';
+      toggleProjectBranchInput('wish');
+      document.getElementById('newProjectPrice').value = '';
+      document.getElementById('btnCancelProjectEdit').classList.add('hidden');
+      document.getElementById('btnSaveProjectSubmit').textContent = '+ 儲存專案目標';
+    }
+
+    function handleSaveProject(e) {
       e.preventDefault();
-      const editId = document.getElementById('editWishId').value;
-      const nameInput = document.getElementById('newWishName');
-      const priceInput = document.getElementById('newWishPrice');
-      const name = nameInput.value.trim();
-      const price = parseInt(priceInput.value, 10);
+      const editId = document.getElementById('editProjectId').value;
+      const name = document.getElementById('newProjectName').value.trim();
+      const type = document.getElementById('newProjectType').value;
+      let price = parseInt(document.getElementById('newProjectPrice').value, 10);
       const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
 
-      if (!name || isNaN(price) || price <= 0) {
-        showToast('請輸入有效心願名稱與金額', 'warning');
+      if (!name) return;
+      if (type !== 'travel' && (isNaN(price) || price <= 0)) {
+        showToast('請輸入有效預算金額', 'warning');
         return;
       }
 
       if (editId) {
-        // Edit existing wish
-        const wishIndex = wishlistItems.findIndex(w => w.id === editId);
-        if (wishIndex !== -1) {
-          const oldName = wishlistItems[wishIndex].name;
-          const oldPrice = wishlistItems[wishIndex].targetPrice;
-          wishlistItems[wishIndex].name = name;
-          wishlistItems[wishIndex].targetPrice = price;
-          saveWishlistToFirestore();
-          addAuditLogToFirestore('心願修改', `${roleLabel}修改心願「${oldName}」(NT$${oldPrice}) ➔ 「${name}」(NT$${price})`);
-          showToast(`已更新心願「${name}」！`, 'success');
+        const idx = projects.findIndex(p => p.id === editId);
+        if (idx !== -1) {
+          projects[idx].name = name;
+          projects[idx].type = type;
+          if (type !== 'travel') projects[idx].targetPrice = price;
+          else projects[idx].targetPrice = getProjectBudget(projects[idx]);
+          saveProjectsToFirestore();
+          addAuditLogToFirestore('專案修改', `${roleLabel}修改專案「${name}」`);
+          showToast(`已更新「${name}」！`, 'success');
         }
       } else {
-        // Add new wish
-        wishlistItems.push({
-          id: 'wish_' + Date.now(),
+        const newProj = {
+          id: 'proj_' + Date.now(),
           name: name,
-          targetPrice: price
-        });
-        saveWishlistToFirestore();
-        addAuditLogToFirestore('心願新增', `${roleLabel}新增心願「${name}」(NT$ ${price})`);
-        showToast(`已新增心願「${name}」！`, 'success');
+          type: type,
+          targetPrice: type === 'travel' ? 0 : price,
+          branches: type === 'travel' ? [
+            { id: 'br_' + Date.now(), name: '機票與交通', targetPrice: 5000 }
+          ] : []
+        };
+        if (type === 'travel') newProj.targetPrice = getProjectBudget(newProj);
+        projects.push(newProj);
+        saveProjectsToFirestore();
+        addAuditLogToFirestore('專案新增', `${roleLabel}新增專案「${name}」`);
+        showToast(`已新增「${name}」！`, 'success');
       }
 
-      cancelWishEdit();
-      renderWishlistItemsList();
-      renderActiveWishSelect();
+      cancelProjectEdit();
+      renderProjectsListModal();
+      renderActiveProjectSelect();
       refreshUI();
     }
 
-    function deleteWishItem(id) {
-      if (wishlistItems.length <= 1) {
-        showToast('至少需保留一個心願目標', 'warning');
+    function deleteProject(id) {
+      if (projects.length <= 1) {
+        showToast('至少需保留一個專案目標', 'warning');
         return;
       }
       const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
-      const item = wishlistItems.find(w => w.id === id);
-      wishlistItems = wishlistItems.filter(w => w.id !== id);
-      if (activeWishId === id) {
-        activeWishId = wishlistItems[0].id;
-      }
-      saveWishlistToFirestore();
-      addAuditLogToFirestore('心願刪除', `${roleLabel}刪除心願「${item ? item.name : id}」`);
-      renderWishlistItemsList();
-      renderActiveWishSelect();
+      const removed = projects.find(p => p.id === id);
+      projects = projects.filter(p => p.id !== id);
+      if (activeProjectId === id) activeProjectId = projects[0].id;
+      saveProjectsToFirestore();
+      addAuditLogToFirestore('專案刪除', `${roleLabel}刪除專案「${removed ? removed.name : id}」`);
+      renderProjectsListModal();
+      renderActiveProjectSelect();
       refreshUI();
-      showToast('已刪除心願項目', 'info');
+      showToast('已刪除專案', 'info');
     }
 
-    // Travel Branch Manager: Open directly to both child & parent
-    function openTravelBranchModal() {
+    // Sub-Branch Manager for specific project
+    function openBranchManagerModal(projId) {
+      currentManagingBranchProjectId = projId;
+      const p = projects.find(item => item.id === projId);
+      if (!p) return;
+      document.getElementById('branchModalProjectTitle').textContent = `✈️ ${p.name} - 細項分支`;
       cancelBranchEdit();
-      document.getElementById('travelMainNameInput').value = travelConfig.name;
-      const totalBudget = getTravelTotalBudget();
-      const autoPriceEl = document.getElementById('travelMainAutoPrice');
-      if (autoPriceEl) autoPriceEl.textContent = `NT$ ${totalBudget.toLocaleString()}`;
-      renderTravelBranchesList();
-      document.getElementById('travelBranchModal').classList.remove('hidden');
+      renderSubBranchesList();
+      document.getElementById('branchManagerModal').classList.remove('hidden');
     }
 
-    function closeTravelBranchModal() {
+    function closeBranchManagerModal() {
       cancelBranchEdit();
-      document.getElementById('travelBranchModal').classList.add('hidden');
+      document.getElementById('branchManagerModal').classList.add('hidden');
+      renderProjectsListModal();
       refreshUI();
     }
 
-    function saveTravelMainInfo() {
-      const name = document.getElementById('travelMainNameInput').value.trim();
-      const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
-      if (!name) {
-        showToast('請輸入有效專案名稱', 'warning');
-        return;
-      }
-      travelConfig.name = name;
-      travelConfig.targetPrice = getTravelTotalBudget();
-      saveTravelToFirestore();
-      addAuditLogToFirestore('旅遊專案', `${roleLabel}更新出國專案名稱：${name}`);
-      showToast('專案名稱已更新！', 'success');
-      refreshUI();
-    }
+    function renderSubBranchesList() {
+      const p = projects.find(item => item.id === currentManagingBranchProjectId);
+      const container = document.getElementById('subBranchesList');
+      const autoPriceEl = document.getElementById('branchModalAutoPrice');
+      if (!p || !container) return;
 
-    function renderTravelBranchesList() {
-      const container = document.getElementById('travelBranchItemsList');
-      const autoPriceEl = document.getElementById('travelMainAutoPrice');
-      if (!container) return;
+      const totalBranchPrice = getProjectBudget(p);
+      if (autoPriceEl) autoPriceEl.textContent = `NT$ ${totalBranchPrice.toLocaleString()}`;
 
-      const totalBudget = getTravelTotalBudget();
-      if (autoPriceEl) autoPriceEl.textContent = `NT$ ${totalBudget.toLocaleString()}`;
-
-      if (!travelConfig.branches || travelConfig.branches.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">目前無細項分支，請在上方新增</p>';
+      if (!p.branches || p.branches.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">尚無分支，請在上方新增</p>';
         return;
       }
 
-      container.innerHTML = travelConfig.branches.map((b, idx) => `
+      container.innerHTML = p.branches.map((b, idx) => `
         <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
           <div class="flex-1 min-w-0 pr-2">
             <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(b.name)}</h5>
             <span class="text-[11px] text-amber-700 font-bold">子預算 NT$ ${b.targetPrice.toLocaleString()}</span>
           </div>
           <div class="flex items-center gap-1">
-            <button type="button" onclick="startEditBranch(${idx})" class="p-1 text-slate-400 hover:text-blue-600" title="修改分支">
+            <button type="button" onclick="startEditBranch(${idx})" class="p-1 text-slate-400 hover:text-blue-600">
               <i class="fa-solid fa-pen text-xs"></i>
             </button>
-            <button type="button" onclick="deleteTravelBranch(${idx})" class="p-1 text-slate-400 hover:text-rose-600" title="刪除分支">
+            <button type="button" onclick="deleteSubBranch(${idx})" class="p-1 text-slate-400 hover:text-rose-600">
               <i class="fa-regular fa-trash-can text-xs"></i>
             </button>
           </div>
@@ -1669,94 +1485,81 @@
     }
 
     function startEditBranch(idx) {
-      const branch = travelConfig.branches[idx];
-      if (!branch) return;
-      document.getElementById('branchFormTitle').textContent = '修改細項分支';
+      const p = projects.find(item => item.id === currentManagingBranchProjectId);
+      if (!p || !p.branches[idx]) return;
       document.getElementById('editBranchIndex').value = idx;
-      document.getElementById('newBranchName').value = branch.name;
-      document.getElementById('newBranchPrice').value = branch.targetPrice;
-      document.getElementById('btnCancelBranchEdit').classList.remove('hidden');
+      document.getElementById('newBranchName').value = p.branches[idx].name;
+      document.getElementById('newBranchPrice').value = p.branches[idx].targetPrice;
+      document.getElementById('btnCancelSubBranchEdit').classList.remove('hidden');
       document.getElementById('btnSaveBranchSubmit').textContent = '儲存修改';
     }
 
     function cancelBranchEdit() {
-      const titleEl = document.getElementById('branchFormTitle');
-      const editIdxEl = document.getElementById('editBranchIndex');
-      const nameEl = document.getElementById('newBranchName');
-      const priceEl = document.getElementById('newBranchPrice');
-      const btnCancel = document.getElementById('btnCancelBranchEdit');
-      const btnSubmit = document.getElementById('btnSaveBranchSubmit');
-
-      if (titleEl) titleEl.textContent = '新增細項分支 (如: 機票住宿、伴手禮)';
-      if (editIdxEl) editIdxEl.value = '-1';
-      if (nameEl) nameEl.value = '';
-      if (priceEl) priceEl.value = '';
-      if (btnCancel) btnCancel.classList.add('hidden');
-      if (btnSubmit) btnSubmit.textContent = '+ 新增分支 (自動重算總額)';
+      document.getElementById('editBranchIndex').value = '-1';
+      document.getElementById('newBranchName').value = '';
+      document.getElementById('newBranchPrice').value = '';
+      document.getElementById('btnCancelSubBranchEdit').classList.add('hidden');
+      document.getElementById('btnSaveBranchSubmit').textContent = '+ 儲存分支';
     }
 
-    function handleSaveBranchItem(e) {
+    function handleSaveBranch(e) {
       e.preventDefault();
+      const p = projects.find(item => item.id === currentManagingBranchProjectId);
+      if (!p) return;
       const idx = parseInt(document.getElementById('editBranchIndex').value, 10);
-      const nameInput = document.getElementById('newBranchName');
-      const priceInput = document.getElementById('newBranchPrice');
-      const name = nameInput.value.trim();
-      const price = parseInt(priceInput.value, 10);
+      const name = document.getElementById('newBranchName').value.trim();
+      const price = parseInt(document.getElementById('newBranchPrice').value, 10);
       const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
 
-      if (!name || isNaN(price) || price <= 0) {
-        showToast('請輸入有效分支名稱與金額', 'warning');
-        return;
-      }
+      if (!name || isNaN(price) || price <= 0) return;
+      if (!p.branches) p.branches = [];
 
-      if (!travelConfig.branches) travelConfig.branches = [];
-
-      if (idx >= 0 && idx < travelConfig.branches.length) {
-        // Edit existing branch
-        const oldName = travelConfig.branches[idx].name;
-        const oldPrice = travelConfig.branches[idx].targetPrice;
-        travelConfig.branches[idx].name = name;
-        travelConfig.branches[idx].targetPrice = price;
-        travelConfig.targetPrice = getTravelTotalBudget();
-        saveTravelToFirestore();
-        addAuditLogToFirestore('旅遊分支', `${roleLabel}修改分支「${oldName}」(NT$${oldPrice}) ➔ 「${name}」(NT$${price})`);
-        showToast(`已更新分支「${name}」！`, 'success');
+      if (idx >= 0 && idx < p.branches.length) {
+        p.branches[idx].name = name;
+        p.branches[idx].targetPrice = price;
+        addAuditLogToFirestore('分支修改', `${roleLabel}修改專案「${p.name}」分支「${name}」(NT$${price})`);
       } else {
-        // Add new branch
-        travelConfig.branches.push({
-          id: 'br_' + Date.now(),
-          name: name,
-          targetPrice: price
-        });
-        travelConfig.targetPrice = getTravelTotalBudget();
-        saveTravelToFirestore();
-        addAuditLogToFirestore('旅遊分支', `${roleLabel}新增分支「${name}」(NT$ ${price})，總額自動加總`);
-        showToast(`已新增分支「${name}」，總費用自動更新！`, 'success');
+        p.branches.push({ id: 'br_' + Date.now(), name, targetPrice: price });
+        addAuditLogToFirestore('分支新增', `${roleLabel}為「${p.name}」新增分支「${name}」(NT$${price})`);
       }
 
+      p.targetPrice = getProjectBudget(p);
+      saveProjectsToFirestore();
       cancelBranchEdit();
-      renderTravelBranchesList();
+      renderSubBranchesList();
       refreshUI();
+      showToast('分支已更新，總費用自動重新加總！', 'success');
     }
 
-    function deleteTravelBranch(idx) {
+    function deleteSubBranch(idx) {
+      const p = projects.find(item => item.id === currentManagingBranchProjectId);
+      if (!p || !p.branches) return;
       const roleLabel = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
-      const removed = travelConfig.branches.splice(idx, 1);
-      travelConfig.targetPrice = getTravelTotalBudget();
-      saveTravelToFirestore();
-      addAuditLogToFirestore('旅遊分支', `${roleLabel}刪除出國分支「${removed[0] ? removed[0].name : ''}」`);
-      renderTravelBranchesList();
+      const removed = p.branches.splice(idx, 1);
+      p.targetPrice = getProjectBudget(p);
+      saveProjectsToFirestore();
+      addAuditLogToFirestore('分支刪除', `${roleLabel}刪除「${p.name}」分支「${removed[0]?.name || ''}」`);
+      renderSubBranchesList();
       refreshUI();
-      showToast('已刪除分支，總費用已重新加總', 'info');
+      showToast('已刪除分支', 'info');
     }
 
-    function openAddModal() {
-      setType('expense');
+    // Add Transaction Modal Logic (Expense, Income, Project, Debt)
+    function openAddModal(defaultType = 'expense', defaultDebtSub = null) {
+      setType(defaultType);
+      if (defaultType === 'debt' && defaultDebtSub) {
+        const radio = document.querySelector(`input[name="txDebtSubAction"][value="${defaultDebtSub}"]`);
+        if (radio) {
+          radio.checked = true;
+          updateDebtLabels();
+        }
+      }
       document.getElementById('txAmount').value = '';
       document.getElementById('txDescription').value = '';
       document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
       renderCategorySelect();
       renderQuickChips();
+      renderTargetProjectSelector();
       document.getElementById('addModal').classList.remove('hidden');
     }
 
@@ -1766,62 +1569,74 @@
 
     function setType(type) {
       currentFormType = type;
-      const types = ['expense', 'income', 'wishlist', 'travel'];
-      types.forEach(t => {
+      ['expense', 'income', 'project', 'debt'].forEach(t => {
         const btn = document.getElementById('typeBtn' + capitalize(t));
         if (!btn) return;
         if (t === type) {
-          btn.className = 'py-2 text-xs font-bold rounded-lg bg-white shadow-xs text-blue-700 transition-all';
-          if (t === 'expense') btn.className = 'py-2 text-xs font-bold rounded-lg bg-white shadow-xs text-rose-600 transition-all';
-          if (t === 'wishlist') btn.className = 'py-2 text-xs font-bold rounded-lg bg-white shadow-xs text-purple-700 transition-all';
-          if (t === 'travel') btn.className = 'py-2 text-xs font-bold rounded-lg bg-white shadow-xs text-amber-700 transition-all';
+          btn.className = 'py-2 text-[11px] font-bold rounded-lg bg-white shadow-xs text-blue-700 transition-all';
+          if (t === 'expense') btn.className = 'py-2 text-[11px] font-bold rounded-lg bg-white shadow-xs text-rose-600 transition-all';
+          if (t === 'project') btn.className = 'py-2 text-[11px] font-bold rounded-lg bg-white shadow-xs text-purple-700 transition-all';
+          if (t === 'debt') btn.className = 'py-2 text-[11px] font-bold rounded-lg bg-white shadow-xs text-amber-700 transition-all';
         } else {
-          btn.className = 'py-2 text-xs font-bold rounded-lg text-slate-500 transition-all';
+          btn.className = 'py-2 text-[11px] font-bold rounded-lg text-slate-500 transition-all';
         }
       });
 
+      const wrapperCategory = document.getElementById('wrapperCategory');
       const wrapperNeedWant = document.getElementById('wrapperNeedWant');
-      if (wrapperNeedWant) {
-        if (type === 'expense') wrapperNeedWant.classList.remove('hidden');
-        else wrapperNeedWant.classList.add('hidden');
-      }
+      const wrapperIncomeSource = document.getElementById('wrapperIncomeFundingSource');
+      const wrapperProject = document.getElementById('wrapperProjectSelector');
+      const wrapperDebt = document.getElementById('wrapperDebtSubAction');
 
-      const wrapperIncomeFundingSource = document.getElementById('wrapperIncomeFundingSource');
-      if (wrapperIncomeFundingSource) {
-        if (type === 'income') wrapperIncomeFundingSource.classList.remove('hidden');
-        else wrapperIncomeFundingSource.classList.add('hidden');
-      }
+      if (wrapperNeedWant) wrapperNeedWant.classList.toggle('hidden', type !== 'expense');
+      if (wrapperIncomeSource) wrapperIncomeSource.classList.toggle('hidden', type !== 'income');
+      if (wrapperProject) wrapperProject.classList.toggle('hidden', type !== 'project');
+      if (wrapperDebt) wrapperDebt.classList.toggle('hidden', type !== 'debt');
+      if (wrapperCategory) wrapperCategory.classList.toggle('hidden', type === 'project' || type === 'debt');
 
-      const wrapperSponsorType = document.getElementById('wrapperSponsorType');
-      if (wrapperSponsorType) {
-        if (type === 'wishlist' || type === 'travel') wrapperSponsorType.classList.remove('hidden');
-        else wrapperSponsorType.classList.add('hidden');
-      }
-
-      const txTravelBranchWrapper = document.getElementById('txTravelBranchWrapper');
-      if (txTravelBranchWrapper) {
-        if (type === 'travel') {
-          txTravelBranchWrapper.classList.remove('hidden');
-          renderTravelBranchSelector();
-        } else {
-          txTravelBranchWrapper.classList.add('hidden');
-        }
-      }
-
+      if (type === 'project') renderTargetProjectSelector();
+      if (type === 'debt') updateDebtLabels();
       renderCategorySelect();
       renderQuickChips();
     }
 
-    function renderTravelBranchSelector() {
-      const select = document.getElementById('txTravelBranchSelect');
-      if (!select) return;
-      if (!travelConfig.branches || travelConfig.branches.length === 0) {
-        select.innerHTML = '<option value="general">出國總專款自由支配</option>';
-        return;
+    function updateDebtLabels() {
+      const subAction = document.querySelector('input[name="txDebtSubAction"]:checked')?.value || 'borrow';
+      const descInput = document.getElementById('txDescription');
+      const helpText = document.getElementById('debtHelpText');
+      if (subAction === 'borrow') {
+        if (helpText) helpText.textContent = '💡 借款會增加你可支配的自由現金，但會列入待還負債。';
+        if (descInput && !descInput.value) descInput.value = '向父母借款代墊';
+      } else {
+        if (helpText) helpText.textContent = '💡 還款會從你的自由現金扣除，並減少待還負債。';
+        if (descInput && !descInput.value) descInput.value = '償還父母借款';
       }
-      select.innerHTML = travelConfig.branches.map(b => `
-        <option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (子預算 NT$ ${b.targetPrice.toLocaleString()})</option>
+    }
+
+    function renderTargetProjectSelector() {
+      const select = document.getElementById('txTargetProjectSelect');
+      if (!select) return;
+      select.innerHTML = projects.map(p => `
+        <option value="${p.id}">${p.type === 'travel' ? '✈️' : '🎁'} ${escapeHtml(p.name)}</option>
       `).join('');
+      handleTargetProjectChange();
+    }
+
+    function handleTargetProjectChange() {
+      const select = document.getElementById('txTargetProjectSelect');
+      const branchWrapper = document.getElementById('txTargetBranchWrapper');
+      const branchSelect = document.getElementById('txTargetBranchSelect');
+      if (!select || !branchWrapper || !branchSelect) return;
+
+      const p = projects.find(item => item.id === select.value);
+      if (p && p.branches && p.branches.length > 0) {
+        branchWrapper.classList.remove('hidden');
+        branchSelect.innerHTML = p.branches.map(b => `
+          <option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (子預算 NT$ ${b.targetPrice.toLocaleString()})</option>
+        `).join('');
+      } else {
+        branchWrapper.classList.add('hidden');
+      }
     }
 
     function renderCategorySelect() {
@@ -1831,7 +1646,6 @@
       select.innerHTML = list.map(c => `
         <option value="${c.icon} ${c.name}">${c.icon} ${escapeHtml(c.name)}</option>
       `).join('');
-      handleCategoryChange();
     }
 
     function handleCategoryChange() {
@@ -1839,11 +1653,19 @@
     }
 
     function fillCategoryNameToDesc() {
-      const select = document.getElementById('txCategory');
       const descInput = document.getElementById('txDescription');
-      if (!select || !descInput) return;
-      const val = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
-      descInput.value = val;
+      if (!descInput) return;
+      if (currentFormType === 'project') {
+        const pSelect = document.getElementById('txTargetProjectSelect');
+        const p = projects.find(item => item.id === pSelect?.value);
+        if (p) descInput.value = `存入${p.name}`;
+      } else if (currentFormType === 'debt') {
+        const sub = document.querySelector('input[name="txDebtSubAction"]:checked')?.value;
+        descInput.value = sub === 'borrow' ? '向父母借款代墊' : '償還父母借款';
+      } else {
+        const select = document.getElementById('txCategory');
+        if (select) descInput.value = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
+      }
     }
 
     function renderQuickChips() {
@@ -1851,42 +1673,24 @@
       const datalist = document.getElementById('descHistoryList');
       if (!container) return;
 
-      const catSelect = document.getElementById('txCategory');
-      const currentCatRaw = catSelect ? catSelect.value.replace(/^[\p{Emoji}\s]+/u, '').trim() : '';
-
       let recentTags = [];
       const savedTags = safeStorage.getItem(STORAGE_KEY_RECENT_DESC);
       if (savedTags) {
         try { recentTags = JSON.parse(savedTags); } catch (e) {}
       }
       if (!recentTags || recentTags.length === 0) {
-        recentTags = ['公車加值', '便利商店點心', '放學飲料', '筆記本與文具', '同學聚餐', '手機月租費'];
+        recentTags = ['公車加值', '便利商店點心', '放學飲料', '借款買書', '償還欠款', '存入旅遊'];
       }
 
       if (datalist) {
         datalist.innerHTML = recentTags.map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
       }
 
-      let html = '';
-      if (currentCatRaw) {
-        html += `
-          <button type="button" onclick="selectQuickTag('${escapeJs(currentCatRaw)}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap active:scale-95 transition-all">
-            🏷️ ${escapeHtml(currentCatRaw)}
-          </button>
-        `;
-      }
-
-      recentTags.slice(0, 8).forEach(tag => {
-        if (tag !== currentCatRaw) {
-          html += `
-            <button type="button" onclick="selectQuickTag('${escapeJs(tag)}')" class="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap active:scale-95 transition-all">
-              ${escapeHtml(tag)}
-            </button>
-          `;
-        }
-      });
-
-      container.innerHTML = html;
+      container.innerHTML = recentTags.slice(0, 8).map(tag => `
+        <button type="button" onclick="selectQuickTag('${escapeJs(tag)}')" class="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap active:scale-95 transition-all">
+          ${escapeHtml(tag)}
+        </button>
+      `).join('');
     }
 
     function selectQuickTag(tag) {
@@ -1909,13 +1713,11 @@
 
     async function handleFormSubmit(e) {
       e.preventDefault();
-
       if (currentRole === 'child' && currentFormType === 'income') {
         pendingIncomeSubmitFn = () => executeFormSubmit();
         document.getElementById('incomeIntegrityModal').classList.remove('hidden');
         return;
       }
-
       await executeFormSubmit();
     }
 
@@ -1925,41 +1727,45 @@
         const fn = pendingIncomeSubmitFn;
         pendingIncomeSubmitFn = null;
         fn();
-      } else {
-        pendingIncomeSubmitFn = null;
       }
     }
 
     async function executeFormSubmit() {
       const amount = parseInt(document.getElementById('txAmount').value, 10);
-      const category = document.getElementById('txCategory').value;
       let description = document.getElementById('txDescription').value.trim();
       const date = document.getElementById('txDate').value;
       const operator = currentRole === 'parent' ? '🛡️ 家長' : '🎒 小孩';
       
+      let category = '📌 其它';
       let intent = '需要';
-      if (currentFormType === 'expense') {
-        const intentChecked = document.querySelector('input[name="txIntent"]:checked');
-        if (intentChecked) intent = intentChecked.value;
-      }
-
       let fundingSource = 'parent';
-      if (currentFormType === 'income') {
-        const sourceChecked = document.querySelector('input[name="txFundingSource"]:checked');
-        if (sourceChecked) fundingSource = sourceChecked.value;
-      }
-
       let sponsorType = 'self';
-      if (currentFormType === 'wishlist' || currentFormType === 'travel') {
-        const sponsorChecked = document.querySelector('input[name="txSponsorType"]:checked');
-        if (sponsorChecked) sponsorType = sponsorChecked.value;
-      }
+      let debtSubAction = null;
+      let projectId = null;
+      let branchName = null;
 
-      if (currentFormType === 'travel') {
-        const branchSelect = document.getElementById('txTravelBranchSelect');
-        if (branchSelect && branchSelect.value) {
-          description = description ? `${description} [${branchSelect.value}]` : `存入出國分支: ${branchSelect.value}`;
+      if (currentFormType === 'expense') {
+        category = document.getElementById('txCategory').value;
+        intent = document.querySelector('input[name="txIntent"]:checked')?.value || '需要';
+      } else if (currentFormType === 'income') {
+        category = document.getElementById('txCategory').value;
+        fundingSource = document.querySelector('input[name="txFundingSource"]:checked')?.value || 'parent';
+      } else if (currentFormType === 'project') {
+        const pSelect = document.getElementById('txTargetProjectSelect');
+        projectId = pSelect?.value;
+        const p = projects.find(item => item.id === projectId);
+        category = p ? (p.type === 'travel' ? '✈️ 旅遊專案' : '🎁 心願專款') : '🎯 專案目標';
+        sponsorType = document.querySelector('input[name="txSponsorType"]:checked')?.value || 'self';
+        
+        const branchSelect = document.getElementById('txTargetBranchSelect');
+        const branchWrapper = document.getElementById('txTargetBranchWrapper');
+        if (branchWrapper && !branchWrapper.classList.contains('hidden') && branchSelect?.value) {
+          branchName = branchSelect.value;
+          description = description ? `${description} [${branchName}]` : `存入分支: ${branchName}`;
         }
+      } else if (currentFormType === 'debt') {
+        debtSubAction = document.querySelector('input[name="txDebtSubAction"]:checked')?.value || 'borrow';
+        category = debtSubAction === 'borrow' ? '🤝 向父母借款' : '💸 償還父母借款';
       }
 
       if (!description) {
@@ -1975,6 +1781,8 @@
         id: 'tx_' + Date.now(),
         date: date,
         type: currentFormType,
+        debtSubAction: debtSubAction,
+        projectId: projectId,
         category: category,
         description: description,
         intent: intent,
@@ -1989,22 +1797,21 @@
       await saveTxToFirestore(newTx);
       saveRecentTag(description);
 
-      const sponsorLabel = sponsorType === 'parent' ? ' (父母贊助)' : '';
-      const sourceLabel = currentFormType === 'income' ? (fundingSource === 'parent' ? ' [父母提供]' : ' [外部/自力]') : '';
-      addAuditLogToFirestore('新增收支', `${operator} 記帳：${category} - NT$ ${amount} (${description}${sponsorLabel}${sourceLabel})`);
+      addAuditLogToFirestore('新增收支', `${operator} 記帳：${category} - NT$ ${amount} (${description})`);
 
       closeAddModal();
-      showToast('記帳成功！已同步至 Firebase 雲端', 'success');
+      showToast('記帳成功！已同步至雲端', 'success');
     }
 
+    // Category Manager Modal
     function openCategoryManagerModal() {
       requestParentAuth(() => {
-        currentCatScope = currentFormType;
+        currentCatScope = currentFormType === 'income' ? 'income' : 'expense';
         updateCatScopeUI();
         cancelCategoryEdit();
         renderCategoryManagerList();
         document.getElementById('categoryManagerModal').classList.remove('hidden');
-      }, '管理分類標籤', '新增、刪除或修改分類項目需家長授權');
+      }, '管理分類標籤', '新增、刪除或修改分類需家長授權');
     }
 
     function closeCategoryManagerModal() {
@@ -2020,14 +1827,9 @@
     }
 
     function updateCatScopeUI() {
-      ['expense', 'income', 'wishlist', 'travel'].forEach(s => {
+      ['expense', 'income'].forEach(s => {
         const btn = document.getElementById('catScope' + capitalize(s));
-        if (!btn) return;
-        if (s === currentCatScope) {
-          btn.className = 'py-1.5 rounded-lg bg-white text-blue-700 shadow-xs font-bold';
-        } else {
-          btn.className = 'py-1.5 rounded-lg text-slate-500 font-bold';
-        }
+        if (btn) btn.className = s === currentCatScope ? 'py-1.5 rounded-lg bg-white text-blue-700 shadow-xs font-bold' : 'py-1.5 rounded-lg text-slate-500 font-bold';
       });
     }
 
@@ -2042,13 +1844,12 @@
     }
 
     function toggleEmojiPicker() {
-      const palette = document.getElementById('emojiPalette');
-      if (palette) palette.classList.toggle('hidden');
+      document.getElementById('emojiPalette')?.classList.toggle('hidden');
     }
 
     function selectCatEmoji(emoji) {
       document.getElementById('selectedCatEmojiBtn').textContent = emoji;
-      document.getElementById('emojiPalette').classList.add('hidden');
+      document.getElementById('emojiPalette')?.classList.add('hidden');
     }
 
     function renderCategoryManagerList() {
@@ -2097,7 +1898,7 @@
       document.getElementById('selectedCatEmojiBtn').textContent = '🏷️';
       document.getElementById('btnCancelCatEdit').classList.add('hidden');
       document.getElementById('btnSaveCategory').textContent = '+ 儲存分類';
-      document.getElementById('emojiPalette').classList.add('hidden');
+      document.getElementById('emojiPalette')?.classList.add('hidden');
     }
 
     function handleSaveCategory(e) {
@@ -2105,25 +1906,23 @@
       const idx = parseInt(document.getElementById('editCatIndex').value, 10);
       const name = document.getElementById('inputCatName').value.trim();
       const icon = document.getElementById('selectedCatEmojiBtn').textContent.trim() || '🏷️';
-
       if (!name) return;
+
       if (!categories[currentCatScope]) categories[currentCatScope] = [];
 
       if (idx >= 0 && idx < categories[currentCatScope].length) {
-        const oldName = categories[currentCatScope][idx].name;
         categories[currentCatScope][idx] = { name, icon };
-        addAuditLogToFirestore('分類修改', `🛡️ 家長修改分類：${oldName} ➔ ${icon} ${name}`);
-        showToast('分類已成功更正！', 'success');
+        addAuditLogToFirestore('分類修改', `🛡️ 家長修改分類：${icon} ${name}`);
       } else {
         categories[currentCatScope].push({ name, icon });
         addAuditLogToFirestore('分類新增', `🛡️ 家長新增分類：${icon} ${name}`);
-        showToast('已新增分類！', 'success');
       }
 
       saveCategoriesToFirestore();
       cancelCategoryEdit();
       renderCategoryManagerList();
       renderCategorySelect();
+      showToast('分類已更新！', 'success');
     }
 
     function deleteCategory(idx) {
@@ -2134,7 +1933,7 @@
       }
       const removed = list.splice(idx, 1);
       saveCategoriesToFirestore();
-      addAuditLogToFirestore('分類刪除', `🛡️ 家長刪除分類：${removed[0] ? removed[0].name : ''}`);
+      addAuditLogToFirestore('分類刪除', `🛡️ 家長刪除分類：${removed[0]?.name || ''}`);
       renderCategoryManagerList();
       renderCategorySelect();
       showToast('已刪除分類', 'info');
@@ -2149,15 +1948,17 @@
       renderTxList();
     }
 
+    // Proposal C: Render Transaction List with Distinct Badges for Debts & Projects
     function renderTxList() {
       const container = document.getElementById('txListContainer');
       const countLabel = document.getElementById('recordCountLabel');
       if (!container) return;
 
       let filtered = transactions;
-      if (activeFilter !== 'all') {
-        filtered = transactions.filter(t => t.type === activeFilter);
-      }
+      if (activeFilter === 'expense') filtered = transactions.filter(t => normalizeType(t.type) === 'expense');
+      else if (activeFilter === 'income') filtered = transactions.filter(t => normalizeType(t.type) === 'income');
+      else if (activeFilter === 'project') filtered = transactions.filter(t => normalizeType(t.type) === 'project');
+      else if (activeFilter === 'debt') filtered = transactions.filter(t => normalizeType(t.type) === 'debt');
 
       if (countLabel) countLabel.textContent = `共 ${filtered.length} 筆紀錄`;
 
@@ -2174,32 +1975,50 @@
       const isParent = currentRole === 'parent';
 
       container.innerHTML = filtered.map(tx => {
+        const norm = normalizeType(tx.type);
         let typeColor = 'text-rose-600';
         let prefix = '-';
-        if (tx.type === 'income') { typeColor = 'text-emerald-600'; prefix = '+'; }
-        else if (tx.type === 'wishlist') { typeColor = 'text-purple-600'; prefix = '🎯'; }
-        else if (tx.type === 'travel') { typeColor = 'text-amber-600'; prefix = '✈️'; }
+        let badgeHtml = '';
+
+        if (norm === 'income') {
+          typeColor = 'text-emerald-600';
+          prefix = '+';
+          badgeHtml = `<span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.fundingSource === 'external' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
+            ${tx.fundingSource === 'external' ? '🧧 自力/外部' : '👨‍👩‍👧 父母提供'}
+          </span>`;
+        } else if (norm === 'expense') {
+          badgeHtml = `<span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.intent === '想要' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-blue-50 text-blue-600 border border-blue-200'}">
+            ${tx.intent || '需要'}
+          </span>`;
+        } else if (norm === 'project') {
+          typeColor = 'text-purple-600';
+          prefix = '🎯';
+          badgeHtml = `<span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${isParentSponsor(tx) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}">
+            ${isParentSponsor(tx) ? '👨‍👩‍👧 父母贊助' : '🎒 小孩自存'}
+          </span>`;
+        } else if (norm === 'debt') {
+          const isBorrow = tx.debtSubAction === 'borrow' || tx.description.includes('借款');
+          if (isBorrow) {
+            typeColor = 'text-amber-600';
+            prefix = '🤝 +';
+            badgeHtml = `<span class="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-50 text-amber-800 border border-amber-300">
+              向父母借入 (待還)
+            </span>`;
+          } else {
+            typeColor = 'text-emerald-600';
+            prefix = '💸 -';
+            badgeHtml = `<span class="text-[9px] px-1.5 py-0.2 rounded font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+              償還欠款
+            </span>`;
+          }
+        }
 
         return `
           <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5 mb-1 flex-wrap">
                 <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(tx.description)}</span>
-                ${tx.type === 'expense' ? `
-                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.intent === '需要' ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}">
-                    ${tx.intent}
-                  </span>
-                ` : ''}
-                ${tx.type === 'income' ? `
-                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.fundingSource === 'external' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
-                    ${tx.fundingSource === 'external' ? '🧧 自力/外部' : '👨‍👩‍👧 父母提供'}
-                  </span>
-                ` : ''}
-                ${(tx.type === 'wishlist' || tx.type === 'travel') ? `
-                  <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${tx.sponsorType === 'parent' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-purple-50 text-purple-700 border border-purple-200'}">
-                    ${tx.sponsorType === 'parent' ? '👨‍👩‍👧 父母贊助' : '🎒 小孩自存'}
-                  </span>
-                ` : ''}
+                ${badgeHtml}
               </div>
               <div class="flex items-center gap-2 text-[10px] text-slate-400">
                 <span>${tx.date}</span>
@@ -2211,20 +2030,13 @@
             </div>
 
             <div class="text-right flex items-center gap-2">
-              <div>
-                <span class="text-sm font-black ${typeColor}">
-                  ${prefix} NT$ ${tx.amount.toLocaleString()}
-                </span>
-              </div>
+              <span class="text-sm font-black ${typeColor}">
+                ${prefix} NT$ ${Number(tx.amount).toLocaleString()}
+              </span>
               ${isParent ? `
-                <div class="flex items-center gap-0.5 ml-1">
-                  <button onclick="openEditTxModal('${tx.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-50">
-                    <i class="fa-solid fa-pen text-xs"></i>
-                  </button>
-                  <button onclick="confirmDeleteTx('${tx.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50">
-                    <i class="fa-regular fa-trash-can text-xs"></i>
-                  </button>
-                </div>
+                <button onclick="confirmDeleteTx('${tx.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50">
+                  <i class="fa-regular fa-trash-can text-xs"></i>
+                </button>
               ` : `
                 <span class="text-[10px] text-slate-300 font-bold ml-1">🔒</span>
               `}
@@ -2232,201 +2044,6 @@
           </div>
         `;
       }).join('');
-    }
-
-    let currentEditType = 'expense';
-
-    function setEditType(type, selectedCategory = null) {
-      currentEditType = type;
-      const types = ['expense', 'income', 'wishlist', 'travel'];
-      types.forEach(t => {
-        const btn = document.getElementById('editTypeBtn' + capitalize(t));
-        if (!btn) return;
-        if (t === type) {
-          btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-blue-700 transition-all';
-          if (t === 'expense') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-rose-600 transition-all';
-          if (t === 'wishlist') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-purple-700 transition-all';
-          if (t === 'travel') btn.className = 'py-1.5 text-xs font-bold rounded-lg bg-white shadow-xs text-amber-700 transition-all';
-        } else {
-          btn.className = 'py-1.5 text-xs font-bold rounded-lg text-slate-500 transition-all';
-        }
-      });
-
-      const wrapperNeedWant = document.getElementById('editWrapperNeedWant');
-      if (wrapperNeedWant) {
-        if (type === 'expense') wrapperNeedWant.classList.remove('hidden');
-        else wrapperNeedWant.classList.add('hidden');
-      }
-
-      const editWrapperIncomeFundingSource = document.getElementById('editWrapperIncomeFundingSource');
-      if (editWrapperIncomeFundingSource) {
-        if (type === 'income') editWrapperIncomeFundingSource.classList.remove('hidden');
-        else editWrapperIncomeFundingSource.classList.add('hidden');
-      }
-
-      const editWrapperSponsorType = document.getElementById('editWrapperSponsorType');
-      if (editWrapperSponsorType) {
-        if (type === 'wishlist' || type === 'travel') editWrapperSponsorType.classList.remove('hidden');
-        else editWrapperSponsorType.classList.add('hidden');
-      }
-
-      const travelBranchWrapper = document.getElementById('editTxTravelBranchWrapper');
-      if (travelBranchWrapper) {
-        if (type === 'travel') {
-          travelBranchWrapper.classList.remove('hidden');
-          renderEditTravelBranchSelector();
-        } else {
-          travelBranchWrapper.classList.add('hidden');
-        }
-      }
-
-      const catSelect = document.getElementById('editTxCategory');
-      if (catSelect) {
-        const list = categories[type] || [];
-        catSelect.innerHTML = list.map(c => {
-          const val = `${c.icon} ${c.name}`;
-          const isSelected = selectedCategory && (selectedCategory === val || selectedCategory.includes(c.name));
-          return `<option value="${val}" ${isSelected ? 'selected' : ''}>${val}</option>`;
-        }).join('');
-      }
-    }
-
-    function renderEditTravelBranchSelector() {
-      const select = document.getElementById('editTxTravelBranchSelect');
-      if (!select) return;
-      if (!travelConfig.branches || travelConfig.branches.length === 0) {
-        select.innerHTML = '<option value="general">出國總專款自由支配</option>';
-        return;
-      }
-      select.innerHTML = travelConfig.branches.map(b => `
-        <option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (子預算 NT$ ${b.targetPrice.toLocaleString()})</option>
-      `).join('');
-    }
-
-    function fillCategoryNameToEditDesc() {
-      const select = document.getElementById('editTxCategory');
-      const descInput = document.getElementById('editTxDescription');
-      if (!select || !descInput) return;
-      const val = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
-      descInput.value = val;
-    }
-
-    function openEditTxModal(id) {
-      requestParentAuth(() => {
-        const tx = transactions.find(t => t.id === id);
-        if (!tx) return;
-        document.getElementById('editTxId').value = tx.id;
-        document.getElementById('editTxAmount').value = tx.amount;
-        document.getElementById('editTxDescription').value = tx.description;
-        document.getElementById('editTxDate').value = tx.date;
-
-        currentEditType = tx.type || 'expense';
-        setEditType(currentEditType, tx.category);
-
-        if (tx.intent === '想要') {
-          const radioWant = document.getElementById('editTxIntentWant');
-          if (radioWant) radioWant.checked = true;
-        } else {
-          const radioNeed = document.getElementById('editTxIntentNeed');
-          if (radioNeed) radioNeed.checked = true;
-        }
-
-        if (tx.fundingSource === 'external') {
-          const radioExt = document.getElementById('editFundingExt');
-          if (radioExt) radioExt.checked = true;
-        } else {
-          const radioParent = document.getElementById('editFundingParent');
-          if (radioParent) radioParent.checked = true;
-        }
-
-        if (tx.sponsorType === 'parent') {
-          const radioSponsorParent = document.getElementById('editSponsorParent');
-          if (radioSponsorParent) radioSponsorParent.checked = true;
-        } else {
-          const radioSponsorSelf = document.getElementById('editSponsorSelf');
-          if (radioSponsorSelf) radioSponsorSelf.checked = true;
-        }
-
-        if (currentEditType === 'travel') {
-          const branchSelect = document.getElementById('editTxTravelBranchSelect');
-          if (branchSelect) {
-            const match = tx.description.match(/\[(.*?)\]/);
-            if (match && match[1]) {
-              branchSelect.value = match[1];
-            }
-          }
-        }
-
-        document.getElementById('editTxModal').classList.remove('hidden');
-      }, '修改帳目紀錄', '更正歷史紀錄需家長審核');
-    }
-
-    function closeEditTxModal() {
-      document.getElementById('editTxModal').classList.add('hidden');
-    }
-
-    async function handleSaveEditedTx(e) {
-      e.preventDefault();
-      const id = document.getElementById('editTxId').value;
-      const amount = parseInt(document.getElementById('editTxAmount').value, 10);
-      let desc = document.getElementById('editTxDescription').value.trim();
-      const date = document.getElementById('editTxDate').value;
-      const category = document.getElementById('editTxCategory').value;
-
-      const tx = transactions.find(t => t.id === id);
-      if (!tx || isNaN(amount) || amount <= 0) return;
-
-      let intent = '需要';
-      if (currentEditType === 'expense') {
-        const intentChecked = document.querySelector('input[name="editTxIntent"]:checked');
-        if (intentChecked) intent = intentChecked.value;
-      }
-
-      let fundingSource = 'parent';
-      if (currentEditType === 'income') {
-        const fundingChecked = document.querySelector('input[name="editTxFundingSource"]:checked');
-        if (fundingChecked) fundingSource = fundingChecked.value;
-      }
-
-      let sponsorType = 'self';
-      if (currentEditType === 'wishlist' || currentEditType === 'travel') {
-        const sponsorChecked = document.querySelector('input[name="editTxSponsorType"]:checked');
-        if (sponsorChecked) sponsorType = sponsorChecked.value;
-      }
-
-      if (currentEditType === 'travel') {
-        const branchSelect = document.getElementById('editTxTravelBranchSelect');
-        if (branchSelect && branchSelect.value && branchSelect.value !== 'general') {
-          const cleanDesc = desc.replace(/\s*\[.*?\]/g, '').trim();
-          desc = cleanDesc ? `${cleanDesc} [${branchSelect.value}]` : `存入出國分支: ${branchSelect.value}`;
-        }
-      }
-
-      if (!desc) {
-        desc = category.replace(/^[\p{Emoji}\s]+/u, '').trim();
-      }
-
-      const oldSummary = `${tx.type} | ${tx.category} - ${tx.description} (NT$${tx.amount})`;
-      const updatedTx = {
-        ...tx,
-        type: currentEditType,
-        category: category,
-        amount: amount,
-        description: desc,
-        intent: intent,
-        fundingSource: fundingSource,
-        sponsorType: sponsorType,
-        date: date,
-        operator: '🛡️ 家長更正',
-        updatedAt: Date.now()
-      };
-
-      await saveTxToFirestore(updatedTx);
-      saveRecentTag(desc);
-      addAuditLogToFirestore('修改收支', `🛡️ 家長更正紀錄：${oldSummary} ➔ ${currentEditType} | ${category} - ${desc} (NT$${amount})`);
-
-      closeEditTxModal();
-      showToast('紀錄更正已成功儲存至雲端！', 'success');
     }
 
     function confirmDeleteTx(id) {
@@ -2437,12 +2054,13 @@
           if (confirmed) {
             await deleteTxFromFirestore(id);
             addAuditLogToFirestore('刪除收支', `🛡️ 家長刪除紀錄：${tx.description} (NT$${tx.amount})`);
-            showToast('已從雲端刪除帳目紀錄', 'info');
+            showToast('已刪除帳目紀錄', 'info');
           }
         });
       }, '刪除帳目紀錄', '刪除紀錄需家長驗證');
     }
 
+    // Refresh UI & Calculations: Incorporates Proposal A (Alert Bar) and Proposal B (Net Worth)
     function refreshUI() {
       let monthIncome = 0;
       let monthParentIncome = 0;
@@ -2453,38 +2071,32 @@
 
       let totalAllIncome = 0;
       let totalAllExpense = 0;
-      let totalWishSaved = 0;
-      let totalTravelSaved = 0;
+      let totalProjectsSelfSaved = 0;
+      let totalProjectsParentSaved = 0;
       let needExpense = 0;
       let wantExpense = 0;
-
-      let wishSelfSaved = 0;
-      let wishParentSaved = 0;
-      let travelSelfSaved = 0;
-      let travelParentSaved = 0;
       let totalParentGivenAll = 0;
 
+      // Debt Calculation: Total Borrowed vs Total Repayed
+      let totalBorrowed = 0;
+      let totalRepayed = 0;
+
       transactions.forEach(tx => {
-        const rawAmt = String(tx.amount || 0).replace(/,/g, '').trim();
-        const amt = parseFloat(rawAmt) || 0;
-        const normType = normalizeType(tx.type);
+        const amt = parseFloat(String(tx.amount || 0).replace(/,/g, '')) || 0;
+        const norm = normalizeType(tx.type);
         const inThisMonth = isCurrentMonth(tx.date);
 
-        if (normType === 'income') {
+        if (norm === 'income') {
           totalAllIncome += amt;
           const isParent = isParentFunding(tx);
-          if (isParent) {
-            totalParentGivenAll += amt;
-          }
+          if (isParent) totalParentGivenAll += amt;
+
           if (inThisMonth) {
             monthIncome += amt;
-            if (isParent) {
-              monthParentIncome += amt;
-            } else {
-              monthExtIncome += amt;
-            }
+            if (isParent) monthParentIncome += amt;
+            else monthExtIncome += amt;
           }
-        } else if (normType === 'expense') {
+        } else if (norm === 'expense') {
           totalAllExpense += amt;
           const isWant = tx.intent === '想要';
           if (isWant) wantExpense += amt;
@@ -2495,131 +2107,87 @@
             if (isWant) monthWantExpense += amt;
             else monthNeedExpense += amt;
           }
-        } else if (normType === 'wishlist') {
-          totalWishSaved += amt;
+        } else if (norm === 'project') {
           if (isParentSponsor(tx)) {
-            wishParentSaved += amt;
+            totalProjectsParentSaved += amt;
             totalParentGivenAll += amt;
           } else {
-            wishSelfSaved += amt;
+            totalProjectsSelfSaved += amt;
           }
-        } else if (normType === 'travel') {
-          totalTravelSaved += amt;
-          if (isParentSponsor(tx)) {
-            travelParentSaved += amt;
-            totalParentGivenAll += amt;
+        } else if (norm === 'debt') {
+          const isBorrow = tx.debtSubAction === 'borrow' || tx.description.includes('借款');
+          if (isBorrow) {
+            totalBorrowed += amt;
           } else {
-            travelSelfSaved += amt;
+            totalRepayed += amt;
           }
         }
       });
 
-      // 自由錢包結餘：只扣除小孩「自存」進心願與出國的款項，父母贊助款不從小孩錢包扣除
-      const walletBalance = totalAllIncome - totalAllExpense - wishSelfSaved - travelSelfSaved;
+      // Free Wallet Cash Balance: Income - Expenses - Self-Saved into Projects + Borrowed - Repayed
+      const walletBalance = totalAllIncome - totalAllExpense - totalProjectsSelfSaved + totalBorrowed - totalRepayed;
+      
+      // Outstanding Debt Remaining
+      const remainingDebt = Math.max(0, totalBorrowed - totalRepayed);
 
+      // Proposal B: True Net Worth (Cash - Debt)
+      const trueNetWorth = walletBalance - remainingDebt;
+
+      // Update Basic Stats in DOM
       const elWallet = document.getElementById('statWalletBalance');
+      const elNetWorth = document.getElementById('statNetWorth');
+      const elNetWorthWrapper = document.getElementById('statNetWorthWrapper');
+      const elCardDebtMiniRow = document.getElementById('cardDebtMiniRow');
+      const elStatDebtRem = document.getElementById('statDebtRemaining');
+
+      if (elWallet) elWallet.textContent = Math.round(walletBalance).toLocaleString();
+      if (elNetWorth) elNetWorth.textContent = Math.round(trueNetWorth).toLocaleString();
+      if (elNetWorthWrapper) {
+        elNetWorthWrapper.className = trueNetWorth < 0 ? 'text-sm font-black flex items-center justify-end gap-1 text-rose-300' : 'text-sm font-black flex items-center justify-end gap-1 text-white';
+      }
+
+      if (elCardDebtMiniRow && elStatDebtRem) {
+        if (remainingDebt > 0) {
+          elCardDebtMiniRow.classList.remove('hidden');
+          elStatDebtRem.textContent = Math.round(remainingDebt).toLocaleString();
+        } else {
+          elCardDebtMiniRow.classList.add('hidden');
+        }
+      }
+
+      // Update Monthly Income & Expense Details
       const elMonthInc = document.getElementById('statMonthIncome');
       const elMonthParentInc = document.getElementById('statMonthParentIncome');
       const elMonthExtInc = document.getElementById('statMonthExtIncome');
       const elMonthExp = document.getElementById('statMonthExpense');
       const elMonthNeedExp = document.getElementById('statMonthNeedExpense');
       const elMonthWantExp = document.getElementById('statMonthWantExpense');
-      const elWishSaved = document.getElementById('statWishlistSaved');
-      const elTravelSaved = document.getElementById('statTravelSaved');
 
-      if (elWallet) elWallet.textContent = Math.round(walletBalance).toLocaleString();
       if (elMonthInc) elMonthInc.textContent = Math.round(monthIncome).toLocaleString();
       if (elMonthParentInc) elMonthParentInc.textContent = Math.round(monthParentIncome).toLocaleString();
       if (elMonthExtInc) elMonthExtInc.textContent = Math.round(monthExtIncome).toLocaleString();
       if (elMonthExp) elMonthExp.textContent = Math.round(monthExpense).toLocaleString();
       if (elMonthNeedExp) elMonthNeedExp.textContent = Math.round(monthNeedExpense).toLocaleString();
       if (elMonthWantExp) elMonthWantExp.textContent = Math.round(monthWantExpense).toLocaleString();
-      if (elWishSaved) elWishSaved.textContent = Math.round(totalWishSaved).toLocaleString();
-      if (elTravelSaved) elTravelSaved.textContent = Math.round(totalTravelSaved).toLocaleString();
 
-      const curWish = getActiveWish();
-      const totalWishBudget = getWishlistTotalBudget();
+      // Proposal A: Render Debt Alert Banner at Top
+      renderDebtAlertBanner(remainingDebt, totalBorrowed, totalRepayed);
 
-      const elWishTotalBadge = document.getElementById('wishlistTotalBadge');
-      const elDashWishCount = document.getElementById('dashWishCountText');
-      const elDashWishSub = document.getElementById('dashWishSubtotal');
-      if (elWishTotalBadge) elWishTotalBadge.textContent = `心願總費用 NT$ ${totalWishBudget.toLocaleString()}`;
-      if (elDashWishCount) elDashWishCount.textContent = `${wishlistItems.length} 項`;
-      if (elDashWishSub) elDashWishSub.textContent = `總需求 NT$ ${totalWishBudget.toLocaleString()}`;
+      // Render Active Project Progress Card
+      renderActiveProjectCard();
 
-      const elWishName = document.getElementById('wishTargetName');
-      const elWishTargetPrice = document.getElementById('wishTargetPrice');
-      const elWishCurrent = document.getElementById('wishTargetCurrent');
-      const elWishBarSelf = document.getElementById('wishBarSelf');
-      const elWishBarParent = document.getElementById('wishBarParent');
-      const elWishPct = document.getElementById('wishProgressPercent');
-      const elWishRem = document.getElementById('wishRemainingAmount');
-      const elWishSelf = document.getElementById('wishSelfAmount');
-      const elWishParent = document.getElementById('wishParentAmount');
-
-      if (elWishName) elWishName.textContent = curWish.name;
-      if (elWishTargetPrice) elWishTargetPrice.textContent = curWish.targetPrice.toLocaleString();
-      if (elWishCurrent) elWishCurrent.textContent = totalWishSaved.toLocaleString();
-      if (elWishSelf) elWishSelf.textContent = `NT$ ${wishSelfSaved.toLocaleString()}`;
-      if (elWishParent) elWishParent.textContent = `NT$ ${wishParentSaved.toLocaleString()}`;
-
-      const wishTargetPrice = curWish.targetPrice || 1;
-      const wishSelfPct = Math.min(100, Math.round((wishSelfSaved / wishTargetPrice) * 100));
-      const wishParentPct = Math.min(100 - wishSelfPct, Math.round((wishParentSaved / wishTargetPrice) * 100));
-      const totalWishPct = Math.min(100, Math.round((totalWishSaved / wishTargetPrice) * 100));
-
-      if (elWishBarSelf) elWishBarSelf.style.width = `${wishSelfPct}%`;
-      if (elWishBarParent) elWishBarParent.style.width = `${wishParentPct}%`;
-      if (elWishPct) elWishPct.textContent = `${totalWishPct}%`;
-      if (elWishRem) elWishRem.textContent = Math.max(0, curWish.targetPrice - totalWishSaved).toLocaleString();
-
-      const travelTotalBudget = getTravelTotalBudget();
-      travelConfig.targetPrice = travelTotalBudget;
-
-      const elTravAutoBadge = document.getElementById('travelAutoSumBadge');
-      const elDashTravSub = document.getElementById('dashTravelSubtotal');
-      if (elTravAutoBadge) elTravAutoBadge.textContent = `細項加總 NT$ ${travelTotalBudget.toLocaleString()}`;
-      if (elDashTravSub) elDashTravSub.textContent = `總預算 NT$ ${travelTotalBudget.toLocaleString()}`;
-
-      const elTravName = document.getElementById('travelTargetName');
-      const elTravTargetPrice = document.getElementById('travelTargetPrice');
-      const elTravCurrent = document.getElementById('travelTargetCurrent');
-      const elTravBarSelf = document.getElementById('travelBarSelf');
-      const elTravBarParent = document.getElementById('travelBarParent');
-      const elTravPct = document.getElementById('travelProgressPercent');
-      const elTravRem = document.getElementById('travelRemainingAmount');
-      const elTravSelf = document.getElementById('travelSelfAmount');
-      const elTravParent = document.getElementById('travelParentAmount');
-
-      if (elTravName) elTravName.textContent = travelConfig.name;
-      if (elTravTargetPrice) elTravTargetPrice.textContent = travelTotalBudget.toLocaleString();
-      if (elTravCurrent) elTravCurrent.textContent = totalTravelSaved.toLocaleString();
-      if (elTravSelf) elTravSelf.textContent = `NT$ ${travelSelfSaved.toLocaleString()}`;
-      if (elTravParent) elTravParent.textContent = `NT$ ${travelParentSaved.toLocaleString()}`;
-
-      const travTargetPrice = travelTotalBudget || 1;
-      const travSelfPct = Math.min(100, Math.round((travelSelfSaved / travTargetPrice) * 100));
-      const travParentPct = Math.min(100 - travSelfPct, Math.round((travelParentSaved / travTargetPrice) * 100));
-      const totalTravPct = Math.min(100, Math.round((totalTravelSaved / travTargetPrice) * 100));
-
-      if (elTravBarSelf) elTravBarSelf.style.width = `${travSelfPct}%`;
-      if (elTravBarParent) elTravBarParent.style.width = `${travParentPct}%`;
-      if (elTravPct) elTravPct.textContent = `${totalTravPct}%`;
-      if (elTravRem) elTravRem.textContent = Math.max(0, travelTotalBudget - totalTravelSaved).toLocaleString();
-
-      renderDashboardTravelBranchesMini();
-
-      const totalMonthIncomeCalc = monthParentIncome + monthExtIncome;
-      const parentIncPct = totalMonthIncomeCalc > 0 ? Math.round((monthParentIncome / totalMonthIncomeCalc) * 100) : 100;
-      const extIncPct = totalMonthIncomeCalc > 0 ? 100 - parentIncPct : 0;
+      // Income Source and Intent Bars
+      const totalMonthIncSum = monthParentIncome + monthExtIncome;
+      const parentIncPct = totalMonthIncSum > 0 ? Math.round((monthParentIncome / totalMonthIncSum) * 100) : 100;
+      const extIncPct = totalMonthIncSum > 0 ? 100 - parentIncPct : 0;
       const elParentIncPct = document.getElementById('statParentIncomePercent');
       const elExtIncPct = document.getElementById('statExtIncomePercent');
-      const barParentIncome = document.getElementById('barParentIncome');
-      const barExtIncome = document.getElementById('barExtIncome');
+      const barParentInc = document.getElementById('barParentIncome');
+      const barExtInc = document.getElementById('barExtIncome');
       if (elParentIncPct) elParentIncPct.textContent = `${parentIncPct}%`;
       if (elExtIncPct) elExtIncPct.textContent = `${extIncPct}%`;
-      if (barParentIncome) barParentIncome.style.width = `${parentIncPct}%`;
-      if (barExtIncome) barExtIncome.style.width = `${extIncPct}%`;
+      if (barParentInc) barParentInc.style.width = `${parentIncPct}%`;
+      if (barExtInc) barExtInc.style.width = `${extIncPct}%`;
 
       const totalNeedWant = needExpense + wantExpense;
       const needPct = totalNeedWant > 0 ? Math.round((needExpense / totalNeedWant) * 100) : 50;
@@ -2633,64 +2201,160 @@
       if (barNeed) barNeed.style.width = `${needPct}%`;
       if (barWant) barWant.style.width = `${wantPct}%`;
 
+      // Parent Dashboard Card Updates
       const elCardParentTotal = document.getElementById('cardParentTotalGiven');
       const elCardChildSavingsRate = document.getElementById('cardChildSavingsRate');
       const elCardSavingsStatus = document.getElementById('cardSavingsStatus');
-      const elParentFlowWish = document.getElementById('parentFlowWish');
-      const elParentFlowTravel = document.getElementById('parentFlowTravel');
+      const elParentFlowProj = document.getElementById('parentFlowProjects');
+      const elParentFlowDebt = document.getElementById('parentFlowDebt');
       const elParentFlowExpense = document.getElementById('parentFlowExpense');
 
       if (elCardParentTotal) elCardParentTotal.textContent = totalParentGivenAll.toLocaleString();
-      
-      const totalSavedSum = totalWishSaved + totalTravelSaved + Math.max(0, walletBalance);
+      const totalSavedSum = totalProjectsSelfSaved + Math.max(0, walletBalance);
       const savingsRate = totalAllIncome > 0 ? Math.round((totalSavedSum / totalAllIncome) * 100) : 0;
       if (elCardChildSavingsRate) elCardChildSavingsRate.textContent = `${savingsRate}%`;
       if (elCardSavingsStatus) {
-        if (savingsRate >= 60) elCardSavingsStatus.textContent = '🌟 儲蓄習慣極佳';
+        if (remainingDebt > 0) elCardSavingsStatus.textContent = '⚠️ 尚有代墊借款需優先清償';
+        else if (savingsRate >= 60) elCardSavingsStatus.textContent = '🌟 儲蓄習慣極佳';
         else if (savingsRate >= 30) elCardSavingsStatus.textContent = '👍 資金運用良好';
-        else elCardSavingsStatus.textContent = '📌 建議增加儲蓄比例';
+        else elCardSavingsStatus.textContent = '📌 建議提高儲蓄比例';
       }
 
-      if (elParentFlowWish) elParentFlowWish.textContent = totalWishSaved.toLocaleString();
-      if (elParentFlowTravel) elParentFlowTravel.textContent = totalTravelSaved.toLocaleString();
+      if (elParentFlowProj) elParentFlowProj.textContent = (totalProjectsSelfSaved + totalProjectsParentSaved).toLocaleString();
+      if (elParentFlowDebt) elParentFlowDebt.textContent = totalBorrowed.toLocaleString();
       if (elParentFlowExpense) elParentFlowExpense.textContent = totalAllExpense.toLocaleString();
 
       renderTxList();
       renderFinanceChart();
     }
 
-    function renderDashboardTravelBranchesMini() {
-      const container = document.getElementById('dashboardTravelBranchesMini');
-      if (!container) return;
-      if (!travelConfig.branches || travelConfig.branches.length === 0) {
-        container.innerHTML = '';
-        return;
+    // Proposal A: Debt Alert Bar Rendering Logic
+    function renderDebtAlertBanner(remainingDebt, totalBorrowed, totalRepayed) {
+      const banner = document.getElementById('debtAlertBanner');
+      if (!banner) return;
+
+      if (remainingDebt > 0) {
+        banner.className = 'rounded-2xl p-3.5 border shadow-sm transition-all pulse-alert bg-amber-50 border-amber-300 text-amber-950 space-y-2';
+        banner.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                <i class="fa-solid fa-handshake-angle"></i>
+              </span>
+              <div>
+                <h4 class="text-xs font-bold leading-tight text-amber-900">尚有父母代墊借款：NT$ ${remainingDebt.toLocaleString()}</h4>
+                <p class="text-[10px] text-amber-700 mt-0.5">累計借款 NT$ ${totalBorrowed.toLocaleString()}，已還清 NT$ ${totalRepayed.toLocaleString()}</p>
+              </div>
+            </div>
+            <button onclick="openAddModal('debt', 'repay')" class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1">
+              <i class="fa-solid fa-money-bill-transfer"></i> 立即記還款
+            </button>
+          </div>
+          <div class="text-[10px] bg-white/70 p-2 rounded-xl text-amber-800 leading-relaxed border border-amber-200/60">
+            💡 <strong>理財教育提醒：</strong>借用信用是負責任的開始！有收入時建議優先規劃還款，維持良好信用評價。
+          </div>
+        `;
+        banner.classList.remove('hidden');
+      } else if (totalBorrowed > 0 && remainingDebt === 0) {
+        banner.className = 'rounded-2xl p-3 border shadow-xs bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center justify-between text-xs';
+        banner.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-600 text-sm"><i class="fa-solid fa-circle-check"></i></span>
+            <span class="font-bold">恭喜！所有父母代墊借款已全數還清，信用極佳！</span>
+          </div>
+          <button onclick="document.getElementById('debtAlertBanner').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
       }
-      container.innerHTML = travelConfig.branches.map(b => `
-        <div class="flex items-center justify-between text-[11px] py-1 border-t border-slate-100">
-          <span class="text-slate-600 font-medium truncate">${escapeHtml(b.name)}</span>
-          <span class="text-amber-800 font-bold ml-2 whitespace-nowrap">子預算 NT$ ${b.targetPrice.toLocaleString()}</span>
-        </div>
-      `).join('');
     }
 
+    // Active Project Card Rendering Logic
+    function renderActiveProjectCard() {
+      const p = getActiveProject();
+      const budget = getProjectBudget(p);
+      const totalBudget = getAllProjectsTotalBudget();
+
+      const elTotalBadge = document.getElementById('projectTotalBadge');
+      if (elTotalBadge) elTotalBadge.textContent = `專案總需求 NT$ ${totalBudget.toLocaleString()}`;
+
+      // Sum saved for this active project
+      let selfSaved = 0;
+      let parentSaved = 0;
+
+      transactions.filter(t => normalizeType(t.type) === 'project').forEach(t => {
+        const matchesProject = t.projectId === p.id || (p.type === 'travel' && (t.type === 'travel' || t.category.includes('出國') || t.category.includes('旅遊')));
+        if (matchesProject) {
+          const amt = Number(t.amount) || 0;
+          if (isParentSponsor(t)) parentSaved += amt;
+          else selfSaved += amt;
+        }
+      });
+
+      const totalSaved = selfSaved + parentSaved;
+      const targetBudget = budget > 0 ? budget : 1;
+      const selfPct = Math.min(100, Math.round((selfSaved / targetBudget) * 100));
+      const parentPct = Math.min(100 - selfPct, Math.round((parentSaved / targetBudget) * 100));
+      const totalPct = Math.min(100, Math.round((totalSaved / targetBudget) * 100));
+
+      const elName = document.getElementById('activeProjectName');
+      const elTypeBadge = document.getElementById('activeProjectBadgeType');
+      const elPrice = document.getElementById('activeProjectPrice');
+      const elCurrent = document.getElementById('activeProjectCurrent');
+      const elBarSelf = document.getElementById('projectBarSelf');
+      const elBarParent = document.getElementById('projectBarParent');
+      const elPct = document.getElementById('projectProgressPercent');
+      const elRem = document.getElementById('projectRemainingAmount');
+      const elSelf = document.getElementById('projectSelfAmount');
+      const elParent = document.getElementById('projectParentAmount');
+
+      if (elName) elName.textContent = p.name;
+      if (elTypeBadge) {
+        elTypeBadge.textContent = p.type === 'travel' ? '✈️ 旅遊專案' : '🎁 心願目標';
+        elTypeBadge.className = p.type === 'travel' ? 'text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-100 text-amber-800' : 'text-[10px] px-1.5 py-0.2 rounded font-bold bg-purple-100 text-purple-800';
+      }
+      if (elPrice) elPrice.textContent = budget.toLocaleString();
+      if (elCurrent) elCurrent.textContent = totalSaved.toLocaleString();
+      if (elSelf) elSelf.textContent = `NT$ ${selfSaved.toLocaleString()}`;
+      if (elParent) elParent.textContent = `NT$ ${parentSaved.toLocaleString()}`;
+
+      if (elBarSelf) elBarSelf.style.width = `${selfPct}%`;
+      if (elBarParent) elBarParent.style.width = `${parentPct}%`;
+      if (elPct) elPct.textContent = `${totalPct}%`;
+      if (elRem) elRem.textContent = Math.max(0, budget - totalSaved).toLocaleString();
+
+      // Render mini branches preview if travel or structured
+      const branchesPreview = document.getElementById('activeProjectBranchesPreview');
+      if (branchesPreview) {
+        if (p.branches && p.branches.length > 0) {
+          branchesPreview.classList.remove('hidden');
+          branchesPreview.innerHTML = p.branches.map(b => `
+            <div class="flex items-center justify-between text-[11px] py-0.5">
+              <span class="text-slate-600 truncate">${escapeHtml(b.name)}</span>
+              <span class="text-purple-900 font-bold ml-2 whitespace-nowrap">子預算 NT$ ${b.targetPrice.toLocaleString()}</span>
+            </div>
+          `).join('');
+        } else {
+          branchesPreview.classList.add('hidden');
+        }
+      }
+    }
+
+    // Chart.js Visualization: Handles Asset & Debt Mode
     function switchChartMode(mode) {
       chartMode = mode;
-      const btnAsset = document.getElementById('btnChartModeAsset');
-      const btnExpense = document.getElementById('btnChartModeExpense');
-      const btnIncome = document.getElementById('btnChartModeIncome');
-
-      [btnAsset, btnExpense, btnIncome].forEach(b => {
+      ['btnChartModeAsset', 'btnChartModeExpense', 'btnChartModeIncome'].forEach(id => {
+        const b = document.getElementById(id);
         if (b) b.className = 'px-2 py-0.5 rounded-md text-slate-500';
       });
 
-      if (mode === 'asset' && btnAsset) {
-        btnAsset.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
-      } else if (mode === 'expense' && btnExpense) {
-        btnExpense.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
-      } else if (mode === 'income' && btnIncome) {
-        btnIncome.className = 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs';
-      }
+      if (mode === 'asset') document.getElementById('btnChartModeAsset')?.setAttribute('class', 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs');
+      else if (mode === 'expense') document.getElementById('btnChartModeExpense')?.setAttribute('class', 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs');
+      else if (mode === 'income') document.getElementById('btnChartModeIncome')?.setAttribute('class', 'px-2 py-0.5 rounded-md bg-white text-blue-700 shadow-xs');
+
       renderFinanceChart();
     }
 
@@ -2712,36 +2376,35 @@
       if (chartMode === 'asset') {
         let totalIncome = 0;
         let totalExpense = 0;
-        let wishSelf = 0;
-        let wishParent = 0;
-        let travelSelf = 0;
-        let travelParent = 0;
+        let totalProjSelf = 0;
+        let totalProjParent = 0;
+        let totalBorrowed = 0;
+        let totalRepayed = 0;
 
         transactions.forEach(t => {
-          const rawAmt = String(t.amount || 0).replace(/,/g, '').trim();
-          const a = parseFloat(rawAmt) || 0;
-          const nType = normalizeType(t.type);
-          if (nType === 'income') totalIncome += a;
-          else if (nType === 'expense') totalExpense += a;
-          else if (nType === 'wishlist') {
-            if (isParentSponsor(t)) wishParent += a;
-            else wishSelf += a;
-          } else if (nType === 'travel') {
-            if (isParentSponsor(t)) travelParent += a;
-            else travelSelf += a;
+          const a = parseFloat(String(t.amount || 0).replace(/,/g, '')) || 0;
+          const norm = normalizeType(t.type);
+          if (norm === 'income') totalIncome += a;
+          else if (norm === 'expense') totalExpense += a;
+          else if (norm === 'project') {
+            if (isParentSponsor(t)) totalProjParent += a;
+            else totalProjSelf += a;
+          } else if (norm === 'debt') {
+            if (t.debtSubAction === 'borrow' || t.description.includes('借款')) totalBorrowed += a;
+            else totalRepayed += a;
           }
         });
 
-        const wallet = Math.max(0, totalIncome - totalExpense - wishSelf - travelSelf);
-        const totalWish = wishSelf + wishParent;
-        const totalTravel = travelSelf + travelParent;
+        const walletCash = Math.max(0, totalIncome - totalExpense - totalProjSelf + totalBorrowed - totalRepayed);
+        const remainingDebt = Math.max(0, totalBorrowed - totalRepayed);
+        const totalProj = totalProjSelf + totalProjParent;
 
-        labels = ['錢包自由結餘', '心願專款', '出國基金', '日常總支出'];
-        data = [wallet, totalWish, totalTravel, totalExpense];
-        colors = ['#2563eb', '#9333ea', '#f59e0b', '#f43f5e'];
+        labels = ['自由現金結餘', '專案目標存款', '日常支出總計', '待還借款負債'];
+        data = [walletCash, totalProj, totalExpense, remainingDebt];
+        colors = ['#2563eb', '#9333ea', '#f43f5e', '#f59e0b'];
       } else if (chartMode === 'expense') {
         const catMap = {};
-        transactions.filter(t => t.type === 'expense').forEach(t => {
+        transactions.filter(t => normalizeType(t.type) === 'expense').forEach(t => {
           const cat = t.category || '未分類';
           catMap[cat] = (catMap[cat] || 0) + (Number(t.amount) || 0);
         });
@@ -2753,7 +2416,7 @@
         let parentIncome = 0;
         let extIncome = 0;
 
-        transactions.filter(t => t.type === 'income').forEach(t => {
+        transactions.filter(t => normalizeType(t.type) === 'income').forEach(t => {
           const a = Number(t.amount) || 0;
           if (t.fundingSource === 'external') extIncome += a;
           else parentIncome += a;
@@ -2767,11 +2430,11 @@
       const hasData = data.some(v => v > 0);
       if (!hasData) {
         canvas.classList.add('hidden');
-        if (emptyNotice) emptyNotice.classList.remove('hidden');
+        emptyNotice?.classList.remove('hidden');
         return;
       } else {
         canvas.classList.remove('hidden');
-        if (emptyNotice) emptyNotice.classList.add('hidden');
+        emptyNotice?.classList.add('hidden');
       }
 
       chartInstance = new Chart(ctx, {
@@ -2791,10 +2454,7 @@
           plugins: {
             legend: {
               position: 'bottom',
-              labels: {
-                boxWidth: 10,
-                font: { size: 10, weight: 'bold' }
-              }
+              labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } }
             }
           },
           cutout: '65%'
@@ -2827,7 +2487,7 @@
       const badge = document.getElementById('connBadge');
       if (!badge) return;
       if (online) {
-        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${text || 'Firebase 雲端已連線'}`;
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ${text || '即時連線已就緒'}`;
         badge.className = 'inline-flex items-center gap-1 text-emerald-600 font-medium';
       } else {
         badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> ${text || '離線持久化快取中'}`;
@@ -2883,12 +2543,7 @@
 
     function escapeHtml(str) {
       if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function escapeJs(str) {
@@ -2896,12 +2551,14 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
     }
 
-    // Expose necessary functions to window for onclick handlers
+    // Expose Functions to Window for OnClick handlers
     window.toggleRoleMode = toggleRoleMode;
     window.switchTab = switchTab;
     window.openAddModal = openAddModal;
     window.closeAddModal = closeAddModal;
     window.setType = setType;
+    window.updateDebtLabels = updateDebtLabels;
+    window.handleTargetProjectChange = handleTargetProjectChange;
     window.handleCategoryChange = handleCategoryChange;
     window.fillCategoryNameToDesc = fillCategoryNameToDesc;
     window.selectQuickTag = selectQuickTag;
@@ -2909,21 +2566,21 @@
     window.closeIncomeIntegrityModal = closeIncomeIntegrityModal;
     window.closePinModal = closePinModal;
     window.verifyPinCode = verifyPinCode;
-    window.openWishlistManagerModal = openWishlistManagerModal;
-    window.closeWishlistManagerModal = closeWishlistManagerModal;
-    window.handleSaveWishItem = handleSaveWishItem;
-    window.startEditWish = startEditWish;
-    window.cancelWishEdit = cancelWishEdit;
-    window.deleteWishItem = deleteWishItem;
-    window.setActiveWishDirect = setActiveWishDirect;
-    window.changeActiveWish = changeActiveWish;
-    window.openTravelBranchModal = openTravelBranchModal;
-    window.closeTravelBranchModal = closeTravelBranchModal;
-    window.saveTravelMainInfo = saveTravelMainInfo;
+    window.openProjectManagerModal = openProjectManagerModal;
+    window.closeProjectManagerModal = closeProjectManagerModal;
+    window.toggleProjectBranchInput = toggleProjectBranchInput;
+    window.setActiveProjectDirect = setActiveProjectDirect;
+    window.changeActiveProject = changeActiveProject;
+    window.startEditProject = startEditProject;
+    window.cancelProjectEdit = cancelProjectEdit;
+    window.handleSaveProject = handleSaveProject;
+    window.deleteProject = deleteProject;
+    window.openBranchManagerModal = openBranchManagerModal;
+    window.closeBranchManagerModal = closeBranchManagerModal;
     window.startEditBranch = startEditBranch;
     window.cancelBranchEdit = cancelBranchEdit;
-    window.handleSaveBranchItem = handleSaveBranchItem;
-    window.deleteTravelBranch = deleteTravelBranch;
+    window.handleSaveBranch = handleSaveBranch;
+    window.deleteSubBranch = deleteSubBranch;
     window.openCategoryManagerModal = openCategoryManagerModal;
     window.closeCategoryManagerModal = closeCategoryManagerModal;
     window.switchCategoryScope = switchCategoryScope;
@@ -2934,11 +2591,6 @@
     window.handleSaveCategory = handleSaveCategory;
     window.deleteCategory = deleteCategory;
     window.setFilter = setFilter;
-    window.openEditTxModal = openEditTxModal;
-    window.closeEditTxModal = closeEditTxModal;
-    window.setEditType = setEditType;
-    window.fillCategoryNameToEditDesc = fillCategoryNameToEditDesc;
-    window.handleSaveEditedTx = handleSaveEditedTx;
     window.confirmDeleteTx = confirmDeleteTx;
     window.openChangePinModal = openChangePinModal;
     window.closeChangePinModal = closeChangePinModal;
