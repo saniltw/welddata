@@ -549,6 +549,152 @@
     </div>
   </div>
 
+  <!-- Edit Transaction Modal (Parent Only) -->
+  <div id="editModal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop">
+    <div class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+      
+      <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800">🛡️ 家長審核修改</span>
+          <h3 class="text-sm font-bold text-slate-800">修改收支紀錄</h3>
+        </div>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- 4 Core Transaction Types in Edit Modal -->
+      <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl">
+        <button type="button" onclick="setEditType('expense')" id="editTypeBtnExpense" class="py-2 text-[11px] font-bold rounded-lg bg-white text-rose-600 shadow-xs transition-all">
+          日常支出
+        </button>
+        <button type="button" onclick="setEditType('income')" id="editTypeBtnIncome" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
+          收入
+        </button>
+        <button type="button" onclick="setEditType('project')" id="editTypeBtnProject" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
+          存入專案
+        </button>
+        <button type="button" onclick="setEditType('debt')" id="editTypeBtnDebt" class="py-2 text-[11px] font-bold rounded-lg text-slate-600 transition-all">
+          借款/還款
+        </button>
+      </div>
+
+      <form id="editTxForm" onsubmit="handleEditFormSubmit(event)" class="space-y-3.5">
+        <input type="hidden" id="editTxId" value="">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">金額 (NT$)</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-base">NT$</span>
+            <input type="number" id="editTxAmount" required min="1" step="1" inputmode="numeric" placeholder="0" class="w-full pl-12 pr-4 py-3 text-xl font-black rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
+        <!-- Debt Mode: Borrow from parent vs Repay parent -->
+        <div id="editWrapperDebtSubAction" class="hidden space-y-1.5 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+          <label class="block text-xs font-bold text-amber-900">借貸性質選擇</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-amber-300 bg-white cursor-pointer text-xs font-bold text-amber-800 has-[:checked]:bg-amber-600 has-[:checked]:text-white transition-all shadow-xs">
+              <input type="radio" name="editTxDebtSubAction" value="borrow" checked class="hidden">
+              <i class="fa-solid fa-hand-holding-dollar"></i> 🤝 向父母借款 (預支)
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-amber-300 bg-white cursor-pointer text-xs font-bold text-amber-800 has-[:checked]:bg-emerald-600 has-[:checked]:text-white transition-all shadow-xs">
+              <input type="radio" name="editTxDebtSubAction" value="repay" class="hidden">
+              <i class="fa-solid fa-money-bill-transfer"></i> 💸 償還欠款
+            </label>
+          </div>
+        </div>
+
+        <!-- Project Selector for 'project' type -->
+        <div id="editWrapperProjectSelector" class="hidden space-y-2 p-3 bg-purple-50 rounded-2xl border border-purple-200">
+          <label class="block text-xs font-bold text-purple-900">存入專案或心願目標</label>
+          <select id="editTxTargetProjectSelect" onchange="handleEditTargetProjectChange()" class="w-full text-xs font-bold p-2.5 rounded-xl border border-purple-300 bg-white text-slate-800">
+          </select>
+
+          <!-- Branch selector if project has branches -->
+          <div id="editTxTargetBranchWrapper" class="hidden pt-1">
+            <label class="block text-[11px] font-bold text-purple-800 mb-1">存入細項分支</label>
+            <select id="editTxTargetBranchSelect" class="w-full text-xs font-bold p-2 rounded-xl border border-purple-200 bg-white text-slate-700">
+            </select>
+          </div>
+
+          <!-- Sponsor Type for Project -->
+          <div class="pt-1 space-y-1">
+            <label class="block text-[11px] font-bold text-purple-800">存入資金性質</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-purple-200 bg-white cursor-pointer text-xs font-bold text-purple-700 has-[:checked]:bg-purple-600 has-[:checked]:text-white transition-all shadow-xs">
+                <input type="radio" name="editTxSponsorType" value="self" checked class="hidden">
+                <i class="fa-solid fa-child"></i> 🎒 小孩自存
+              </label>
+              <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-purple-200 bg-white cursor-pointer text-xs font-bold text-purple-700 has-[:checked]:bg-emerald-600 has-[:checked]:text-white transition-all shadow-xs">
+                <input type="radio" name="editTxSponsorType" value="parent" class="hidden">
+                <i class="fa-solid fa-gift"></i> 👨‍👩‍👧 父母贊助/加碼
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Selector -->
+        <div id="editWrapperCategory">
+          <label class="block text-xs font-bold text-slate-600 mb-1">選擇分類</label>
+          <select id="editTxCategory" class="w-full text-xs font-bold p-3 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-700">
+          </select>
+        </div>
+
+        <!-- Funding Source for Income (Parent vs External) -->
+        <div id="editWrapperIncomeFundingSource" class="hidden space-y-1">
+          <label class="block text-xs font-bold text-slate-600">資金來源屬性</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
+              <input type="radio" name="editTxFundingSource" value="parent" checked class="hidden">
+              <i class="fa-solid fa-house-user"></i> 👨‍👩‍👧 父母提供
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:text-emerald-700 transition-all">
+              <input type="radio" name="editTxFundingSource" value="external" class="hidden">
+              <i class="fa-solid fa-coins"></i> 🧧 自力 / 長輩外部
+            </label>
+          </div>
+        </div>
+
+        <!-- Description Field -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-bold text-slate-600">項目備註 / 說明</label>
+            <button type="button" onclick="fillEditCategoryNameToDesc()" class="text-[11px] font-bold text-amber-600 hover:text-amber-800">
+              <i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i> 帶入標籤名稱
+            </button>
+          </div>
+          <input type="text" id="editTxDescription" placeholder="項目說明..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+        </div>
+
+        <!-- Needs vs Wants (for Expense) -->
+        <div id="editWrapperNeedWant" class="space-y-1">
+          <label class="block text-xs font-bold text-slate-600">消費動機</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 has-[:checked]:text-blue-700 transition-all">
+              <input type="radio" name="editTxIntent" value="需要" checked class="hidden">
+              <i class="fa-solid fa-check-circle"></i> 需要 (必要支出)
+            </label>
+            <label class="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer text-xs font-bold text-slate-700 has-[:checked]:bg-rose-50 has-[:checked]:border-rose-400 has-[:checked]:text-rose-700 transition-all">
+              <input type="radio" name="editTxIntent" value="想要" class="hidden">
+              <i class="fa-solid fa-heart"></i> 想要 (休閒享受)
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">記帳日期</label>
+          <input type="date" id="editTxDate" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-500/20 active:scale-95 transition-all">
+          儲存修改內容
+        </button>
+
+      </form>
+    </div>
+  </div>
+
   <!-- Project Manager Modal (Now open to kids & parents: handles both Wishes and Travel projects) -->
   <div id="projectManagerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
     <div class="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -884,6 +1030,7 @@
     let pendingAuthCallback = null;
     let confirmCallback = null;
     let pendingIncomeSubmitFn = null;
+    let currentEditFormType = 'expense';
 
     const EMOJI_PALETTE = [
       '🍱','🧋','🍕','🍔','🍦','☕','🚌','🚇','🚲','⛽','✏️','📚','💻','🎧','🎮','📱',
@@ -2034,7 +2181,10 @@
                 ${prefix} NT$ ${Number(tx.amount).toLocaleString()}
               </span>
               ${isParent ? `
-                <button onclick="confirmDeleteTx('${tx.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50">
+                <button onclick="openEditModal('${tx.id}')" class="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-50 transition-colors" title="修改此筆紀錄">
+                  <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+                <button onclick="confirmDeleteTx('${tx.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50 transition-colors" title="刪除此筆紀錄">
                   <i class="fa-regular fa-trash-can text-xs"></i>
                 </button>
               ` : `
@@ -2044,6 +2194,211 @@
           </div>
         `;
       }).join('');
+    }
+
+    function openEditModal(id) {
+      if (currentRole !== 'parent') {
+        requestParentAuth(() => openEditModal(id), '修改帳目紀錄', '修改帳目紀錄需家長身分驗證');
+        return;
+      }
+
+      const tx = transactions.find(t => t.id === id);
+      if (!tx) {
+        showToast('找不到此筆帳目', 'warning');
+        return;
+      }
+
+      document.getElementById('editTxId').value = tx.id;
+      document.getElementById('editTxAmount').value = tx.amount || '';
+      document.getElementById('editTxDescription').value = tx.description || '';
+      document.getElementById('editTxDate').value = tx.date || new Date().toISOString().split('T')[0];
+
+      const normType = normalizeType(tx.type);
+      setEditType(normType);
+
+      // Restore specific fields based on type
+      if (normType === 'expense') {
+        renderEditCategorySelect(tx.category);
+        const radioIntent = document.querySelector(`input[name="editTxIntent"][value="${tx.intent || '需要'}"]`);
+        if (radioIntent) radioIntent.checked = true;
+      } else if (normType === 'income') {
+        renderEditCategorySelect(tx.category);
+        const radioFunding = document.querySelector(`input[name="editTxFundingSource"][value="${tx.fundingSource || 'parent'}"]`);
+        if (radioFunding) radioFunding.checked = true;
+      } else if (normType === 'project') {
+        renderEditTargetProjectSelector(tx.projectId);
+        const radioSponsor = document.querySelector(`input[name="editTxSponsorType"][value="${tx.sponsorType || 'self'}"]`);
+        if (radioSponsor) radioSponsor.checked = true;
+      } else if (normType === 'debt') {
+        const sub = tx.debtSubAction || (tx.description?.includes('借款') ? 'borrow' : 'repay');
+        const radioDebt = document.querySelector(`input[name="editTxDebtSubAction"][value="${sub}"]`);
+        if (radioDebt) radioDebt.checked = true;
+      }
+
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    function setEditType(type) {
+      currentEditFormType = type;
+      ['expense', 'income', 'project', 'debt'].forEach(t => {
+        const btn = document.getElementById('editTypeBtn' + capitalize(t));
+        if (!btn) return;
+        if (t === type) {
+          btn.className = 'py-2 text-[11px] font-bold rounded-lg bg-white shadow-xs text-amber-700 transition-all';
+        } else {
+          btn.className = 'py-2 text-[11px] font-bold rounded-lg text-slate-500 transition-all';
+        }
+      });
+
+      const wrapperCategory = document.getElementById('editWrapperCategory');
+      const wrapperNeedWant = document.getElementById('editWrapperNeedWant');
+      const wrapperIncomeSource = document.getElementById('editWrapperIncomeFundingSource');
+      const wrapperProject = document.getElementById('editWrapperProjectSelector');
+      const wrapperDebt = document.getElementById('editWrapperDebtSubAction');
+
+      if (wrapperNeedWant) wrapperNeedWant.classList.toggle('hidden', type !== 'expense');
+      if (wrapperIncomeSource) wrapperIncomeSource.classList.toggle('hidden', type !== 'income');
+      if (wrapperProject) wrapperProject.classList.toggle('hidden', type !== 'project');
+      if (wrapperDebt) wrapperDebt.classList.toggle('hidden', type !== 'debt');
+      if (wrapperCategory) wrapperCategory.classList.toggle('hidden', type === 'project' || type === 'debt');
+
+      if (type === 'project') renderEditTargetProjectSelector();
+      if (type === 'expense' || type === 'income') renderEditCategorySelect();
+    }
+
+    function renderEditCategorySelect(selectedValue = null) {
+      const select = document.getElementById('editTxCategory');
+      if (!select) return;
+      const list = categories[currentEditFormType] || [];
+      select.innerHTML = list.map(c => {
+        const val = `${c.icon} ${c.name}`;
+        const isSel = selectedValue && (selectedValue === val || selectedValue.includes(c.name));
+        return `<option value="${val}" ${isSel ? 'selected' : ''}>${c.icon} ${escapeHtml(c.name)}</option>`;
+      }).join('');
+    }
+
+    function renderEditTargetProjectSelector(selectedProjId = null) {
+      const select = document.getElementById('editTxTargetProjectSelect');
+      if (!select) return;
+      select.innerHTML = projects.map(p => `
+        <option value="${p.id}" ${selectedProjId === p.id ? 'selected' : ''}>${p.type === 'travel' ? '✈️' : '🎁'} ${escapeHtml(p.name)}</option>
+      `).join('');
+      handleEditTargetProjectChange();
+    }
+
+    function handleEditTargetProjectChange() {
+      const select = document.getElementById('editTxTargetProjectSelect');
+      const branchWrapper = document.getElementById('editTxTargetBranchWrapper');
+      const branchSelect = document.getElementById('editTxTargetBranchSelect');
+      if (!select || !branchWrapper || !branchSelect) return;
+
+      const p = projects.find(item => item.id === select.value);
+      if (p && p.branches && p.branches.length > 0) {
+        branchWrapper.classList.remove('hidden');
+        branchSelect.innerHTML = p.branches.map(b => `
+          <option value="${escapeHtml(b.name)}">${escapeHtml(b.name)} (子預算 NT$ ${b.targetPrice.toLocaleString()})</option>
+        `).join('');
+      } else {
+        branchWrapper.classList.add('hidden');
+      }
+    }
+
+    function fillEditCategoryNameToDesc() {
+      const descInput = document.getElementById('editTxDescription');
+      if (!descInput) return;
+      if (currentEditFormType === 'project') {
+        const pSelect = document.getElementById('editTxTargetProjectSelect');
+        const p = projects.find(item => item.id === pSelect?.value);
+        if (p) descInput.value = `存入${p.name}`;
+      } else if (currentEditFormType === 'debt') {
+        const sub = document.querySelector('input[name="editTxDebtSubAction"]:checked')?.value;
+        descInput.value = sub === 'borrow' ? '向父母借款代墊' : '償還父母借款';
+      } else {
+        const select = document.getElementById('editTxCategory');
+        if (select) descInput.value = select.value.replace(/^[\p{Emoji}\s]+/u, '').trim();
+      }
+    }
+
+    async function handleEditFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('editTxId').value;
+      const originalTx = transactions.find(t => t.id === id);
+      if (!originalTx) return;
+
+      const amount = parseInt(document.getElementById('editTxAmount').value, 10);
+      let description = document.getElementById('editTxDescription').value.trim();
+      const date = document.getElementById('editTxDate').value;
+      const operator = '🛡️ 家長';
+
+      let category = '📌 其它';
+      let intent = '需要';
+      let fundingSource = 'parent';
+      let sponsorType = 'self';
+      let debtSubAction = null;
+      let projectId = null;
+
+      if (currentEditFormType === 'expense') {
+        category = document.getElementById('editTxCategory').value;
+        intent = document.querySelector('input[name="editTxIntent"]:checked')?.value || '需要';
+      } else if (currentEditFormType === 'income') {
+        category = document.getElementById('editTxCategory').value;
+        fundingSource = document.querySelector('input[name="editTxFundingSource"]:checked')?.value || 'parent';
+      } else if (currentEditFormType === 'project') {
+        const pSelect = document.getElementById('editTxTargetProjectSelect');
+        projectId = pSelect?.value;
+        const p = projects.find(item => item.id === projectId);
+        category = p ? (p.type === 'travel' ? '✈️ 旅遊專案' : '🎁 心願專款') : '🎯 專案目標';
+        sponsorType = document.querySelector('input[name="editTxSponsorType"]:checked')?.value || 'self';
+        
+        const branchSelect = document.getElementById('editTxTargetBranchSelect');
+        const branchWrapper = document.getElementById('editTxTargetBranchWrapper');
+        if (branchWrapper && !branchWrapper.classList.contains('hidden') && branchSelect?.value) {
+          const branchName = branchSelect.value;
+          if (!description.includes(branchName)) {
+            description = description ? `${description} [${branchName}]` : `存入分支: ${branchName}`;
+          }
+        }
+      } else if (currentEditFormType === 'debt') {
+        debtSubAction = document.querySelector('input[name="editTxDebtSubAction"]:checked')?.value || 'borrow';
+        category = debtSubAction === 'borrow' ? '🤝 向父母借款' : '💸 償還父母借款';
+      }
+
+      if (!description) {
+        description = category.replace(/^[\p{Emoji}\s]+/u, '').trim();
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        showToast('請輸入有效金額', 'warning');
+        return;
+      }
+
+      const updatedTx = {
+        ...originalTx,
+        date: date,
+        type: currentEditFormType,
+        debtSubAction: debtSubAction,
+        projectId: projectId,
+        category: category,
+        description: description,
+        intent: intent,
+        fundingSource: fundingSource,
+        sponsorType: sponsorType,
+        amount: amount,
+        operator: `${originalTx.operator || '未標註'} (家長修改)`,
+        lastEditedBy: operator,
+        lastEditedAt: new Date().toLocaleString('zh-TW'),
+        updatedAt: Date.now()
+      };
+
+      await saveTxToFirestore(updatedTx);
+      addAuditLogToFirestore('修改收支', `🛡️ 家長修改紀錄「${originalTx.description}」(NT$${originalTx.amount}) ➔ 「${description}」(NT$${amount})`);
+
+      closeEditModal();
+      showToast('紀錄已更新！已同步至雲端', 'success');
     }
 
     function confirmDeleteTx(id) {
@@ -2592,6 +2947,12 @@
     window.deleteCategory = deleteCategory;
     window.setFilter = setFilter;
     window.confirmDeleteTx = confirmDeleteTx;
+    window.openEditModal = openEditModal;
+    window.closeEditModal = closeEditModal;
+    window.setEditType = setEditType;
+    window.handleEditFormSubmit = handleEditFormSubmit;
+    window.handleEditTargetProjectChange = handleEditTargetProjectChange;
+    window.fillEditCategoryNameToDesc = fillEditCategoryNameToDesc;
     window.openChangePinModal = openChangePinModal;
     window.closeChangePinModal = closeChangePinModal;
     window.saveNewPinCode = saveNewPinCode;
