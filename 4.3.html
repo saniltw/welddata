@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>銲材試驗自主檢查記錄表 (橫式)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        /* A4 紙張預覽樣式 (橫式: 297mm x 210mm) */
+        .a4-sheet {
+            width: 297mm;
+            min-height: 210mm;
+            padding: 12mm 16mm;
+            margin: 1.5rem auto;
+            background: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 4px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 正式公文/工程表格黑色細框線規範 */
+        .table-report {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem; /* 13.6px */
+        }
+        .table-report th, 
+        .table-report td {
+            border: 1px solid #000000;
+            padding: 4px 6px;
+            vertical-align: middle;
+        }
+        .table-report th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* 判定按鈕群組 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px 5px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border: 1px solid #9ca3af;
+            border-radius: 3px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease-in-out;
+            background: #fff;
+            color: #4b5563;
+        }
+        .status-badge:hover {
+            border-color: #4b5563;
+            background-color: #f3f4f6;
+        }
+        .status-badge.active-pass {
+            background-color: #16a34a !important;
+            border-color: #15803d !important;
+            color: #ffffff !important;
+        }
+        .status-badge.active-fail {
+            background-color: #dc2626 !important;
+            border-color: #b91c1c !important;
+            color: #ffffff !important;
+        }
+        .status-badge.active-na {
+            background-color: #6b7280 !important;
+            border-color: #4b5563 !important;
+            color: #ffffff !important;
+        }
+
+        /* 檢附熔金狀態切換標籤 */
+        .weld-metal-tag {
+            cursor: pointer;
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+        .weld-metal-tag.tag-yes {
+            background-color: #ecfdf5;
+            color: #047857;
+            border-color: #a7f3d0;
+        }
+        .weld-metal-tag.tag-no {
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+        .weld-metal-tag.tag-na {
+            background-color: #f3f4f6;
+            color: #4b5563;
+            border-color: #e5e7eb;
+        }
+
+        /* 列印專用 CSS */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .a4-sheet {
+                width: 100% !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                page-break-after: avoid;
+            }
+            @page {
+                size: A4 landscape;
+                margin: 8mm 12mm;
+            }
+            .table-report th {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            /* 隱藏線上互動按鈕，顯示乾淨列印文字 */
+            .status-btn-group {
+                display: none !important;
+            }
+            .print-status-text {
+                display: block !important;
+                font-weight: 700 !important;
+                font-size: 0.8rem !important;
+                text-align: center !important;
+            }
+            /* 檢驗輸入格列印優化 */
+            input::placeholder, textarea::placeholder {
+                color: transparent !important;
+            }
+            input[type="text"], textarea {
+                border: none !important;
+                background: transparent !important;
+            }
+            .weld-metal-tag {
+                border: none !important;
+                background: transparent !important;
+                color: #000000 !important;
+                font-size: 0.8rem !important;
+                padding: 0 !important;
+            }
+        }
+        .print-status-text {
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- 頂部控制面板 (列印時自動隱藏) -->
+    <header class="no-print sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            <!-- 標題與來源狀態 -->
+            <div class="flex items-center space-x-3">
+                <span class="bg-indigo-600 text-white font-bold text-xs px-2.5 py-1 rounded">4.3 橫式</span>
+                <h1 class="text-lg font-bold text-gray-900">自主檢查記錄表產生器</h1>
+                <span id="sync-status" class="text-xs text-gray-500 flex items-center">
+                    <span class="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1.5 animate-pulse"></span>
+                    連接資料庫中...
+                </span>
+            </div>
+
+            <!-- 控制工具列 -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- 選擇試驗案件 -->
+                <div class="flex items-center space-x-2">
+                    <label for="record-select" class="text-xs font-semibold text-gray-700 whitespace-nowrap">選擇案件：</label>
+                    <select id="record-select" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none max-w-[260px] sm:max-w-[340px]">
+                        <option value="">載入案件清單中...</option>
+                    </select>
+                </div>
+
+                <!-- 檢查日期 -->
+                <div class="flex items-center space-x-2">
+                    <label for="check-date-picker" class="text-xs font-semibold text-gray-700 whitespace-nowrap">檢查日期：</label>
+                    <input type="date" id="check-date-picker" class="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <!-- 操作按鈕 -->
+                <button id="btn-quick-pass" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    一鍵全標合格
+                </button>
+
+                <button id="btn-reset" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-gray-300">
+                    清空判定
+                </button>
+
+                <button id="btn-print" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    列印 / 存為 A4 橫式 PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 人員下拉選單 Datalist (供線上挑選或手動自填) -->
+    <datalist id="personnel-datalist"></datalist>
+
+    <!-- A4 模擬紙張容器 (橫式) -->
+    <main class="max-w-[310mm] mx-auto px-4 overflow-x-auto">
+        <div id="paper" class="a4-sheet text-black">
+            
+            <!-- 表頭區 -->
+            <div class="text-center mb-3">
+                <input type="text" id="report-title-input" value="研發處 銲材試驗自主檢查記錄表" class="w-full text-center text-xl font-bold tracking-wider text-black bg-transparent border-b border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none pb-0.5">
+                <div class="flex justify-between items-center text-xs mt-2 text-gray-800 px-1">
+                    <div>
+                        <span class="font-semibold">文件編號：</span>
+                        <span id="doc-number">IR-2026-0000</span>
+                    </div>
+                    <div>
+                        <span class="font-semibold">檢查日期：</span>
+                        <span id="display-check-date">---- 年 -- 月 -- 日</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 壹、試片基本資訊 (整齊 2 列 × 3 欄 配置) -->
+            <section class="mb-3">
+                <div class="bg-gray-100 text-xs font-bold px-2 py-0.5 border border-black border-b-0">
+                    壹、試驗基本資訊
+                </div>
+                <table class="table-report">
+                    <tbody>
+                        <tr>
+                            <th class="w-[10%]">試驗序號</th>
+                            <td class="w-[20%] font-semibold text-indigo-900" id="info-serial-number">-</td>
+                            <th class="w-[10%]">委託廠商</th>
+                            <td class="w-[25%]" id="info-manufacturer">-</td>
+                            <th class="w-[10%]">工程名稱</th>
+                            <td class="w-[25%]" id="info-project-name">-</td>
+                        </tr>
+                        <tr>
+                            <th>銲接日期</th>
+                            <td id="info-welding-date">-</td>
+                            <th>試驗單位</th>
+                            <td id="info-lab">-</td>
+                            <th>備註項目</th>
+                            <td id="info-remarks" class="text-xs text-gray-700">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 貳、案件試驗項目與檢驗查核 (外觀與 UT 複合子欄位) -->
+            <section class="mb-3">
+                <div class="bg-gray-100 text-xs font-bold px-2 py-0.5 border border-black border-b-0 flex justify-between items-center">
+                    <span>貳、案件試驗項目與檢驗查核</span>
+                    <span class="text-[11px] font-normal text-gray-600">外觀與 UT 檢驗人員可從下拉選單選取或自填；點擊按鈕標記判定</span>
+                </div>
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="w-[5%]">項次</th>
+                            <th rowspan="2" class="w-[23%]">測試項目名稱</th>
+                            <th rowspan="2" class="w-[10%]">銲接人員</th>
+                            <th rowspan="2" class="w-[7%]">數量</th>
+                            <th rowspan="2" class="w-[9%]">檢附熔金</th>
+                            <th colspan="2" class="w-[23%]">試片外觀檢查</th>
+                            <th colspan="2" class="w-[23%]">UT 檢驗</th>
+                        </tr>
+                        <tr>
+                            <th class="w-[11%] font-medium text-xs bg-gray-50">檢驗人員</th>
+                            <th class="w-[12%] font-medium text-xs bg-gray-50">判定</th>
+                            <th class="w-[11%] font-medium text-xs bg-gray-50">檢驗人員</th>
+                            <th class="w-[12%] font-medium text-xs bg-gray-50">判定</th>
+                        </tr>
+                    </thead>
+                    <tbody id="case-items-body">
+                        <tr>
+                            <td colspan="9" class="text-center py-8 text-gray-400">
+                                請於上方選擇案件以載入測試項目
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 參、未合格追蹤事項 (結構化處置欄位) -->
+            <section class="mb-3">
+                <div class="bg-gray-100 text-xs font-bold px-2 py-0.5 border border-black border-b-0 flex justify-between items-center">
+                    <span>參、未合格追蹤事項</span>
+                    <span class="text-[11px] font-normal text-gray-500">若無不合格項目時免填</span>
+                </div>
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th class="w-[32%]">異常原因分析</th>
+                            <th class="w-[42%]">處置對策 / 重銲安排</th>
+                            <th class="w-[26%]">複驗結果與追蹤日期</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="p-1">
+                                <textarea id="unqualified-reason" rows="2" class="w-full text-xs text-gray-800 bg-transparent border-0 focus:ring-0 p-1 resize-none" placeholder="輸入異常/缺陷原因 (例: 銲道表面氣孔、UT內部夾渣)..."></textarea>
+                            </td>
+                            <td class="p-1">
+                                <textarea id="unqualified-action" rows="2" class="w-full text-xs text-gray-800 bg-transparent border-0 focus:ring-0 p-1 resize-none" placeholder="輸入處置對策或重銲排程 (例: 刨除重銲、重新取樣試驗)..."></textarea>
+                            </td>
+                            <td class="p-1">
+                                <div class="flex flex-col space-y-1">
+                                    <input type="text" id="unqualified-result" class="w-full text-xs text-gray-800 bg-transparent border-0 focus:ring-0 p-0.5" placeholder="複驗結果 (例: 複驗合格 / 待驗)">
+                                    <div class="flex items-center text-xs text-gray-600 space-x-1 border-t border-gray-200 pt-1">
+                                        <span>追蹤日期：</span>
+                                        <input type="date" id="unqualified-date" class="text-xs bg-transparent border-0 focus:ring-0 p-0">
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 肆、簽核欄位 (二級紙本簽核方框) -->
+            <section class="mt-4">
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th class="w-[50%] py-1">檢驗人員簽章</th>
+                            <th class="w-[50%] py-1">主管審核簽章</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="h-20 align-bottom pb-1.5 px-4">
+                                <div class="flex justify-between items-end text-xs text-gray-600">
+                                    <span>簽名 / 蓋章：</span>
+                                    <span>日期：_____ 年 _____ 月 _____ 日</span>
+                                </div>
+                            </td>
+                            <td class="h-20 align-bottom pb-1.5 px-4">
+                                <div class="flex justify-between items-end text-xs text-gray-600">
+                                    <span>簽名 / 蓋章：</span>
+                                    <span>日期：_____ 年 _____ 月 _____ 日</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 頁尾文件標註 -->
+            <footer class="mt-4 text-[10px] text-gray-400 flex justify-between">
+                <span>FORM-RD-043-REV.04 (LANDSCAPE)</span>
+                <span>內部自主品管記錄文件，請依規定歸檔保存</span>
+            </footer>
+
+        </div>
+    </main>
+
+    <!-- Firebase 串接模組 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // 與 4.1.html 完全一致之 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyAeVNUxcvNg4skIFxgFD9hyvJ8KSjNDauQ",
+            authDomain: "rd20250803.firebaseapp.com",
+            projectId: "rd20250803",
+            storageBucket: "rd20250803.firebasestorage.app",
+            messagingSenderId: "258541470825",
+            appId: "1:258541470825:web:ab1b94810c0f2405db8ef8",
+            measurementId: "G-KZG5BJ121X"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // 全域狀態
+        let records = [];
+        let currentRecord = null;
+        let personnelNames = new Set();
+
+        // DOM 元素快取
+        const recordSelect = document.getElementById('record-select');
+        const syncStatus = document.getElementById('sync-status');
+        const checkDatePicker = document.getElementById('check-date-picker');
+        const displayCheckDate = document.getElementById('display-check-date');
+        const docNumber = document.getElementById('doc-number');
+        const caseItemsBody = document.getElementById('case-items-body');
+        const personnelDatalist = document.getElementById('personnel-datalist');
+        const unqualifiedReason = document.getElementById('unqualified-reason');
+        const unqualifiedAction = document.getElementById('unqualified-action');
+        const unqualifiedResult = document.getElementById('unqualified-result');
+        const unqualifiedDate = document.getElementById('unqualified-date');
+
+        // 初始化日期為當天
+        const todayStr = new Date().toISOString().split('T')[0];
+        checkDatePicker.value = todayStr;
+        updateDisplayDate(todayStr);
+
+        function updateDisplayDate(dateVal) {
+            if (!dateVal) {
+                displayCheckDate.textContent = '---- 年 -- 月 -- 日';
+                return;
+            }
+            const parts = dateVal.split('-');
+            if (parts.length === 3) {
+                displayCheckDate.textContent = `${parts[0]} 年 ${parts[1]} 月 ${parts[2]} 日`;
+            } else {
+                displayCheckDate.textContent = dateVal;
+            }
+        }
+
+        checkDatePicker.addEventListener('change', (e) => {
+            updateDisplayDate(e.target.value);
+        });
+
+        // 登入並即時監聽 Firestore
+        signInAnonymously(auth).then(() => {
+            syncStatus.innerHTML = `
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1.5"></span>
+                已即時連線資料庫
+            `;
+
+            // 1. 監聽人員名冊列表 (lists/welders)
+            onSnapshot(doc(db, "lists", "welders"), (snap) => {
+                if (snap.exists()) {
+                    const items = snap.data().items || [];
+                    items.forEach(w => {
+                        const name = typeof w === 'string' ? w : w.name;
+                        if (name) personnelNames.add(name);
+                    });
+                    refreshPersonnelDatalist();
+                }
+            });
+
+            // 2. 監聽案件列表 (weldingRecords)
+            onSnapshot(collection(db, "weldingRecords"), (snapshot) => {
+                records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // 依序號由新到舊排序
+                records.sort((a, b) => (Number(b.serialNumber) || 0) - (Number(a.serialNumber) || 0));
+
+                // 收集案件中的人員名稱補充至人員候選庫
+                records.forEach(r => {
+                    (r.testItems || []).forEach(ti => {
+                        if (ti.welder) personnelNames.add(ti.welder);
+                    });
+                });
+                refreshPersonnelDatalist();
+
+                populateRecordDropdown();
+
+                // 若之前已選取過，維持選取狀態並重新載入
+                if (currentRecord) {
+                    const refreshed = records.find(r => r.id === currentRecord.id);
+                    if (refreshed) {
+                        currentRecord = refreshed;
+                        renderRecordToPaper(refreshed);
+                    }
+                }
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
+                syncStatus.innerHTML = `
+                    <span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                    資料讀取失敗
+                `;
+            });
+
+        }).catch((err) => {
+            console.error("Auth error:", err);
+            syncStatus.innerHTML = `
+                <span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                身分驗證失敗
+            `;
+        });
+
+        // 更新人員下拉選單選項
+        function refreshPersonnelDatalist() {
+            personnelDatalist.innerHTML = '';
+            Array.from(personnelNames).sort((a, b) => a.localeCompare(b, 'zh-Hant')).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                personnelDatalist.appendChild(opt);
+            });
+        }
+
+        // 填入案件下拉選單
+        function populateRecordDropdown() {
+            const currentSelectedId = recordSelect.value;
+            recordSelect.innerHTML = '<option value="">-- 請選擇試驗案件 --</option>';
+
+            records.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                const serial = r.serialNumber ? `序號:${r.serialNumber}` : '無序號';
+                const project = r.projectName || '未命名工程';
+                const manufacturer = r.manufacturer ? `(${r.manufacturer})` : '';
+                opt.textContent = `${serial} - ${project} ${manufacturer}`;
+                recordSelect.appendChild(opt);
+            });
+
+            if (currentSelectedId && records.some(r => r.id === currentSelectedId)) {
+                recordSelect.value = currentSelectedId;
+            }
+        }
+
+        // 監聽案件切換
+        recordSelect.addEventListener('change', (e) => {
+            const selectedId = e.target.value;
+            if (!selectedId) {
+                currentRecord = null;
+                resetPaper();
+                return;
+            }
+            const found = records.find(r => r.id === selectedId);
+            if (found) {
+                currentRecord = found;
+                renderRecordToPaper(found);
+            }
+        });
+
+        // 重設紙張至未選狀態
+        function resetPaper() {
+            docNumber.textContent = 'IR-2026-0000';
+            document.getElementById('info-serial-number').textContent = '-';
+            document.getElementById('info-manufacturer').textContent = '-';
+            document.getElementById('info-project-name').textContent = '-';
+            document.getElementById('info-welding-date').textContent = '-';
+            document.getElementById('info-lab').textContent = '-';
+            document.getElementById('info-remarks').textContent = '-';
+
+            caseItemsBody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center py-8 text-gray-400">
+                        請於上方選擇案件以載入測試項目
+                    </td>
+                </tr>
+            `;
+            resetAllDecisions();
+        }
+
+        // 將選取的案件資料渲染至 A4 紙張
+        function renderRecordToPaper(record) {
+            // 文件編號
+            const year = record.registrationDate ? record.registrationDate.substring(0, 4) : '2026';
+            const paddedSerial = String(record.serialNumber || 0).padStart(4, '0');
+            docNumber.textContent = `IR-${year}-${paddedSerial}`;
+
+            // 基本資訊 (2列 x 3欄)
+            document.getElementById('info-serial-number').textContent = record.serialNumber || '-';
+            document.getElementById('info-manufacturer').textContent = record.manufacturer || '未指定';
+            document.getElementById('info-project-name').textContent = record.projectName || '未填寫';
+            document.getElementById('info-welding-date').textContent = record.weldingDate || '未填寫';
+            document.getElementById('info-lab').textContent = record.lab || '未指定';
+            document.getElementById('info-remarks').textContent = record.remarks || '無';
+
+            // 渲染貳、測試項目清單
+            renderCaseItems(record);
+
+            // 清空判定選擇（預設空白，由人員現場點選）
+            resetAllDecisions();
+        }
+
+        function renderCaseItems(record) {
+            caseItemsBody.innerHTML = '';
+            const testItems = record.testItems || [];
+
+            if (testItems.length === 0) {
+                caseItemsBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-6 text-gray-500">
+                            本案件登記資料中無具體測試項目
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const inspectionItems = record.inspectionItems || [];
+
+            testItems.forEach((ti, idx) => {
+                const tr = document.createElement('tr');
+                const visualKey = `visual-${idx}`;
+                const utKey = `ut-${idx}`;
+
+                // 判斷此測試項目是否需要檢附熔金
+                const hasInspection = inspectionItems.some(ii => ii.includes(ti.item));
+                const defaultWeldMetalText = hasInspection ? '是 (檢附)' : '免附';
+                const defaultTagClass = hasInspection ? 'tag-yes' : 'tag-na';
+
+                tr.innerHTML = `
+                    <td class="text-center font-semibold">${idx + 1}</td>
+                    <td class="font-medium">${ti.item || '未定項目'}</td>
+                    <td class="text-center">${ti.welder || '未指定'}</td>
+                    <td class="text-center">${ti.quantity || 1} 組</td>
+                    <td class="text-center">
+                        <span class="weld-metal-tag ${defaultTagClass}" title="點擊切換 是/否/免附">${defaultWeldMetalText}</span>
+                    </td>
+                    <!-- 試片外觀檢查: 人員 + 判定 -->
+                    <td class="p-0.5">
+                        <input type="text" list="personnel-datalist" class="w-full text-xs text-center border-0 focus:ring-0 p-0.5 bg-transparent hover:bg-gray-50 focus:bg-white rounded" placeholder="選擇或自填">
+                    </td>
+                    <td class="text-center p-0.5">
+                        <div class="status-btn-group flex justify-center space-x-1" data-target="${visualKey}">
+                            <button type="button" class="status-badge" data-val="合格">合格</button>
+                            <button type="button" class="status-badge" data-val="不合格">不合格</button>
+                            <button type="button" class="status-badge" data-val="免檢">免檢</button>
+                        </div>
+                        <span class="print-status-text" id="print-${visualKey}">-</span>
+                    </td>
+                    <!-- UT 檢驗: 人員 + 判定 -->
+                    <td class="p-0.5">
+                        <input type="text" list="personnel-datalist" class="w-full text-xs text-center border-0 focus:ring-0 p-0.5 bg-transparent hover:bg-gray-50 focus:bg-white rounded" placeholder="選擇或自填">
+                    </td>
+                    <td class="text-center p-0.5">
+                        <div class="status-btn-group flex justify-center space-x-1" data-target="${utKey}">
+                            <button type="button" class="status-badge" data-val="合格">合格</button>
+                            <button type="button" class="status-badge" data-val="不合格">不合格</button>
+                            <button type="button" class="status-badge" data-val="免檢">免檢</button>
+                        </div>
+                        <span class="print-status-text" id="print-${utKey}">-</span>
+                    </td>
+                `;
+                caseItemsBody.appendChild(tr);
+            });
+        }
+
+        // 點擊「檢附熔金」標籤循環切換狀態
+        caseItemsBody.addEventListener('click', (e) => {
+            const tag = e.target.closest('.weld-metal-tag');
+            if (!tag) return;
+
+            if (tag.classList.contains('tag-yes')) {
+                tag.className = 'weld-metal-tag tag-no';
+                tag.textContent = '否';
+            } else if (tag.classList.contains('tag-no')) {
+                tag.className = 'weld-metal-tag tag-na';
+                tag.textContent = '免附';
+            } else {
+                tag.className = 'weld-metal-tag tag-yes';
+                tag.textContent = '是 (檢附)';
+            }
+        });
+
+        // 委派點擊事件處理判定按鈕點選
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.status-badge');
+            if (!btn) return;
+
+            const group = btn.closest('.status-btn-group');
+            if (!group) return;
+
+            const val = btn.dataset.val;
+            const targetKey = group.dataset.target;
+            const printSpan = document.getElementById(`print-${targetKey}`);
+
+            // 若已選取，點擊則取消
+            if (btn.classList.contains('active-pass') || btn.classList.contains('active-fail') || btn.classList.contains('active-na')) {
+                btn.className = 'status-badge';
+                if (printSpan) printSpan.textContent = '-';
+                return;
+            }
+
+            // 清除同組其他按鈕狀態
+            group.querySelectorAll('.status-badge').forEach(b => {
+                b.className = 'status-badge';
+            });
+
+            // 套用新樣式
+            if (val === '合格') {
+                btn.classList.add('active-pass');
+                if (printSpan) {
+                    printSpan.textContent = '合格';
+                    printSpan.className = 'print-status-text text-emerald-700 font-bold';
+                }
+            } else if (val === '不合格') {
+                btn.classList.add('active-fail');
+                if (printSpan) {
+                    printSpan.textContent = '不合格';
+                    printSpan.className = 'print-status-text text-red-700 font-bold';
+                }
+            } else if (val === '免檢') {
+                btn.classList.add('active-na');
+                if (printSpan) {
+                    printSpan.textContent = '免檢';
+                    printSpan.className = 'print-status-text text-gray-600 font-bold';
+                }
+            }
+        });
+
+        // 重設所有判定與未合格追蹤欄
+        function resetAllDecisions() {
+            document.querySelectorAll('.status-badge').forEach(b => {
+                b.className = 'status-badge';
+            });
+            document.querySelectorAll('.print-status-text').forEach(p => {
+                p.textContent = '-';
+                p.className = 'print-status-text';
+            });
+            if (unqualifiedReason) unqualifiedReason.value = '';
+            if (unqualifiedAction) unqualifiedAction.value = '';
+            if (unqualifiedResult) unqualifiedResult.value = '';
+            if (unqualifiedDate) unqualifiedDate.value = '';
+        }
+
+        // 一鍵全部標記為「合格」
+        document.getElementById('btn-quick-pass').addEventListener('click', () => {
+            document.querySelectorAll('.status-btn-group').forEach(group => {
+                const passBtn = group.querySelector('.status-badge[data-val="合格"]');
+                if (passBtn) {
+                    group.querySelectorAll('.status-badge').forEach(b => b.className = 'status-badge');
+                    passBtn.classList.add('active-pass');
+                    const targetKey = group.dataset.target;
+                    const printSpan = document.getElementById(`print-${targetKey}`);
+                    if (printSpan) {
+                        printSpan.textContent = '合格';
+                        printSpan.className = 'print-status-text text-emerald-700 font-bold';
+                    }
+                }
+            });
+        });
+
+        // 清空判定按鈕
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            resetAllDecisions();
+        });
+
+        // 列印按鈕
+        document.getElementById('btn-print').addEventListener('click', () => {
+            window.print();
+        });
+    </script>
+</body>
+</html>
